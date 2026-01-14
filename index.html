@@ -2,15 +2,14 @@
 <html lang="zh-CN">
 <head>
     <!-- Google tag (gtag.js) -->
-        <script async src="https://www.googletagmanager.com/gtag/js?id=G-16LMNCXZQ1"></script>
-            <script>
-                  window.dataLayer = window.dataLayer || [];
-                        function gtag(){dataLayer.push(arguments);}
-                              gtag('js', new Date());
-                              
-                                    gtag('config', 'G-16LMNCXZQ1');
-                                        </script>
-                                            <meta charset="UTF-8">
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-16LMNCXZQ1"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'G-16LMNCXZQ1');
+    </script>
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>JISHENG OS // ULTIMATE PERSISTENT</title>
     
@@ -687,113 +686,6 @@
             to { width: 0%; }
         }
 
-        /* === 音乐播放器样式 === */
-        .music-player {
-            height: 100%; 
-            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f0f1a 100%);
-            display: flex; flex-direction: column; padding: 20px;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .music-player::before {
-            content: '';
-            position: absolute; inset: 0;
-            background: radial-gradient(circle at 50% 0%, rgba(0, 120, 212, 0.15), transparent 60%);
-            pointer-events: none;
-        }
-
-        .mp-visualizer {
-            flex: 1; display: flex; align-items: flex-end; justify-content: center;
-            gap: 3px; padding: 20px 0;
-            position: relative; z-index: 1;
-        }
-
-        .mp-bar {
-            width: 6px; 
-            background: linear-gradient(to top, var(--accent-blue), var(--accent-cyan));
-            border-radius: 3px; 
-            height: 8%; 
-            transition: height 0.05s ease;
-            box-shadow: 0 0 10px rgba(0, 120, 212, 0.3);
-        }
-
-        .mp-info { 
-            text-align: center; padding: 16px 0; 
-            position: relative; z-index: 1;
-        }
-        .mp-title { 
-            font-size: 15px; font-weight: 600; margin-bottom: 12px; 
-            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-        }
-
-        .mp-time { 
-            display: flex; align-items: center; gap: 12px; 
-            font-size: 11px; color: var(--text-muted); 
-        }
-        .mp-progress { 
-            flex: 1; height: 4px; -webkit-appearance: none; 
-            background: rgba(255,255,255,0.15); border-radius: 2px; 
-            cursor: pointer;
-        }
-        .mp-progress::-webkit-slider-thumb { 
-            -webkit-appearance: none; width: 14px; height: 14px; 
-            background: var(--accent-blue); border-radius: 50%; cursor: pointer; 
-            box-shadow: 0 0 10px var(--accent-blue);
-        }
-
-        .mp-controls {
-            display: flex; align-items: center; justify-content: center; gap: 12px; 
-            padding-top: 16px;
-            position: relative; z-index: 1;
-        }
-
-        .mp-btn {
-            width: 40px; height: 40px; border-radius: 50%; border: none;
-            background: rgba(255,255,255,0.08); color: white; cursor: pointer;
-            display: flex; align-items: center; justify-content: center;
-            transition: 0.2s; backdrop-filter: blur(10px);
-        }
-        .mp-btn svg { width: 18px; height: 18px; fill: currentColor; stroke: none; }
-        .mp-btn:hover { background: rgba(255,255,255,0.15); transform: scale(1.05); }
-        .mp-btn.play { 
-            width: 56px; height: 56px; 
-            background: linear-gradient(135deg, var(--accent-blue), var(--accent-cyan)); 
-            box-shadow: 0 4px 20px rgba(0, 120, 212, 0.4);
-        }
-        .mp-btn.play:hover { transform: scale(1.08); }
-        .mp-btn.play svg { width: 24px; height: 24px; }
-
-        .mp-volume { 
-            width: 80px; height: 4px; -webkit-appearance: none;
-            background: rgba(255,255,255,0.15); border-radius: 2px;
-        }
-        .mp-volume::-webkit-slider-thumb {
-            -webkit-appearance: none; width: 12px; height: 12px;
-            background: white; border-radius: 50%; cursor: pointer;
-        }
-
-        /* === 剪贴板指示器 === */
-        .clipboard-indicator {
-            position: fixed; bottom: calc(var(--taskbar-height) + 16px); left: 50%;
-            transform: translateX(-50%) translateY(20px);
-            background: var(--glass-surface-light);
-            backdrop-filter: blur(20px);
-            border: 1px solid var(--glass-border);
-            border-radius: 8px;
-            padding: 10px 20px;
-            font-size: 12px;
-            display: flex; align-items: center; gap: 10px;
-            opacity: 0; pointer-events: none;
-            transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-            z-index: 9000;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.3);
-        }
-        .clipboard-indicator.show {
-            opacity: 1; transform: translateX(-50%) translateY(0);
-        }
-        .clipboard-indicator .icon-svg { width: 16px; height: 16px; color: var(--accent-blue); }
-
         /* === 遮罩 & 调整手柄 === */
         .overlay { 
             position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 2400; 
@@ -843,15 +735,6 @@
     <!-- 通知容器 -->
     <div class="notification-container" id="notification-container"></div>
 
-    <!-- 剪贴板指示器 -->
-    <div class="clipboard-indicator" id="clipboard-indicator">
-        <svg class="icon-svg" viewBox="0 0 24 24">
-            <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>
-            <rect x="8" y="2" width="8" height="4" rx="1" ry="1"/>
-        </svg>
-        <span id="clipboard-text">已复制到剪贴板</span>
-    </div>
-
     <!-- 桌面图标容器 -->
     <div class="desktop" id="desktop">
         <div class="desktop-icons" id="desktop-icons"></div>
@@ -900,12 +783,6 @@
                     <circle cx="11" cy="11" r="2"/>
                 </svg>
             </div>
-            <div class="taskbar-icon" onclick="openMusicPlayer()" title="音乐播放器">
-                <svg class="icon-svg" viewBox="0 0 24 24">
-                    <circle cx="12" cy="12" r="10"/>
-                    <polygon points="10 8 16 12 10 16 10 8"/>
-                </svg>
-            </div>
             <div class="taskbar-icon" onclick="openSettings()" title="设置">
                 <svg class="icon-svg" viewBox="0 0 24 24">
                     <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
@@ -914,12 +791,6 @@
             </div>
         </div>
         <div class="system-tray">
-            <div class="tray-icon" onclick="showClipboardHistory()" title="剪贴板">
-                <svg class="icon-svg" viewBox="0 0 24 24">
-                    <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>
-                    <rect x="8" y="2" width="8" height="4" rx="1" ry="1"/>
-                </svg>
-            </div>
             <div class="tray-icon">
                 <svg class="icon-svg" viewBox="0 0 24 24">
                     <path d="M5 12.55a11 11 0 0 1 14.08 0"/>
@@ -969,13 +840,6 @@
                     <circle cx="11" cy="11" r="2"/>
                 </svg>
                 <span>Paint</span>
-            </div>
-            <div class="menu-item" onclick="openMusicPlayer(); toggleStartMenu()">
-                <svg class="icon-svg lg" viewBox="0 0 24 24">
-                    <circle cx="12" cy="12" r="10"/>
-                    <polygon points="10 8 16 12 10 16 10 8"/>
-                </svg>
-                <span>Music</span>
             </div>
             <div class="menu-item" onclick="openSettings(); toggleStartMenu()">
                 <svg class="icon-svg lg" viewBox="0 0 24 24">
@@ -1078,14 +942,7 @@
             desktopPath: '/desktop',
             configPath: '/system/config/wallpaper.cfg',
             currentMonth: new Date().getMonth(),
-            currentYear: new Date().getFullYear(),
-            // 剪贴板系统
-            clipboard: {
-                type: null,  // 'file' | 'text' | 'image'
-                data: null,
-                source: null,
-                history: []
-            }
+            currentYear: new Date().getFullYear()
         };
 
         const bootBar = document.getElementById('boot-bar');
@@ -1152,68 +1009,6 @@
             warning(title, message) { return this.show({ title, message, type: 'warning' }); },
             info(title, message) { return this.show({ title, message, type: 'info' }); }
         };
-
-        // === 剪贴板系统 ===
-        const Clipboard = {
-            copy(type, data, source = null) {
-                SYSTEM.clipboard.type = type;
-                SYSTEM.clipboard.data = data;
-                SYSTEM.clipboard.source = source;
-                
-                // 添加到历史
-                SYSTEM.clipboard.history.unshift({ type, data, source, time: Date.now() });
-                if (SYSTEM.clipboard.history.length > 10) SYSTEM.clipboard.history.pop();
-                
-                // 显示指示器
-                this.showIndicator(type === 'file' ? `已复制: ${data}` : '已复制到剪贴板');
-            },
-            
-            paste(callback) {
-                if (SYSTEM.clipboard.data) {
-                    callback(SYSTEM.clipboard.type, SYSTEM.clipboard.data, SYSTEM.clipboard.source);
-                }
-            },
-            
-            showIndicator(text) {
-                const el = document.getElementById('clipboard-indicator');
-                document.getElementById('clipboard-text').textContent = text;
-                el.classList.add('show');
-                setTimeout(() => el.classList.remove('show'), 2000);
-            },
-            
-            clear() {
-                SYSTEM.clipboard.type = null;
-                SYSTEM.clipboard.data = null;
-                SYSTEM.clipboard.source = null;
-            }
-        };
-
-        function showClipboardHistory() {
-            const history = SYSTEM.clipboard.history;
-            if (history.length === 0) {
-                Notify.info('剪贴板为空', '还没有复制任何内容');
-                return;
-            }
-            
-            let content = history.map((item, i) => {
-                const time = new Date(item.time).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
-                const preview = item.type === 'file' ? `📄 ${item.data}` : 
-                               item.type === 'text' ? `📝 ${String(item.data).substring(0, 30)}...` : '📋 数据';
-                return `
-                    <div class="folder-item" onclick="Clipboard.copy('${item.type}', '${item.data}', '${item.source || ''}'); closeWin(${SYSTEM.idCounter})">
-                        <span style="flex:1">${preview}</span>
-                        <span style="color:var(--text-muted);font-size:11px">${time}</span>
-                    </div>
-                `;
-            }).join('');
-            
-            createWindow({
-                title: '剪贴板历史',
-                iconHtml: '<svg class="icon-svg sm" viewBox="0 0 24 24"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>',
-                width: 350, height: 300,
-                content: `<div class="content-area dark" style="padding:8px;overflow-y:auto">${content}</div>`
-            });
-        }
 
         // === 初始化内核 (BrowserFS) ===
         function initKernel() {
@@ -1354,10 +1149,6 @@
                     <svg class="icon-svg xl" viewBox="0 0 24 24"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><circle cx="11" cy="11" r="2"/></svg>
                     <div class="label">画板</div>
                 </div>
-                <div class="desktop-icon" ondblclick="openMusicPlayer()" oncontextmenu="ctxApp(event, 'musicPlayer')">
-                    <svg class="icon-svg xl" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg>
-                    <div class="label">音乐播放器</div>
-                </div>
                 <div class="desktop-icon" ondblclick="openSettings()" oncontextmenu="ctxApp(event, 'settings')">
                     <svg class="icon-svg xl" viewBox="0 0 24 24"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
                     <div class="label">系统设置</div>
@@ -1377,7 +1168,7 @@
                             iconSvg = '<rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>';
                         else if(file.match(/\.txt$/i)) 
                             iconSvg = '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line>';
-                                                else if(file.match(/\.zip$/i))
+                        else if(file.match(/\.zip$/i))
                             iconSvg = '<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2v11z"/><path d="M12 10v4"/><path d="M12 14l2-2"/>';
                         
                         el.setAttribute('ondblclick', `openFile('${file}')`);
@@ -1394,87 +1185,63 @@
 
         // === 文件操作 ===
         function openFile(filename) {
-    const path = SYSTEM.desktopPath + '/' + filename;
-    
-    // 处理图片文件
-    if(filename.match(/\.(jpg|png|gif|webp)$/i)) {
-        SYSTEM.fs.readFile(path, (err, data) => {
-            if(err) { Notify.error('打开失败', err.message); return; }
-            const base64 = SYSTEM.Buffer.from(data).toString('base64');
-            const ext = filename.split('.').pop().toLowerCase();
-            const mime = ext === 'png' ? 'image/png' : ext === 'gif' ? 'image/gif' : ext === 'webp' ? 'image/webp' : 'image/jpeg';
-            const dataUrl = `data:${mime};base64,${base64}`;
-            
-            createWindow({
-                title: filename,
-                iconHtml: '<svg class="icon-svg sm" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>',
-                width: 600, height: 450,
-                content: `<div class="content-area dark" style="display:flex;align-items:center;justify-content:center;overflow:auto">
-                    <img src="${dataUrl}" style="max-width:100%;max-height:100%;object-fit:contain">
-                </div>`
-            });
-        });
-    } 
-    // 处理文本文件
-    else if(filename.match(/\.txt$/i)) {
-        SYSTEM.fs.readFile(path, 'utf8', (err, data) => {
-            if(err) { Notify.error('打开失败', err.message); return; }
-            openNotepad(data, filename);
-        });
-    } 
-    // ========== 新增：处理 HTML 文件 ==========
-    else if(filename.match(/\.html?$/i)) {
-        SYSTEM.fs.readFile(path, 'utf8', (err, data) => {
-            if(err) { Notify.error('打开失败', err.message); return; }
-            
-            // 将 HTML 内容转为 Blob URL
-            const blob = new Blob([data], { type: 'text/html' });
-            const url = URL.createObjectURL(blob);
-            
-            const winId = SYSTEM.idCounter + 1;
-            
-            createWindow({
-                title: '浏览器 - ' + filename,
-                iconHtml: '<svg class="icon-svg sm" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/></svg>',
-                width: 900, height: 600,
-                content: `
-                    <div class="browser-nav">
-                        <button class="nav-btn" disabled><svg class="icon-svg" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg></button>
-                        <button class="nav-btn" disabled><svg class="icon-svg" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></button>
-                        <button class="nav-btn" id="nav-refresh-${winId}"><svg class="icon-svg" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg></button>
-                        <div class="address-bar">
-                            <svg class="icon-svg" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg>
-                            <input type="text" value="file://${filename}" readonly style="cursor:default">
-                        </div>
-                    </div>
-                    <div class="content-area">
-                        <iframe id="html-frame-${winId}" src="${url}" style="width:100%;height:100%;border:none"></iframe>
-                    </div>
-                `,
-                onInit: (w, id) => {
-                    document.getElementById('nav-refresh-' + id).onclick = () => {
-                        document.getElementById('html-frame-' + id).src = url;
-                    };
-                }
-            });
-        });
-    }
-    // ========== 新增结束 ==========
-    else if(filename.match(/\.zip$/i)) {
-        Notify.info('提示', '右键点击可解压此文件');
-    } 
-    else if(filename.match(/\.(mp3|wav|ogg|m4a)$/i)) {
-        SYSTEM.fs.readFile(path, (err, data) => {
-            if(err) { Notify.error('打开失败', err.message); return; }
-            const blob = new Blob([data]);
-            const url = URL.createObjectURL(blob);
-            openMusicPlayer(url, filename);
-        });
-    } 
-    else {
-        Notify.warning('不支持的格式', '暂时无法打开此类型文件');
-    }
-}
+            // 直接转接给通用打开函数，保证逻辑统一
+            const fullPath = SYSTEM.desktopPath + '/' + filename;
+            openFileFromPath(fullPath, filename);
+        }
+
+        // 通用的文件打开逻辑 (现在支持桌面文件和文件夹内的文件)
+        function openFileFromPath(fullPath, filename) {
+            // 1. 处理 HTML 文件 (自动跳转浏览器)
+            if(filename.match(/\.html?$/i)) {
+                SYSTEM.fs.readFile(fullPath, 'utf8', (err, data) => {
+                    if(err) { Notify.error('打开失败', err.message); return; }
+                    
+                    // 将 HTML 内容转换为 Blob URL
+                    const blob = new Blob([data], { type: 'text/html' });
+                    const url = URL.createObjectURL(blob);
+                    
+                    // 直接调用浏览器打开
+                    openBrowser(url);
+                    Notify.success('正在打开', '已在浏览器中加载 HTML 文件');
+                });
+            }
+            // 2. 处理图片文件
+            else if(filename.match(/\.(jpg|png|gif|webp)$/i)) {
+                SYSTEM.fs.readFile(fullPath, (err, data) => {
+                    if(err) { Notify.error('打开失败', err.message); return; }
+                    const base64 = SYSTEM.Buffer.from(data).toString('base64');
+                    const ext = filename.split('.').pop().toLowerCase();
+                    const mime = ext === 'png' ? 'image/png' : ext === 'gif' ? 'image/gif' : ext === 'webp' ? 'image/webp' : 'image/jpeg';
+                    const dataUrl = `data:${mime};base64,${base64}`;
+                    
+                    createWindow({
+                        title: filename,
+                        iconHtml: '<svg class="icon-svg sm" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>',
+                        width: 600, height: 450,
+                        content: `<div class="content-area dark" style="display:flex;align-items:center;justify-content:center;overflow:auto">
+                            <img src="${dataUrl}" style="max-width:100%;max-height:100%;object-fit:contain">
+                        </div>`
+                    });
+                });
+            } 
+            // 3. 处理文本文件
+            else if(filename.match(/\.txt$/i)) {
+                SYSTEM.fs.readFile(fullPath, 'utf8', (err, data) => {
+                    if(err) { Notify.error('打开失败', err.message); return; }
+                    openNotepad(data, filename);
+                });
+            } 
+            // 4. 处理 ZIP 文件 (在桌面调用)
+            else if(filename.match(/\.zip$/i)) {
+                // 如果是直接在桌面调用 openFile，由于 openFile 转接到了这里，我们需要判断是否在桌面路径
+                // 或者直接调用解压函数
+                extractZip(filename); 
+            } 
+            else {
+                Notify.warning('不支持的格式', '暂时无法打开此类型文件');
+            }
+        }
 
         function deleteFile(filename) {
             if(!confirm(`确定删除 "${filename}" 吗？`)) return;
@@ -1525,76 +1292,73 @@
             });
         }
 
-        // === ZIP解压 ===
+        // === ZIP解压 (修复版) ===
         async function extractZip(filename) {
-            const path = SYSTEM.desktopPath + '/' + filename;
-            
+            // 如果传入的是完整路径，提取文件名
+            const cleanFilename = filename.split('/').pop();
+            const zipPath = SYSTEM.desktopPath + '/' + cleanFilename;
+            const folderName = cleanFilename.replace(/\.zip$/i, '');
+            const targetDir = SYSTEM.desktopPath + '/' + folderName;
+
             const progressEl = document.createElement('div');
             progressEl.className = 'extract-progress';
             progressEl.innerHTML = `
                 <h4>正在解压...</h4>
                 <div class="bar"><div class="bar-fill" id="extract-bar"></div></div>
-                <p id="extract-status">准备中...</p>
+                <p id="extract-status">读取压缩包...</p>
             `;
             document.body.appendChild(progressEl);
-            
-            try {
-                const data = await new Promise((resolve, reject) => {
-                    SYSTEM.fs.readFile(path, (err, data) => err ? reject(err) : resolve(data));
-                });
-                
-                const zip = await JSZip.loadAsync(data);
-                const entries = Object.keys(zip.files);
-                const total = entries.length;
-                let processed = 0;
-                
-                const folderName = filename.replace(/\.zip$/i, '');
-                const extractPath = SYSTEM.desktopPath + '/' + folderName;
-                
-                await new Promise((resolve, reject) => {
-                    SYSTEM.fs.mkdir(extractPath, (err) => {
-                        if(err && err.code !== 'EEXIST') reject(err);
-                        else resolve();
-                    });
-                });
-                
-                for(const entry of entries) {
-                    const zipEntry = zip.files[entry];
-                    const entryPath = extractPath + '/' + entry;
+
+            SYSTEM.fs.readFile(zipPath, async (err, data) => {
+                if (err) { progressEl.remove(); Notify.error('解压失败', '读取文件错误'); return; }
+
+                try {
+                    document.getElementById('extract-status').innerText = '解析文件结构...';
+                    const zip = await JSZip.loadAsync(data);
                     
-                    document.getElementById('extract-status').innerText = entry;
-                    
-                    if(zipEntry.dir) {
-                        await new Promise(resolve => {
-                            SYSTEM.fs.mkdir(entryPath, () => resolve());
+                    // 创建根目录
+                    await new Promise((resolve) => {
+                        SYSTEM.fs.mkdir(targetDir, (err) => {
+                            if(err && err.code !== 'EEXIST') resolve(err);
+                            else resolve();
                         });
-                    } else {
-                        const content = await zipEntry.async('nodebuffer');
+                    });
+
+                    const files = Object.keys(zip.files).filter(name => !zip.files[name].dir);
+                    const total = files.length;
+                    let done = 0;
+
+                    for (const relativePath of files) {
+                        const zipEntry = zip.files[relativePath];
+                        const content = await zipEntry.async('arraybuffer');
                         const buffer = SYSTEM.Buffer.from(content);
                         
-                        const dir = entryPath.substring(0, entryPath.lastIndexOf('/'));
-                        await ensureDir(dir);
+                        // 确保父目录存在
+                        const fullPath = targetDir + '/' + relativePath;
+                        const parentDir = fullPath.substring(0, fullPath.lastIndexOf('/'));
+                        await ensureDir(parentDir);
+
+                        document.getElementById('extract-status').innerText = relativePath;
                         
-                        await new Promise((resolve, reject) => {
-                            SYSTEM.fs.writeFile(entryPath, buffer, (err) => {
-                                if(err) reject(err); else resolve();
-                            });
+                        await new Promise((resolve) => {
+                            SYSTEM.fs.writeFile(fullPath, buffer, () => resolve());
                         });
+
+                        done++;
+                        document.getElementById('extract-bar').style.width = (done / total * 100) + '%';
                     }
-                    
-                    processed++;
-                    document.getElementById('extract-bar').style.width = (processed / total * 100) + '%';
+
+                    progressEl.remove();
+                    refreshDesktop();
+                    Notify.success('解压完成', `已解压到 "${folderName}"`);
+                    openFolderWindow(folderName);
+
+                } catch (e) { 
+                    progressEl.remove(); 
+                    Notify.error('解压出错', e.message); 
+                    console.error(e);
                 }
-                
-                progressEl.remove();
-                refreshDesktop();
-                Notify.success('解压完成', `已解压到 "${folderName}" 文件夹`);
-                
-            } catch(e) {
-                progressEl.remove();
-                Notify.error('解压失败', e.message);
-                console.error(e);
-            }
+            });
         }
 
         async function ensureDir(path) {
@@ -1608,6 +1372,7 @@
             }
         }
 
+        // === 文件夹窗口 (V3 风格逻辑) ===
         function openFolderWindow(folderName) {
             const path = SYSTEM.desktopPath + '/' + folderName;
             
@@ -1619,6 +1384,9 @@
                     : files.map(file => {
                         let iconSvg = '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>';
                         if(file.match(/\.(jpg|png|gif|webp)$/i)) iconSvg = '<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/>';
+                        else if(file.match(/\.html?$/i)) iconSvg = '<circle cx="12" cy="12" r="10"/><path d="M2 12h20"/>'; // HTML icon
+                        
+                        // 关键修改：直接调用 openFileFromPath，传入完整路径和文件名
                         return `
                             <div class="folder-item" ondblclick="openFileFromPath('${path}/${file}', '${file}')">
                                 <svg class="icon-svg" viewBox="0 0 24 24">${iconSvg}</svg>
@@ -1634,28 +1402,6 @@
                     content: `<div class="content-area dark" style="padding:8px;overflow-y:auto">${content}</div>`
                 });
             });
-        }
-
-        function openFileFromPath(fullPath, filename) {
-            if(filename.match(/\.(jpg|png|gif|webp)$/i)) {
-                SYSTEM.fs.readFile(fullPath, (err, data) => {
-                    if(err) return;
-                    const base64 = SYSTEM.Buffer.from(data).toString('base64');
-                    const ext = filename.split('.').pop().toLowerCase();
-                    const mime = ext === 'png' ? 'image/png' : 'image/jpeg';
-                    createWindow({
-                        title: filename, width: 600, height: 450,
-                        content: `<div class="content-area dark" style="display:flex;align-items:center;justify-content:center">
-                            <img src="data:${mime};base64,${base64}" style="max-width:100%;max-height:100%">
-                        </div>`
-                    });
-                });
-            } else if(filename.match(/\.txt$/i)) {
-                SYSTEM.fs.readFile(fullPath, 'utf8', (err, data) => {
-                    if(err) return;
-                    openNotepad(data, filename);
-                });
-            }
         }
 
         // === 右键菜单 ===
@@ -1699,7 +1445,6 @@
                 'notepad': 'openNotepad', 
                 'calculator': 'openCalculator',
                 'paint': 'openPaint',
-                'musicPlayer': 'openMusicPlayer',
                 'settings': 'openSettings'
             };
             const funcName = funcMap[type] || ('open' + type.charAt(0).toUpperCase() + type.slice(1));
@@ -1733,10 +1478,6 @@
             }
 
             menuItems += `
-                <div class="context-item" onclick="Clipboard.copy('file', '${filename}', '${SYSTEM.desktopPath}'); closeCtx()">
-                    <svg class="icon-svg" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-                    <span>复制</span>
-                </div>
                 <div class="context-item" onclick="renameFile('${filename}'); closeCtx()">
                     <svg class="icon-svg" viewBox="0 0 24 24"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
                     <span>重命名</span>
@@ -1971,25 +1712,27 @@
         }
 
         // === 应用程序 ===
-        function openBrowser() {
+        function openBrowser(initialUrl) {
+            const startUrl = initialUrl || 'https://www.wikipedia.org';
+            
             const id = createWindow({
                 title: '浏览器',
                 iconHtml: '<svg class="icon-svg sm" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/></svg>',
                 width: 900, height: 600,
                 content: `
                     <div class="browser-nav">
-                        <button class="nav-btn" id="nav-back-${SYSTEM.idCounter+1}" disabled><svg class="icon-svg" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg></button>
-                        <button class="nav-btn" id="nav-forward-${SYSTEM.idCounter+1}" disabled><svg class="icon-svg" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></button>
+                        <button class="nav-btn" id="nav-back-${SYSTEM.idCounter+1}"><svg class="icon-svg" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg></button>
+                        <button class="nav-btn" id="nav-forward-${SYSTEM.idCounter+1}"><svg class="icon-svg" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></button>
                         <button class="nav-btn" id="nav-refresh-${SYSTEM.idCounter+1}"><svg class="icon-svg" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg></button>
                         <div class="address-bar">
                             <svg class="icon-svg" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                            <input type="text" id="url-input-${SYSTEM.idCounter+1}" placeholder="输入网址..." value="https://www.wikipedia.org">
+                            <input type="text" id="url-input-${SYSTEM.idCounter+1}" placeholder="输入网址..." value="${startUrl}">
                         </div>
                         <button class="nav-btn" id="nav-go-${SYSTEM.idCounter+1}"><svg class="icon-svg" viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></button>
                     </div>
                     <div class="content-area">
                         <div class="loading-overlay" id="loading-${SYSTEM.idCounter+1}"><div class="spinner"></div><span>加载中...</span></div>
-                        <iframe id="browser-frame-${SYSTEM.idCounter+1}" src="https://www.wikipedia.org" sandbox="allow-same-origin allow-scripts allow-forms allow-popups"></iframe>
+                        <iframe id="browser-frame-${SYSTEM.idCounter+1}" src="${startUrl}" sandbox="allow-same-origin allow-scripts allow-forms allow-popups"></iframe>
                     </div>
                 `,
                 onInit: (w, winId) => {
@@ -1998,10 +1741,12 @@
                     const loading = document.getElementById('loading-' + winId);
                     const goBtn = document.getElementById('nav-go-' + winId);
                     const refreshBtn = document.getElementById('nav-refresh-' + winId);
+                    const backBtn = document.getElementById('nav-back-' + winId);
+                    const fwdBtn = document.getElementById('nav-forward-' + winId);
                     
                     const navigate = () => {
                         let url = urlInput.value.trim();
-                        if(!url.startsWith('http')) url = 'https://' + url;
+                        if(!url.startsWith('http') && !url.startsWith('blob:') && !url.startsWith('file:')) url = 'https://' + url;
                         urlInput.value = url;
                         loading.classList.add('active');
                         frame.src = url;
@@ -2011,6 +1756,10 @@
                     goBtn.onclick = navigate;
                     refreshBtn.onclick = () => { loading.classList.add('active'); frame.src = frame.src; };
                     frame.onload = () => loading.classList.remove('active');
+
+                    // 修复导航键
+                    backBtn.onclick = () => { try { frame.contentWindow.history.back(); } catch(e){} };
+                    fwdBtn.onclick = () => { try { frame.contentWindow.history.forward(); } catch(e){} };
                 }
             });
         }
@@ -2245,122 +1994,6 @@
             });
         }
 
-        function openMusicPlayer(audioUrl = null, title = '未选择音乐') {
-            const id = createWindow({
-                title: '音乐播放器',
-                iconHtml: '<svg class="icon-svg sm" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg>',
-                width: 380, height: 450,
-                content: `
-                    <div class="music-player">
-                        <div class="mp-visualizer" id="mp-viz-${SYSTEM.idCounter+1}">
-                            ${Array(30).fill('<div class="mp-bar"></div>').join('')}
-                        </div>
-                        <div class="mp-info">
-                            <div class="mp-title" id="mp-title-${SYSTEM.idCounter+1}">${title}</div>
-                            <div class="mp-time">
-                                <span id="mp-current-${SYSTEM.idCounter+1}">0:00</span>
-                                <input type="range" class="mp-progress" id="mp-progress-${SYSTEM.idCounter+1}" value="0" min="0" max="100">
-                                <span id="mp-duration-${SYSTEM.idCounter+1}">0:00</span>
-                            </div>
-                        </div>
-                        <div class="mp-controls">
-                            <input type="range" class="mp-volume" id="mp-volume-${SYSTEM.idCounter+1}" value="80" min="0" max="100">
-                            <button class="mp-btn" id="mp-prev-${SYSTEM.idCounter+1}"><svg viewBox="0 0 24 24"><polygon points="19 20 9 12 19 4 19 20"/><line x1="5" y1="19" x2="5" y2="5"/></svg></button>
-                            <button class="mp-btn play" id="mp-play-${SYSTEM.idCounter+1}"><svg viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg></button>
-                            <button class="mp-btn" id="mp-next-${SYSTEM.idCounter+1}"><svg viewBox="0 0 24 24"><polygon points="5 4 15 12 5 20 5 4"/><line x1="19" y1="5" x2="19" y2="19"/></svg></button>
-                            <button class="mp-btn" id="mp-upload-${SYSTEM.idCounter+1}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></button>
-                        </div>
-                        <audio id="mp-audio-${SYSTEM.idCounter+1}" ${audioUrl ? `src="${audioUrl}"` : ''}></audio>
-                        <input type="file" id="mp-file-${SYSTEM.idCounter+1}" accept="audio/*" hidden>
-                    </div>
-                `,
-                onInit: (w, winId) => {
-                    const audio = document.getElementById('mp-audio-' + winId);
-                    const playBtn = document.getElementById('mp-play-' + winId);
-                    const progress = document.getElementById('mp-progress-' + winId);
-                    const volume = document.getElementById('mp-volume-' + winId);
-                    const currentTime = document.getElementById('mp-current-' + winId);
-                    const duration = document.getElementById('mp-duration-' + winId);
-                    const titleEl = document.getElementById('mp-title-' + winId);
-                    const fileInput = document.getElementById('mp-file-' + winId);
-                    const uploadBtn = document.getElementById('mp-upload-' + winId);
-                    const bars = document.querySelectorAll('#mp-viz-' + winId + ' .mp-bar');
-                    
-                    audio.volume = 0.8;
-                    let isPlaying = false;
-                    let animFrame;
-                    
-                    const formatTime = s => {
-                        const m = Math.floor(s / 60);
-                        const sec = Math.floor(s % 60);
-                        return m + ':' + (sec < 10 ? '0' : '') + sec;
-                    };
-                    
-                    const animateBars = () => {
-                        if(isPlaying) {
-                            bars.forEach(bar => {
-                                bar.style.height = (Math.random() * 70 + 10) + '%';
-                            });
-                            animFrame = requestAnimationFrame(animateBars);
-                        } else {
-                            bars.forEach(bar => { bar.style.height = '8%'; });
-                        }
-                    };
-                    
-                    playBtn.onclick = () => {
-                        if(audio.paused) {
-                            audio.play();
-                            isPlaying = true;
-                            playBtn.innerHTML = '<svg viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>';
-                            animateBars();
-                        } else {
-                            audio.pause();
-                            isPlaying = false;
-                            playBtn.innerHTML = '<svg viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>';
-                            cancelAnimationFrame(animFrame);
-                            bars.forEach(bar => { bar.style.height = '8%'; });
-                        }
-                    };
-                    
-                    audio.ontimeupdate = () => {
-                        progress.value = (audio.currentTime / audio.duration) * 100 || 0;
-                        currentTime.innerText = formatTime(audio.currentTime);
-                    };
-                    
-                    audio.onloadedmetadata = () => {
-                        duration.innerText = formatTime(audio.duration);
-                    };
-                    
-                    audio.onended = () => {
-                        isPlaying = false;
-                        playBtn.innerHTML = '<svg viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>';
-                        bars.forEach(bar => { bar.style.height = '8%'; });
-                    };
-                    
-                    progress.oninput = () => {
-                        audio.currentTime = (progress.value / 100) * audio.duration;
-                    };
-                    
-                    volume.oninput = () => {
-                        audio.volume = volume.value / 100;
-                    };
-                    
-                    uploadBtn.onclick = () => fileInput.click();
-                    
-                    fileInput.onchange = e => {
-                        const file = e.target.files[0];
-                        if(file) {
-                            const url = URL.createObjectURL(file);
-                            audio.src = url;
-                            titleEl.innerText = file.name;
-                            isPlaying = false;
-                            playBtn.innerHTML = '<svg viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>';
-                        }
-                    };
-                }
-            });
-        }
-
         function openSettings() {
             createWindow({
                 title: '系统设置',
@@ -2372,7 +2005,7 @@
                             <div class="about-card">
                                 <div class="logo">JS</div>
                                 <h3>JISHENG OS</h3>
-                                <p>Ultimate Web Operating System<br>Version 3.0 • Build 2024</p>
+                                <p>Ultimate Web Operating System<br>Version 5.0 • Build 2024</p>
                             </div>
                             
                             <div class="settings-section" style="margin-top:20px">
@@ -2478,27 +2111,6 @@
                 req.onsuccess = () => location.reload();
             }
         }
-
-        // 键盘快捷键
-        document.addEventListener('keydown', e => {
-            // Ctrl+V 粘贴文件
-            if(e.ctrlKey && e.key === 'v') {
-                Clipboard.paste((type, data, source) => {
-                    if(type === 'file' && source) {
-                        const srcPath = source + '/' + data;
-                        const destPath = SYSTEM.desktopPath + '/' + data;
-                        
-                        SYSTEM.fs.readFile(srcPath, (err, content) => {
-                            if(err) { Notify.error('粘贴失败', err.message); return; }
-                            SYSTEM.fs.writeFile(destPath, content, (err) => {
-                                if(err) Notify.error('粘贴失败', err.message);
-                                else { refreshDesktop(); Notify.success('粘贴成功', `已粘贴 "${data}"`); }
-                            });
-                        });
-                    }
-                });
-            }
-        });
 
         // 启动
         window.onload = initKernel;
