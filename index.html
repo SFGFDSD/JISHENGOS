@@ -10,7 +10,7 @@
         gtag('config', 'G-16LMNCXZQ1');
     </script>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>JISHENG OS // ULTIMATE PERSISTENT</title>
     
     <!-- 核心驱动：BrowserFS 文件系统 -->
@@ -173,6 +173,8 @@
             display: flex; align-items: center; justify-content: space-between;
             background: rgba(0,0,0,0.15);
             border-bottom: 1px solid var(--glass-border);
+            /* === 新增这行，修复移动端拖拽卡顿 === */
+            touch-action: none; 
         }
         .title-bar-left {
             display: flex; align-items: center; gap: 10px; 
@@ -706,6 +708,33 @@
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 4px; }
         ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.25); }
+      /* === 移动端适配 (核心样式) === */
+        @media (max-width: 600px) {
+            /* 桌面图标横向排列 */
+            .desktop-icons {
+                flex-direction: row; align-content: flex-start; flex-wrap: wrap;
+                height: auto; bottom: 80px; top: 10px; left: 10px;
+            }
+            .desktop-icon { width: 72px; margin: 4px; }
+            
+            /* 窗口强制全屏 */
+            .window:not(.minimized) {
+                top: 0 !important; left: 0 !important;
+                width: 100% !important; height: calc(100% - var(--taskbar-height)) !important;
+                border-radius: 0 !important; transform: none !important;
+            }
+            
+            /* 隐藏不需要的元素 */
+            .resize-handle { display: none !important; }
+            .win-btn:nth-child(2) { display: none; } /* 隐藏最大化按钮 */
+            .clock .date { display: none; } /* 隐藏日期 */
+            
+            /* 增大触摸区域 */
+            .start-menu { width: 95%; left: 2.5%; bottom: 60px; }
+            .taskbar-icon { width: 42px; }
+            .context-menu { min-width: 160px; padding: 8px; }
+            .context-item { padding: 12px; font-size: 14px; }
+        }
     </style>
 </head>
 <body>
@@ -1534,13 +1563,21 @@
             }
         }
 
-        // === 窗口系统 ===
+        // === 窗口系统 (完整适配版) ===
         function createWindow(opts) {
             const id = ++SYSTEM.idCounter;
+            const isMobile = window.innerWidth <= 768; // 检测手机
+            
             const w = document.createElement('div');
             w.id = 'win-' + id;
-            w.className = 'window ultra-glass focused';
-            w.style.cssText = `width:${opts.width||700}px;height:${opts.height||500}px;top:${50+SYSTEM.windows.length*25}px;left:${100+SYSTEM.windows.length*25}px;`;
+            
+            // 如果是手机，自动添加 maximized 类
+            w.className = `window ultra-glass focused ${isMobile ? 'maximized' : ''}`;
+            
+            // 只有电脑端才设置初始位置，手机端由CSS强制全屏
+            if (!isMobile) {
+                w.style.cssText = `width:${opts.width||700}px;height:${opts.height||500}px;top:${50+SYSTEM.windows.length*25}px;left:${100+SYSTEM.windows.length*25}px;`;
+            }
             
             w.innerHTML = `
                 <div class="title-bar">
@@ -1564,7 +1601,7 @@
             
             document.getElementById('windows-container').appendChild(w);
             
-            const winObj = { id, element: w, title: opts.title, minimized: false, maximized: false };
+            const winObj = { id, element: w, title: opts.title, minimized: false, maximized: isMobile };
             SYSTEM.windows.push(winObj);
             
             makeDraggable(w, id);
@@ -1576,7 +1613,8 @@
             return id;
         }
 
-        function closeWin(id) {
+        // 这里的函数必须定义在全局，否则 HTML onclick 找不到
+        window.closeWin = function(id) {
             const w = document.getElementById('win-' + id);
             if(w) {
                 w.style.transition = 'transform 0.2s, opacity 0.2s';
@@ -1585,19 +1623,21 @@
                 setTimeout(() => w.remove(), 200);
             }
             SYSTEM.windows = SYSTEM.windows.filter(win => win.id !== id);
-        }
+        };
 
-        function minimizeWin(id) {
+        window.minimizeWin = function(id) {
             const win = SYSTEM.windows.find(w => w.id === id);
             if(win) {
                 win.minimized = true;
                 win.element.classList.add('minimized');
             }
-        }
+        };
 
-        function maximizeWin(id) {
+        window.maximizeWin = function(id) {
             const win = SYSTEM.windows.find(w => w.id === id);
             if(!win) return;
+            // 手机端禁止取消最大化
+            if (window.innerWidth <= 768) return;
             
             win.maximized = !win.maximized;
             win.element.classList.toggle('maximized', win.maximized);
@@ -1607,9 +1647,9 @@
             } else if(win.maximized) {
                 win.savedPos = win.element.style.cssText;
             }
-        }
+        };
 
-        function focusWin(id) {
+        window.focusWin = function(id) {
             SYSTEM.windows.forEach(w => w.element.classList.remove('focused'));
             const win = SYSTEM.windows.find(w => w.id === id);
             if(win) {
@@ -1620,93 +1660,101 @@
                     win.element.classList.remove('minimized');
                 }
             }
-        }
+        };
 
+        // === 修复后的拖拽逻辑 (完美支持手机/平板) ===
         function makeDraggable(el, id) {
             const titleBar = el.querySelector('.title-bar-left');
             let isDragging = false, startX, startY, startLeft, startTop;
             
-            titleBar.onmousedown = e => {
+            // 获取触摸或鼠标坐标
+            const getCoords = (e) => {
+                if (e.touches && e.touches.length > 0) {
+                    return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+                }
+                return { x: e.clientX, y: e.clientY };
+            };
+
+            const start = (e) => {
+                // 如果点的是按钮，直接返回，不触发拖拽
                 if(e.target.closest('.win-btn')) return;
+                
+                // 获取当前窗口对象
                 const win = SYSTEM.windows.find(w => w.id === id);
-                if(win && win.maximized) return;
+                
+                // 如果是手机模式(强制全屏) 或 窗口已最大化，则禁止拖动
+                // 注意：这里阈值改为 600，与 CSS 保持一致，平板(>600)允许拖动
+                if((win && win.maximized) || window.innerWidth <= 600) return;
                 
                 isDragging = true;
-                startX = e.clientX; startY = e.clientY;
+                const p = getCoords(e);
+                startX = p.x; startY = p.y;
                 startLeft = el.offsetLeft; startTop = el.offsetTop;
+                
                 focusWin(id);
-                e.preventDefault();
+                
+                // 【关键修复】不要在这里调用 preventDefault()
+                // 否则点击标题栏可能无法聚焦或触发其他事件
             };
             
-            document.addEventListener('mousemove', e => {
+            const move = (e) => {
                 if(!isDragging) return;
-                const dx = e.clientX - startX, dy = e.clientY - startY;
+                
+                // 【关键修复】只有在真正拖拽时，才阻止屏幕滚动
+                if(e.cancelable) e.preventDefault();
+                
+                const p = getCoords(e);
+                const dx = p.x - startX; 
+                const dy = p.y - startY;
+                
                 el.style.left = startLeft + dx + 'px';
                 el.style.top = Math.max(0, startTop + dy) + 'px';
-                
-                // 窗口吸附预览
-                const preview = document.getElementById('snap-preview');
-                const desktop = document.getElementById('desktop');
-                const rect = desktop.getBoundingClientRect();
-                
-                if(e.clientX < 10) {
-                    preview.style.cssText = `left:0;top:0;width:50%;height:${rect.height}px;opacity:1`;
-                } else if(e.clientX > window.innerWidth - 10) {
-                    preview.style.cssText = `right:0;top:0;width:50%;height:${rect.height}px;opacity:1`;
-                } else if(e.clientY < 10) {
-                    preview.style.cssText = `left:0;top:0;width:100%;height:${rect.height}px;opacity:1`;
-                } else {
-                    preview.style.opacity = '0';
-                }
-            });
+            };
             
-            document.addEventListener('mouseup', e => {
-                if(!isDragging) return;
+            const end = () => {
                 isDragging = false;
-                
-                const preview = document.getElementById('snap-preview');
-                const desktop = document.getElementById('desktop');
-                const rect = desktop.getBoundingClientRect();
-                
-                if(e.clientX < 10) {
-                    el.style.cssText = `left:0;top:0;width:50%;height:${rect.height}px`;
-                } else if(e.clientX > window.innerWidth - 10) {
-                    el.style.cssText = `left:50%;top:0;width:50%;height:${rect.height}px`;
-                } else if(e.clientY < 10) {
-                    const win = SYSTEM.windows.find(w => w.id === id);
-                    if(win) maximizeWin(id);
-                }
-                
-                preview.style.opacity = '0';
-            });
+            };
             
-            el.onmousedown = () => focusWin(id);
+            // 绑定事件 (仅绑定在标题栏上，不影响内容区域的点击)
+            
+            // 鼠标
+            titleBar.onmousedown = start;
+            document.addEventListener('mousemove', move);
+            document.addEventListener('mouseup', end);
+            
+            // 触摸 (手机/平板)
+            titleBar.ontouchstart = start;
+            // passive: false 允许我们在 move 时阻止屏幕滚动
+            document.addEventListener('touchmove', move, {passive: false});
+            document.addEventListener('touchend', end);
+            
+            // 点击窗口任意位置聚焦
+            el.addEventListener('mousedown', () => focusWin(id));
+            el.addEventListener('touchstart', () => focusWin(id), {passive: true});
         }
 
         function makeResizable(el) {
+            // 手机端禁用调整大小
+            if(window.innerWidth <= 768) return;
+
             const handles = el.querySelectorAll('.resize-handle');
             handles.forEach(h => {
                 let isResizing = false, startX, startY, startW, startH, startL, startT, dir;
-                
                 h.onmousedown = e => {
-                    isResizing = true;
-                    startX = e.clientX; startY = e.clientY;
+                    isResizing = true; startX = e.clientX; startY = e.clientY;
                     startW = el.offsetWidth; startH = el.offsetHeight;
                     startL = el.offsetLeft; startT = el.offsetTop;
                     dir = h.className.split(' ')[1];
                     e.preventDefault();
                 };
-                
                 document.addEventListener('mousemove', e => {
                     if(!isResizing) return;
                     const dx = e.clientX - startX, dy = e.clientY - startY;
-                    
                     if(dir.includes('e')) el.style.width = Math.max(400, startW + dx) + 'px';
                     if(dir.includes('s')) el.style.height = Math.max(300, startH + dy) + 'px';
                     if(dir.includes('w')) { el.style.width = Math.max(400, startW - dx) + 'px'; el.style.left = startL + dx + 'px'; }
                     if(dir.includes('n')) { el.style.height = Math.max(300, startH - dy) + 'px'; el.style.top = startT + dy + 'px'; }
                 });
-                
                 document.addEventListener('mouseup', () => { isResizing = false; });
             });
         }
