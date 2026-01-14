@@ -1,0 +1,2500 @@
+ html
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JISHENG OS // ULTIMATE PERSISTENT</title>
+    
+    <!-- 核心驱动：BrowserFS 文件系统 -->
+    <script src="https://unpkg.com/browserfs@1.4.3/dist/browserfs.min.js"></script>
+    <!-- JSZip 解压缩库 -->
+    <script src="https://unpkg.com/jszip@3.10.1/dist/jszip.min.js"></script>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --bg-deep: #0a0a0f;
+            --glass-surface: rgba(24, 24, 32, 0.88);
+            --glass-surface-light: rgba(36, 36, 48, 0.92);
+            --glass-highlight: rgba(255, 255, 255, 0.06);
+            --glass-border: rgba(255, 255, 255, 0.08);
+            --accent-blue: #0078d4;
+            --accent-cyan: #00d4ff;
+            --text-main: #ffffff;
+            --text-muted: #8a8a9a;
+            --taskbar-height: 48px;
+            --win-close-red: #e81123;
+        }
+
+        * { box-sizing: border-box; outline: none; margin: 0; padding: 0; }
+        
+        body, html {
+            width: 100%; height: 100%;
+            background-color: var(--bg-deep);
+            color: var(--text-main);
+            font-family: 'Inter', -apple-system, 'Segoe UI', sans-serif;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        /* === 启动屏幕 === */
+        #boot-screen {
+            position: fixed; inset: 0; z-index: 99999;
+            background: #000;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            transition: opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        #boot-screen.hidden { opacity: 0; pointer-events: none; }
+        .boot-logo { 
+            font-size: 64px; font-weight: 700; margin-bottom: 24px; letter-spacing: -2px;
+            background: linear-gradient(135deg, #0078d4, #00d4ff); -webkit-background-clip: text; -webkit-text-fill-color: transparent; 
+        }
+        .boot-loader { width: 240px; height: 4px; background: rgba(255,255,255,0.1); border-radius: 2px; overflow: hidden; }
+        .boot-bar { width: 0%; height: 100%; background: var(--accent-blue); transition: width 0.3s; box-shadow: 0 0 10px var(--accent-blue); }
+        .boot-text { margin-top: 16px; color: #666; font-size: 11px; font-family: 'Inter', monospace; letter-spacing: 1px; text-transform: uppercase; }
+
+        /* === SVG 图标基础样式 === */
+        .icon-svg {
+            width: 24px; height: 24px;
+            stroke: currentColor;
+            stroke-width: 1.5;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            fill: none;
+        }
+        .icon-svg.sm { width: 16px; height: 16px; }
+        .icon-svg.lg { width: 32px; height: 32px; }
+        .icon-svg.xl { width: 40px; height: 40px; }
+
+        /* === 背景系统 === */
+        #dynamic-bg {
+            position: absolute; inset: 0;
+            background-size: cover;
+            background-position: center;
+            transition: background-image 0.6s ease;
+            z-index: 0;
+        }
+        
+        .ambient-overlay {
+            position: absolute; inset: 0;
+            background: 
+                radial-gradient(ellipse at 30% 20%, rgba(0, 120, 212, 0.08) 0%, transparent 50%),
+                linear-gradient(to bottom, transparent 50%, rgba(0,0,0,0.7) 100%);
+            z-index: 1; pointer-events: none;
+        }
+
+        /* === 噪点 === */
+        .noise-layer {
+            position: fixed; inset: 0; z-index: 9990;
+            opacity: 0.025; pointer-events: none; mix-blend-mode: overlay;
+        }
+
+        /* === 玻璃容器 === */
+        .ultra-glass {
+            background: var(--glass-surface);
+            backdrop-filter: blur(40px) saturate(120%);
+            -webkit-backdrop-filter: blur(40px) saturate(120%);
+            border: 1px solid var(--glass-border);
+            border-radius: 8px;
+            box-shadow: 0 20px 50px -12px rgba(0, 0, 0, 0.6);
+        }
+
+        /* === 桌面 === */
+        .desktop { position: absolute; inset: 0; bottom: var(--taskbar-height); z-index: 5; }
+        
+        .desktop-icons {
+            position: absolute; top: 24px; left: 24px;
+            display: flex; flex-direction: column; gap: 8px; flex-wrap: wrap; height: calc(100% - 40px);
+        }
+
+        .desktop-icon {
+            width: 82px; padding: 14px 8px;
+            display: flex; flex-direction: column; align-items: center; gap: 10px;
+            border-radius: 8px; cursor: pointer; border: 1px solid transparent;
+            transition: all 0.15s ease;
+        }
+        .desktop-icon:hover { 
+            background: rgba(255,255,255,0.06); 
+            border-color: rgba(255,255,255,0.1);
+        }
+        .desktop-icon:active { transform: scale(0.96); }
+        
+        .desktop-icon .icon-svg { 
+            filter: drop-shadow(0 2px 8px rgba(0,0,0,0.4));
+            color: rgba(255,255,255,0.9);
+        }
+        .desktop-icon .label { 
+            font-size: 11px; 
+            font-weight: 500;
+            text-align: center; 
+            text-shadow: 0 1px 4px rgba(0,0,0,0.8);
+            line-height: 1.4;
+            color: rgba(255,255,255,0.95);
+            word-break: break-all;
+            display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+        }
+
+        /* === 窗口系统 === */
+        .window {
+            position: absolute; min-width: 400px; min-height: 300px;
+            display: flex; flex-direction: column; z-index: 10;
+            transition: opacity 0.2s, transform 0.2s, box-shadow 0.2s;
+            box-shadow: 
+                0 0 0 1px rgba(255,255,255,0.05),
+                0 25px 60px rgba(0,0,0,0.5);
+        }
+        .window.focused { 
+            z-index: 100; 
+            box-shadow: 
+                0 0 0 1px rgba(0, 120, 212, 0.3),
+                0 30px 70px rgba(0,0,0,0.6);
+        }
+        .window.minimized { transform: scale(0.9) translateY(30px); opacity: 0; pointer-events: none; }
+        .window.maximized { 
+            top: 0 !important; left: 0 !important; 
+            width: 100% !important; height: calc(100% - var(--taskbar-height)) !important; 
+            border-radius: 0 !important; 
+        }
+
+        /* 标题栏 */
+        .title-bar {
+            height: 36px; min-height: 36px;
+            display: flex; align-items: center; justify-content: space-between;
+            background: rgba(0,0,0,0.15);
+            border-bottom: 1px solid var(--glass-border);
+        }
+        .title-bar-left {
+            display: flex; align-items: center; gap: 10px; 
+            padding-left: 14px; flex: 1; height: 100%;
+        }
+        .window-icon .icon-svg { width: 16px; height: 16px; color: var(--text-muted); }
+        .window-title-text { font-size: 12px; font-weight: 500; color: var(--text-muted); }
+
+        /* 窗口控制按钮 */
+        .window-controls { display: flex; height: 100%; }
+        .win-btn {
+            width: 46px; height: 100%;
+            display: flex; align-items: center; justify-content: center;
+            cursor: default; color: var(--text-muted);
+            transition: all 0.1s;
+        }
+        .win-btn .icon-svg { width: 10px; height: 10px; stroke-width: 2; }
+        .win-btn:hover { background: rgba(255,255,255,0.08); color: var(--text-main); }
+        .win-btn.close:hover { background: var(--win-close-red); color: white; }
+
+        /* === 窗口吸附预览 === */
+        #snap-preview {
+            position: fixed;
+            background: rgba(0, 120, 212, 0.25);
+            border: 2px solid var(--accent-blue);
+            border-radius: 12px;
+            transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+            opacity: 0;
+            pointer-events: none;
+            z-index: 9998;
+            backdrop-filter: blur(10px);
+        }
+
+        /* === 浏览器 === */
+        .browser-nav {
+            display: flex; align-items: center; gap: 6px; padding: 8px 12px;
+            background: rgba(0,0,0,0.2); border-bottom: 1px solid var(--glass-border);
+        }
+        .nav-btn {
+            width: 32px; height: 32px; border-radius: 6px; border: none;
+            background: transparent; color: var(--text-muted);
+            cursor: pointer; display: flex; align-items: center; justify-content: center;
+            transition: all 0.15s;
+        }
+        .nav-btn .icon-svg { width: 16px; height: 16px; }
+        .nav-btn:hover:not(:disabled) { background: rgba(255,255,255,0.08); color: var(--text-main); }
+        .nav-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+        .address-bar {
+            flex: 1; display: flex; align-items: center; gap: 10px;
+            background: rgba(0,0,0,0.25); border-radius: 6px; padding: 0 12px; height: 32px;
+            border: 1px solid transparent; transition: all 0.2s;
+        }
+        .address-bar:focus-within { 
+            border-color: var(--accent-blue); 
+            background: rgba(0,0,0,0.4);
+            box-shadow: 0 0 0 3px rgba(0, 120, 212, 0.15);
+        }
+        .address-bar .icon-svg { width: 14px; height: 14px; color: #4ade80; }
+        .address-bar input { 
+            flex: 1; background: transparent; border: none; 
+            color: white; font-size: 13px; font-family: inherit;
+        }
+        .address-bar input::placeholder { color: var(--text-muted); }
+
+        .content-area { flex: 1; background: #fff; position: relative; overflow: hidden; display: flex; flex-direction: column; }
+        .content-area.dark { background: #1a1a24; }
+        iframe { width: 100%; height: 100%; border: none; }
+        
+        .loading-overlay {
+            position: absolute; inset: 0; background: #fff;
+            display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 16px;
+            z-index: 5; opacity: 0; pointer-events: none; transition: 0.3s;
+        }
+        .loading-overlay.active { opacity: 1; pointer-events: auto; }
+        .spinner { 
+            width: 32px; height: 32px; 
+            border: 3px solid #e5e7eb; border-top-color: var(--accent-blue); 
+            border-radius: 50%; animation: spin 0.8s linear infinite; 
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* === 记事本特定样式 === */
+        .notepad-toolbar {
+            padding: 8px 12px; background: rgba(0,0,0,0.2); 
+            border-bottom: 1px solid var(--glass-border); display: flex; gap: 8px;
+        }
+        .notepad-btn {
+            background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border);
+            color: var(--text-main); padding: 4px 12px; border-radius: 4px; font-size: 12px; cursor: pointer;
+            transition: 0.2s;
+        }
+        .notepad-btn:hover { background: rgba(255,255,255,0.15); }
+        .notepad-area {
+            flex: 1; background: #1e1e1e; border: none; color: #e0e0e0;
+            padding: 16px; font-family: 'Consolas', monospace; font-size: 14px; resize: none;
+            line-height: 1.6;
+        }
+
+        /* === 任务栏 === */
+        .taskbar {
+            position: fixed; bottom: 0; left: 0; right: 0; height: var(--taskbar-height);
+            background: rgba(16, 16, 22, 0.92);
+            backdrop-filter: blur(30px); border-top: 1px solid var(--glass-border);
+            display: flex; align-items: center; justify-content: space-between; z-index: 1000;
+        }
+        
+        .start-btn {
+            width: 48px; height: 100%; 
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; transition: background 0.15s;
+        }
+        .start-btn .icon-svg { width: 20px; height: 20px; color: var(--text-main); }
+        .start-btn:hover { background: rgba(255,255,255,0.06); }
+        
+        .taskbar-apps { flex: 1; display: flex; height: 100%; padding-left: 8px; gap: 2px; }
+        .taskbar-icon {
+            width: 44px; height: 100%; 
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; position: relative; transition: background 0.15s;
+        }
+        .taskbar-icon .icon-svg { width: 20px; height: 20px; color: rgba(255,255,255,0.85); }
+        .taskbar-icon:hover { background: rgba(255,255,255,0.06); }
+        .taskbar-icon.active::after {
+            content: ''; position: absolute; bottom: 0;
+            width: 16px; height: 3px; background: var(--accent-blue); border-radius: 2px;
+        }
+
+        .system-tray { display: flex; align-items: center; padding-right: 16px; gap: 6px; height: 100%; }
+        .tray-icon { 
+            width: 32px; height: 32px; border-radius: 4px;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; transition: background 0.15s;
+        }
+        .tray-icon .icon-svg { width: 16px; height: 16px; color: var(--text-muted); }
+        .tray-icon:hover { background: rgba(255,255,255,0.06); }
+        
+        .clock { 
+            padding: 4px 12px; font-size: 12px; text-align: right; 
+            line-height: 1.4; cursor: pointer; border-radius: 4px;
+        }
+        .clock:hover { background: rgba(255,255,255,0.06); }
+        .clock .time { font-weight: 500; }
+        .clock .date { opacity: 0.7; font-size: 11px; }
+
+        /* === 开始菜单 === */
+        .start-menu {
+            position: fixed; bottom: calc(var(--taskbar-height) + 12px); left: 12px;
+            width: 340px; background: var(--glass-surface-light);
+            backdrop-filter: blur(50px); border-radius: 10px; border: 1px solid var(--glass-border);
+            padding: 20px; z-index: 2000; 
+            transform: translateY(20px); opacity: 0; pointer-events: none;
+            transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+            box-shadow: 0 16px 48px rgba(0,0,0,0.5);
+        }
+        .start-menu.open { transform: translateY(0); opacity: 1; pointer-events: auto; }
+        
+        .start-menu-header { margin-bottom: 20px; }
+        .start-menu-header h2 { 
+            font-size: 14px; font-weight: 600; color: var(--text-muted);
+            text-transform: uppercase; letter-spacing: 1px;
+        }
+        
+        .menu-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+        .menu-item {
+            aspect-ratio: 1; background: rgba(255,255,255,0.04);
+            border-radius: 8px; border: 1px solid transparent;
+            display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;
+            cursor: pointer; transition: all 0.15s;
+        }
+        .menu-item:hover { 
+            background: rgba(255,255,255,0.08); 
+            border-color: rgba(255,255,255,0.1);
+            transform: translateY(-2px);
+        }
+        .menu-item .icon-svg { color: rgba(255,255,255,0.8); }
+        .menu-item span { font-size: 11px; font-weight: 500; color: var(--text-muted); }
+
+        /* === 右键菜单 === */
+        .context-menu {
+            position: fixed; min-width: 220px; background: var(--glass-surface-light);
+            backdrop-filter: blur(30px); border: 1px solid var(--glass-border); border-radius: 8px;
+            padding: 6px; z-index: 3000; 
+            opacity: 0; transform: scale(0.95); pointer-events: none;
+            transition: all 0.12s ease; box-shadow: 0 12px 32px rgba(0,0,0,0.5);
+        }
+        .context-menu.open { opacity: 1; transform: scale(1); pointer-events: auto; }
+        
+        .context-item {
+            padding: 10px 14px; border-radius: 5px; font-size: 13px;
+            cursor: pointer; display: flex; align-items: center; gap: 12px;
+            transition: background 0.1s;
+        }
+        .context-item .icon-svg { width: 16px; height: 16px; color: var(--text-muted); }
+        .context-item:hover { background: var(--accent-blue); }
+        .context-item:hover .icon-svg { color: white; }
+        .context-divider { height: 1px; background: var(--glass-border); margin: 5px 0; }
+
+        /* === 壁纸面板 === */
+        .wallpaper-panel {
+            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0.95);
+            width: 560px; max-height: 85vh; background: var(--glass-surface-light);
+            border-radius: 12px; border: 1px solid var(--glass-border); z-index: 2500;
+            opacity: 0; pointer-events: none; transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+            display: flex; flex-direction: column; overflow: hidden;
+            box-shadow: 0 24px 64px rgba(0,0,0,0.6);
+            backdrop-filter: blur(50px);
+        }
+        .wallpaper-panel.open { transform: translate(-50%, -50%) scale(1); opacity: 1; pointer-events: auto; }
+        
+        .panel-header { 
+            padding: 18px 22px; border-bottom: 1px solid var(--glass-border); 
+            display: flex; align-items: center; justify-content: space-between; 
+        }
+        .panel-header h3 { font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 10px; }
+        .panel-header h3 .icon-svg { width: 18px; height: 18px; color: var(--accent-blue); }
+        .panel-close { 
+            width: 30px; height: 30px; border-radius: 6px;
+            background: transparent; border: none; color: var(--text-muted);
+            cursor: pointer; display: flex; align-items: center; justify-content: center;
+            transition: all 0.15s;
+        }
+        .panel-close:hover { background: var(--win-close-red); color: white; }
+        .panel-close .icon-svg { width: 14px; height: 14px; }
+        
+        .panel-content { padding: 22px; overflow-y: auto; flex: 1; }
+        
+        .upload-area {
+            border: 2px dashed rgba(255,255,255,0.15); border-radius: 10px;
+            padding: 36px; text-align: center; margin-bottom: 24px;
+            cursor: pointer; transition: all 0.2s;
+        }
+        .upload-area:hover { border-color: var(--accent-blue); background: rgba(0, 120, 212, 0.08); }
+        .upload-area .icon-svg { width: 40px; height: 40px; color: var(--text-muted); margin-bottom: 12px; }
+        .upload-area p { color: var(--text-muted); font-size: 13px; }
+        .upload-area small { color: var(--text-muted); opacity: 0.6; font-size: 11px; margin-top: 6px; display: block; }
+        
+        .wp-section h4 { 
+            font-size: 11px; font-weight: 600; color: var(--text-muted); 
+            text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 14px;
+        }
+        .wp-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+        .wp-thumb { 
+            aspect-ratio: 16/9; background-size: cover; background-position: center;
+            border-radius: 8px; cursor: pointer; border: 2px solid transparent;
+            transition: all 0.2s;
+        }
+        .wp-thumb:hover { transform: scale(1.03); box-shadow: 0 8px 24px rgba(0,0,0,0.4); }
+        .wp-thumb.active { border-color: var(--accent-blue); }
+
+        /* === 设置窗口内容 === */
+        .settings-content {
+            padding: 28px;
+            color: var(--text-main);
+        }
+        .settings-section {
+            background: rgba(255,255,255,0.04);
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 16px;
+        }
+        .settings-section h4 {
+            font-size: 11px; font-weight: 600; color: var(--text-muted);
+            text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 16px;
+        }
+        .settings-item {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.06);
+        }
+        .settings-item:last-child { border: none; }
+        .settings-item label { font-size: 13px; color: var(--text-main); }
+        .settings-item span { font-size: 12px; color: var(--text-muted); }
+
+        .about-card {
+            background: linear-gradient(135deg, rgba(0, 120, 212, 0.15), rgba(0, 212, 255, 0.08));
+            border: 1px solid rgba(0, 120, 212, 0.2);
+            border-radius: 12px;
+            padding: 24px;
+            text-align: center;
+        }
+        .about-card .logo { 
+            font-size: 48px; margin-bottom: 16px;
+            background: linear-gradient(135deg, #0078d4, #00d4ff);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        }
+        .about-card h3 { font-size: 18px; font-weight: 700; margin-bottom: 8px; }
+        .about-card p { font-size: 12px; color: var(--text-muted); line-height: 1.6; }
+
+        /* === 文件夹窗口样式 === */
+        .folder-item {
+            display: flex; align-items: center; gap: 12px;
+            padding: 10px 14px; border-radius: 6px;
+            cursor: pointer; transition: background 0.15s;
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+        }
+        .folder-item:hover { background: rgba(255,255,255,0.08); }
+        .folder-item:last-child { border: none; }
+        .folder-item .icon-svg { color: var(--text-muted); }
+        .folder-item span { font-size: 13px; }
+
+        /* === 解压进度条 === */
+        .extract-progress {
+            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            background: var(--glass-surface-light); border-radius: 12px;
+            padding: 30px 40px; z-index: 9999; text-align: center;
+            border: 1px solid var(--glass-border);
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+            backdrop-filter: blur(30px);
+        }
+        .extract-progress h4 { margin-bottom: 16px; font-size: 14px; }
+        .extract-progress .bar { 
+            width: 200px; height: 6px; background: rgba(255,255,255,0.1); 
+            border-radius: 3px; overflow: hidden; 
+        }
+        .extract-progress .bar-fill { 
+            height: 100%; background: var(--accent-blue); 
+            transition: width 0.2s; width: 0%; 
+        }
+        .extract-progress p { margin-top: 12px; font-size: 12px; color: var(--text-muted); }
+
+        /* === 日历面板 === */
+        .calendar-panel {
+            position: fixed; bottom: calc(var(--taskbar-height) + 12px); right: 12px;
+            width: 320px; background: var(--glass-surface-light);
+            backdrop-filter: blur(50px); border-radius: 10px; border: 1px solid var(--glass-border);
+            padding: 20px; z-index: 2000;
+            transform: translateY(20px); opacity: 0; pointer-events: none;
+            transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+            box-shadow: 0 16px 48px rgba(0,0,0,0.5);
+        }
+        .calendar-panel.open { transform: translateY(0); opacity: 1; pointer-events: auto; }
+        
+        .calendar-header {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 16px;
+        }
+        .calendar-header h3 { font-size: 16px; font-weight: 600; }
+        .calendar-nav { display: flex; gap: 8px; }
+        .calendar-nav button {
+            width: 28px; height: 28px; border-radius: 6px; border: none;
+            background: rgba(255,255,255,0.08); color: var(--text-main);
+            cursor: pointer; display: flex; align-items: center; justify-content: center;
+            transition: 0.15s;
+        }
+        .calendar-nav button:hover { background: rgba(255,255,255,0.15); }
+        
+        .calendar-weekdays {
+            display: grid; grid-template-columns: repeat(7, 1fr);
+            text-align: center; margin-bottom: 8px;
+        }
+        .calendar-weekdays span {
+            font-size: 11px; color: var(--text-muted); font-weight: 600;
+            padding: 8px 0;
+        }
+        
+        .calendar-days {
+            display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px;
+        }
+        .calendar-day {
+            aspect-ratio: 1; display: flex; align-items: center; justify-content: center;
+            font-size: 13px; border-radius: 50%; cursor: pointer;
+            transition: 0.15s;
+        }
+        .calendar-day:hover { background: rgba(255,255,255,0.1); }
+        .calendar-day.other-month { color: var(--text-muted); opacity: 0.4; }
+        .calendar-day.today { 
+            background: var(--accent-blue); color: white; font-weight: 600;
+        }
+        .calendar-day.today:hover { background: #0066b8; }
+
+        /* === 计算器样式 === */
+        .calculator {
+            padding: 16px; display: flex; flex-direction: column; gap: 12px; height: 100%;
+        }
+        .calc-display {
+            background: rgba(0,0,0,0.3); border-radius: 8px; padding: 16px;
+            text-align: right; min-height: 70px; display: flex; flex-direction: column; justify-content: flex-end;
+        }
+        .calc-display .expression { font-size: 14px; color: var(--text-muted); min-height: 20px; }
+        .calc-display .result { font-size: 32px; font-weight: 300; color: var(--text-main); }
+        
+        .calc-buttons {
+            display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; flex: 1;
+        }
+        .calc-btn {
+            border: none; border-radius: 8px; font-size: 18px; cursor: pointer;
+            background: rgba(255,255,255,0.08); color: var(--text-main);
+            transition: all 0.1s; display: flex; align-items: center; justify-content: center;
+        }
+        .calc-btn:hover { background: rgba(255,255,255,0.15); }
+        .calc-btn:active { transform: scale(0.95); }
+        .calc-btn.operator { background: rgba(0, 120, 212, 0.3); }
+        .calc-btn.operator:hover { background: rgba(0, 120, 212, 0.5); }
+        .calc-btn.equals { background: var(--accent-blue); }
+        .calc-btn.equals:hover { background: #0066b8; }
+        .calc-btn.clear { background: rgba(232, 17, 35, 0.3); }
+        .calc-btn.clear:hover { background: rgba(232, 17, 35, 0.5); }
+
+        /* === 画板样式 === */
+        .paint-app {
+            display: flex; flex-direction: column; height: 100%;
+        }
+        .paint-toolbar {
+            padding: 10px 14px; background: rgba(0,0,0,0.2);
+            border-bottom: 1px solid var(--glass-border);
+            display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+        }
+        .paint-tool-group {
+            display: flex; align-items: center; gap: 6px;
+        }
+        .paint-tool-group label {
+            font-size: 11px; color: var(--text-muted); text-transform: uppercase;
+        }
+        .paint-btn {
+            width: 32px; height: 32px; border-radius: 6px; border: 1px solid var(--glass-border);
+            background: rgba(255,255,255,0.05); color: var(--text-main);
+            cursor: pointer; display: flex; align-items: center; justify-content: center;
+            transition: 0.15s;
+        }
+        .paint-btn:hover { background: rgba(255,255,255,0.15); }
+        .paint-btn.active { background: var(--accent-blue); border-color: var(--accent-blue); }
+        .paint-btn .icon-svg { width: 16px; height: 16px; }
+        
+        .color-picker {
+            width: 32px; height: 32px; border: none; border-radius: 6px;
+            cursor: pointer; padding: 0; background: transparent;
+        }
+        .color-picker::-webkit-color-swatch-wrapper { padding: 2px; }
+        .color-picker::-webkit-color-swatch { border-radius: 4px; border: 1px solid var(--glass-border); }
+        
+        .brush-size {
+            width: 80px; height: 6px; -webkit-appearance: none; background: rgba(255,255,255,0.2);
+            border-radius: 3px; cursor: pointer;
+        }
+        .brush-size::-webkit-slider-thumb {
+            -webkit-appearance: none; width: 16px; height: 16px;
+            background: var(--accent-blue); border-radius: 50%; cursor: pointer;
+        }
+        
+        .paint-canvas-container {
+            flex: 1; background: #ffffff; position: relative; overflow: hidden;
+        }
+        .paint-canvas {
+            position: absolute; top: 0; left: 0; cursor: crosshair;
+        }
+
+        /* === 通知系统 === */
+        .notification-container {
+            position: fixed; top: 16px; right: 16px;
+            display: flex; flex-direction: column; gap: 10px;
+            z-index: 10000; pointer-events: none;
+        }
+
+        .notification {
+            background: var(--glass-surface-light);
+            backdrop-filter: blur(30px);
+            border: 1px solid var(--glass-border);
+            border-radius: 10px;
+            padding: 16px 20px;
+            min-width: 320px; max-width: 400px;
+            display: flex; align-items: flex-start; gap: 14px;
+            pointer-events: auto;
+            transform: translateX(120%);
+            animation: notifySlideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .notification.hiding {
+            animation: notifySlideOut 0.3s ease forwards;
+        }
+
+        @keyframes notifySlideIn {
+            to { transform: translateX(0); }
+        }
+
+        @keyframes notifySlideOut {
+            to { transform: translateX(120%); opacity: 0; }
+        }
+
+        .notification-icon {
+            width: 24px; height: 24px; flex-shrink: 0;
+        }
+        .notification-icon.success { color: #4ade80; }
+        .notification-icon.error { color: #ef4444; }
+        .notification-icon.warning { color: #f59e0b; }
+        .notification-icon.info { color: var(--accent-blue); }
+
+        .notification-content { flex: 1; }
+        .notification-title { font-weight: 600; font-size: 13px; margin-bottom: 4px; }
+        .notification-message { font-size: 12px; color: var(--text-muted); line-height: 1.5; }
+
+        .notification-close {
+            background: none; border: none; color: var(--text-muted);
+            cursor: pointer; padding: 4px; border-radius: 4px;
+            transition: 0.15s;
+        }
+        .notification-close:hover { background: rgba(255,255,255,0.1); color: white; }
+
+        .notification-progress {
+            position: absolute; bottom: 0; left: 0; right: 0;
+            height: 3px; background: rgba(255,255,255,0.1);
+        }
+        .notification-progress-bar {
+            height: 100%; background: var(--accent-blue);
+            animation: notifyProgress linear forwards;
+        }
+        @keyframes notifyProgress {
+            from { width: 100%; }
+            to { width: 0%; }
+        }
+
+        /* === 音乐播放器样式 === */
+        .music-player {
+            height: 100%; 
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f0f1a 100%);
+            display: flex; flex-direction: column; padding: 20px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .music-player::before {
+            content: '';
+            position: absolute; inset: 0;
+            background: radial-gradient(circle at 50% 0%, rgba(0, 120, 212, 0.15), transparent 60%);
+            pointer-events: none;
+        }
+
+        .mp-visualizer {
+            flex: 1; display: flex; align-items: flex-end; justify-content: center;
+            gap: 3px; padding: 20px 0;
+            position: relative; z-index: 1;
+        }
+
+        .mp-bar {
+            width: 6px; 
+            background: linear-gradient(to top, var(--accent-blue), var(--accent-cyan));
+            border-radius: 3px; 
+            height: 8%; 
+            transition: height 0.05s ease;
+            box-shadow: 0 0 10px rgba(0, 120, 212, 0.3);
+        }
+
+        .mp-info { 
+            text-align: center; padding: 16px 0; 
+            position: relative; z-index: 1;
+        }
+        .mp-title { 
+            font-size: 15px; font-weight: 600; margin-bottom: 12px; 
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+
+        .mp-time { 
+            display: flex; align-items: center; gap: 12px; 
+            font-size: 11px; color: var(--text-muted); 
+        }
+        .mp-progress { 
+            flex: 1; height: 4px; -webkit-appearance: none; 
+            background: rgba(255,255,255,0.15); border-radius: 2px; 
+            cursor: pointer;
+        }
+        .mp-progress::-webkit-slider-thumb { 
+            -webkit-appearance: none; width: 14px; height: 14px; 
+            background: var(--accent-blue); border-radius: 50%; cursor: pointer; 
+            box-shadow: 0 0 10px var(--accent-blue);
+        }
+
+        .mp-controls {
+            display: flex; align-items: center; justify-content: center; gap: 12px; 
+            padding-top: 16px;
+            position: relative; z-index: 1;
+        }
+
+        .mp-btn {
+            width: 40px; height: 40px; border-radius: 50%; border: none;
+            background: rgba(255,255,255,0.08); color: white; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            transition: 0.2s; backdrop-filter: blur(10px);
+        }
+        .mp-btn svg { width: 18px; height: 18px; fill: currentColor; stroke: none; }
+        .mp-btn:hover { background: rgba(255,255,255,0.15); transform: scale(1.05); }
+        .mp-btn.play { 
+            width: 56px; height: 56px; 
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-cyan)); 
+            box-shadow: 0 4px 20px rgba(0, 120, 212, 0.4);
+        }
+        .mp-btn.play:hover { transform: scale(1.08); }
+        .mp-btn.play svg { width: 24px; height: 24px; }
+
+        .mp-volume { 
+            width: 80px; height: 4px; -webkit-appearance: none;
+            background: rgba(255,255,255,0.15); border-radius: 2px;
+        }
+        .mp-volume::-webkit-slider-thumb {
+            -webkit-appearance: none; width: 12px; height: 12px;
+            background: white; border-radius: 50%; cursor: pointer;
+        }
+
+        /* === 剪贴板指示器 === */
+        .clipboard-indicator {
+            position: fixed; bottom: calc(var(--taskbar-height) + 16px); left: 50%;
+            transform: translateX(-50%) translateY(20px);
+            background: var(--glass-surface-light);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            border-radius: 8px;
+            padding: 10px 20px;
+            font-size: 12px;
+            display: flex; align-items: center; gap: 10px;
+            opacity: 0; pointer-events: none;
+            transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+            z-index: 9000;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+        }
+        .clipboard-indicator.show {
+            opacity: 1; transform: translateX(-50%) translateY(0);
+        }
+        .clipboard-indicator .icon-svg { width: 16px; height: 16px; color: var(--accent-blue); }
+
+        /* === 遮罩 & 调整手柄 === */
+        .overlay { 
+            position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 2400; 
+            opacity: 0; pointer-events: none; transition: 0.25s; 
+            backdrop-filter: blur(5px);
+        }
+        .overlay.active { opacity: 1; pointer-events: auto; }
+
+        .resize-handle { position: absolute; z-index: 20; }
+        .resize-handle.n { top: -3px; height: 6px; left:0; right:0; cursor: n-resize; }
+        .resize-handle.s { bottom: -3px; height: 6px; left:0; right:0; cursor: s-resize; }
+        .resize-handle.e { right: -3px; width: 6px; top:0; bottom:0; cursor: e-resize; }
+        .resize-handle.w { left: -3px; width: 6px; top:0; bottom:0; cursor: w-resize; }
+        .resize-handle.se { bottom: -3px; right: -3px; width: 16px; height: 16px; cursor: se-resize; }
+
+        /* === 滚动条 === */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.25); }
+    </style>
+</head>
+<body>
+    <!-- 启动画面 -->
+    <div id="boot-screen">
+        <div class="boot-logo">JISHENG OS</div>
+        <div class="boot-loader"><div class="boot-bar" id="boot-bar"></div></div>
+        <div class="boot-text" id="boot-msg">INITIALIZING SYSTEM KERNEL...</div>
+    </div>
+
+    <!-- SVG 滤镜 -->
+    <svg style="display:none">
+        <filter id="noise">
+            <feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="4" stitchTiles="stitch"/>
+            <feColorMatrix type="saturate" values="0"/>
+        </filter>
+    </svg>
+    <div class="noise-layer" style="filter: url(#noise);"></div>
+
+    <!-- 壁纸 -->
+    <div id="dynamic-bg" style="background-image: url('https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=1920');"></div>
+    <div class="ambient-overlay"></div>
+
+    <!-- 窗口吸附预览 -->
+    <div id="snap-preview"></div>
+
+    <!-- 通知容器 -->
+    <div class="notification-container" id="notification-container"></div>
+
+    <!-- 剪贴板指示器 -->
+    <div class="clipboard-indicator" id="clipboard-indicator">
+        <svg class="icon-svg" viewBox="0 0 24 24">
+            <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>
+            <rect x="8" y="2" width="8" height="4" rx="1" ry="1"/>
+        </svg>
+        <span id="clipboard-text">已复制到剪贴板</span>
+    </div>
+
+    <!-- 桌面图标容器 -->
+    <div class="desktop" id="desktop">
+        <div class="desktop-icons" id="desktop-icons"></div>
+    </div>
+
+    <!-- 任务栏 -->
+    <div class="taskbar">
+        <div class="start-btn" onclick="toggleStartMenu()">
+            <svg class="icon-svg" viewBox="0 0 24 24">
+                <rect x="3" y="3" width="7" height="7" rx="1"/>
+                <rect x="14" y="3" width="7" height="7" rx="1"/>
+                <rect x="3" y="14" width="7" height="7" rx="1"/>
+                <rect x="14" y="14" width="7" height="7" rx="1"/>
+            </svg>
+        </div>
+        <div class="taskbar-apps">
+            <div class="taskbar-icon" onclick="openBrowser()" title="浏览器">
+                <svg class="icon-svg" viewBox="0 0 24 24">
+                    <circle cx="12" cy="12" r="10"/>
+                    <path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+                </svg>
+            </div>
+            <div class="taskbar-icon" onclick="openNotepad()" title="记事本">
+                <svg class="icon-svg" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
+            </div>
+            <div class="taskbar-icon" onclick="openCalculator()" title="计算器">
+                <svg class="icon-svg" viewBox="0 0 24 24">
+                    <rect x="4" y="2" width="16" height="20" rx="2"/>
+                    <line x1="8" y1="6" x2="16" y2="6"/>
+                    <line x1="8" y1="10" x2="8" y2="10.01"/>
+                    <line x1="12" y1="10" x2="12" y2="10.01"/>
+                    <line x1="16" y1="10" x2="16" y2="10.01"/>
+                    <line x1="8" y1="14" x2="8" y2="14.01"/>
+                    <line x1="12" y1="14" x2="12" y2="14.01"/>
+                    <line x1="16" y1="14" x2="16" y2="14.01"/>
+                    <line x1="8" y1="18" x2="8" y2="18.01"/>
+                    <line x1="12" y1="18" x2="12" y2="18.01"/>
+                    <line x1="16" y1="18" x2="16" y2="18.01"/>
+                </svg>
+            </div>
+            <div class="taskbar-icon" onclick="openPaint()" title="画板">
+                <svg class="icon-svg" viewBox="0 0 24 24">
+                    <path d="M12 19l7-7 3 3-7 7-3-3z"/>
+                    <path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/>
+                    <path d="M2 2l7.586 7.586"/>
+                    <circle cx="11" cy="11" r="2"/>
+                </svg>
+            </div>
+            <div class="taskbar-icon" onclick="openMusicPlayer()" title="音乐播放器">
+                <svg class="icon-svg" viewBox="0 0 24 24">
+                    <circle cx="12" cy="12" r="10"/>
+                    <polygon points="10 8 16 12 10 16 10 8"/>
+                </svg>
+            </div>
+            <div class="taskbar-icon" onclick="openSettings()" title="设置">
+                <svg class="icon-svg" viewBox="0 0 24 24">
+                    <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
+                    <circle cx="12" cy="12" r="3"/>
+                </svg>
+            </div>
+        </div>
+        <div class="system-tray">
+            <div class="tray-icon" onclick="showClipboardHistory()" title="剪贴板">
+                <svg class="icon-svg" viewBox="0 0 24 24">
+                    <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>
+                    <rect x="8" y="2" width="8" height="4" rx="1" ry="1"/>
+                </svg>
+            </div>
+            <div class="tray-icon">
+                <svg class="icon-svg" viewBox="0 0 24 24">
+                    <path d="M5 12.55a11 11 0 0 1 14.08 0"/>
+                    <path d="M1.42 9a16 16 0 0 1 21.16 0"/>
+                    <path d="M8.53 16.11a6 6 0 0 1 6.95 0"/>
+                    <circle cx="12" cy="20" r="1"/>
+                </svg>
+            </div>
+            <div class="clock" id="clock" onclick="toggleCalendar()">
+                <div class="time" id="time">12:00</div>
+                <div class="date" id="date">2024/01/01</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 开始菜单 -->
+    <div class="start-menu" id="start-menu">
+        <div class="start-menu-header">
+            <h2>Pinned</h2>
+        </div>
+        <div class="menu-grid">
+            <div class="menu-item" onclick="openBrowser(); toggleStartMenu()">
+                <svg class="icon-svg lg" viewBox="0 0 24 24">
+                    <circle cx="12" cy="12" r="10"/>
+                    <path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+                </svg>
+                <span>Browser</span>
+            </div>
+            <div class="menu-item" onclick="openNotepad(); toggleStartMenu()">
+                 <svg class="icon-svg lg" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
+                <span>Notepad</span>
+            </div>
+            <div class="menu-item" onclick="openCalculator(); toggleStartMenu()">
+                <svg class="icon-svg lg" viewBox="0 0 24 24">
+                    <rect x="4" y="2" width="16" height="20" rx="2"/>
+                    <line x1="8" y1="6" x2="16" y2="6"/>
+                    <line x1="8" y1="10" x2="8" y2="10.01"/>
+                    <line x1="12" y1="10" x2="12" y2="10.01"/>
+                    <line x1="16" y1="10" x2="16" y2="10.01"/>
+                </svg>
+                <span>Calculator</span>
+            </div>
+            <div class="menu-item" onclick="openPaint(); toggleStartMenu()">
+                <svg class="icon-svg lg" viewBox="0 0 24 24">
+                    <path d="M12 19l7-7 3 3-7 7-3-3z"/>
+                    <path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/>
+                    <circle cx="11" cy="11" r="2"/>
+                </svg>
+                <span>Paint</span>
+            </div>
+            <div class="menu-item" onclick="openMusicPlayer(); toggleStartMenu()">
+                <svg class="icon-svg lg" viewBox="0 0 24 24">
+                    <circle cx="12" cy="12" r="10"/>
+                    <polygon points="10 8 16 12 10 16 10 8"/>
+                </svg>
+                <span>Music</span>
+            </div>
+            <div class="menu-item" onclick="openSettings(); toggleStartMenu()">
+                <svg class="icon-svg lg" viewBox="0 0 24 24">
+                    <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
+                    <circle cx="12" cy="12" r="3"/>
+                </svg>
+                <span>Settings</span>
+            </div>
+            <div class="menu-item" onclick="openWallpaperPanel(); toggleStartMenu()">
+                <svg class="icon-svg lg" viewBox="0 0 24 24">
+                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                    <circle cx="9" cy="9" r="2"/>
+                    <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>
+                </svg>
+                <span>Wallpaper</span>
+            </div>
+            <div class="menu-item" onclick="resetSystem()">
+                <svg class="icon-svg lg" viewBox="0 0 24 24">
+                    <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+                    <path d="M3 3v5h5"/>
+                </svg>
+                <span>Reset</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- 日历面板 -->
+    <div class="calendar-panel" id="calendar-panel">
+        <div class="calendar-header">
+            <h3 id="calendar-title">2024年1月</h3>
+            <div class="calendar-nav">
+                <button onclick="changeMonth(-1)">
+                    <svg class="icon-svg sm" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+                </button>
+                <button onclick="changeMonth(1)">
+                    <svg class="icon-svg sm" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
+                </button>
+            </div>
+        </div>
+        <div class="calendar-weekdays">
+            <span>日</span><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span>
+        </div>
+        <div class="calendar-days" id="calendar-days"></div>
+    </div>
+
+    <!-- 右键菜单 -->
+    <div class="context-menu" id="context-menu"></div>
+
+    <!-- 壁纸面板 -->
+    <div class="overlay" id="overlay" onclick="closePanel()"></div>
+    <div class="wallpaper-panel" id="wallpaper-panel">
+        <div class="panel-header">
+            <h3>
+                <svg class="icon-svg" viewBox="0 0 24 24">
+                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                    <circle cx="9" cy="9" r="2"/>
+                    <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>
+                </svg>
+                个性化
+            </h3>
+            <button class="panel-close" onclick="closePanel()">
+                <svg class="icon-svg" viewBox="0 0 24 24">
+                    <line x1="18" y1="6" x2="6" y2="18"/>
+                    <line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+            </button>
+        </div>
+        <div class="panel-content">
+            <div class="upload-area" id="drop-zone-wp" onclick="document.getElementById('file-input').click()">
+                <svg class="icon-svg xl" viewBox="0 0 24 24">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                    <polyline points="17 8 12 3 7 8"/>
+                    <line x1="12" y1="3" x2="12" y2="15"/>
+                </svg>
+                <p>点击上传或拖拽本地图片</p>
+                <small>支持 JPG, PNG, WebP 格式</small>
+            </div>
+            <input type="file" id="file-input" hidden accept="image/*">
+            
+            <div class="wp-section">
+                <h4>预设壁纸</h4>
+                <div class="wp-grid" id="wp-grid"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 窗口容器 -->
+    <div id="windows-container"></div>
+
+    <script>
+        // === 系统内核与状态 ===
+        const SYSTEM = {
+            windows: [], 
+            idCounter: 0, 
+            startOpen: false,
+            calendarOpen: false,
+            fs: null,
+            Buffer: null,
+            mounted: false,
+            desktopPath: '/desktop',
+            configPath: '/system/config/wallpaper.cfg',
+            currentMonth: new Date().getMonth(),
+            currentYear: new Date().getFullYear(),
+            // 剪贴板系统
+            clipboard: {
+                type: null,  // 'file' | 'text' | 'image'
+                data: null,
+                source: null,
+                history: []
+            }
+        };
+
+        const bootBar = document.getElementById('boot-bar');
+        const bootMsg = document.getElementById('boot-msg');
+        
+        // 预设壁纸
+        const wallpapers = [
+            'https://images.unsplash.com/photo-1579546929518-9e396f3cc809?w=1920',
+            'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=1920',
+            'https://images.unsplash.com/photo-1557683316-973673baf926?w=1920',
+            'https://images.unsplash.com/photo-1614850523459-c2f4c699c52e?w=1920',
+            'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=1920',
+            'https://images.unsplash.com/photo-1506318137071-a8bcbf6755dd?w=1920'
+        ];
+
+        // === 通知系统 ===
+        const Notify = {
+            container: null,
+            
+            init() {
+                this.container = document.getElementById('notification-container');
+            },
+            
+            show({ title, message, type = 'info', duration = 4000 }) {
+                const icons = {
+                    success: '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>',
+                    error: '<circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>',
+                    warning: '<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>',
+                    info: '<circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>'
+                };
+                
+                const el = document.createElement('div');
+                el.className = 'notification';
+                el.innerHTML = `
+                    <svg class="notification-icon ${type}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        ${icons[type]}
+                    </svg>
+                    <div class="notification-content">
+                        <div class="notification-title">${title}</div>
+                        ${message ? `<div class="notification-message">${message}</div>` : ''}
+                    </div>
+                    <button class="notification-close" onclick="this.parentElement.remove()">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                        </svg>
+                    </button>
+                    <div class="notification-progress">
+                        <div class="notification-progress-bar" style="animation-duration: ${duration}ms"></div>
+                    </div>
+                `;
+                
+                this.container.appendChild(el);
+                
+                setTimeout(() => {
+                    el.classList.add('hiding');
+                    setTimeout(() => el.remove(), 300);
+                }, duration);
+                
+                return el;
+            },
+            
+            success(title, message) { return this.show({ title, message, type: 'success' }); },
+            error(title, message) { return this.show({ title, message, type: 'error' }); },
+            warning(title, message) { return this.show({ title, message, type: 'warning' }); },
+            info(title, message) { return this.show({ title, message, type: 'info' }); }
+        };
+
+        // === 剪贴板系统 ===
+        const Clipboard = {
+            copy(type, data, source = null) {
+                SYSTEM.clipboard.type = type;
+                SYSTEM.clipboard.data = data;
+                SYSTEM.clipboard.source = source;
+                
+                // 添加到历史
+                SYSTEM.clipboard.history.unshift({ type, data, source, time: Date.now() });
+                if (SYSTEM.clipboard.history.length > 10) SYSTEM.clipboard.history.pop();
+                
+                // 显示指示器
+                this.showIndicator(type === 'file' ? `已复制: ${data}` : '已复制到剪贴板');
+            },
+            
+            paste(callback) {
+                if (SYSTEM.clipboard.data) {
+                    callback(SYSTEM.clipboard.type, SYSTEM.clipboard.data, SYSTEM.clipboard.source);
+                }
+            },
+            
+            showIndicator(text) {
+                const el = document.getElementById('clipboard-indicator');
+                document.getElementById('clipboard-text').textContent = text;
+                el.classList.add('show');
+                setTimeout(() => el.classList.remove('show'), 2000);
+            },
+            
+            clear() {
+                SYSTEM.clipboard.type = null;
+                SYSTEM.clipboard.data = null;
+                SYSTEM.clipboard.source = null;
+            }
+        };
+
+        function showClipboardHistory() {
+            const history = SYSTEM.clipboard.history;
+            if (history.length === 0) {
+                Notify.info('剪贴板为空', '还没有复制任何内容');
+                return;
+            }
+            
+            let content = history.map((item, i) => {
+                const time = new Date(item.time).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+                const preview = item.type === 'file' ? `📄 ${item.data}` : 
+                               item.type === 'text' ? `📝 ${String(item.data).substring(0, 30)}...` : '📋 数据';
+                return `
+                    <div class="folder-item" onclick="Clipboard.copy('${item.type}', '${item.data}', '${item.source || ''}'); closeWin(${SYSTEM.idCounter})">
+                        <span style="flex:1">${preview}</span>
+                        <span style="color:var(--text-muted);font-size:11px">${time}</span>
+                    </div>
+                `;
+            }).join('');
+            
+            createWindow({
+                title: '剪贴板历史',
+                iconHtml: '<svg class="icon-svg sm" viewBox="0 0 24 24"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>',
+                width: 350, height: 300,
+                content: `<div class="content-area dark" style="padding:8px;overflow-y:auto">${content}</div>`
+            });
+        }
+
+        // === 初始化内核 (BrowserFS) ===
+        function initKernel() {
+            if (typeof BrowserFS === 'undefined') {
+                bootMsg.innerText = "Error: FS Lib failed to load.";
+                bootBar.style.background = "#e81123";
+                return;
+            }
+
+            BrowserFS.install(window);
+            BrowserFS.configure({
+                fs: "MountableFileSystem",
+                options: { '/': { fs: "IndexedDB", options: { storeName: 'JISHENG_OS_V3' } } }
+            }, function(e) {
+                if (e) {
+                    console.error(e);
+                    bootMsg.innerText = "Kernel Panic: Mount Failed";
+                    return;
+                }
+                SYSTEM.fs = require('fs');
+                SYSTEM.Buffer = require('buffer').Buffer;
+                SYSTEM.mounted = true;
+                
+                updateBoot(40, "INITIALIZING FILESYSTEM...");
+                checkSystemFiles();
+            });
+        }
+
+        function updateBoot(percent, text) {
+            bootBar.style.width = percent + '%';
+            bootMsg.innerText = text;
+        }
+
+        function checkSystemFiles() {
+            const fs = SYSTEM.fs;
+            const dirs = ['/system', '/system/config', '/desktop', '/documents'];
+            let i = 0;
+            function next() {
+                if (i >= dirs.length) { loadUserConfig(); return; }
+                const dir = dirs[i++];
+                fs.exists(dir, (exists) => {
+                    if (!exists) fs.mkdir(dir, next);
+                    else next();
+                });
+            }
+            next();
+        }
+
+        function loadUserConfig() {
+            updateBoot(70, "LOADING USER PROFILE...");
+            SYSTEM.fs.readFile(SYSTEM.configPath, 'utf8', (err, data) => {
+                if (!err && data) setBg(data, false);
+                else setBg(wallpapers[4], false);
+                
+                updateBoot(100, "SYSTEM READY");
+                setTimeout(() => {
+                    document.getElementById('boot-screen').classList.add('hidden');
+                    refreshDesktop();
+                    renderCalendar();
+                    Notify.init();
+                    Notify.success('欢迎回来', 'JISHENG OS 已准备就绪');
+                }, 800);
+            });
+        }
+
+        // === 时钟 ===
+        setInterval(() => {
+            const d = new Date();
+            document.getElementById('time').innerText = d.toLocaleTimeString('zh-CN', {hour:'2-digit', minute:'2-digit'});
+            document.getElementById('date').innerText = d.toLocaleDateString('zh-CN');
+        }, 1000);
+
+        // === 日历功能 ===
+        function toggleCalendar() {
+            SYSTEM.calendarOpen = !SYSTEM.calendarOpen;
+            document.getElementById('calendar-panel').classList.toggle('open', SYSTEM.calendarOpen);
+            if(SYSTEM.calendarOpen) {
+                SYSTEM.startOpen = false;
+                document.getElementById('start-menu').classList.remove('open');
+                renderCalendar();
+            }
+        }
+
+        function changeMonth(delta) {
+            SYSTEM.currentMonth += delta;
+            if(SYSTEM.currentMonth > 11) { SYSTEM.currentMonth = 0; SYSTEM.currentYear++; }
+            if(SYSTEM.currentMonth < 0) { SYSTEM.currentMonth = 11; SYSTEM.currentYear--; }
+            renderCalendar();
+        }
+
+        function renderCalendar() {
+            const year = SYSTEM.currentYear;
+            const month = SYSTEM.currentMonth;
+            const today = new Date();
+            
+            document.getElementById('calendar-title').innerText = `${year}年${month + 1}月`;
+            
+            const firstDay = new Date(year, month, 1).getDay();
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            const daysInPrevMonth = new Date(year, month, 0).getDate();
+            
+            let html = '';
+            
+            for(let i = firstDay - 1; i >= 0; i--) {
+                html += `<div class="calendar-day other-month">${daysInPrevMonth - i}</div>`;
+            }
+            
+            for(let i = 1; i <= daysInMonth; i++) {
+                const isToday = (i === today.getDate() && month === today.getMonth() && year === today.getFullYear());
+                html += `<div class="calendar-day${isToday ? ' today' : ''}">${i}</div>`;
+            }
+            
+            const remaining = 42 - (firstDay + daysInMonth);
+            for(let i = 1; i <= remaining; i++) {
+                html += `<div class="calendar-day other-month">${i}</div>`;
+            }
+            
+            document.getElementById('calendar-days').innerHTML = html;
+        }
+
+        // === 桌面渲染 ===
+        function refreshDesktop() {
+            const container = document.getElementById('desktop-icons');
+            container.innerHTML = `
+                <div class="desktop-icon" ondblclick="openBrowser()" oncontextmenu="ctxApp(event, 'browser')">
+                    <svg class="icon-svg xl" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+                    <div class="label">浏览器</div>
+                </div>
+                <div class="desktop-icon" ondblclick="openNotepad()" oncontextmenu="ctxApp(event, 'notepad')">
+                     <svg class="icon-svg xl" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
+                    <div class="label">记事本</div>
+                </div>
+                <div class="desktop-icon" ondblclick="openCalculator()" oncontextmenu="ctxApp(event, 'calculator')">
+                    <svg class="icon-svg xl" viewBox="0 0 24 24"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/><line x1="8" y1="10" x2="8" y2="10.01"/><line x1="12" y1="10" x2="12" y2="10.01"/><line x1="16" y1="10" x2="16" y2="10.01"/><line x1="8" y1="14" x2="8" y2="14.01"/><line x1="12" y1="14" x2="12" y2="14.01"/><line x1="16" y1="14" x2="16" y2="14.01"/><line x1="8" y1="18" x2="8" y2="18.01"/><line x1="12" y1="18" x2="12" y2="18.01"/><line x1="16" y1="18" x2="16" y2="18.01"/></svg>
+                    <div class="label">计算器</div>
+                </div>
+                <div class="desktop-icon" ondblclick="openPaint()" oncontextmenu="ctxApp(event, 'paint')">
+                    <svg class="icon-svg xl" viewBox="0 0 24 24"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><circle cx="11" cy="11" r="2"/></svg>
+                    <div class="label">画板</div>
+                </div>
+                <div class="desktop-icon" ondblclick="openMusicPlayer()" oncontextmenu="ctxApp(event, 'musicPlayer')">
+                    <svg class="icon-svg xl" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg>
+                    <div class="label">音乐播放器</div>
+                </div>
+                <div class="desktop-icon" ondblclick="openSettings()" oncontextmenu="ctxApp(event, 'settings')">
+                    <svg class="icon-svg xl" viewBox="0 0 24 24"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+                    <div class="label">系统设置</div>
+                </div>
+            `;
+            
+            if(SYSTEM.mounted) {
+                SYSTEM.fs.readdir(SYSTEM.desktopPath, (err, files) => {
+                    if(err) return;
+                    files.forEach(file => {
+                        const el = document.createElement('div');
+                        el.className = 'desktop-icon';
+                        
+                        let iconSvg = '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>';
+                        
+                        if(file.match(/\.(jpg|png|gif|webp)$/i)) 
+                            iconSvg = '<rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>';
+                        else if(file.match(/\.txt$/i)) 
+                            iconSvg = '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line>';
+                                                else if(file.match(/\.zip$/i))
+                            iconSvg = '<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2v11z"/><path d="M12 10v4"/><path d="M12 14l2-2"/>';
+                        
+                        el.setAttribute('ondblclick', `openFile('${file}')`);
+                        el.setAttribute('oncontextmenu', `ctxFile(event, '${file}')`);
+                        el.innerHTML = `
+                            <svg class="icon-svg xl" viewBox="0 0 24 24">${iconSvg}</svg>
+                            <div class="label">${file}</div>
+                        `;
+                        container.appendChild(el);
+                    });
+                });
+            }
+        }
+
+        // === 文件操作 ===
+        function openFile(filename) {
+    const path = SYSTEM.desktopPath + '/' + filename;
+    
+    // 处理图片文件
+    if(filename.match(/\.(jpg|png|gif|webp)$/i)) {
+        SYSTEM.fs.readFile(path, (err, data) => {
+            if(err) { Notify.error('打开失败', err.message); return; }
+            const base64 = SYSTEM.Buffer.from(data).toString('base64');
+            const ext = filename.split('.').pop().toLowerCase();
+            const mime = ext === 'png' ? 'image/png' : ext === 'gif' ? 'image/gif' : ext === 'webp' ? 'image/webp' : 'image/jpeg';
+            const dataUrl = `data:${mime};base64,${base64}`;
+            
+            createWindow({
+                title: filename,
+                iconHtml: '<svg class="icon-svg sm" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>',
+                width: 600, height: 450,
+                content: `<div class="content-area dark" style="display:flex;align-items:center;justify-content:center;overflow:auto">
+                    <img src="${dataUrl}" style="max-width:100%;max-height:100%;object-fit:contain">
+                </div>`
+            });
+        });
+    } 
+    // 处理文本文件
+    else if(filename.match(/\.txt$/i)) {
+        SYSTEM.fs.readFile(path, 'utf8', (err, data) => {
+            if(err) { Notify.error('打开失败', err.message); return; }
+            openNotepad(data, filename);
+        });
+    } 
+    // ========== 新增：处理 HTML 文件 ==========
+    else if(filename.match(/\.html?$/i)) {
+        SYSTEM.fs.readFile(path, 'utf8', (err, data) => {
+            if(err) { Notify.error('打开失败', err.message); return; }
+            
+            // 将 HTML 内容转为 Blob URL
+            const blob = new Blob([data], { type: 'text/html' });
+            const url = URL.createObjectURL(blob);
+            
+            const winId = SYSTEM.idCounter + 1;
+            
+            createWindow({
+                title: '浏览器 - ' + filename,
+                iconHtml: '<svg class="icon-svg sm" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/></svg>',
+                width: 900, height: 600,
+                content: `
+                    <div class="browser-nav">
+                        <button class="nav-btn" disabled><svg class="icon-svg" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg></button>
+                        <button class="nav-btn" disabled><svg class="icon-svg" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></button>
+                        <button class="nav-btn" id="nav-refresh-${winId}"><svg class="icon-svg" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg></button>
+                        <div class="address-bar">
+                            <svg class="icon-svg" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg>
+                            <input type="text" value="file://${filename}" readonly style="cursor:default">
+                        </div>
+                    </div>
+                    <div class="content-area">
+                        <iframe id="html-frame-${winId}" src="${url}" style="width:100%;height:100%;border:none"></iframe>
+                    </div>
+                `,
+                onInit: (w, id) => {
+                    document.getElementById('nav-refresh-' + id).onclick = () => {
+                        document.getElementById('html-frame-' + id).src = url;
+                    };
+                }
+            });
+        });
+    }
+    // ========== 新增结束 ==========
+    else if(filename.match(/\.zip$/i)) {
+        Notify.info('提示', '右键点击可解压此文件');
+    } 
+    else if(filename.match(/\.(mp3|wav|ogg|m4a)$/i)) {
+        SYSTEM.fs.readFile(path, (err, data) => {
+            if(err) { Notify.error('打开失败', err.message); return; }
+            const blob = new Blob([data]);
+            const url = URL.createObjectURL(blob);
+            openMusicPlayer(url, filename);
+        });
+    } 
+    else {
+        Notify.warning('不支持的格式', '暂时无法打开此类型文件');
+    }
+}
+
+        function deleteFile(filename) {
+            if(!confirm(`确定删除 "${filename}" 吗？`)) return;
+            const path = SYSTEM.desktopPath + '/' + filename;
+            
+            SYSTEM.fs.stat(path, (err, stats) => {
+                if(err) { Notify.error('删除失败', err.message); return; }
+                
+                if(stats.isDirectory()) {
+                    deleteFolderRecursive(path, () => {
+                        refreshDesktop();
+                        Notify.success('删除成功', `文件夹 "${filename}" 已删除`);
+                    });
+                } else {
+                    SYSTEM.fs.unlink(path, (err) => {
+                        if(err) { Notify.error('删除失败', err.message); return; }
+                        refreshDesktop();
+                        Notify.success('删除成功', `文件 "${filename}" 已删除`);
+                    });
+                }
+            });
+        }
+
+        function deleteFolderRecursive(path, callback) {
+            SYSTEM.fs.readdir(path, (err, files) => {
+                if(err) { callback(err); return; }
+                
+                let pending = files.length;
+                if(!pending) {
+                    SYSTEM.fs.rmdir(path, callback);
+                    return;
+                }
+                
+                files.forEach(file => {
+                    const curPath = path + '/' + file;
+                    SYSTEM.fs.stat(curPath, (err, stats) => {
+                        if(stats.isDirectory()) {
+                            deleteFolderRecursive(curPath, () => {
+                                if(--pending === 0) SYSTEM.fs.rmdir(path, callback);
+                            });
+                        } else {
+                            SYSTEM.fs.unlink(curPath, () => {
+                                if(--pending === 0) SYSTEM.fs.rmdir(path, callback);
+                            });
+                        }
+                    });
+                });
+            });
+        }
+
+        // === ZIP解压 ===
+        async function extractZip(filename) {
+            const path = SYSTEM.desktopPath + '/' + filename;
+            
+            const progressEl = document.createElement('div');
+            progressEl.className = 'extract-progress';
+            progressEl.innerHTML = `
+                <h4>正在解压...</h4>
+                <div class="bar"><div class="bar-fill" id="extract-bar"></div></div>
+                <p id="extract-status">准备中...</p>
+            `;
+            document.body.appendChild(progressEl);
+            
+            try {
+                const data = await new Promise((resolve, reject) => {
+                    SYSTEM.fs.readFile(path, (err, data) => err ? reject(err) : resolve(data));
+                });
+                
+                const zip = await JSZip.loadAsync(data);
+                const entries = Object.keys(zip.files);
+                const total = entries.length;
+                let processed = 0;
+                
+                const folderName = filename.replace(/\.zip$/i, '');
+                const extractPath = SYSTEM.desktopPath + '/' + folderName;
+                
+                await new Promise((resolve, reject) => {
+                    SYSTEM.fs.mkdir(extractPath, (err) => {
+                        if(err && err.code !== 'EEXIST') reject(err);
+                        else resolve();
+                    });
+                });
+                
+                for(const entry of entries) {
+                    const zipEntry = zip.files[entry];
+                    const entryPath = extractPath + '/' + entry;
+                    
+                    document.getElementById('extract-status').innerText = entry;
+                    
+                    if(zipEntry.dir) {
+                        await new Promise(resolve => {
+                            SYSTEM.fs.mkdir(entryPath, () => resolve());
+                        });
+                    } else {
+                        const content = await zipEntry.async('nodebuffer');
+                        const buffer = SYSTEM.Buffer.from(content);
+                        
+                        const dir = entryPath.substring(0, entryPath.lastIndexOf('/'));
+                        await ensureDir(dir);
+                        
+                        await new Promise((resolve, reject) => {
+                            SYSTEM.fs.writeFile(entryPath, buffer, (err) => {
+                                if(err) reject(err); else resolve();
+                            });
+                        });
+                    }
+                    
+                    processed++;
+                    document.getElementById('extract-bar').style.width = (processed / total * 100) + '%';
+                }
+                
+                progressEl.remove();
+                refreshDesktop();
+                Notify.success('解压完成', `已解压到 "${folderName}" 文件夹`);
+                
+            } catch(e) {
+                progressEl.remove();
+                Notify.error('解压失败', e.message);
+                console.error(e);
+            }
+        }
+
+        async function ensureDir(path) {
+            const parts = path.split('/').filter(p => p);
+            let current = '';
+            for(const part of parts) {
+                current += '/' + part;
+                await new Promise(resolve => {
+                    SYSTEM.fs.mkdir(current, () => resolve());
+                });
+            }
+        }
+
+        function openFolderWindow(folderName) {
+            const path = SYSTEM.desktopPath + '/' + folderName;
+            
+            SYSTEM.fs.readdir(path, (err, files) => {
+                if(err) { Notify.error('打开失败', err.message); return; }
+                
+                let content = files.length === 0 
+                    ? '<div style="padding:40px;text-align:center;color:var(--text-muted)">文件夹为空</div>'
+                    : files.map(file => {
+                        let iconSvg = '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>';
+                        if(file.match(/\.(jpg|png|gif|webp)$/i)) iconSvg = '<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/>';
+                        return `
+                            <div class="folder-item" ondblclick="openFileFromPath('${path}/${file}', '${file}')">
+                                <svg class="icon-svg" viewBox="0 0 24 24">${iconSvg}</svg>
+                                <span>${file}</span>
+                            </div>
+                        `;
+                    }).join('');
+                
+                createWindow({
+                    title: folderName,
+                    iconHtml: '<svg class="icon-svg sm" viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2v11z"/></svg>',
+                    width: 500, height: 400,
+                    content: `<div class="content-area dark" style="padding:8px;overflow-y:auto">${content}</div>`
+                });
+            });
+        }
+
+        function openFileFromPath(fullPath, filename) {
+            if(filename.match(/\.(jpg|png|gif|webp)$/i)) {
+                SYSTEM.fs.readFile(fullPath, (err, data) => {
+                    if(err) return;
+                    const base64 = SYSTEM.Buffer.from(data).toString('base64');
+                    const ext = filename.split('.').pop().toLowerCase();
+                    const mime = ext === 'png' ? 'image/png' : 'image/jpeg';
+                    createWindow({
+                        title: filename, width: 600, height: 450,
+                        content: `<div class="content-area dark" style="display:flex;align-items:center;justify-content:center">
+                            <img src="data:${mime};base64,${base64}" style="max-width:100%;max-height:100%">
+                        </div>`
+                    });
+                });
+            } else if(filename.match(/\.txt$/i)) {
+                SYSTEM.fs.readFile(fullPath, 'utf8', (err, data) => {
+                    if(err) return;
+                    openNotepad(data, filename);
+                });
+            }
+        }
+
+        // === 右键菜单 ===
+        function closeCtx() {
+            document.getElementById('context-menu').classList.remove('open');
+        }
+
+        // 桌面右键菜单
+        desktop.addEventListener('contextmenu', e => {
+            if(e.target.closest('.desktop-icon')) return;
+            e.preventDefault();
+            const cm = document.getElementById('context-menu');
+            cm.innerHTML = `
+                <div class="context-item" onclick="openWallpaperPanel(); closeCtx()">
+                    <svg class="icon-svg" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
+                    <span>更换壁纸</span>
+                </div>
+                <div class="context-item" onclick="refreshDesktop(); closeCtx()">
+                    <svg class="icon-svg" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+                    <span>刷新桌面</span>
+                </div>
+                <div class="context-divider"></div>
+                <div class="context-item" onclick="openNotepad(); closeCtx()">
+                    <svg class="icon-svg" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                    <span>新建文本文档</span>
+                </div>
+                <div class="context-divider"></div>
+                <div class="context-item" onclick="openSettings(); closeCtx()">
+                    <svg class="icon-svg" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/></svg>
+                    <span>系统设置</span>
+                </div>
+            `;
+            showCtx(e.clientX, e.clientY);
+        });
+
+        function ctxApp(e, type) {
+            e.preventDefault(); e.stopPropagation();
+            const cm = document.getElementById('context-menu');
+            const funcMap = {
+                'browser': 'openBrowser',
+                'notepad': 'openNotepad', 
+                'calculator': 'openCalculator',
+                'paint': 'openPaint',
+                'musicPlayer': 'openMusicPlayer',
+                'settings': 'openSettings'
+            };
+            const funcName = funcMap[type] || ('open' + type.charAt(0).toUpperCase() + type.slice(1));
+            cm.innerHTML = `
+                <div class="context-item" onclick="${funcName}(); closeCtx()">
+                    <svg class="icon-svg" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+                    <span>打开</span>
+                </div>
+            `;
+            showCtx(e.clientX, e.clientY);
+        }
+
+        function ctxFile(e, filename) {
+            e.preventDefault(); e.stopPropagation();
+            const isZip = filename.toLowerCase().endsWith('.zip');
+            
+            let menuItems = `
+                <div class="context-item" onclick="openFile('${filename}'); closeCtx()">
+                    <svg class="icon-svg" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+                    <span>打开</span>
+                </div>
+            `;
+
+            if (isZip) {
+                menuItems += `
+                    <div class="context-item" onclick="extractZip('${filename}'); closeCtx()">
+                        <svg class="icon-svg" viewBox="0 0 24 24"><path d="M21 8v13H3V8"/><path d="M1 3h22v5H1z"/><path d="M10 12h4"/></svg>
+                        <span>解压到当前文件夹</span>
+                    </div>
+                `;
+            }
+
+            menuItems += `
+                <div class="context-item" onclick="Clipboard.copy('file', '${filename}', '${SYSTEM.desktopPath}'); closeCtx()">
+                    <svg class="icon-svg" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                    <span>复制</span>
+                </div>
+                <div class="context-item" onclick="renameFile('${filename}'); closeCtx()">
+                    <svg class="icon-svg" viewBox="0 0 24 24"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+                    <span>重命名</span>
+                </div>
+                <div class="context-divider"></div>
+                <div class="context-item" onclick="deleteFile('${filename}'); closeCtx()">
+                    <svg class="icon-svg" viewBox="0 0 24 24" style="color:var(--win-close-red)"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+                    <span style="color:var(--win-close-red)">删除</span>
+                </div>
+            `;
+
+            document.getElementById('context-menu').innerHTML = menuItems;
+            showCtx(e.clientX, e.clientY);
+        }
+
+        function showCtx(x, y) {
+            const cm = document.getElementById('context-menu');
+            cm.style.left = Math.min(x, window.innerWidth - 240) + 'px';
+            cm.style.top = Math.min(y, window.innerHeight - 200) + 'px';
+            cm.classList.add('open');
+            SYSTEM.startOpen = false; document.getElementById('start-menu').classList.remove('open');
+            SYSTEM.calendarOpen = false; document.getElementById('calendar-panel').classList.remove('open');
+        }
+
+        function renameFile(oldName) {
+            const newName = prompt('请输入新名称:', oldName);
+            if(!newName || newName === oldName) return;
+            const oldPath = SYSTEM.desktopPath + '/' + oldName;
+            const newPath = SYSTEM.desktopPath + '/' + newName;
+            
+            SYSTEM.fs.rename(oldPath, newPath, (err) => {
+                if(err) Notify.error('重命名失败', err.message);
+                else { refreshDesktop(); Notify.success('重命名成功', `已重命名为 "${newName}"`); }
+            });
+        }
+
+        document.addEventListener('click', e => {
+            if(!e.target.closest('.context-menu')) closeCtx();
+            if(!e.target.closest('.start-menu') && !e.target.closest('.start-btn')) {
+                SYSTEM.startOpen = false; document.getElementById('start-menu').classList.remove('open');
+            }
+            if(!e.target.closest('.calendar-panel') && !e.target.closest('.clock')) {
+                SYSTEM.calendarOpen = false; document.getElementById('calendar-panel').classList.remove('open');
+            }
+        });
+
+        // === 开始菜单 ===
+        function toggleStartMenu() {
+            SYSTEM.startOpen = !SYSTEM.startOpen;
+            document.getElementById('start-menu').classList.toggle('open', SYSTEM.startOpen);
+            if(SYSTEM.startOpen) {
+                SYSTEM.calendarOpen = false;
+                document.getElementById('calendar-panel').classList.remove('open');
+            }
+        }
+
+        // === 窗口系统 ===
+        function createWindow(opts) {
+            const id = ++SYSTEM.idCounter;
+            const w = document.createElement('div');
+            w.id = 'win-' + id;
+            w.className = 'window ultra-glass focused';
+            w.style.cssText = `width:${opts.width||700}px;height:${opts.height||500}px;top:${50+SYSTEM.windows.length*25}px;left:${100+SYSTEM.windows.length*25}px;`;
+            
+            w.innerHTML = `
+                <div class="title-bar">
+                    <div class="title-bar-left">
+                        <div class="window-icon">${opts.iconHtml || ''}</div>
+                        <div class="window-title-text">${opts.title || 'Window'}</div>
+                    </div>
+                    <div class="window-controls">
+                        <div class="win-btn" onclick="minimizeWin(${id})"><svg class="icon-svg" viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
+                        <div class="win-btn" onclick="maximizeWin(${id})"><svg class="icon-svg" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/></svg></div>
+                        <div class="win-btn close" onclick="closeWin(${id})"><svg class="icon-svg" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></div>
+                    </div>
+                </div>
+                ${opts.content}
+                <div class="resize-handle n"></div>
+                <div class="resize-handle s"></div>
+                <div class="resize-handle e"></div>
+                <div class="resize-handle w"></div>
+                <div class="resize-handle se"></div>
+            `;
+            
+            document.getElementById('windows-container').appendChild(w);
+            
+            const winObj = { id, element: w, title: opts.title, minimized: false, maximized: false };
+            SYSTEM.windows.push(winObj);
+            
+            makeDraggable(w, id);
+            makeResizable(w);
+            focusWin(id);
+            
+            if(opts.onInit) opts.onInit(w, id);
+            
+            return id;
+        }
+
+        function closeWin(id) {
+            const w = document.getElementById('win-' + id);
+            if(w) {
+                w.style.transition = 'transform 0.2s, opacity 0.2s';
+                w.style.transform = 'scale(0.9)';
+                w.style.opacity = '0';
+                setTimeout(() => w.remove(), 200);
+            }
+            SYSTEM.windows = SYSTEM.windows.filter(win => win.id !== id);
+        }
+
+        function minimizeWin(id) {
+            const win = SYSTEM.windows.find(w => w.id === id);
+            if(win) {
+                win.minimized = true;
+                win.element.classList.add('minimized');
+            }
+        }
+
+        function maximizeWin(id) {
+            const win = SYSTEM.windows.find(w => w.id === id);
+            if(!win) return;
+            
+            win.maximized = !win.maximized;
+            win.element.classList.toggle('maximized', win.maximized);
+            
+            if(!win.maximized && win.savedPos) {
+                win.element.style.cssText = win.savedPos;
+            } else if(win.maximized) {
+                win.savedPos = win.element.style.cssText;
+            }
+        }
+
+        function focusWin(id) {
+            SYSTEM.windows.forEach(w => w.element.classList.remove('focused'));
+            const win = SYSTEM.windows.find(w => w.id === id);
+            if(win) {
+                win.element.classList.add('focused');
+                win.element.style.zIndex = ++SYSTEM.idCounter + 100;
+                if(win.minimized) {
+                    win.minimized = false;
+                    win.element.classList.remove('minimized');
+                }
+            }
+        }
+
+        function makeDraggable(el, id) {
+            const titleBar = el.querySelector('.title-bar-left');
+            let isDragging = false, startX, startY, startLeft, startTop;
+            
+            titleBar.onmousedown = e => {
+                if(e.target.closest('.win-btn')) return;
+                const win = SYSTEM.windows.find(w => w.id === id);
+                if(win && win.maximized) return;
+                
+                isDragging = true;
+                startX = e.clientX; startY = e.clientY;
+                startLeft = el.offsetLeft; startTop = el.offsetTop;
+                focusWin(id);
+                e.preventDefault();
+            };
+            
+            document.addEventListener('mousemove', e => {
+                if(!isDragging) return;
+                const dx = e.clientX - startX, dy = e.clientY - startY;
+                el.style.left = startLeft + dx + 'px';
+                el.style.top = Math.max(0, startTop + dy) + 'px';
+                
+                // 窗口吸附预览
+                const preview = document.getElementById('snap-preview');
+                const desktop = document.getElementById('desktop');
+                const rect = desktop.getBoundingClientRect();
+                
+                if(e.clientX < 10) {
+                    preview.style.cssText = `left:0;top:0;width:50%;height:${rect.height}px;opacity:1`;
+                } else if(e.clientX > window.innerWidth - 10) {
+                    preview.style.cssText = `right:0;top:0;width:50%;height:${rect.height}px;opacity:1`;
+                } else if(e.clientY < 10) {
+                    preview.style.cssText = `left:0;top:0;width:100%;height:${rect.height}px;opacity:1`;
+                } else {
+                    preview.style.opacity = '0';
+                }
+            });
+            
+            document.addEventListener('mouseup', e => {
+                if(!isDragging) return;
+                isDragging = false;
+                
+                const preview = document.getElementById('snap-preview');
+                const desktop = document.getElementById('desktop');
+                const rect = desktop.getBoundingClientRect();
+                
+                if(e.clientX < 10) {
+                    el.style.cssText = `left:0;top:0;width:50%;height:${rect.height}px`;
+                } else if(e.clientX > window.innerWidth - 10) {
+                    el.style.cssText = `left:50%;top:0;width:50%;height:${rect.height}px`;
+                } else if(e.clientY < 10) {
+                    const win = SYSTEM.windows.find(w => w.id === id);
+                    if(win) maximizeWin(id);
+                }
+                
+                preview.style.opacity = '0';
+            });
+            
+            el.onmousedown = () => focusWin(id);
+        }
+
+        function makeResizable(el) {
+            const handles = el.querySelectorAll('.resize-handle');
+            handles.forEach(h => {
+                let isResizing = false, startX, startY, startW, startH, startL, startT, dir;
+                
+                h.onmousedown = e => {
+                    isResizing = true;
+                    startX = e.clientX; startY = e.clientY;
+                    startW = el.offsetWidth; startH = el.offsetHeight;
+                    startL = el.offsetLeft; startT = el.offsetTop;
+                    dir = h.className.split(' ')[1];
+                    e.preventDefault();
+                };
+                
+                document.addEventListener('mousemove', e => {
+                    if(!isResizing) return;
+                    const dx = e.clientX - startX, dy = e.clientY - startY;
+                    
+                    if(dir.includes('e')) el.style.width = Math.max(400, startW + dx) + 'px';
+                    if(dir.includes('s')) el.style.height = Math.max(300, startH + dy) + 'px';
+                    if(dir.includes('w')) { el.style.width = Math.max(400, startW - dx) + 'px'; el.style.left = startL + dx + 'px'; }
+                    if(dir.includes('n')) { el.style.height = Math.max(300, startH - dy) + 'px'; el.style.top = startT + dy + 'px'; }
+                });
+                
+                document.addEventListener('mouseup', () => { isResizing = false; });
+            });
+        }
+
+        // === 应用程序 ===
+        function openBrowser() {
+            const id = createWindow({
+                title: '浏览器',
+                iconHtml: '<svg class="icon-svg sm" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/></svg>',
+                width: 900, height: 600,
+                content: `
+                    <div class="browser-nav">
+                        <button class="nav-btn" id="nav-back-${SYSTEM.idCounter+1}" disabled><svg class="icon-svg" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg></button>
+                        <button class="nav-btn" id="nav-forward-${SYSTEM.idCounter+1}" disabled><svg class="icon-svg" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></button>
+                        <button class="nav-btn" id="nav-refresh-${SYSTEM.idCounter+1}"><svg class="icon-svg" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg></button>
+                        <div class="address-bar">
+                            <svg class="icon-svg" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                            <input type="text" id="url-input-${SYSTEM.idCounter+1}" placeholder="输入网址..." value="https://www.wikipedia.org">
+                        </div>
+                        <button class="nav-btn" id="nav-go-${SYSTEM.idCounter+1}"><svg class="icon-svg" viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></button>
+                    </div>
+                    <div class="content-area">
+                        <div class="loading-overlay" id="loading-${SYSTEM.idCounter+1}"><div class="spinner"></div><span>加载中...</span></div>
+                        <iframe id="browser-frame-${SYSTEM.idCounter+1}" src="https://www.wikipedia.org" sandbox="allow-same-origin allow-scripts allow-forms allow-popups"></iframe>
+                    </div>
+                `,
+                onInit: (w, winId) => {
+                    const urlInput = document.getElementById('url-input-' + winId);
+                    const frame = document.getElementById('browser-frame-' + winId);
+                    const loading = document.getElementById('loading-' + winId);
+                    const goBtn = document.getElementById('nav-go-' + winId);
+                    const refreshBtn = document.getElementById('nav-refresh-' + winId);
+                    
+                    const navigate = () => {
+                        let url = urlInput.value.trim();
+                        if(!url.startsWith('http')) url = 'https://' + url;
+                        urlInput.value = url;
+                        loading.classList.add('active');
+                        frame.src = url;
+                    };
+                    
+                    urlInput.onkeydown = e => { if(e.key === 'Enter') navigate(); };
+                    goBtn.onclick = navigate;
+                    refreshBtn.onclick = () => { loading.classList.add('active'); frame.src = frame.src; };
+                    frame.onload = () => loading.classList.remove('active');
+                }
+            });
+        }
+
+        function openNotepad(content = '', filename = '未命名.txt') {
+            const id = createWindow({
+                title: '记事本 - ' + filename,
+                iconHtml: '<svg class="icon-svg sm" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg>',
+                width: 650, height: 480,
+                content: `
+                    <div class="notepad-toolbar">
+                        <button class="notepad-btn" id="np-new-${SYSTEM.idCounter+1}">新建</button>
+                        <button class="notepad-btn" id="np-save-${SYSTEM.idCounter+1}">保存</button>
+                        <button class="notepad-btn" id="np-saveas-${SYSTEM.idCounter+1}">另存为</button>
+                    </div>
+                    <textarea class="notepad-area" id="np-area-${SYSTEM.idCounter+1}" placeholder="开始输入...">${content}</textarea>
+                `,
+                onInit: (w, winId) => {
+                    let currentFile = filename;
+                    const area = document.getElementById('np-area-' + winId);
+                    
+                    document.getElementById('np-new-' + winId).onclick = () => {
+                        area.value = '';
+                        currentFile = '未命名.txt';
+                        w.querySelector('.window-title-text').innerText = '记事本 - ' + currentFile;
+                    };
+                    
+                    document.getElementById('np-save-' + winId).onclick = () => {
+                        const path = SYSTEM.desktopPath + '/' + currentFile;
+                        SYSTEM.fs.writeFile(path, area.value, 'utf8', err => {
+                            if(err) Notify.error('保存失败', err.message);
+                            else { refreshDesktop(); Notify.success('保存成功', `文件已保存为 "${currentFile}"`); }
+                        });
+                    };
+                    
+                    document.getElementById('np-saveas-' + winId).onclick = () => {
+                        const name = prompt('请输入文件名:', currentFile);
+                        if(!name) return;
+                        currentFile = name.endsWith('.txt') ? name : name + '.txt';
+                        const path = SYSTEM.desktopPath + '/' + currentFile;
+                        SYSTEM.fs.writeFile(path, area.value, 'utf8', err => {
+                            if(err) Notify.error('保存失败', err.message);
+                            else {
+                                w.querySelector('.window-title-text').innerText = '记事本 - ' + currentFile;
+                                refreshDesktop();
+                                Notify.success('保存成功', `文件已保存为 "${currentFile}"`);
+                            }
+                        });
+                    };
+                }
+            });
+        }
+
+        function openCalculator() {
+            const id = createWindow({
+                title: '计算器',
+                iconHtml: '<svg class="icon-svg sm" viewBox="0 0 24 24"><rect x="4" y="2" width="16" height="20" rx="2"/></svg>',
+                width: 320, height: 450,
+                content: `
+                    <div class="calculator" style="background:#1a1a24">
+                        <div class="calc-display">
+                            <div class="expression" id="calc-expr-${SYSTEM.idCounter+1}"></div>
+                            <div class="result" id="calc-result-${SYSTEM.idCounter+1}">0</div>
+                        </div>
+                        <div class="calc-buttons" id="calc-btns-${SYSTEM.idCounter+1}"></div>
+                    </div>
+                `,
+                onInit: (w, winId) => {
+                    const btnsContainer = document.getElementById('calc-btns-' + winId);
+                    const expr = document.getElementById('calc-expr-' + winId);
+                    const result = document.getElementById('calc-result-' + winId);
+                    
+                    const buttons = ['C','±','%','÷','7','8','9','×','4','5','6','-','1','2','3','+','0','.','⌫','='];
+                    
+                    let current = '0', expression = '', lastOp = '';
+                    
+                    buttons.forEach(b => {
+                        const btn = document.createElement('button');
+                        btn.className = 'calc-btn';
+                        btn.innerText = b;
+                        
+                        if(['÷','×','-','+'].includes(b)) btn.classList.add('operator');
+                        if(b === '=') btn.classList.add('equals');
+                        if(b === 'C') btn.classList.add('clear');
+                        
+                        btn.onclick = () => {
+                            if(b >= '0' && b <= '9') {
+                                current = current === '0' ? b : current + b;
+                            } else if(b === '.') {
+                                if(!current.includes('.')) current += '.';
+                            } else if(b === 'C') {
+                                current = '0'; expression = '';
+                            } else if(b === '⌫') {
+                                current = current.length > 1 ? current.slice(0,-1) : '0';
+                            } else if(b === '±') {
+                                current = current.startsWith('-') ? current.slice(1) : '-' + current;
+                            } else if(b === '%') {
+                                current = String(parseFloat(current) / 100);
+                            } else if(['÷','×','-','+'].includes(b)) {
+                                expression += current + ' ' + b + ' ';
+                                current = '0';
+                            } else if(b === '=') {
+                                expression += current;
+                                try {
+                                    let evalExpr = expression.replace(/×/g,'*').replace(/÷/g,'/');
+                                    current = String(eval(evalExpr));
+                                    if(current === 'Infinity' || current === 'NaN') current = 'Error';
+                                } catch { current = 'Error'; }
+                                expression = '';
+                            }
+                            
+                            result.innerText = current;
+                            expr.innerText = expression;
+                        };
+                        
+                        btnsContainer.appendChild(btn);
+                    });
+                }
+            });
+        }
+
+        function openPaint() {
+            const id = createWindow({
+                title: '画板',
+                iconHtml: '<svg class="icon-svg sm" viewBox="0 0 24 24"><path d="M12 19l7-7 3 3-7 7-3-3z"/></svg>',
+                width: 800, height: 550,
+                content: `
+                    <div class="paint-app">
+                        <div class="paint-toolbar">
+                            <div class="paint-tool-group">
+                                <button class="paint-btn active" id="paint-brush-${SYSTEM.idCounter+1}" title="画笔">
+                                    <svg class="icon-svg" viewBox="0 0 24 24"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/></svg>
+                                </button>
+                                <button class="paint-btn" id="paint-eraser-${SYSTEM.idCounter+1}" title="橡皮擦">
+                                    <svg class="icon-svg" viewBox="0 0 24 24"><path d="m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21"/><path d="M22 21H7"/><path d="m5 11 9 9"/></svg>
+                                </button>
+                            </div>
+                            <div class="paint-tool-group">
+                                <label>颜色</label>
+                                <input type="color" class="color-picker" id="paint-color-${SYSTEM.idCounter+1}" value="#ffffff">
+                            </div>
+                            <div class="paint-tool-group">
+                                <label>大小</label>
+                                <input type="range" class="brush-size" id="paint-size-${SYSTEM.idCounter+1}" min="1" max="50" value="5">
+                            </div>
+                            <div class="paint-tool-group">
+                                <button class="paint-btn" id="paint-clear-${SYSTEM.idCounter+1}" title="清空">
+                                    <svg class="icon-svg" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+                                </button>
+                                <button class="paint-btn" id="paint-save-${SYSTEM.idCounter+1}" title="保存">
+                                    <svg class="icon-svg" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="paint-canvas-container" id="paint-container-${SYSTEM.idCounter+1}">
+                            <canvas class="paint-canvas" id="paint-canvas-${SYSTEM.idCounter+1}"></canvas>
+                        </div>
+                    </div>
+                `,
+                onInit: (w, winId) => {
+                    const container = document.getElementById('paint-container-' + winId);
+                    const canvas = document.getElementById('paint-canvas-' + winId);
+                    const ctx = canvas.getContext('2d');
+                    
+                    const resize = () => {
+                        canvas.width = container.clientWidth;
+                        canvas.height = container.clientHeight;
+                        ctx.fillStyle = '#ffffff';
+                        ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    };
+                    setTimeout(resize, 50);
+                    
+                    let isDrawing = false, lastX = 0, lastY = 0;
+                    let tool = 'brush';
+                    
+                    const colorPicker = document.getElementById('paint-color-' + winId);
+                    const sizePicker = document.getElementById('paint-size-' + winId);
+                    
+                    canvas.onmousedown = e => {
+                        isDrawing = true;
+                        [lastX, lastY] = [e.offsetX, e.offsetY];
+                    };
+                    
+                    canvas.onmousemove = e => {
+                        if(!isDrawing) return;
+                        ctx.beginPath();
+                        ctx.moveTo(lastX, lastY);
+                        ctx.lineTo(e.offsetX, e.offsetY);
+                        ctx.strokeStyle = tool === 'eraser' ? '#ffffff' : colorPicker.value;
+                        ctx.lineWidth = sizePicker.value;
+                        ctx.lineCap = 'round';
+                        ctx.stroke();
+                        [lastX, lastY] = [e.offsetX, e.offsetY];
+                    };
+                    
+                    canvas.onmouseup = canvas.onmouseleave = () => { isDrawing = false; };
+                    
+                    document.getElementById('paint-brush-' + winId).onclick = function() {
+                        tool = 'brush';
+                        this.classList.add('active');
+                        document.getElementById('paint-eraser-' + winId).classList.remove('active');
+                    };
+                    
+                    document.getElementById('paint-eraser-' + winId).onclick = function() {
+                        tool = 'eraser';
+                        this.classList.add('active');
+                        document.getElementById('paint-brush-' + winId).classList.remove('active');
+                    };
+                    
+                    document.getElementById('paint-clear-' + winId).onclick = () => {
+                        ctx.fillStyle = '#ffffff';
+                        ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    };
+                    
+                    document.getElementById('paint-save-' + winId).onclick = () => {
+                        const name = prompt('请输入文件名:', '画作.png');
+                        if(!name) return;
+                        canvas.toBlob(blob => {
+                            const reader = new FileReader();
+                            reader.onload = () => {
+                                const buffer = SYSTEM.Buffer.from(reader.result);
+                                const path = SYSTEM.desktopPath + '/' + (name.endsWith('.png') ? name : name + '.png');
+                                SYSTEM.fs.writeFile(path, buffer, err => {
+                                    if(err) Notify.error('保存失败', err.message);
+                                    else { refreshDesktop(); Notify.success('保存成功', '画作已保存到桌面'); }
+                                });
+                            };
+                            reader.readAsArrayBuffer(blob);
+                        }, 'image/png');
+                    };
+                }
+            });
+        }
+
+        function openMusicPlayer(audioUrl = null, title = '未选择音乐') {
+            const id = createWindow({
+                title: '音乐播放器',
+                iconHtml: '<svg class="icon-svg sm" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg>',
+                width: 380, height: 450,
+                content: `
+                    <div class="music-player">
+                        <div class="mp-visualizer" id="mp-viz-${SYSTEM.idCounter+1}">
+                            ${Array(30).fill('<div class="mp-bar"></div>').join('')}
+                        </div>
+                        <div class="mp-info">
+                            <div class="mp-title" id="mp-title-${SYSTEM.idCounter+1}">${title}</div>
+                            <div class="mp-time">
+                                <span id="mp-current-${SYSTEM.idCounter+1}">0:00</span>
+                                <input type="range" class="mp-progress" id="mp-progress-${SYSTEM.idCounter+1}" value="0" min="0" max="100">
+                                <span id="mp-duration-${SYSTEM.idCounter+1}">0:00</span>
+                            </div>
+                        </div>
+                        <div class="mp-controls">
+                            <input type="range" class="mp-volume" id="mp-volume-${SYSTEM.idCounter+1}" value="80" min="0" max="100">
+                            <button class="mp-btn" id="mp-prev-${SYSTEM.idCounter+1}"><svg viewBox="0 0 24 24"><polygon points="19 20 9 12 19 4 19 20"/><line x1="5" y1="19" x2="5" y2="5"/></svg></button>
+                            <button class="mp-btn play" id="mp-play-${SYSTEM.idCounter+1}"><svg viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg></button>
+                            <button class="mp-btn" id="mp-next-${SYSTEM.idCounter+1}"><svg viewBox="0 0 24 24"><polygon points="5 4 15 12 5 20 5 4"/><line x1="19" y1="5" x2="19" y2="19"/></svg></button>
+                            <button class="mp-btn" id="mp-upload-${SYSTEM.idCounter+1}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></button>
+                        </div>
+                        <audio id="mp-audio-${SYSTEM.idCounter+1}" ${audioUrl ? `src="${audioUrl}"` : ''}></audio>
+                        <input type="file" id="mp-file-${SYSTEM.idCounter+1}" accept="audio/*" hidden>
+                    </div>
+                `,
+                onInit: (w, winId) => {
+                    const audio = document.getElementById('mp-audio-' + winId);
+                    const playBtn = document.getElementById('mp-play-' + winId);
+                    const progress = document.getElementById('mp-progress-' + winId);
+                    const volume = document.getElementById('mp-volume-' + winId);
+                    const currentTime = document.getElementById('mp-current-' + winId);
+                    const duration = document.getElementById('mp-duration-' + winId);
+                    const titleEl = document.getElementById('mp-title-' + winId);
+                    const fileInput = document.getElementById('mp-file-' + winId);
+                    const uploadBtn = document.getElementById('mp-upload-' + winId);
+                    const bars = document.querySelectorAll('#mp-viz-' + winId + ' .mp-bar');
+                    
+                    audio.volume = 0.8;
+                    let isPlaying = false;
+                    let animFrame;
+                    
+                    const formatTime = s => {
+                        const m = Math.floor(s / 60);
+                        const sec = Math.floor(s % 60);
+                        return m + ':' + (sec < 10 ? '0' : '') + sec;
+                    };
+                    
+                    const animateBars = () => {
+                        if(isPlaying) {
+                            bars.forEach(bar => {
+                                bar.style.height = (Math.random() * 70 + 10) + '%';
+                            });
+                            animFrame = requestAnimationFrame(animateBars);
+                        } else {
+                            bars.forEach(bar => { bar.style.height = '8%'; });
+                        }
+                    };
+                    
+                    playBtn.onclick = () => {
+                        if(audio.paused) {
+                            audio.play();
+                            isPlaying = true;
+                            playBtn.innerHTML = '<svg viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>';
+                            animateBars();
+                        } else {
+                            audio.pause();
+                            isPlaying = false;
+                            playBtn.innerHTML = '<svg viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>';
+                            cancelAnimationFrame(animFrame);
+                            bars.forEach(bar => { bar.style.height = '8%'; });
+                        }
+                    };
+                    
+                    audio.ontimeupdate = () => {
+                        progress.value = (audio.currentTime / audio.duration) * 100 || 0;
+                        currentTime.innerText = formatTime(audio.currentTime);
+                    };
+                    
+                    audio.onloadedmetadata = () => {
+                        duration.innerText = formatTime(audio.duration);
+                    };
+                    
+                    audio.onended = () => {
+                        isPlaying = false;
+                        playBtn.innerHTML = '<svg viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>';
+                        bars.forEach(bar => { bar.style.height = '8%'; });
+                    };
+                    
+                    progress.oninput = () => {
+                        audio.currentTime = (progress.value / 100) * audio.duration;
+                    };
+                    
+                    volume.oninput = () => {
+                        audio.volume = volume.value / 100;
+                    };
+                    
+                    uploadBtn.onclick = () => fileInput.click();
+                    
+                    fileInput.onchange = e => {
+                        const file = e.target.files[0];
+                        if(file) {
+                            const url = URL.createObjectURL(file);
+                            audio.src = url;
+                            titleEl.innerText = file.name;
+                            isPlaying = false;
+                            playBtn.innerHTML = '<svg viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>';
+                        }
+                    };
+                }
+            });
+        }
+
+        function openSettings() {
+            createWindow({
+                title: '系统设置',
+                iconHtml: '<svg class="icon-svg sm" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/></svg>',
+                width: 550, height: 500,
+                content: `
+                    <div class="content-area dark" style="overflow-y:auto">
+                        <div class="settings-content">
+                            <div class="about-card">
+                                <div class="logo">JS</div>
+                                <h3>JISHENG OS</h3>
+                                <p>Ultimate Web Operating System<br>Version 3.0 • Build 2024</p>
+                            </div>
+                            
+                            <div class="settings-section" style="margin-top:20px">
+                                <h4>个性化</h4>
+                                <div class="settings-item" onclick="openWallpaperPanel()" style="cursor:pointer">
+                                    <label>更换壁纸</label>
+                                    <svg class="icon-svg" viewBox="0 0 24 24" style="color:var(--text-muted)"><polyline points="9 18 15 12 9 6"/></svg>
+                                </div>
+                            </div>
+                            
+                            <div class="settings-section">
+                                <h4>存储</h4>
+                                <div class="settings-item">
+                                    <label>虚拟磁盘</label>
+                                    <span>IndexedDB</span>
+                                </div>
+                                <div class="settings-item" onclick="resetSystem()" style="cursor:pointer">
+                                    <label style="color:var(--win-close-red)">重置系统</label>
+                                    <svg class="icon-svg" viewBox="0 0 24 24" style="color:var(--win-close-red)"><polyline points="9 18 15 12 9 6"/></svg>
+                                </div>
+                            </div>
+                            
+                            <div class="settings-section">
+                                <h4>关于</h4>
+                                <div class="settings-item">
+                                    <label>系统版本</label>
+                                    <span>3.0.0</span>
+                                </div>
+                                <div class="settings-item">
+                                    <label>内核</label>
+                                    <span>BrowserFS</span>
+                                </div>
+                                <div class="settings-item">
+                                    <label>渲染引擎</label>
+                                    <span>${navigator.userAgent.match(/Chrome|Firefox|Safari|Edge/)?.[0] || 'Unknown'}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `
+            });
+        }
+
+        // === 壁纸管理 ===
+        function openWallpaperPanel() {
+            document.getElementById('wallpaper-panel').classList.add('open');
+            document.getElementById('overlay').classList.add('active');
+            document.getElementById('wp-grid').innerHTML = wallpapers.map(u => 
+                `<div class="wp-thumb" style="background-image:url('${u}')" onclick="setBg('${u}')"></div>`
+            ).join('');
+            closeCtx();
+        }
+        
+        function closePanel() {
+            document.getElementById('wallpaper-panel').classList.remove('open');
+            document.getElementById('overlay').classList.remove('active');
+        }
+        
+        function setBg(u, save = true) {
+            document.getElementById('dynamic-bg').style.backgroundImage = `url('${u}')`;
+            if (save && SYSTEM.mounted) {
+                SYSTEM.fs.writeFile(SYSTEM.configPath, u, (err) => { if(err) console.error("Save WP failed", err); });
+            }
+        }
+        
+        const fileInput = document.getElementById('file-input');
+        fileInput.onchange = e => {
+            const f = e.target.files[0];
+            if(f) {
+                const r = new FileReader();
+                r.onload = ev => setBg(ev.target.result);
+                r.readAsDataURL(f);
+            }
+        };
+
+        // 桌面拖拽上传
+        desktop.ondragover = e => { e.preventDefault(); };
+        desktop.ondrop = e => {
+            e.preventDefault();
+            const files = e.dataTransfer.files;
+            if(files.length > 0 && SYSTEM.mounted) {
+                Array.from(files).forEach(file => {
+                    const reader = new FileReader();
+                    reader.onload = function(evt) {
+                        const buffer = SYSTEM.Buffer.from(evt.target.result);
+                        const path = SYSTEM.desktopPath + '/' + file.name;
+                        SYSTEM.fs.writeFile(path, buffer, (err) => {
+                            if(err) console.error(err); 
+                            else {
+                                refreshDesktop();
+                                Notify.success('上传成功', `文件 "${file.name}" 已保存到桌面`);
+                            }
+                        });
+                    };
+                    reader.readAsArrayBuffer(file);
+                });
+            }
+        };
+
+        function resetSystem() {
+            if(confirm("警告：这会清空所有保存的文件和设置。确定重置吗？")) {
+                const req = indexedDB.deleteDatabase('JISHENG_OS_V3');
+                req.onsuccess = () => location.reload();
+            }
+        }
+
+        // 键盘快捷键
+        document.addEventListener('keydown', e => {
+            // Ctrl+V 粘贴文件
+            if(e.ctrlKey && e.key === 'v') {
+                Clipboard.paste((type, data, source) => {
+                    if(type === 'file' && source) {
+                        const srcPath = source + '/' + data;
+                        const destPath = SYSTEM.desktopPath + '/' + data;
+                        
+                        SYSTEM.fs.readFile(srcPath, (err, content) => {
+                            if(err) { Notify.error('粘贴失败', err.message); return; }
+                            SYSTEM.fs.writeFile(destPath, content, (err) => {
+                                if(err) Notify.error('粘贴失败', err.message);
+                                else { refreshDesktop(); Notify.success('粘贴成功', `已粘贴 "${data}"`); }
+                            });
+                        });
+                    }
+                });
+            }
+        });
+
+        // 启动
+        window.onload = initKernel;
+    </script>
+</body>
+</html>
+```
