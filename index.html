@@ -113,36 +113,80 @@
         /* === 桌面 === */
         .desktop { position: absolute; inset: 0; bottom: var(--taskbar-height); z-index: 5; }
         
-        .desktop-icons {
-            position: absolute; top: 24px; left: 24px;
-            display: flex; flex-direction: column; gap: 8px; flex-wrap: wrap; height: calc(100% - 40px);
-        }
+        .desktop-icons { 
+            position: absolute; 
+            top: 0; left: 0; right: 0; bottom: 0; 
+            display: block; 
+            pointer-events: auto; 
+        } 
 
-        .desktop-icon {
-            width: 82px; padding: 14px 8px;
-            display: flex; flex-direction: column; align-items: center; gap: 10px;
-            border-radius: 8px; cursor: pointer; border: 1px solid transparent;
-            transition: all 0.15s ease;
-        }
+        .desktop-icon { 
+            position: absolute; 
+            width: 82px; 
+            height: 90px; 
+            padding: 10px 4px; 
+            display: flex; flex-direction: column; align-items: center; gap: 6px; 
+            border-radius: 6px; cursor: pointer; 
+            border: 1px solid transparent; 
+            transition: background 0.15s, border 0.15s; 
+            z-index: 1; 
+        } 
+        
         .desktop-icon:hover { 
-            background: rgba(255,255,255,0.06); 
-            border-color: rgba(255,255,255,0.1);
-        }
-        .desktop-icon:active { transform: scale(0.96); }
+            background: rgba(255,255,255,0.08); 
+        } 
+        
+        .desktop-icon.selected { 
+            background: rgba(0, 120, 212, 0.25); 
+            border-color: rgba(0, 120, 212, 0.5); 
+            backdrop-filter: blur(4px); 
+        } 
+
+        .desktop-icon:active { transform: scale(0.98); } 
+        
+        .desktop-icon.dragging { 
+            opacity: 0.6; 
+            z-index: 1000; 
+            pointer-events: none; 
+        } 
         
         .desktop-icon .icon-svg { 
-            filter: drop-shadow(0 2px 8px rgba(0,0,0,0.4));
-            color: rgba(255,255,255,0.9);
-        }
+            filter: drop-shadow(0 2px 8px rgba(0,0,0,0.4)); 
+            color: rgba(255,255,255,0.9); 
+            width: 36px; height: 36px; 
+        } 
+        
         .desktop-icon .label { 
             font-size: 11px; 
-            font-weight: 500;
+            font-weight: 500; 
             text-align: center; 
-            text-shadow: 0 1px 4px rgba(0,0,0,0.8);
-            line-height: 1.4;
-            color: rgba(255,255,255,0.95);
-            word-break: break-all;
-            display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+            text-shadow: 0 1px 4px rgba(0,0,0,0.9); 
+            line-height: 1.3; 
+            color: #fff; 
+            word-break: break-all; 
+            display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; 
+            padding: 0 2px; 
+            border-radius: 2px; 
+        } 
+        .desktop-icon.selected .label { color: #fff; } 
+
+        .selection-box { 
+            position: fixed; 
+            background: rgba(0, 120, 212, 0.2); 
+            border: 1px solid rgba(0, 120, 212, 0.6); 
+            z-index: 999; 
+            pointer-events: none; 
+            display: none; 
+        } 
+
+        .desktop-grid-overlay { 
+            position: absolute; inset: 0; pointer-events: none; z-index: 0; 
+        } 
+
+        .drag-preview { 
+            position: fixed; pointer-events: none; z-index: 10000; opacity: 0.8; 
+            background: rgba(24, 24, 32, 0.8); border-radius: 8px; padding: 10px; 
+            display: flex; flex-direction: column; align-items: center; 
         }
 
         /* === 窗口系统 === */
@@ -759,10 +803,14 @@
     <!-- 通知容器 -->
     <div class="notification-container" id="notification-container"></div>
 
-    <!-- 桌面图标容器 -->
-    <div class="desktop" id="desktop">
-        <div class="desktop-icons" id="desktop-icons"></div>
-    </div>
+    <!-- 桌面图标容器 --> 
+     <div class="desktop" id="desktop"> 
+         <!-- 新增：网格层和框选层 --> 
+         <div class="desktop-grid-overlay" id="desktop-grid"></div> 
+         <div class="selection-box" id="selection-box"></div> 
+         
+         <div class="desktop-icons" id="desktop-icons"></div> 
+     </div>
 
     <!-- 任务栏 -->
     <div class="taskbar">
@@ -966,7 +1014,11 @@
             desktopPath: '/desktop',
             configPath: '/system/config/wallpaper.cfg',
             currentMonth: new Date().getMonth(),
-            currentYear: new Date().getFullYear()
+            currentYear: new Date().getFullYear(),
+            selectedIcons: [],           
+            iconPositions: {},           
+            gridSize: 90, 
+            iconPositionsPath: '/system/config/icon-positions.json' 
         };
 
         const bootBar = document.getElementById('boot-bar');
@@ -1154,59 +1206,451 @@
         }
 
         // === 桌面渲染 ===
+        // ===============================================
+        // 新增/替换的核心交互逻辑 (拖拽、框选、右键、文件夹)
+        // ===============================================
+
+        // 1. 读取位置配置
+        function loadIconPositions(callback) {
+            if(!SYSTEM.mounted) { callback(); return; }
+            SYSTEM.fs.readFile(SYSTEM.iconPositionsPath, 'utf8', (err, data) => {
+                if(!err && data) {
+                    try { SYSTEM.iconPositions = JSON.parse(data); } catch(e) { SYSTEM.iconPositions = {}; }
+                }
+                callback();
+            });
+        }
+
+        function saveIconPositions() {
+            if(!SYSTEM.mounted) return;
+            SYSTEM.fs.writeFile(SYSTEM.iconPositionsPath, JSON.stringify(SYSTEM.iconPositions), () => {});
+        }
+
+        // 2. 替换原有的 refreshDesktop (改为绝对定位布局)
         function refreshDesktop() {
             const container = document.getElementById('desktop-icons');
-            container.innerHTML = `
-                <div class="desktop-icon" ondblclick="openBrowser()" oncontextmenu="ctxApp(event, 'browser')">
-                    <svg class="icon-svg xl" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
-                    <div class="label">浏览器</div>
-                </div>
-                <div class="desktop-icon" ondblclick="openNotepad()" oncontextmenu="ctxApp(event, 'notepad')">
-                     <svg class="icon-svg xl" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
-                    <div class="label">记事本</div>
-                </div>
-                <div class="desktop-icon" ondblclick="openCalculator()" oncontextmenu="ctxApp(event, 'calculator')">
-                    <svg class="icon-svg xl" viewBox="0 0 24 24"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/><line x1="8" y1="10" x2="8" y2="10.01"/><line x1="12" y1="10" x2="12" y2="10.01"/><line x1="16" y1="10" x2="16" y2="10.01"/><line x1="8" y1="14" x2="8" y2="14.01"/><line x1="12" y1="14" x2="12" y2="14.01"/><line x1="16" y1="14" x2="16" y2="14.01"/><line x1="8" y1="18" x2="8" y2="18.01"/><line x1="12" y1="18" x2="12" y2="18.01"/><line x1="16" y1="18" x2="16" y2="18.01"/></svg>
-                    <div class="label">计算器</div>
-                </div>
-                <div class="desktop-icon" ondblclick="openPaint()" oncontextmenu="ctxApp(event, 'paint')">
-                    <svg class="icon-svg xl" viewBox="0 0 24 24"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><circle cx="11" cy="11" r="2"/></svg>
-                    <div class="label">画板</div>
-                </div>
-                <div class="desktop-icon" ondblclick="openSettings()" oncontextmenu="ctxApp(event, 'settings')">
-                    <svg class="icon-svg xl" viewBox="0 0 24 24"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
-                    <div class="label">系统设置</div>
-                </div>
-            `;
+            container.innerHTML = '';
             
-            if(SYSTEM.mounted) {
-                SYSTEM.fs.readdir(SYSTEM.desktopPath, (err, files) => {
-                    if(err) return;
-                    files.forEach(file => {
-                        const el = document.createElement('div');
-                        el.className = 'desktop-icon';
-                        
-                        let iconSvg = '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>';
-                        
-                        if(file.match(/\.(jpg|png|gif|webp)$/i)) 
-                            iconSvg = '<rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>';
-                        else if(file.match(/\.txt$/i)) 
-                            iconSvg = '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line>';
-                        else if(file.match(/\.zip$/i))
-                            iconSvg = '<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2v11z"/><path d="M12 10v4"/><path d="M12 14l2-2"/>';
-                        else if(file.match(/\.pdf$/i))
-                            iconSvg = '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/><text x="8" y="18" font-size="4" fill="currentColor">PDF</text>';
-                        
-                        el.setAttribute('ondblclick', `openFile('${file}')`);
-                        el.setAttribute('oncontextmenu', `ctxFile(event, '${file}')`);
-                        el.innerHTML = `
-                            <svg class="icon-svg xl" viewBox="0 0 24 24">${iconSvg}</svg>
-                            <div class="label">${file}</div>
-                        `;
-                        container.appendChild(el);
+            loadIconPositions(() => {
+                // 系统固定应用
+                const systemApps = [
+                    { id: 'app-browser', name: '浏览器', action: 'openBrowser()', icon: '<circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>' },
+                    { id: 'app-notepad', name: '记事本', action: 'openNotepad()', icon: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line>' },
+                    { id: 'app-calc', name: '计算器', action: 'openCalculator()', icon: '<rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/><line x1="8" y1="10" x2="8" y2="10.01"/><line x1="12" y1="10" x2="12" y2="10.01"/><line x1="16" y1="10" x2="16" y2="10.01"/>' },
+                    { id: 'app-paint', name: '画板', action: 'openPaint()', icon: '<path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><circle cx="11" cy="11" r="2"/>' },
+                    { id: 'app-settings', name: '系统设置', action: 'openSettings()', icon: '<path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/>' }
+                ];
+
+                // 排列逻辑
+                const maxPerColumn = Math.floor((window.innerHeight - 80) / SYSTEM.gridSize);
+                let index = 0;
+
+                const getNextPos = () => {
+                    const col = Math.floor(index / maxPerColumn);
+                    const row = index % maxPerColumn;
+                    index++;
+                    return { x: 24 + col * SYSTEM.gridSize, y: 24 + row * SYSTEM.gridSize };
+                };
+
+                // 渲染系统应用
+                systemApps.forEach(app => {
+                    const defaultPos = getNextPos();
+                    const pos = SYSTEM.iconPositions[app.id] || defaultPos;
+                    container.appendChild(createIconElement(app.id, app.name, app.icon, app.action, pos));
+                });
+
+                // 渲染用户文件
+                if(SYSTEM.mounted) {
+                    SYSTEM.fs.readdir(SYSTEM.desktopPath, (err, files) => {
+                        if(err) return;
+                        files.forEach(file => {
+                            const fileId = 'file-' + file;
+                            const defaultPos = getNextPos();
+                            const pos = SYSTEM.iconPositions[fileId] || defaultPos;
+                            
+                            let iconSvg = '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>';
+                            let type = 'file';
+
+                            if(file.match(/\.(jpg|png|gif|webp)$/i)) {
+                                iconSvg = '<rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>';
+                            } else if(file.match(/\.txt$/i)) {
+                                iconSvg = '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line>';
+                            } else if(file.match(/\.zip$/i)) {
+                                iconSvg = '<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2v11z"/><path d="M12 10v4"/><path d="M12 14l2-2"/>';
+                            } else if(file.match(/\.html?$/i)) {
+                                iconSvg = '<circle cx="12" cy="12" r="10"/><path d="M2 12h20"/>';
+                            }
+
+                            // 异步检查是否为文件夹
+                            SYSTEM.fs.stat(SYSTEM.desktopPath + '/' + file, (err, stats) => {
+                                if(!err && stats.isDirectory()) {
+                                    iconSvg = '<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2v11z"/>';
+                                    container.appendChild(createIconElement(fileId, file, iconSvg, `openFolderWindow('${file}')`, pos, 'folder', file));
+                                } else {
+                                    container.appendChild(createIconElement(fileId, file, iconSvg, `openFile('${file}')`, pos, 'file', file));
+                                }
+                            });
+                        });
+                    });
+                }
+            });
+            
+            initDesktopEvents();
+        }
+
+        // 3. 创建图标 DOM 元素 (绑定交互事件)
+        function createIconElement(id, name, iconSvg, action, pos, type = 'app', filename = null) {
+            const el = document.createElement('div');
+            el.className = 'desktop-icon';
+            el.id = id;
+            if(filename) el.dataset.filename = filename;
+            el.style.left = pos.x + 'px';
+            el.style.top = pos.y + 'px';
+            
+            el.innerHTML = `<svg class="icon-svg xl" viewBox="0 0 24 24">${iconSvg}</svg><div class="label">${name}</div>`;
+            
+            // 交互事件
+            el.onmousedown = (e) => {
+                if(e.button !== 0) return; // 仅左键
+                e.stopPropagation(); // 防止触发框选
+                
+                // 处理选择逻辑 (Ctrl/Shift/单选)
+                if(e.ctrlKey) {
+                    toggleIconSelection(el);
+                } else if(!SYSTEM.selectedIcons.includes(id)) {
+                    clearSelection();
+                    selectIcon(el);
+                }
+                
+                // 启动拖拽
+                startIconDrag(e, el);
+            };
+
+            el.oncontextmenu = (e) => {
+                e.preventDefault(); e.stopPropagation();
+                if(!SYSTEM.selectedIcons.includes(id)) {
+                    clearSelection();
+                    selectIcon(el);
+                }
+                showIconContextMenu(e.clientX, e.clientY);
+            };
+
+            el.ondblclick = () => { eval(action); clearSelection(); };
+            
+            return el;
+        }
+
+        // 4. 图标拖拽逻辑 (Windows 风格)
+        let dragState = null;
+        function startIconDrag(e, el) {
+            const rect = el.getBoundingClientRect();
+            dragState = {
+                startX: e.clientX, startY: e.clientY,
+                icons: [], hasMoved: false
+            };
+            
+            // 记录所有选中图标的初始位置
+            SYSTEM.selectedIcons.forEach(id => {
+                const icon = document.getElementById(id);
+                if(icon) {
+                    dragState.icons.push({
+                        el: icon, id: id,
+                        startLeft: icon.offsetLeft, startTop: icon.offsetTop
+                    });
+                }
+            });
+
+            document.addEventListener('mousemove', onIconDragMove);
+            document.addEventListener('mouseup', onIconDragEnd);
+        }
+
+        function onIconDragMove(e) {
+            if(!dragState) return;
+            const dx = e.clientX - dragState.startX;
+            const dy = e.clientY - dragState.startY;
+
+            // 阈值判断防止误触
+            if(!dragState.hasMoved && (Math.abs(dx) > 3 || Math.abs(dy) > 3)) {
+                dragState.hasMoved = true;
+                dragState.icons.forEach(i => i.el.classList.add('dragging'));
+            }
+
+            if(dragState.hasMoved) {
+                requestAnimationFrame(() => {
+                    if(!dragState) return;
+                    dragState.icons.forEach(i => {
+                        i.el.style.left = (i.startLeft + dx) + 'px';
+                        i.el.style.top = (i.startTop + dy) + 'px';
                     });
                 });
             }
+        }
+
+        function onIconDragEnd(e) {
+            document.removeEventListener('mousemove', onIconDragMove);
+            document.removeEventListener('mouseup', onIconDragEnd);
+
+            if(dragState && dragState.hasMoved) {
+                const maxW = window.innerWidth - 90;
+                const maxH = window.innerHeight - 100;
+                
+                dragState.icons.forEach(i => {
+                    i.el.classList.remove('dragging');
+                    // 吸附网格
+                    let x = Math.round(i.el.offsetLeft / SYSTEM.gridSize) * SYSTEM.gridSize + 24;
+                    let y = Math.round(i.el.offsetTop / SYSTEM.gridSize) * SYSTEM.gridSize + 24;
+                    
+                    // 边界限制
+                    x = Math.max(24, Math.min(x, maxW));
+                    y = Math.max(24, Math.min(y, maxH));
+
+                    i.el.style.transition = 'all 0.2s';
+                    i.el.style.left = x + 'px';
+                    i.el.style.top = y + 'px';
+                    setTimeout(() => i.el.style.transition = '', 200);
+
+                    SYSTEM.iconPositions[i.id] = {x, y};
+                });
+                saveIconPositions();
+            }
+            dragState = null;
+        }
+
+        // 5. 框选与选择逻辑
+        function initDesktopEvents() {
+            const desktop = document.getElementById('desktop');
+            const box = document.getElementById('selection-box');
+            let isSelecting = false, startX, startY;
+
+            desktop.onmousedown = (e) => {
+                if(e.target !== desktop && e.target !== document.getElementById('desktop-icons')) return;
+                clearSelection();
+                isSelecting = true;
+                startX = e.clientX; startY = e.clientY;
+                box.style.display = 'block';
+                box.style.width = '0'; box.style.height = '0';
+                box.style.left = startX + 'px'; box.style.top = startY + 'px';
+            };
+
+            document.addEventListener('mousemove', (e) => {
+                if(!isSelecting) return;
+                const curX = e.clientX, curY = e.clientY;
+                const left = Math.min(startX, curX), top = Math.min(startY, curY);
+                const width = Math.abs(startX - curX), height = Math.abs(startY - curY);
+                
+                box.style.left = left + 'px'; box.style.top = top + 'px';
+                box.style.width = width + 'px'; box.style.height = height + 'px';
+
+                // 碰撞检测
+                document.querySelectorAll('.desktop-icon').forEach(icon => {
+                    const r = icon.getBoundingClientRect();
+                    const intersect = !(r.right < left || r.left > left+width || r.bottom < top || r.top > top+height);
+                    if(intersect) selectIcon(icon); else deselectIcon(icon);
+                });
+            });
+
+            document.addEventListener('mouseup', () => {
+                isSelecting = false; box.style.display = 'none';
+            });
+            
+            // 桌面上传 (Drop)
+            desktop.ondragover = e => e.preventDefault();
+            desktop.ondrop = (e) => {
+                e.preventDefault();
+                // 处理从文件夹拖出来的文件
+                const dragData = e.dataTransfer.getData('text/plain');
+                if(dragData) {
+                    try {
+                        const { srcPath, filename } = JSON.parse(dragData);
+                        if(srcPath && filename) {
+                            SYSTEM.fs.readFile(srcPath, (err, data) => {
+                                if(!err) {
+                                    SYSTEM.fs.writeFile(SYSTEM.desktopPath + '/' + filename, data, () => {
+                                        // 记录放置位置
+                                        SYSTEM.iconPositions['file-'+filename] = {x: e.clientX - 40, y: e.clientY - 40};
+                                        saveIconPositions();
+                                        refreshDesktop();
+                                        Notify.success('复制成功', filename);
+                                    });
+                                }
+                            });
+                        }
+                    } catch(e){}
+                    return;
+                }
+                // 处理外部文件上传
+                if(e.dataTransfer.files.length > 0) {
+                     Array.from(e.dataTransfer.files).forEach(f => {
+                        const r = new FileReader();
+                        r.onload = ev => {
+                            const buf = SYSTEM.Buffer.from(ev.target.result);
+                            SYSTEM.fs.writeFile(SYSTEM.desktopPath + '/' + f.name, buf, () => {
+                                SYSTEM.iconPositions['file-'+f.name] = {x: e.clientX-40, y: e.clientY-40};
+                                saveIconPositions();
+                                refreshDesktop();
+                            });
+                        };
+                        r.readAsArrayBuffer(f);
+                    });
+                }
+            };
+        }
+
+        // 辅助函数：选择/取消选择
+        function selectIcon(el) {
+            if(!SYSTEM.selectedIcons.includes(el.id)) {
+                SYSTEM.selectedIcons.push(el.id);
+                el.classList.add('selected');
+            }
+        }
+        function deselectIcon(el) {
+            const idx = SYSTEM.selectedIcons.indexOf(el.id);
+            if(idx > -1) { SYSTEM.selectedIcons.splice(idx, 1); el.classList.remove('selected'); }
+        }
+        function toggleIconSelection(el) {
+            if(SYSTEM.selectedIcons.includes(el.id)) deselectIcon(el); else selectIcon(el);
+        }
+        function clearSelection() {
+            SYSTEM.selectedIcons.forEach(id => document.getElementById(id)?.classList.remove('selected'));
+            SYSTEM.selectedIcons = [];
+        }
+
+        // 6. 新的右键菜单逻辑 (支持多选)
+        function showIconContextMenu(x, y) {
+            const cm = document.getElementById('context-menu');
+            const count = SYSTEM.selectedIcons.length;
+            const isFile = count === 1 && SYSTEM.selectedIcons[0].startsWith('file-');
+            
+            let html = '';
+            
+            if(count > 1) {
+                html = `<div class="context-item" onclick="deleteSelected(); closeCtx()" style="color:var(--win-close-red)">
+                    <svg class="icon-svg" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+                    <span>删除选中 (${count})</span>
+                </div>`;
+            } else if(isFile) {
+                const id = SYSTEM.selectedIcons[0];
+                const filename = document.getElementById(id).dataset.filename;
+                html = `
+                    <div class="context-item" onclick="openFile('${filename}'); closeCtx()">
+                        <svg class="icon-svg" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg><span>打开</span>
+                    </div>
+                    ${filename.endsWith('.zip') ? `<div class="context-item" onclick="extractZip('${filename}'); closeCtx()"><svg class="icon-svg" viewBox="0 0 24 24"><path d="M21 8v13H3V8"/></svg><span>解压</span></div>` : ''}
+                    <div class="context-divider"></div>
+                    <div class="context-item" onclick="deleteFile('${filename}'); closeCtx()" style="color:var(--win-close-red)">
+                        <svg class="icon-svg" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/></svg><span>删除</span>
+                    </div>
+                `;
+            } else {
+                // 应用图标右键
+                const id = SYSTEM.selectedIcons[0];
+                html = `<div class="context-item" onclick="document.getElementById('${id}').ondblclick(); closeCtx()">
+                    <svg class="icon-svg" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg><span>打开</span>
+                </div>`;
+            }
+            
+            cm.innerHTML = html;
+            showCtx(x, y);
+        }
+
+        function deleteSelected() {
+            if(!confirm('确定删除选中项吗？')) return;
+            const files = SYSTEM.selectedIcons.filter(id => id.startsWith('file-'))
+                          .map(id => document.getElementById(id).dataset.filename);
+            
+            let count = 0;
+            files.forEach(f => {
+                const path = SYSTEM.desktopPath + '/' + f;
+                SYSTEM.fs.stat(path, (err, stats) => {
+                    const cb = () => { count++; if(count===files.length) { refreshDesktop(); Notify.success('已删除'); } };
+                    if(stats.isDirectory()) deleteFolderRecursive(path, cb); else SYSTEM.fs.unlink(path, cb);
+                });
+            });
+        }
+
+        // 7. 替换 openFolderWindow (支持从文件夹拖出)
+        function openFolderWindow(folderName) {
+            const path = SYSTEM.desktopPath + '/' + folderName;
+            SYSTEM.fs.readdir(path, (err, files) => {
+                if(err) { Notify.error('错误', err.message); return; }
+                
+                let content = files.length === 0 
+                    ? '<div style="padding:40px;text-align:center;color:#888">文件夹为空</div>'
+                    : files.map(file => {
+                        let icon = '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>';
+                        if(file.match(/\.(jpg|png|gif|webp)$/i)) icon = '<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/>';
+                        
+                        // 关键：添加 draggable 属性和事件
+                        return `
+                            <div class="folder-item" draggable="true" 
+                                 ondragstart="event.dataTransfer.setData('text/plain', JSON.stringify({srcPath:'${path}/${file}', filename:'${file}'}))"
+                                 ondblclick="openFileFromPath('${path}/${file}', '${file}')">
+                                <svg class="icon-svg" viewBox="0 0 24 24">${icon}</svg>
+                                <span>${file}</span>
+                            </div>
+                        `;
+                    }).join('');
+                
+                createWindow({
+                    title: folderName,
+                    iconHtml: '<svg class="icon-svg sm" viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2v11z"/></svg>',
+                    width: 500, height: 400,
+                    content: `<div class="content-area dark" style="padding:8px;overflow-y:auto">${content}</div>`
+                });
+            });
+        }
+        // === 修复：桌面背景右键菜单 & 新建文件夹 ===
+        
+        // 重新绑定桌面背景的右键事件
+        document.getElementById('desktop').oncontextmenu = (e) => {
+            // 如果点的是图标，不触发这个（由图标自己的逻辑触发）
+            if(e.target.closest('.desktop-icon')) return;
+            
+            e.preventDefault();
+            
+            // 点击空白处时，清除已选中的图标
+            clearSelection();
+            
+            const cm = document.getElementById('context-menu');
+            cm.innerHTML = `
+                <div class="context-item" onclick="openWallpaperPanel(); closeCtx()">
+                    <svg class="icon-svg" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
+                    <span>更换壁纸</span>
+                </div>
+                <div class="context-item" onclick="refreshDesktop(); closeCtx()">
+                    <svg class="icon-svg" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+                    <span>刷新桌面</span>
+                </div>
+                <div class="context-divider"></div>
+                <div class="context-item" onclick="openNotepad(); closeCtx()">
+                    <svg class="icon-svg" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                    <span>新建文本文档</span>
+                </div>
+                <div class="context-item" onclick="createNewFolder(); closeCtx()">
+                    <svg class="icon-svg" viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2v11z"/></svg>
+                    <span>新建文件夹</span>
+                </div>
+                <div class="context-divider"></div>
+                <div class="context-item" onclick="openSettings(); closeCtx()">
+                    <svg class="icon-svg" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/></svg>
+                    <span>系统设置</span>
+                </div>
+            `;
+            showCtx(e.clientX, e.clientY);
+        };
+
+        // 补上新建文件夹功能的具体实现
+        function createNewFolder() {
+            const name = prompt("请输入文件夹名称:", "新建文件夹");
+            if (!name) return;
+            const path = SYSTEM.desktopPath + '/' + name;
+            SYSTEM.fs.mkdir(path, (err) => {
+                if (err) Notify.error("创建失败", err.message);
+                else {
+                    refreshDesktop();
+                    Notify.success("成功", "文件夹创建成功");
+                }
+            });
         }
 
         // === 文件操作 ===
@@ -1416,70 +1860,14 @@
         }
 
         // === 文件夹窗口 (V3 风格逻辑) ===
-        function openFolderWindow(folderName) {
-            const path = SYSTEM.desktopPath + '/' + folderName;
-            
-            SYSTEM.fs.readdir(path, (err, files) => {
-                if(err) { Notify.error('打开失败', err.message); return; }
-                
-                let content = files.length === 0 
-                    ? '<div style="padding:40px;text-align:center;color:var(--text-muted)">文件夹为空</div>'
-                    : files.map(file => {
-                        let iconSvg = '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>';
-                        if(file.match(/\.(jpg|png|gif|webp)$/i)) iconSvg = '<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/>';
-                        else if(file.match(/\.html?$/i)) iconSvg = '<circle cx="12" cy="12" r="10"/><path d="M2 12h20"/>'; // HTML icon
-                        else if(file.match(/\.pdf$/i)) iconSvg = '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/><text x="8" y="18" font-size="4" fill="currentColor">PDF</text>';
-                        
-                        // 关键修改：直接调用 openFileFromPath，传入完整路径和文件名
-                        return `
-                            <div class="folder-item" ondblclick="openFileFromPath('${path}/${file}', '${file}')">
-                                <svg class="icon-svg" viewBox="0 0 24 24">${iconSvg}</svg>
-                                <span>${file}</span>
-                            </div>
-                        `;
-                    }).join('');
-                
-                createWindow({
-                    title: folderName,
-                    iconHtml: '<svg class="icon-svg sm" viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2v11z"/></svg>',
-                    width: 500, height: 400,
-                    content: `<div class="content-area dark" style="padding:8px;overflow-y:auto">${content}</div>`
-                });
-            });
-        }
+
 
         // === 右键菜单 ===
         function closeCtx() {
             document.getElementById('context-menu').classList.remove('open');
         }
 
-        // 桌面右键菜单
-        desktop.addEventListener('contextmenu', e => {
-            if(e.target.closest('.desktop-icon')) return;
-            e.preventDefault();
-            const cm = document.getElementById('context-menu');
-            cm.innerHTML = `
-                <div class="context-item" onclick="openWallpaperPanel(); closeCtx()">
-                    <svg class="icon-svg" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-                    <span>更换壁纸</span>
-                </div>
-                <div class="context-item" onclick="refreshDesktop(); closeCtx()">
-                    <svg class="icon-svg" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
-                    <span>刷新桌面</span>
-                </div>
-                <div class="context-divider"></div>
-                <div class="context-item" onclick="openNotepad(); closeCtx()">
-                    <svg class="icon-svg" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-                    <span>新建文本文档</span>
-                </div>
-                <div class="context-divider"></div>
-                <div class="context-item" onclick="openSettings(); closeCtx()">
-                    <svg class="icon-svg" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/></svg>
-                    <span>系统设置</span>
-                </div>
-            `;
-            showCtx(e.clientX, e.clientY);
-        });
+
 
         function ctxApp(e, type) {
             e.preventDefault(); e.stopPropagation();
@@ -2144,29 +2532,7 @@
             }
         };
 
-        // 桌面拖拽上传
-        desktop.ondragover = e => { e.preventDefault(); };
-        desktop.ondrop = e => {
-            e.preventDefault();
-            const files = e.dataTransfer.files;
-            if(files.length > 0 && SYSTEM.mounted) {
-                Array.from(files).forEach(file => {
-                    const reader = new FileReader();
-                    reader.onload = function(evt) {
-                        const buffer = SYSTEM.Buffer.from(evt.target.result);
-                        const path = SYSTEM.desktopPath + '/' + file.name;
-                        SYSTEM.fs.writeFile(path, buffer, (err) => {
-                            if(err) console.error(err); 
-                            else {
-                                refreshDesktop();
-                                Notify.success('上传成功', `文件 "${file.name}" 已保存到桌面`);
-                            }
-                        });
-                    };
-                    reader.readAsArrayBuffer(file);
-                });
-            }
-        };
+
 
         function resetSystem() {
             if(confirm("警告：这会清空所有保存的文件和设置。确定重置吗？")) {
