@@ -1725,6 +1725,23 @@
                     });
                 });
             }
+            // 6. 处理 MP4 视频文件
+            else if(filename.match(/\.mp4$/i)) {
+                SYSTEM.fs.readFile(fullPath, (err, data) => {
+                    if(err) { Notify.error('打开失败', err.message); return; }
+                    const base64 = SYSTEM.Buffer.from(data).toString('base64');
+                    const dataUrl = `data:video/mp4;base64,${base64}`;
+                    
+                    createWindow({
+                        title: filename,
+                        iconHtml: '<svg class="icon-svg sm" viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"/><line x1="7" y1="2" x2="7" y2="22"/><line x1="17" y1="2" x2="17" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="2" y1="7" x2="7" y2="7"/><line x1="2" y1="17" x2="7" y2="17"/><line x1="17" y1="17" x2="22" y2="17"/><line x1="17" y1="7" x2="22" y2="7"/></svg>',
+                        width: 800, height: 600,
+                        content: `<div class="content-area dark" style="display:flex;align-items:center;justify-content:center;overflow:hidden">
+                            <video src="${dataUrl}" controls autoplay style="max-width:100%;max-height:100%"></video>
+                        </div>`
+                    });
+                });
+            }
             else {
                 Notify.warning('不支持的格式', '暂时无法打开此类型文件');
             }
@@ -2172,6 +2189,7 @@
                 width: 900, height: 600,
                 content: `
                     <div class="browser-nav">
+                        <!-- 修复：移除了 disabled 属性，去掉了红色叉号 -->
                         <button class="nav-btn" id="nav-back-${SYSTEM.idCounter+1}"><svg class="icon-svg" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg></button>
                         <button class="nav-btn" id="nav-forward-${SYSTEM.idCounter+1}"><svg class="icon-svg" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></button>
                         <button class="nav-btn" id="nav-refresh-${SYSTEM.idCounter+1}"><svg class="icon-svg" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg></button>
@@ -2195,22 +2213,78 @@
                     const backBtn = document.getElementById('nav-back-' + winId);
                     const fwdBtn = document.getElementById('nav-forward-' + winId);
                     
-                    const navigate = () => {
-                        let url = urlInput.value.trim();
-                        if(!url.startsWith('http') && !url.startsWith('blob:') && !url.startsWith('file:')) url = 'https://' + url;
-                        urlInput.value = url;
+                    // 历史栈数据
+                    let historyStack = [startUrl];
+                    let currentIndex = 0;
+                    
+                    // 修复：UI更新不再设置 disabled 属性，而是仅改变透明度视觉效果
+                    const updateUI = () => {
+                        // 如果没有后退历史，降低透明度，但不禁用点击
+                        backBtn.style.opacity = currentIndex === 0 ? '0.3' : '1';
+                        backBtn.style.cursor = currentIndex === 0 ? 'default' : 'pointer'; // 没历史时显示普通鼠标，有历史显示手型
+                        
+                        // 如果没有前进历史，降低透明度
+                        fwdBtn.style.opacity = currentIndex === historyStack.length - 1 ? '0.3' : '1';
+                        fwdBtn.style.cursor = currentIndex === historyStack.length - 1 ? 'default' : 'pointer';
+                        
+                        urlInput.value = historyStack[currentIndex];
+                    };
+
+                    const loadFrame = (url) => {
                         loading.classList.add('active');
                         frame.src = url;
+                    };
+
+                    const navigate = () => {
+                        let url = urlInput.value.trim();
+                        if(!url.startsWith('http') && !url.startsWith('blob:') && !url.startsWith('file:')) {
+                            url = 'https://' + url;
+                        }
+                        
+                        if (url !== historyStack[currentIndex]) {
+                            historyStack = historyStack.slice(0, currentIndex + 1);
+                            historyStack.push(url);
+                            currentIndex++;
+                        }
+                        
+                        updateUI();
+                        loadFrame(url);
                     };
                     
                     urlInput.onkeydown = e => { if(e.key === 'Enter') navigate(); };
                     goBtn.onclick = navigate;
-                    refreshBtn.onclick = () => { loading.classList.add('active'); frame.src = frame.src; };
+                    
+                    refreshBtn.onclick = () => { 
+                        loading.classList.add('active'); 
+                        // 强制刷新 iframe
+                        const currentUrl = frame.src;
+                        frame.src = 'about:blank';
+                        setTimeout(() => { frame.src = currentUrl; }, 10);
+                    };
+                    
                     frame.onload = () => loading.classList.remove('active');
 
-                    // 修复导航键
-                    backBtn.onclick = () => { try { frame.contentWindow.history.back(); } catch(e){} };
-                    fwdBtn.onclick = () => { try { frame.contentWindow.history.forward(); } catch(e){} };
+                    // 后退逻辑：点击不再被阻挡，内部判断是否有动作
+                    backBtn.onclick = () => { 
+                        if (currentIndex > 0) {
+                            currentIndex--;
+                            const prevUrl = historyStack[currentIndex];
+                            loadFrame(prevUrl);
+                            updateUI();
+                        }
+                    };
+
+                    // 前进逻辑
+                    fwdBtn.onclick = () => { 
+                        if (currentIndex < historyStack.length - 1) {
+                            currentIndex++;
+                            const nextUrl = historyStack[currentIndex];
+                            loadFrame(nextUrl);
+                            updateUI();
+                        }
+                    };
+                    
+                    updateUI();
                 }
             });
         }
