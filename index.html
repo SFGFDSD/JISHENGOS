@@ -513,11 +513,28 @@
             padding: 10px 14px; border-radius: 6px;
             cursor: pointer; transition: background 0.15s;
             border-bottom: 1px solid rgba(255,255,255,0.06);
+            user-select: none;
         }
         .folder-item:hover { background: rgba(255,255,255,0.08); }
         .folder-item:last-child { border: none; }
         .folder-item .icon-svg { color: var(--text-muted); }
         .folder-item span { font-size: 13px; }
+        .folder-item.selected {
+            background: rgba(0, 120, 212, 0.25);
+            border-color: rgba(0, 120, 212, 0.5);
+        }
+        .folder-item.selected .icon-svg { color: #fff; }
+        .folder-item.selected span { color: #fff; }
+
+        /* === 文件夹窗口框选样式 === */
+        .folder-selection-box {
+            position: absolute;
+            background: rgba(0, 120, 212, 0.2);
+            border: 1px solid rgba(0, 120, 212, 0.6);
+            pointer-events: none;
+            display: none;
+            z-index: 100;
+        }
 
         /* === 解压进度条 === */
         .extract-progress {
@@ -1537,6 +1554,10 @@
                     </div>
                     ${filename.endsWith('.zip') ? `<div class="context-item" onclick="extractZip('${filename}'); closeCtx()"><svg class="icon-svg" viewBox="0 0 24 24"><path d="M21 8v13H3V8"/></svg><span>解压</span></div>` : ''}
                     <div class="context-divider"></div>
+                    <div class="context-item" onclick="renameDesktopFile('${filename}'); closeCtx()">
+                        <svg class="icon-svg" viewBox="0 0 24 24"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+                        <span>重命名</span>
+                    </div>
                     <div class="context-item" onclick="deleteFile('${filename}'); closeCtx()" style="color:var(--win-close-red)">
                         <svg class="icon-svg" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/></svg><span>删除</span>
                     </div>
@@ -1568,11 +1589,13 @@
             });
         }
 
-        // 7. 替换 openFolderWindow (支持从文件夹拖出)
+        // 7. 替换 openFolderWindow (支持从文件夹拖出、框选、多选)
         function openFolderWindow(folderName) {
             const path = SYSTEM.desktopPath + '/' + folderName;
             SYSTEM.fs.readdir(path, (err, files) => {
                 if(err) { Notify.error('错误', err.message); return; }
+                
+                const windowId = 'folder-' + Date.now();
                 
                 let content = files.length === 0 
                     ? '<div style="padding:40px;text-align:center;color:#888">文件夹为空</div>'
@@ -1580,24 +1603,594 @@
                         let icon = '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>';
                         if(file.match(/\.(jpg|png|gif|webp)$/i)) icon = '<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/>';
                         
-                        // 关键：添加 draggable 属性和事件
                         return `
-                            <div class="folder-item" draggable="true" 
-                                 ondragstart="event.dataTransfer.setData('text/plain', JSON.stringify({srcPath:'${path}/${file}', filename:'${file}'}))"
-                                 ondblclick="openFileFromPath('${path}/${file}', '${file}')">
+                            <div class="folder-item" data-filename="${file}" data-path="${path}/${file}"
+                                 ondblclick="openFileFromPath('${path}/${file}', '${file}')"
+                                 onmousedown="handleFolderItemMouseDown(event, '${windowId}')"
+                                 oncontextmenu="handleFolderItemContextMenu(event, '${windowId}', '${file}', '${path}/${file}')">
                                 <svg class="icon-svg" viewBox="0 0 24 24">${icon}</svg>
                                 <span>${file}</span>
                             </div>
                         `;
                     }).join('');
                 
-                createWindow({
+                const winId = createWindow({
                     title: folderName,
                     iconHtml: '<svg class="icon-svg sm" viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2v11z"/></svg>',
                     width: 500, height: 400,
-                    content: `<div class="content-area dark" style="padding:8px;overflow-y:auto">${content}</div>`
+                    content: `
+                        <div class="content-area dark" id="folder-content-${windowId}" style="padding:8px;overflow-y:auto;position:relative;height:100%">
+                            <div class="folder-selection-box" id="folder-selection-${windowId}"></div>
+                            ${content}
+                        </div>
+                    `,
+                    onInit: (w, id) => {
+                        initFolderSelection(windowId);
+                    }
                 });
             });
+        }
+
+        // 文件夹窗口框选逻辑
+        function initFolderSelection(windowId) {
+            const contentArea = document.getElementById('folder-content-' + windowId);
+            const selectionBox = document.getElementById('folder-selection-' + windowId);
+            let isSelecting = false, startX, startY;
+            
+            contentArea.onmousedown = (e) => {
+                if(e.button !== 0) return;
+                
+                if(isSelecting) return;
+                
+                if(e.target.closest('.folder-item')) return;
+                
+                e.preventDefault();
+                e.stopPropagation();
+                clearFolderSelection(windowId);
+                isSelecting = true;
+                contentArea.dataset.isSelecting = 'true';
+                
+                const rect = contentArea.getBoundingClientRect();
+                startX = e.clientX - rect.left;
+                startY = e.clientY - rect.top;
+                
+                selectionBox.style.display = 'block';
+                selectionBox.style.width = '0';
+                selectionBox.style.height = '0';
+                selectionBox.style.left = startX + 'px';
+                selectionBox.style.top = startY + 'px';
+            };
+            
+            contentArea.onmousemove = (e) => {
+                if(!isSelecting) return;
+                
+                const rect = contentArea.getBoundingClientRect();
+                const curX = e.clientX - rect.left;
+                const curY = e.clientY - rect.top;
+                
+                const left = Math.min(startX, curX);
+                const top = Math.min(startY, curY);
+                const width = Math.abs(startX - curX);
+                const height = Math.abs(startY - curY);
+                
+                selectionBox.style.left = left + 'px';
+                selectionBox.style.top = top + 'px';
+                selectionBox.style.width = width + 'px';
+                selectionBox.style.height = height + 'px';
+                
+                const items = contentArea.querySelectorAll('.folder-item');
+                items.forEach(item => {
+                    const itemRect = item.getBoundingClientRect();
+                    const contentRect = contentArea.getBoundingClientRect();
+                    
+                    const itemLeft = itemRect.left - contentRect.left;
+                    const itemTop = itemRect.top - contentRect.top;
+                    const itemRight = itemLeft + itemRect.width;
+                    const itemBottom = itemTop + itemRect.height;
+                    
+                    const intersect = !(itemRight < left || itemLeft > left + width || 
+                                       itemBottom < top || itemTop > top + height);
+                    
+                    if(intersect) {
+                        item.classList.add('selected');
+                    } else {
+                        item.classList.remove('selected');
+                    }
+                });
+            };
+            
+            contentArea.onmouseup = () => {
+                isSelecting = false;
+                contentArea.dataset.isSelecting = 'false';
+                selectionBox.style.display = 'none';
+            };
+            
+            contentArea.onmouseleave = () => {
+                isSelecting = false;
+                contentArea.dataset.isSelecting = 'false';
+                selectionBox.style.display = 'none';
+            };
+        }
+
+        function handleFolderItemMouseDown(e, windowId) {
+            if(e.button !== 0) return;
+            
+            const contentArea = document.getElementById('folder-content-' + windowId);
+            if(!contentArea) return;
+            
+            if(contentArea.dataset.isSelecting === 'true') return;
+            
+            const item = e.currentTarget;
+            
+            if(e.ctrlKey) {
+                item.classList.toggle('selected');
+            } else if(!item.classList.contains('selected')) {
+                clearFolderSelection(windowId);
+                item.classList.add('selected');
+            }
+            
+            setupFolderItemDrag(e, windowId);
+        }
+
+        function handleFolderItemContextMenu(e, windowId, filename, fullPath) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            const contentArea = document.getElementById('folder-content-' + windowId);
+            if(!contentArea) return;
+            
+            const item = e.currentTarget;
+            if(!item.classList.contains('selected')) {
+                clearFolderSelection(windowId);
+                item.classList.add('selected');
+            }
+            
+            const selectedItems = Array.from(contentArea.querySelectorAll('.folder-item.selected'));
+            const count = selectedItems.length;
+            
+            const cm = document.getElementById('context-menu');
+            let html = '';
+            
+            if(count > 1) {
+                html = `
+                    <div class="context-item" onclick="deleteFolderItems('${windowId}'); closeCtx()">
+                        <svg class="icon-svg" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+                        <span>删除选中 (${count})</span>
+                    </div>
+                `;
+            } else {
+                const isZip = filename.toLowerCase().endsWith('.zip');
+                html = `
+                    <div class="context-item" onclick="openFileFromPath('${fullPath}', '${filename}'); closeCtx()">
+                        <svg class="icon-svg" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+                        <span>打开</span>
+                    </div>
+                    ${isZip ? `<div class="context-item" onclick="extractZipFromPath('${fullPath}'); closeCtx()"><svg class="icon-svg" viewBox="0 0 24 24"><path d="M21 8v13H3V8"/></svg><span>解压</span></div>` : ''}
+                    <div class="context-divider"></div>
+                    <div class="context-item" onclick="renameFolderItem('${windowId}', '${filename}'); closeCtx()">
+                        <svg class="icon-svg" viewBox="0 0 24 24"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+                        <span>重命名</span>
+                    </div>
+                    <div class="context-item" onclick="deleteFolderItem('${windowId}', '${filename}'); closeCtx()" style="color:var(--win-close-red)">
+                        <svg class="icon-svg" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/></svg>
+                        <span>删除</span>
+                    </div>
+                `;
+            }
+            
+            cm.innerHTML = html;
+            showCtx(e.clientX, e.clientY);
+        }
+
+        function deleteFolderItems(windowId) {
+            if(!confirm('确定删除选中项吗？')) return;
+            
+            const contentArea = document.getElementById('folder-content-' + windowId);
+            if(!contentArea) return;
+            
+            const folderName = contentArea.closest('.window').querySelector('.window-title-text').innerText;
+            const path = SYSTEM.desktopPath + '/' + folderName;
+            
+            const selectedItems = Array.from(contentArea.querySelectorAll('.folder-item.selected'));
+            let deletedCount = 0;
+            const total = selectedItems.length;
+            
+            selectedItems.forEach(item => {
+                const filename = item.dataset.filename;
+                const fullPath = path + '/' + filename;
+                
+                SYSTEM.fs.unlink(fullPath, (err) => {
+                    if(err) {
+                        console.error('删除失败:', filename, err);
+                    } else {
+                        deletedCount++;
+                    }
+                    
+                    if(deletedCount === total) {
+                        openFolderWindow(folderName);
+                        Notify.success('删除成功', `已删除 ${total} 个文件`);
+                    }
+                });
+            });
+        }
+
+        function deleteFolderItem(windowId, filename) {
+            if(!confirm(`确定删除 "${filename}" 吗？`)) return;
+            
+            const contentArea = document.getElementById('folder-content-' + windowId);
+            if(!contentArea) return;
+            
+            const folderName = contentArea.closest('.window').querySelector('.window-title-text').innerText;
+            const path = SYSTEM.desktopPath + '/' + folderName;
+            const fullPath = path + '/' + filename;
+            
+            SYSTEM.fs.unlink(fullPath, (err) => {
+                if(err) {
+                    Notify.error('删除失败', err.message);
+                } else {
+                    openFolderWindow(folderName);
+                    Notify.success('删除成功', `文件 "${filename}" 已删除`);
+                }
+            });
+        }
+
+        function renameFolderItem(windowId, oldName) {
+            const newName = prompt('请输入新名称:', oldName);
+            if(!newName || newName === oldName) return;
+            
+            const contentArea = document.getElementById('folder-content-' + windowId);
+            if(!contentArea) return;
+            
+            const folderName = contentArea.closest('.window').querySelector('.window-title-text').innerText;
+            const path = SYSTEM.desktopPath + '/' + folderName;
+            const oldPath = path + '/' + oldName;
+            const newPath = path + '/' + newName;
+            
+            SYSTEM.fs.rename(oldPath, newPath, (err) => {
+                if(err) {
+                    Notify.error('重命名失败', err.message);
+                } else {
+                    openFolderWindow(folderName);
+                    Notify.success('重命名成功', `已重命名为 "${newName}"`);
+                }
+            });
+        }
+
+        function extractZipFromPath(zipPath) {
+            const filename = zipPath.split('/').pop();
+            const folderName = filename.replace(/\.zip$/i, '');
+            const targetDir = SYSTEM.desktopPath + '/' + folderName;
+
+            const progressEl = document.createElement('div');
+            progressEl.className = 'extract-progress';
+            progressEl.innerHTML = `
+                <h4>正在解压...</h4>
+                <div class="bar"><div class="bar-fill" id="extract-bar"></div></div>
+                <p id="extract-status">读取压缩包...</p>
+            `;
+            document.body.appendChild(progressEl);
+
+            SYSTEM.fs.readFile(zipPath, async (err, data) => {
+                if (err) { progressEl.remove(); Notify.error('解压失败', '读取文件错误'); return; }
+
+                try {
+                    document.getElementById('extract-status').innerText = '解析文件结构...';
+                    const zip = await JSZip.loadAsync(data);
+                    
+                    await new Promise((resolve) => {
+                        SYSTEM.fs.mkdir(targetDir, (err) => {
+                            if(err && err.code !== 'EEXIST') resolve(err);
+                            else resolve();
+                        });
+                    });
+
+                    const files = Object.keys(zip.files).filter(name => !zip.files[name].dir);
+                    const total = files.length;
+                    let done = 0;
+
+                    for (const relativePath of files) {
+                        const zipEntry = zip.files[relativePath];
+                        const content = await zipEntry.async('arraybuffer');
+                        const buffer = SYSTEM.Buffer.from(content);
+                        
+                        const fullPath = targetDir + '/' + relativePath;
+                        const parentDir = fullPath.substring(0, fullPath.lastIndexOf('/'));
+                        await ensureDir(parentDir);
+
+                        document.getElementById('extract-status').innerText = relativePath;
+                        
+                        await new Promise((resolve) => {
+                            SYSTEM.fs.writeFile(fullPath, buffer, () => resolve());
+                        });
+
+                        done++;
+                        document.getElementById('extract-bar').style.width = (done / total * 100) + '%';
+                    }
+
+                    progressEl.remove();
+                    refreshDesktop();
+                    Notify.success('解压完成', `已解压到 "${folderName}"`);
+                    openFolderWindow(folderName);
+
+                } catch (e) { 
+                    progressEl.remove(); 
+                    Notify.error('解压出错', e.message); 
+                    console.error(e);
+                }
+            });
+        }
+
+        function setupFolderItemDrag(e, windowId) {
+            const contentArea = document.getElementById('folder-content-' + windowId);
+            if(!contentArea) return;
+            
+            const selectedItems = Array.from(contentArea.querySelectorAll('.folder-item.selected'));
+            if(selectedItems.length === 0) return;
+            
+            const startX = e.clientX;
+            const startY = e.clientY;
+            let isDragging = false;
+            let dragPreview = null;
+            
+            const onMouseMove = (moveEvent) => {
+                const dx = moveEvent.clientX - startX;
+                const dy = moveEvent.clientY - startY;
+                
+                if(!isDragging && (Math.abs(dx) > 5 || Math.abs(dy) > 5)) {
+                    isDragging = true;
+                    document.body.style.cursor = 'move';
+                    
+                    const folderName = contentArea.closest('.window').querySelector('.window-title-text').innerText;
+                    const path = SYSTEM.desktopPath + '/' + folderName;
+                    
+                    const filesData = selectedItems.map(item => ({
+                        filename: item.dataset.filename,
+                        path: item.dataset.path
+                    }));
+                    
+                    dragPreview = createDragPreview(filesData, moveEvent.clientX, moveEvent.clientY);
+                }
+                
+                if(isDragging && dragPreview) {
+                    dragPreview.style.left = (moveEvent.clientX + 10) + 'px';
+                    dragPreview.style.top = (moveEvent.clientY + 10) + 'px';
+                }
+            };
+            
+            const onMouseUp = (upEvent) => {
+                document.removeEventListener('mousemove', onMouseMove);
+                document.removeEventListener('mouseup', onMouseUp);
+                document.body.style.cursor = '';
+                
+                if(dragPreview) {
+                    dragPreview.remove();
+                    dragPreview = null;
+                }
+                
+                if(!isDragging) return;
+                
+                const target = upEvent.target;
+                const desktop = document.getElementById('desktop');
+                
+                const folderName = contentArea.closest('.window').querySelector('.window-title-text').innerText;
+                const sourcePath = SYSTEM.desktopPath + '/' + folderName;
+                
+                let targetPath = null;
+                let targetFolderName = null;
+                let operationType = 'copy';
+                
+                const folderWindow = target.closest('.window');
+                const desktopIcon = target.closest('.desktop-icon');
+                
+                // === 修复后的判定逻辑 ===
+                // 此处不再检查 desktop.contains(target)，因为 window 元素并不是 desktop 的子元素
+                if (folderWindow) {
+                    // 1. 如果目标是窗口（文件夹窗口）
+                    const titleText = folderWindow.querySelector('.window-title-text').innerText;
+                    // 在这个简易OS中，窗口标题即文件夹名
+                    targetFolderName = titleText;
+                    targetPath = SYSTEM.desktopPath + '/' + targetFolderName;
+                    operationType = 'move';
+                } else if (desktopIcon && desktopIcon.dataset.filename) {
+                     // 2. 如果目标是桌面上的文件夹图标
+                    const iconFilename = desktopIcon.dataset.filename;
+                    // 这里简化逻辑：假设拖到桌面图标上就是往那个文件夹里放
+                    targetPath = SYSTEM.desktopPath + '/' + iconFilename;
+                    targetFolderName = iconFilename;
+                    operationType = 'move';
+                } else if (desktop.contains(target) || target === desktop || target.id === 'desktop-icons' || target.id === 'desktop-grid' || target.id === 'selection-box') {
+                    // 3. 如果目标是桌面背景
+                    targetPath = SYSTEM.desktopPath;
+                    targetFolderName = '桌面';
+                    operationType = 'move';
+                } else {
+                    // 无效目标
+                    return;
+                }
+                
+                if(!targetPath) return;
+                
+                if(targetPath === sourcePath) {
+                    Notify.warning('操作无效', '不能将文件移动到同一文件夹');
+                    return;
+                }
+                
+                let processedCount = 0;
+                let errorCount = 0;
+                const total = selectedItems.length;
+                const operationText = operationType === 'move' ? '移动' : '复制';
+                
+                const processFile = (item, callback) => {
+                    const filename = item.dataset.filename;
+                    const srcPath = item.dataset.path;
+                    const destPath = targetPath + '/' + filename;
+                    
+                    console.log(`开始${operationText}文件: ${filename} 从 ${srcPath} 到 ${destPath}`);
+                    
+                    if(operationType === 'move') {
+                        SYSTEM.fs.stat(destPath, (err) => {
+                            if(!err) {
+                                if(!confirm(`文件 "${filename}" 已存在于目标文件夹，是否覆盖？`)) {
+                                    processedCount++;
+                                    if(processedCount + errorCount === total) finishOperation();
+                                    return;
+                                }
+                            }
+                            
+                            SYSTEM.fs.rename(srcPath, destPath, (renameErr) => {
+                                if(renameErr) {
+                                    errorCount++;
+                                    console.error(`${operationText}文件失败:`, filename, renameErr);
+                                } else {
+                                    verifyFileIntegrity(destPath, filename, (isValid) => {
+                                        if(isValid) {
+                                            processedCount++;
+                                            console.log(`${operationText}成功并验证通过:`, filename);
+                                        } else {
+                                            errorCount++;
+                                            console.error(`${operationText}成功但验证失败:`, filename);
+                                        }
+                                        callback();
+                                    });
+                                }
+                            });
+                        });
+                    } else {
+                        SYSTEM.fs.readFile(srcPath, (readErr, data) => {
+                            if(readErr) {
+                                errorCount++;
+                                console.error('读取文件失败:', filename, readErr);
+                                callback();
+                                return;
+                            }
+                            
+                            SYSTEM.fs.writeFile(destPath, data, (writeErr) => {
+                                if(writeErr) {
+                                    errorCount++;
+                                    console.error('写入文件失败:', filename, writeErr);
+                                } else {
+                                    verifyFileIntegrity(destPath, filename, (isValid) => {
+                                        if(isValid) {
+                                            processedCount++;
+                                            console.log('复制成功并验证通过:', filename);
+                                        } else {
+                                            errorCount++;
+                                            console.error('复制成功但验证失败:', filename);
+                                        }
+                                        callback();
+                                    });
+                                }
+                            });
+                        });
+                    }
+                };
+                
+                const verifyFileIntegrity = (filePath, filename, callback) => {
+                    SYSTEM.fs.readFile(filePath, (err, data) => {
+                        if(err) {
+                            console.error('验证失败 - 无法读取文件:', filename, err);
+                            callback(false);
+                            return;
+                        }
+                        
+                        const size = data.length;
+                        const checksum = simpleChecksum(data);
+                        
+                        console.log(`文件验证: ${filename}, 大小: ${size} bytes, 校验和: ${checksum}`);
+                        
+                        callback(true);
+                    });
+                };
+                
+                const simpleChecksum = (buffer) => {
+                    let hash = 0;
+                    for(let i = 0; i < buffer.length; i++) {
+                        const char = buffer[i];
+                        hash = ((hash << 5) - hash) + char;
+                        hash = hash & hash;
+                    }
+                    return hash.toString(16);
+                };
+                
+                const finishOperation = () => {
+                    refreshDesktop();
+                    
+                    if(operationType === 'move' && targetFolderName !== '桌面') {
+                        setTimeout(() => openFolderWindow(targetFolderName), 300);
+                    }
+                    
+                    if(errorCount > 0) {
+                        Notify.error('部分失败', `成功${operationText} ${processedCount} 个文件，失败 ${errorCount} 个`);
+                    } else {
+                        Notify.success('操作成功', `已${operationText} ${total} 个文件到 ${targetFolderName}`);
+                    }
+                };
+                
+                let index = 0;
+                const processNext = () => {
+                    if(index >= total) {
+                        finishOperation();
+                        return;
+                    }
+                    
+                    processFile(selectedItems[index], () => {
+                        index++;
+                        processNext();
+                    });
+                };
+                
+                processNext();
+            };
+            
+            document.addEventListener('mousemove', onMouseMove);
+            document.addEventListener('mouseup', onMouseUp);
+        }
+
+        function createDragPreview(filesData, x, y) {
+            const preview = document.createElement('div');
+            preview.className = 'drag-preview';
+            preview.style.position = 'fixed';
+            preview.style.left = (x + 10) + 'px';
+            preview.style.top = (y + 10) + 'px';
+            preview.style.zIndex = '10000';
+            preview.style.opacity = '0.9';
+            preview.style.pointerEvents = 'none';
+            preview.style.background = 'rgba(24, 24, 32, 0.95)';
+            preview.style.border = '1px solid rgba(0, 120, 212, 0.5)';
+            preview.style.borderRadius = '8px';
+            preview.style.padding = '12px 16px';
+            preview.style.boxShadow = '0 8px 32px rgba(0, 0, 0, 0.5)';
+            preview.style.maxWidth = '200px';
+            
+            const count = filesData.length;
+            const displayCount = count > 5 ? 5 : count;
+            
+            let html = `<div style="font-size: 12px; color: #8a8a9a; margin-bottom: 8px; font-weight: 500;">已选中 ${count} 个文件</div>`;
+            html += '<div style="display: flex; flex-direction: column; gap: 6px;">';
+            
+            for(let i = 0; i < displayCount; i++) {
+                const file = filesData[i];
+                html += `<div style="font-size: 13px; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${file.filename}</div>`;
+            }
+            
+            if(count > 5) {
+                html += `<div style="font-size: 12px; color: #8a8a9a;">...还有 ${count - 5} 个文件</div>`;
+            }
+            
+            html += '</div>';
+            preview.innerHTML = html;
+            
+            document.body.appendChild(preview);
+            return preview;
+        }
+
+        function clearFolderSelection(windowId) {
+            const contentArea = document.getElementById('folder-content-' + windowId);
+            if(contentArea) {
+                contentArea.querySelectorAll('.folder-item.selected').forEach(item => {
+                    item.classList.remove('selected');
+                });
+            }
         }
         // === 修复：桌面背景右键菜单 & 新建文件夹 ===
         
@@ -1960,6 +2553,21 @@
             SYSTEM.fs.rename(oldPath, newPath, (err) => {
                 if(err) Notify.error('重命名失败', err.message);
                 else { refreshDesktop(); Notify.success('重命名成功', `已重命名为 "${newName}"`); }
+            });
+        }
+
+        function renameDesktopFile(oldName) {
+            const newName = prompt('请输入新名称:', oldName);
+            if(!newName || newName === oldName) return;
+            const oldPath = SYSTEM.desktopPath + '/' + oldName;
+            const newPath = SYSTEM.desktopPath + '/' + newName;
+            
+            SYSTEM.fs.rename(oldPath, newPath, (err) => {
+                if(err) Notify.error('重命名失败', err.message);
+                else { 
+                    refreshDesktop(); 
+                    Notify.success('重命名成功', `已重命名为 "${newName}"`); 
+                }
             });
         }
 
@@ -2620,4 +3228,3 @@
     </script>
 </body>
 </html>
-```
