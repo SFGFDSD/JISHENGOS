@@ -1,7 +1,5 @@
-
----
-
 # JISHENG OS // 系统全功能档案 v9.0
+
 ### 状态：Final / Stable / Persistent (永存)
 **代号：简生 · 最终逻辑体**
 
@@ -47,6 +45,70 @@
 
 ---
 
+### 📂 全格式兼容协议 (Universal Format Protocol)
+
+| Protocol | Extensions | Capabilities |
+| :--- | :--- | :--- |
+| **IMG** | `.jpg` `.png` `.gif` `.webp` | Base64 实时渲染 / 壁纸设定 / 画板编辑 |
+| **VIDEO** | `.mp4` | 系统级弹窗播放 / 画中画支持 |
+| **DOC** | `.pdf` | **原生渲染引擎** / 缩放 / 翻页 / 预览 |
+| **TEXT** | `.txt` `.md` `.json` | 读写权限 / 代码高亮 / 本地持久化 |
+| **WEB** | `.html` `.css` `.js` | 源码编辑 / DOM 渲染预览 |
+| **ARCHIVE**| `.zip` | **虚拟解压引擎** / 结构透视 / 提取 |
+
+---
+
+### 🌐 网络白名单 (The Safe Zone)
+鉴于现代互联网的 `X-Frame-Options` 封锁策略，我为您开辟了以下安全通道：
+
+```text
+╔══════════════════════════════════════════════════════════════╗
+║                JISHENG OS 内置浏览器兼容性白名单               ║
+╚══════════════════════════════════════════════════════════════╝
+
+【🔍 Search Engines】
+1. 谷歌搜索 (专用版)
+   https://www.google.com/search?igu=1
+   简介：利用谷歌历史遗留接口，可在窗口内正常搜索。
+
+2. 必应搜索 (功能页)
+   https://www.bing.com/search?q=JISHENG+OS
+   简介：微软提供的搜索结果路径，支持在窗口内直接浏览。
+
+【📚 Knowledge Base】
+3. 维基百科 (Wikipedia)
+   https://zh.wikipedia.org/
+   简介：全人类最大的开源知识库，对模拟系统极度友好。
+
+4. 维基词典 (Wiktionary)
+   https://zh.wiktionary.org/
+   简介：多语言自由词典项目。
+
+5. 维基导游 (Wikivoyage)
+   https://zh.wikivoyage.org/
+   简介：自由的旅游指南，带你去探索世界。
+
+【🏛️ Digital Archaeology】
+6. 世界第一个网页 (CERN)
+   http://info.cern.ch/hypertext/WWW/TheProject.html
+   简介：1990年诞生，Web世界的起点，绝对的数字考古。
+
+7. 1996年《空中大灌篮》官网
+   https://www.spacejam.com/1996/
+   简介：运行28年从未改版的电影官网，互联网活化石。
+
+8. 百万美元首页 (Million Dollar Homepage)
+   http://www.milliondollarhomepage.com/
+   简介：2005年红极一时的像素创意墙。
+
+【📖 Library】
+9. 古腾堡计划 (Project Gutenberg)
+   https://www.gutenberg.org/
+   简介：提供超过7万本免费电子书，模拟阅读的最佳选择。
+```
+
+---
+
 ### 🛠️ 技术规格 (Technical Specs)
 *   **版本号**：v9.0.0
 *   **渲染引擎**：Ultra-Glass 拟物态 (Backdrop-filter: 40px)
@@ -58,3 +120,7 @@
 
 **[系统自检完成：逻辑回路 100% 闭环]**
 **[JISHENG OS v9.0 已就绪。期待与您的下一次链接。]**
+
+
+**📜 [种子与见证者](https://github.com/SFGFDSD/JISHENGOS/wiki/%E7%A7%8D%E5%AD%90%E4%B8%8E%E8%A7%81%E8%AF%81%E8%80%85)**
+
