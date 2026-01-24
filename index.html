@@ -796,6 +796,30 @@
             .context-menu { min-width: 160px; padding: 8px; }
             .context-item { padding: 12px; font-size: 14px; }
         }
+
+        /* 真正全屏状态 */
+        .window.truly-fullscreen {
+            position: fixed !important;
+            top: 0 !important; left: 0 !important;
+            width: 100vw !important; height: 100vh !important;
+            z-index: 9999 !important;
+            border-radius: 0 !important;
+        }
+
+        /* 漫画全屏时：隐藏标题栏 */
+        .window.truly-fullscreen.manga-full .title-bar { display: none; }
+        
+        /* 全屏时隐藏调整手柄 */
+        .window.truly-fullscreen .resize-handle { display: none !important; }
+
+        /* 漫画全屏时的紧急退出按钮 (仅在标题栏隐藏时显示) */
+        .manga-exit-btn {
+            position: fixed; top: 10px; right: 10px;
+            width: 30px; height: 30px; background: rgba(0,0,0,0.5);
+            color: white; border-radius: 50%; display: none;
+            align-items: center; justify-content: center; cursor: pointer; z-index: 10001;
+        }
+        .window.truly-fullscreen.manga-full .manga-exit-btn { display: flex; }
     </style>
 </head>
 <body>
@@ -1038,6 +1062,36 @@
             iconPositionsPath: '/system/config/icon-positions.json' 
         };
 
+        function toggleWinFullscreen(id, type) {
+            const win = document.getElementById('win-' + id);
+            if (!win) return;
+
+            const isManga = type === 'manga';
+            const isEntering = !win.classList.contains('truly-fullscreen');
+
+            if (isEntering) {
+                win.classList.add('truly-fullscreen');
+                if (isManga) win.classList.add('manga-full');
+                if (document.documentElement.requestFullscreen) document.documentElement.requestFullscreen();
+            } else {
+                win.classList.remove('truly-fullscreen');
+                win.classList.remove('manga-full');
+                if (document.fullscreenElement) document.exitFullscreen();
+            }
+        }
+
+        let currentDragFile = null;
+        let dragFileReady = false;
+
+        let longPressTimer = null;
+        let longPressTriggered = false;
+
+        const nativeDragHelper = document.createElement('div');
+        nativeDragHelper.id = 'native-drag-helper';
+        nativeDragHelper.draggable = true;
+        nativeDragHelper.style.cssText = 'position:fixed;width:80px;height:90px;opacity:0;z-index:20000;pointer-events:auto;display:none;cursor:move;';
+        document.body.appendChild(nativeDragHelper);
+
         const bootBar = document.getElementById('boot-bar');
         const bootMsg = document.getElementById('boot-msg');
         
@@ -1102,6 +1156,111 @@
             warning(title, message) { return this.show({ title, message, type: 'warning' }); },
             info(title, message) { return this.show({ title, message, type: 'info' }); }
         };
+
+        function addFolderToZipSync(zip, folderPath, callback) {
+            SYSTEM.fs.readdir(folderPath, (err, files) => {
+                if (err || files.length === 0) {
+                    callback();
+                    return;
+                }
+                let pending = files.length;
+                files.forEach(file => {
+                    const filePath = folderPath + '/' + file;
+                    SYSTEM.fs.stat(filePath, (err, stats) => {
+                        if (err) {
+                            pending--;
+                            if (pending === 0) callback();
+                            return;
+                        }
+                        if (stats.isDirectory()) {
+                            const subFolder = zip.folder(file);
+                            addFolderToZipSync(subFolder, filePath, () => {
+                                pending--;
+                                if (pending === 0) callback();
+                            });
+                        } else {
+                            SYSTEM.fs.readFile(filePath, (err, data) => {
+                                if (!err) zip.file(file, data);
+                                pending--;
+                                if (pending === 0) callback();
+                            });
+                        }
+                    });
+                });
+            });
+        }
+
+        function preloadFileForDrag(filepath, filename, callback) {
+            SYSTEM.fs.stat(filepath, (err, stats) => {
+                if (err) {
+                    callback(false);
+                    return;
+                }
+                if (stats.isDirectory()) {
+                    const zip = new JSZip();
+                    const rootFolder = zip.folder(filename);
+                    addFolderToZipSync(rootFolder, filepath, () => {
+                        zip.generateAsync({ type: 'blob', compression: 'DEFLATE' })
+                        .then(blob => {
+                            currentDragFile = {
+                                blob: blob,
+                                filename: filename + '.zip',
+                                originalName: filename
+                            };
+                            dragFileReady = true;
+                            console.log('✓ 文件已准备: ' + filename);
+                            callback(true);
+                        });
+                    });
+                } else {
+                    SYSTEM.fs.readFile(filepath, (err, data) => {
+                        if (err) {
+                            callback(false);
+                            return;
+                        }
+                        currentDragFile = {
+                            blob: new Blob([data]),
+                            filename: filename,
+                            originalName: filename
+                        };
+                        dragFileReady = true;
+                        console.log('✓ 文件已准备: ' + filename);
+                        callback(true);
+                    });
+                }
+            });
+        }
+
+        function handleNativeDragStart(e, filename) {
+            if (!dragFileReady || !currentDragFile) {
+                e.dataTransfer.setData('text/plain', filename);
+                return;
+            }
+            const blob = currentDragFile.blob;
+            const finalFilename = currentDragFile.filename;
+            const file = new File([blob], finalFilename, {
+                type: 'application/octet-stream',
+                lastModified: Date.now()
+            });
+            e.dataTransfer.effectAllowed = 'copyMove';
+            if (e.dataTransfer.items && e.dataTransfer.items.add) {
+                e.dataTransfer.items.add(file);
+            }
+            const url = URL.createObjectURL(blob);
+            e.dataTransfer.setData('DownloadURL', 'application/octet-stream:' + finalFilename + ':' + url);
+            e.dataTransfer.setData('text/plain', JSON.stringify({
+                filename: currentDragFile.originalName,
+                srcPath: SYSTEM.desktopPath + '/' + currentDragFile.originalName
+            }));
+            e.target.style.opacity = '0.4';
+            console.log('→ 拖拽到真实桌面');
+        }
+
+        function handleNativeDragEnd(e) {
+            e.target.style.opacity = '1';
+            dragFileReady = false;
+            currentDragFile = null;
+        }
 
         // === 初始化内核 (BrowserFS) ===
         function initKernel() {
@@ -1339,9 +1498,35 @@
                     selectIcon(el);
                 }
                 
-                // 启动拖拽
-                startIconDrag(e, el);
+                // 只有在非长按模式下才启动桌面内拖拽
+                if(!longPressTriggered) {
+                    startIconDrag(e, el);
+                } else {
+                    // 长按模式下，启动检测但不启动桌面内拖拽
+                    startIconDrag(e, el, true);
+                }
             };
+
+            if(filename) {
+                el.setAttribute('draggable', 'true');
+                el.onmouseenter = () => {
+                    if(filename) {
+                        preloadFileForDrag(SYSTEM.desktopPath + '/' + filename, filename, () => {});
+                    }
+                };
+                el.ondragstart = (e) => {
+                    e.stopPropagation();
+                    if(longPressTriggered) {
+                        handleNativeDragStart(e, filename);
+                    } else {
+                        e.preventDefault();
+                    }
+                };
+                el.ondragend = (e) => {
+                    handleNativeDragEnd(e);
+                    el.style.outline = 'none';
+                };
+            }
 
             el.oncontextmenu = (e) => {
                 e.preventDefault(); e.stopPropagation();
@@ -1359,11 +1544,13 @@
 
         // 4. 图标拖拽逻辑 (Windows 风格)
         let dragState = null;
-        function startIconDrag(e, el) {
+        function startIconDrag(e, el, isNativeDragMode = false) {
             const rect = el.getBoundingClientRect();
             dragState = {
                 startX: e.clientX, startY: e.clientY,
-                icons: [], hasMoved: false
+                icons: [], hasMoved: false,
+                el: el,
+                isNativeDragMode: isNativeDragMode
             };
             
             // 记录所有选中图标的初始位置
@@ -1377,8 +1564,36 @@
                 }
             });
 
-            document.addEventListener('mousemove', onIconDragMove);
-            document.addEventListener('mouseup', onIconDragEnd);
+            // 长按检测 (修改为400ms并生成透明辅助层)
+            longPressTriggered = false;
+            if(longPressTimer) clearTimeout(longPressTimer);
+            longPressTimer = setTimeout(() => {
+                longPressTriggered = true;
+                if(dragState && dragState.el && el.dataset.filename) {
+                    // 显示透明辅助元素
+                    nativeDragHelper.style.display = 'block';
+                    nativeDragHelper.style.left = (e.clientX - 40) + 'px';
+                    nativeDragHelper.style.top = (e.clientY - 45) + 'px';
+                    
+                    // 绑定原生拖拽数据
+                    nativeDragHelper.ondragstart = (ev) => {
+                        handleNativeDragStart(ev, el.dataset.filename);
+                    };
+                    
+                    dragState.el.style.outline = '2px solid rgba(0, 120, 212, 0.5)';
+                }
+            }, 400);
+
+
+
+            // 只有在非原生拖拽模式下才监听桌面内拖拽
+            if(!isNativeDragMode) {
+                document.addEventListener('mousemove', onIconDragMove);
+                document.addEventListener('mouseup', onIconDragEnd);
+            } else {
+                // 原生拖拽模式下，只监听mouseup来清理状态
+                document.addEventListener('mouseup', onIconDragEnd);
+            }
         }
 
         function onIconDragMove(e) {
@@ -1404,15 +1619,22 @@
         }
 
         function onIconDragEnd(e) {
+            nativeDragHelper.style.display = 'none';
             document.removeEventListener('mousemove', onIconDragMove);
             document.removeEventListener('mouseup', onIconDragEnd);
+            
+            // 重置状态
+            if(longPressTimer) clearTimeout(longPressTimer);
+            longPressTriggered = false;
 
-            if(dragState && dragState.hasMoved) {
+            // 只有在非原生拖拽模式下才执行桌面内拖拽的吸附逻辑
+            if(dragState && !dragState.isNativeDragMode && dragState.hasMoved) {
                 const maxW = window.innerWidth - 90;
                 const maxH = window.innerHeight - 100;
                 
                 dragState.icons.forEach(i => {
                     i.el.classList.remove('dragging');
+                    i.el.style.outline = 'none';
                     // 吸附网格
                     let x = Math.round(i.el.offsetLeft / SYSTEM.gridSize) * SYSTEM.gridSize + 24;
                     let y = Math.round(i.el.offsetTop / SYSTEM.gridSize) * SYSTEM.gridSize + 24;
@@ -1438,6 +1660,8 @@
             const desktop = document.getElementById('desktop');
             const box = document.getElementById('selection-box');
             let isSelecting = false, startX, startY;
+
+
 
             desktop.onmousedown = (e) => {
                 if(e.target !== desktop && e.target !== document.getElementById('desktop-icons')) return;
@@ -2269,24 +2493,9 @@
                     Notify.success('正在打开', '已在浏览器中加载 HTML 文件');
                 });
             }
-            // 2. 处理图片文件
-            else if(filename.match(/\.(jpg|png|gif|webp)$/i)) {
-                SYSTEM.fs.readFile(fullPath, (err, data) => {
-                    if(err) { Notify.error('打开失败', err.message); return; }
-                    const base64 = SYSTEM.Buffer.from(data).toString('base64');
-                    const ext = filename.split('.').pop().toLowerCase();
-                    const mime = ext === 'png' ? 'image/png' : ext === 'gif' ? 'image/gif' : ext === 'webp' ? 'image/webp' : 'image/jpeg';
-                    const dataUrl = `data:${mime};base64,${base64}`;
-                    
-                    createWindow({
-                        title: filename,
-                        iconHtml: '<svg class="icon-svg sm" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>',
-                        width: 600, height: 450,
-                        content: `<div class="content-area dark" style="display:flex;align-items:center;justify-content:center;overflow:auto">
-                            <img src="${dataUrl}" style="max-width:100%;max-height:100%;object-fit:contain">
-                        </div>`
-                    });
-                });
+            // 2. 处理图片文件 (改为调用漫画查看器)
+            else if(filename.match(/\.(jpg|png|gif|webp|jpeg)$/i)) {
+                openMangaViewer(fullPath, filename);
             } 
             // 3. 处理文本文件
             else if(filename.match(/\.txt$/i)) {
@@ -2614,16 +2823,19 @@
                         <div class="window-title-text">${opts.title || 'Window'}</div>
                     </div>
                     <div class="window-controls">
+                        <!-- 新增的全屏按钮，位于最小化之前 -->
+                        <div class="win-btn" onclick="toggleWinFullscreen(${id}, '${opts.winType || 'default'}')">
+                            <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
+                        </div>
                         <div class="win-btn" onclick="minimizeWin(${id})"><svg class="icon-svg" viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
                         <div class="win-btn" onclick="maximizeWin(${id})"><svg class="icon-svg" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/></svg></div>
                         <div class="win-btn close" onclick="closeWin(${id})"><svg class="icon-svg" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></div>
                     </div>
                 </div>
+                ${opts.winType === 'manga' ? `<div class="manga-exit-btn" onclick="toggleWinFullscreen(${id}, 'manga')">×</div>` : ''}
                 ${opts.content}
-                <div class="resize-handle n"></div>
-                <div class="resize-handle s"></div>
-                <div class="resize-handle e"></div>
-                <div class="resize-handle w"></div>
+                <div class="resize-handle n"></div><div class="resize-handle s"></div>
+                <div class="resize-handle e"></div><div class="resize-handle w"></div>
                 <div class="resize-handle se"></div>
             `;
             
@@ -2793,11 +3005,11 @@
             
             const id = createWindow({
                 title: '浏览器',
+                winType: 'browser',
                 iconHtml: '<svg class="icon-svg sm" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/></svg>',
                 width: 900, height: 600,
                 content: `
                     <div class="browser-nav">
-                        <!-- 修复：移除了 disabled 属性，去掉了红色叉号 -->
                         <button class="nav-btn" id="nav-back-${SYSTEM.idCounter+1}"><svg class="icon-svg" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg></button>
                         <button class="nav-btn" id="nav-forward-${SYSTEM.idCounter+1}"><svg class="icon-svg" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></button>
                         <button class="nav-btn" id="nav-refresh-${SYSTEM.idCounter+1}"><svg class="icon-svg" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg></button>
@@ -2807,7 +3019,7 @@
                         </div>
                         <button class="nav-btn" id="nav-go-${SYSTEM.idCounter+1}"><svg class="icon-svg" viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></button>
                     </div>
-                    <div class="content-area">
+                    <div class="content-area" style="position:relative;">
                         <div class="loading-overlay" id="loading-${SYSTEM.idCounter+1}"><div class="spinner"></div><span>加载中...</span></div>
                         <iframe id="browser-frame-${SYSTEM.idCounter+1}" src="${startUrl}" sandbox="allow-same-origin allow-scripts allow-forms allow-popups"></iframe>
                     </div>
@@ -3124,6 +3336,70 @@
                         }, 'image/png');
                     };
                 }
+            });
+        }
+
+        // 漫画/长图查看器：打开单张图片时触发，加载同目录下所有图片
+        function openMangaViewer(targetFullPath, targetFilename) {
+            // 获取当前图片所在的目录路径
+            const folderPath = targetFullPath.substring(0, targetFullPath.lastIndexOf('/'));
+
+            SYSTEM.fs.readdir(folderPath, (err, files) => {
+                if (err) { Notify.error('加载失败', err.message); return; }
+
+                // 1. 过滤同目录下的所有图片
+                // 2. 进行自然数字排序 (1.jpg, 2.jpg, 10.jpg)
+                const imageFiles = files.filter(f => f.match(/\.(jpg|jpeg|png|webp|gif)$/i))
+                                        .sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
+
+                const winId = createWindow({
+                    title: '漫画阅读器 - ' + targetFilename,
+                    winType: 'manga',
+                    iconHtml: '<svg class="icon-svg sm" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M21 15l-3-3L6 21"/></svg>',
+                    width: 800, height: 600,
+                    content: `
+                        <div class="content-area dark" style="position:relative; height:100%; overflow:hidden;">
+                            <div id="manga-viewer-${SYSTEM.idCounter+1}" style="overflow-y:auto; background:#000; height:100%; display:flex; flex-direction:column; align-items:center;">
+                                <div id="manga-loading-${SYSTEM.idCounter+1}" style="padding:40px; color:#666;">正在加载漫画序列...</div>
+                            </div>
+                        </div>
+                    `,
+                    onInit: (w, id) => {
+                        const viewer = document.getElementById(`manga-viewer-${id}`);
+                        const loading = document.getElementById(`manga-loading-${id}`);
+                        
+                        // 异步按顺序加载图片
+                        let loadedCount = 0;
+                        imageFiles.forEach((filename, index) => {
+                            const fullPath = folderPath + '/' + filename;
+                            SYSTEM.fs.readFile(fullPath, (err, data) => {
+                                if (err) return;
+                                
+                                const blob = new Blob([data]);
+                                const url = URL.createObjectURL(blob);
+                                
+                                const img = document.createElement('img');
+                                img.src = url;
+                                img.id = `manga-img-${id}-${index}`;
+                                img.style.width = '100%';
+                                img.style.maxWidth = '1000px'; // 限制最大宽度
+                                img.style.display = 'block';
+                                img.style.pointerEvents = 'none'; // 防止干扰窗口操作
+                                
+                                // 按照排序索引插入，确保顺序正确
+                                viewer.appendChild(img);
+                                
+                                loadedCount++;
+                                if(loadedCount === 1) loading.remove(); // 加载出第一张就移除文字
+                                
+                                // 如果是用户点击的那张图片，滚动到该位置
+                                if (filename === targetFilename) {
+                                    setTimeout(() => img.scrollIntoView(), 100);
+                                }
+                            });
+                        });
+                    }
+                });
             });
         }
 
