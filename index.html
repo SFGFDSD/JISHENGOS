@@ -56,6 +56,8 @@
             font-family: 'Inter', -apple-system, 'Segoe UI', sans-serif;
             overflow: hidden;
             user-select: none;
+            touch-action: none;
+            -webkit-tap-highlight-color: transparent;
         }
 
         /* === 启动屏幕 === */
@@ -1102,6 +1104,13 @@
         nativeDragHelper.style.cssText = 'position:fixed;width:80px;height:90px;opacity:0;z-index:20000;pointer-events:auto;display:none;cursor:move;';
         document.body.appendChild(nativeDragHelper);
 
+        function getClientXY(e) {
+            if (e.touches && e.touches.length > 0) {
+                return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+            }
+            return { x: e.clientX, y: e.clientY };
+        }
+
         const bootBar = document.getElementById('boot-bar');
         const bootMsg = document.getElementById('boot-msg');
         
@@ -1495,12 +1504,11 @@
             
             el.innerHTML = `<svg class="icon-svg xl" viewBox="0 0 24 24">${iconSvg}</svg><div class="label">${name}</div>`;
             
-            // 交互事件
-            el.onmousedown = (e) => {
-                if(e.button !== 0) return; // 仅左键
-                e.stopPropagation(); // 防止触发框选
+            const handleStart = (e) => {
+                if(e.button === 2) return;
                 
-                // 处理选择逻辑 (Ctrl/Shift/单选)
+                e.stopPropagation();
+                
                 if(e.ctrlKey) {
                     toggleIconSelection(el);
                 } else if(!SYSTEM.selectedIcons.includes(id)) {
@@ -1508,13 +1516,16 @@
                     selectIcon(el);
                 }
                 
-                // 只有在非长按模式下才启动桌面内拖拽
                 if(!longPressTriggered) {
                     startIconDrag(e, el);
                 } else {
-                    // 长按模式下，启动检测但不启动桌面内拖拽
                     startIconDrag(e, el, true);
                 }
+            };
+
+            el.onmousedown = handleStart;
+            el.ontouchstart = (e) => {
+                handleStart(e); 
             };
 
             if(filename) {
@@ -1544,7 +1555,8 @@
                     clearSelection();
                     selectIcon(el);
                 }
-                showIconContextMenu(e.clientX, e.clientY);
+                const pos = getClientXY(e);
+                showIconContextMenu(pos.x, pos.y);
             };
 
             el.ondblclick = () => { eval(action); clearSelection(); };
@@ -1555,15 +1567,18 @@
         // 4. 图标拖拽逻辑 (Windows 风格)
         let dragState = null;
         function startIconDrag(e, el, isNativeDragMode = false) {
+            if (e.touches && e.touches.length > 1) return;
+
+            const pos = getClientXY(e);
+
             const rect = el.getBoundingClientRect();
             dragState = {
-                startX: e.clientX, startY: e.clientY,
+                startX: pos.x, startY: pos.y,
                 icons: [], hasMoved: false,
                 el: el,
                 isNativeDragMode: isNativeDragMode
             };
             
-            // 记录所有选中图标的初始位置
             SYSTEM.selectedIcons.forEach(id => {
                 const icon = document.getElementById(id);
                 if(icon) {
@@ -1574,18 +1589,15 @@
                 }
             });
 
-            // 长按检测 (修改为400ms并生成透明辅助层)
             longPressTriggered = false;
             if(longPressTimer) clearTimeout(longPressTimer);
             longPressTimer = setTimeout(() => {
                 longPressTriggered = true;
                 if(dragState && dragState.el && el.dataset.filename) {
-                    // 显示透明辅助元素
                     nativeDragHelper.style.display = 'block';
-                    nativeDragHelper.style.left = (e.clientX - 40) + 'px';
-                    nativeDragHelper.style.top = (e.clientY - 45) + 'px';
+                    nativeDragHelper.style.left = (pos.x - 40) + 'px';
+                    nativeDragHelper.style.top = (pos.y - 45) + 'px';
                     
-                    // 绑定原生拖拽数据
                     nativeDragHelper.ondragstart = (ev) => {
                         handleNativeDragStart(ev, el.dataset.filename);
                     };
@@ -1594,24 +1606,26 @@
                 }
             }, 400);
 
-
-
-            // 只有在非原生拖拽模式下才监听桌面内拖拽
             if(!isNativeDragMode) {
                 document.addEventListener('mousemove', onIconDragMove);
                 document.addEventListener('mouseup', onIconDragEnd);
+                document.addEventListener('touchmove', onIconDragMove, { passive: false });
+                document.addEventListener('touchend', onIconDragEnd);
             } else {
-                // 原生拖拽模式下，只监听mouseup来清理状态
                 document.addEventListener('mouseup', onIconDragEnd);
+                document.addEventListener('touchend', onIconDragEnd);
             }
         }
 
         function onIconDragMove(e) {
             if(!dragState) return;
-            const dx = e.clientX - dragState.startX;
-            const dy = e.clientY - dragState.startY;
+            
+            if(e.type === 'touchmove') e.preventDefault();
 
-            // 阈值判断防止误触
+            const pos = getClientXY(e);
+            const dx = pos.x - dragState.startX;
+            const dy = pos.y - dragState.startY;
+
             if(!dragState.hasMoved && (Math.abs(dx) > 3 || Math.abs(dy) > 3)) {
                 dragState.hasMoved = true;
                 dragState.icons.forEach(i => i.el.classList.add('dragging'));
@@ -1630,14 +1644,15 @@
 
         function onIconDragEnd(e) {
             nativeDragHelper.style.display = 'none';
+            
             document.removeEventListener('mousemove', onIconDragMove);
             document.removeEventListener('mouseup', onIconDragEnd);
+            document.removeEventListener('touchmove', onIconDragMove);
+            document.removeEventListener('touchend', onIconDragEnd);
             
-            // 重置状态
             if(longPressTimer) clearTimeout(longPressTimer);
             longPressTriggered = false;
 
-            // 只有在非原生拖拽模式下才执行桌面内拖拽的吸附逻辑
             if(dragState && !dragState.isNativeDragMode && dragState.hasMoved) {
                 const maxW = window.innerWidth - 90;
                 const maxH = window.innerHeight - 100;
@@ -1645,11 +1660,9 @@
                 dragState.icons.forEach(i => {
                     i.el.classList.remove('dragging');
                     i.el.style.outline = 'none';
-                    // 吸附网格
                     let x = Math.round(i.el.offsetLeft / SYSTEM.gridSize) * SYSTEM.gridSize + 24;
                     let y = Math.round(i.el.offsetTop / SYSTEM.gridSize) * SYSTEM.gridSize + 24;
                     
-                    // 边界限制
                     x = Math.max(24, Math.min(x, maxW));
                     y = Math.max(24, Math.min(y, maxH));
 
@@ -1671,44 +1684,61 @@
             const box = document.getElementById('selection-box');
             let isSelecting = false, startX, startY;
 
-
-
-            desktop.onmousedown = (e) => {
+            const handleStart = (e) => {
                 if(e.target !== desktop && e.target !== document.getElementById('desktop-icons')) return;
+                if(e.button === 2) return;
+
                 clearSelection();
                 isSelecting = true;
-                startX = e.clientX; startY = e.clientY;
+                
+                const pos = getClientXY(e);
+                startX = pos.x; 
+                startY = pos.y;
+                
                 box.style.display = 'block';
                 box.style.width = '0'; box.style.height = '0';
                 box.style.left = startX + 'px'; box.style.top = startY + 'px';
             };
 
-            document.addEventListener('mousemove', (e) => {
+            const handleMove = (e) => {
                 if(!isSelecting) return;
-                const curX = e.clientX, curY = e.clientY;
+                
+                if(e.type === 'touchmove') e.preventDefault();
+                
+                const pos = getClientXY(e);
+                const curX = pos.x; 
+                const curY = pos.y;
+                
                 const left = Math.min(startX, curX), top = Math.min(startY, curY);
                 const width = Math.abs(startX - curX), height = Math.abs(startY - curY);
                 
                 box.style.left = left + 'px'; box.style.top = top + 'px';
                 box.style.width = width + 'px'; box.style.height = height + 'px';
 
-                // 碰撞检测
                 document.querySelectorAll('.desktop-icon').forEach(icon => {
                     const r = icon.getBoundingClientRect();
                     const intersect = !(r.right < left || r.left > left+width || r.bottom < top || r.top > top+height);
                     if(intersect) selectIcon(icon); else deselectIcon(icon);
                 });
-            });
+            };
 
-            document.addEventListener('mouseup', () => {
-                isSelecting = false; box.style.display = 'none';
-            });
+            const handleEnd = () => {
+                isSelecting = false; 
+                box.style.display = 'none';
+            };
+
+            desktop.onmousedown = handleStart;
+            desktop.ontouchstart = handleStart;
+
+            document.addEventListener('mousemove', handleMove);
+            document.addEventListener('touchmove', handleMove, {passive: false});
+
+            document.addEventListener('mouseup', handleEnd);
+            document.addEventListener('touchend', handleEnd);
             
-            // 桌面上传 (Drop)
             desktop.ondragover = e => e.preventDefault();
             desktop.ondrop = (e) => {
                 e.preventDefault();
-                // 处理从文件夹拖出来的文件
                 const dragData = e.dataTransfer.getData('text/plain');
                 if(dragData) {
                     try {
@@ -1717,7 +1747,6 @@
                             SYSTEM.fs.readFile(srcPath, (err, data) => {
                                 if(!err) {
                                     SYSTEM.fs.writeFile(SYSTEM.desktopPath + '/' + filename, data, () => {
-                                        // 记录放置位置
                                         SYSTEM.iconPositions['file-'+filename] = {x: e.clientX - 40, y: e.clientY - 40};
                                         saveIconPositions();
                                         refreshDesktop();
@@ -1729,7 +1758,6 @@
                     } catch(e){}
                     return;
                 }
-                // 处理外部文件上传
                 if(e.dataTransfer.files.length > 0) {
                      Array.from(e.dataTransfer.files).forEach(f => {
                         const r = new FileReader();
