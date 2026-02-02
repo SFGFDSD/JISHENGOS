@@ -3436,45 +3436,73 @@
                                 </button>
                             </div>
                         </div>
-                        <div class="paint-canvas-container" id="paint-container-${SYSTEM.idCounter+1}">
-                            <canvas class="paint-canvas" id="paint-canvas-${SYSTEM.idCounter+1}"></canvas>
-                        </div>
+                        <div class="paint-canvas-container" id="paint-container-${SYSTEM.idCounter+1}" style="background:#222; overflow:hidden;">
+                    <canvas class="paint-canvas" id="paint-canvas-${SYSTEM.idCounter+1}"></canvas>
+                </div>
                     </div>
                 `,
                 onInit: (w, winId) => {
                     const container = document.getElementById('paint-container-' + winId);
                     const canvas = document.getElementById('paint-canvas-' + winId);
-                    const ctx = canvas.getContext('2d');
+                    const ctx = canvas.getContext('2d', { alpha: false });
+
+                    const vCanvas = document.createElement('canvas');
+                    const vCtx = vCanvas.getContext('2d', { alpha: false });
                     
-                    const resize = () => {
+                    const bufferW = Math.max(window.screen.width, 1920);
+                    const bufferH = Math.max(window.screen.height, 1080);
+                    vCanvas.width = bufferW;
+                    vCanvas.height = bufferH;
+                    
+                    vCtx.fillStyle = '#ffffff';
+                    vCtx.fillRect(0, 0, bufferW, bufferH);
+
+                    const syncCanvas = () => {
                         canvas.width = container.clientWidth;
                         canvas.height = container.clientHeight;
-                        ctx.fillStyle = '#ffffff';
-                        ctx.fillRect(0, 0, canvas.width, canvas.height);
+                        ctx.drawImage(vCanvas, 0, 0);
                     };
-                    setTimeout(resize, 50);
-                    
+
+                    const ro = new ResizeObserver(() => syncCanvas());
+                    ro.observe(container);
+
                     let isDrawing = false, lastX = 0, lastY = 0;
                     let tool = 'brush';
                     
                     const colorPicker = document.getElementById('paint-color-' + winId);
                     const sizePicker = document.getElementById('paint-size-' + winId);
-                    
+
+                    const draw = (x1, y1, x2, y2) => {
+                        const color = tool === 'eraser' ? '#ffffff' : colorPicker.value;
+                        const size = sizePicker.value;
+
+                        [ctx, vCtx].forEach(c => {
+                            c.beginPath();
+                            c.strokeStyle = color;
+                            c.lineWidth = size;
+                            c.lineCap = 'round';
+                            c.lineJoin = 'round';
+                            c.moveTo(x1, y1);
+                            c.lineTo(x2, y2);
+                            c.stroke();
+                        });
+                    };
+
                     canvas.onmousedown = e => {
                         isDrawing = true;
-                        [lastX, lastY] = [e.offsetX, e.offsetY];
+                        lastX = e.offsetX;
+                        lastY = e.offsetY;
                     };
                     
                     canvas.onmousemove = e => {
                         if(!isDrawing) return;
-                        ctx.beginPath();
-                        ctx.moveTo(lastX, lastY);
-                        ctx.lineTo(e.offsetX, e.offsetY);
-                        ctx.strokeStyle = tool === 'eraser' ? '#ffffff' : colorPicker.value;
-                        ctx.lineWidth = sizePicker.value;
-                        ctx.lineCap = 'round';
-                        ctx.stroke();
-                        [lastX, lastY] = [e.offsetX, e.offsetY];
+                        const curX = e.offsetX;
+                        const curY = e.offsetY;
+                        
+                        draw(lastX, lastY, curX, curY);
+                        
+                        lastX = curX;
+                        lastY = curY;
                     };
                     
                     canvas.onmouseup = canvas.onmouseleave = () => { isDrawing = false; };
@@ -3492,25 +3520,39 @@
                     };
                     
                     document.getElementById('paint-clear-' + winId).onclick = () => {
-                        ctx.fillStyle = '#ffffff';
-                        ctx.fillRect(0, 0, canvas.width, canvas.height);
+                        if(!confirm("确定清空画布吗？")) return;
+                        vCtx.fillStyle = '#ffffff';
+                        vCtx.fillRect(0, 0, vCanvas.width, vCanvas.height);
+                        syncCanvas();
                     };
                     
                     document.getElementById('paint-save-' + winId).onclick = () => {
                         const name = prompt('请输入文件名:', '画作.png');
                         if(!name) return;
-                        canvas.toBlob(blob => {
+                        
+                        const saveCanvas = document.createElement('canvas');
+                        saveCanvas.width = canvas.width;
+                        saveCanvas.height = canvas.height;
+                        saveCanvas.getContext('2d').drawImage(vCanvas, 0, 0, canvas.width, canvas.height, 0, 0, canvas.width, canvas.height);
+                        
+                        saveCanvas.toBlob(blob => {
                             const reader = new FileReader();
                             reader.onload = () => {
                                 const buffer = SYSTEM.Buffer.from(reader.result);
                                 const path = SYSTEM.desktopPath + '/' + (name.endsWith('.png') ? name : name + '.png');
                                 SYSTEM.fs.writeFile(path, buffer, err => {
                                     if(err) Notify.error('保存失败', err.message);
-                                    else { refreshDesktop(); Notify.success('保存成功', '画作已保存到桌面'); }
+                                    else { refreshDesktop(); Notify.success('保存成功', '已保存当前可见区域'); }
                                 });
                             };
                             reader.readAsArrayBuffer(blob);
                         }, 'image/png');
+                    };
+
+                    const originalClose = window.closeWin;
+                    window.closeWin = function(closeId) {
+                        if(closeId === winId) ro.disconnect();
+                        originalClose(closeId);
                     };
                 }
             });
