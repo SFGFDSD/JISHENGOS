@@ -27,6 +27,8 @@
     <script src="https://unpkg.com/browserfs@1.4.3/dist/browserfs.min.js"></script>
     <!-- JSZip 解压缩库 -->
     <script src="https://unpkg.com/jszip@3.10.1/dist/jszip.min.js"></script>
+    <!-- V86 虚拟机模拟器 -->
+    <script src="https://cdn.jsdelivr.net/npm/v86@latest/build/libv86.js"></script>
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -632,14 +634,19 @@
         .calc-btn.clear { background: rgba(232, 17, 35, 0.3); }
         .calc-btn.clear:hover { background: rgba(232, 17, 35, 0.5); }
 
-        /* === 画板样式 === */
+        /* === 画板样式 (完全重构版) === */
         .paint-app {
             display: flex; flex-direction: column; height: 100%;
+            touch-action: none;
+            user-select: none;
+            -webkit-user-select: none;
         }
         .paint-toolbar {
             padding: 10px 14px; background: rgba(0,0,0,0.2);
             border-bottom: 1px solid var(--glass-border);
             display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+            touch-action: none;
+            flex-shrink: 0;
         }
         .paint-tool-group {
             display: flex; align-items: center; gap: 6px;
@@ -652,14 +659,18 @@
             background: rgba(255,255,255,0.05); color: var(--text-main);
             cursor: pointer; display: flex; align-items: center; justify-content: center;
             transition: 0.15s;
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
         }
         .paint-btn:hover { background: rgba(255,255,255,0.15); }
+        .paint-btn:active { transform: scale(0.95); }
         .paint-btn.active { background: var(--accent-blue); border-color: var(--accent-blue); }
         .paint-btn .icon-svg { width: 16px; height: 16px; }
         
         .color-picker {
             width: 32px; height: 32px; border: none; border-radius: 6px;
             cursor: pointer; padding: 0; background: transparent;
+            touch-action: manipulation;
         }
         .color-picker::-webkit-color-swatch-wrapper { padding: 2px; }
         .color-picker::-webkit-color-swatch { border-radius: 4px; border: 1px solid var(--glass-border); }
@@ -675,9 +686,69 @@
         
         .paint-canvas-container {
             flex: 1; background: #ffffff; position: relative; overflow: hidden;
+            touch-action: none;
+            -webkit-touch-callout: none;
         }
         .paint-canvas {
             position: absolute; top: 0; left: 0; cursor: crosshair;
+            touch-action: none;
+        }
+        
+        /* 移动端画板工具栏适配 */
+        @media (max-width: 768px) {
+            .paint-toolbar {
+                padding: 8px 10px;
+                gap: 8px;
+            }
+            .paint-tool-group label {
+                font-size: 10px;
+            }
+            .paint-btn {
+                width: 36px;
+                height: 36px;
+            }
+            .paint-btn .icon-svg {
+                width: 18px;
+                height: 18px;
+            }
+            .color-picker {
+                width: 36px;
+                height: 36px;
+            }
+            .brush-size {
+                width: 60px;
+            }
+        }
+
+        /* === V86 模拟器样式 === */
+        .v86-app {
+            display: flex; flex-direction: column; height: 100%;
+        }
+        .v86-toolbar {
+            padding: 10px 14px; background: rgba(0,0,0,0.2);
+            border-bottom: 1px solid var(--glass-border);
+            display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+        }
+        .v86-screen-container {
+            flex: 1; background: #000; position: relative; overflow: hidden;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .v86-screen-container canvas {
+            display: block;
+            max-width: 100%;
+            max-height: 100%;
+        }
+        .v86-log {
+            position: absolute; bottom: 10px; left: 10px;
+            font-size: 11px; color: #4ade80;
+            background: rgba(0,0,0,0.7);
+            padding: 6px 10px;
+            border-radius: 4px;
+            max-width: 300px;
+            pointer-events: none;
+        }
+        .v86-screen-container.locked {
+            cursor: none;
         }
 
         /* === 通知系统 (任务栏内嵌版 - 无限长度修复) === */
@@ -914,6 +985,14 @@
                     <circle cx="12" cy="12" r="3"/>
                 </svg>
             </div>
+            <div class="taskbar-icon" onclick="openV86()" title="V86 虚拟机">
+                <svg class="icon-svg" viewBox="0 0 24 24">
+                    <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
+                    <line x1="8" y1="21" x2="16" y2="21"/>
+                    <line x1="12" y1="17" x2="12" y2="21"/>
+                    <path d="M6 8h2M6 12h2M10 8h8M10 12h8"/>
+                </svg>
+            </div>
         </div>
 
         <!-- 【新增】任务栏内通知区域 -->
@@ -991,6 +1070,15 @@
                     <path d="M3 3v5h5"/>
                 </svg>
                 <span>Reset</span>
+            </div>
+            <div class="menu-item" onclick="openV86(); toggleStartMenu()">
+                <svg class="icon-svg lg" viewBox="0 0 24 24">
+                    <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
+                    <line x1="8" y1="21" x2="16" y2="21"/>
+                    <line x1="12" y1="17" x2="12" y2="21"/>
+                    <path d="M6 8h2M6 12h2M10 8h8M10 12h8"/>
+                </svg>
+                <span>V86 VM</span>
             </div>
         </div>
     </div>
@@ -1515,6 +1603,14 @@
                     index++;
                     return { x: 24 + col * SYSTEM.gridSize, y: 24 + row * SYSTEM.gridSize };
                 };
+
+                // 添加 V86 到系统应用列表
+                systemApps.push({
+                    id: 'app-v86',
+                    name: 'V86 虚拟机',
+                    action: 'openV86()',
+                    icon: '<rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/><path d="M6 8h2M6 12h2M10 8h8M10 12h8"/>'
+                });
 
                 // 渲染系统应用
                 systemApps.forEach(app => {
@@ -3081,8 +3177,9 @@
 
         // === 修复后的拖拽逻辑 (完美支持手机/平板) ===
         function makeDraggable(el, id) {
-            const titleBar = el.querySelector('.title-bar-left');
+            const titleBar = el.querySelector('.title-bar');
             let isDragging = false, startX, startY, startLeft, startTop;
+            let dragPointerId = null;
             
             // 获取触摸或鼠标坐标
             const getCoords = (e) => {
@@ -3103,21 +3200,33 @@
                 // 注意：这里阈值改为 600，与 CSS 保持一致，平板(>600)允许拖动
                 if((win && win.maximized) || window.innerWidth <= 600) return;
                 
+                // 处理 Pointer Events
+                if (e.pointerId !== undefined) {
+                    if (dragPointerId === null) {
+                        dragPointerId = e.pointerId;
+                        e.target.setPointerCapture(e.pointerId);
+                    } else {
+                        return; // 已经有活动的拖拽指针
+                    }
+                }
+                
                 isDragging = true;
                 const p = getCoords(e);
                 startX = p.x; startY = p.y;
                 startLeft = el.offsetLeft; startTop = el.offsetTop;
                 
                 focusWin(id);
-                
-                // 【关键修复】不要在这里调用 preventDefault()
-                // 否则点击标题栏可能无法聚焦或触发其他事件
             };
             
             const move = (e) => {
                 if(!isDragging) return;
                 
-                // 【关键修复】只有在真正拖拽时，才阻止屏幕滚动
+                // 验证指针ID
+                if (e.pointerId !== undefined && e.pointerId !== dragPointerId) {
+                    return;
+                }
+                
+                // 只有在真正拖拽时，才阻止屏幕滚动
                 if(e.cancelable) e.preventDefault();
                 
                 const p = getCoords(e);
@@ -3128,26 +3237,54 @@
                 el.style.top = Math.max(0, startTop + dy) + 'px';
             };
             
-            const end = () => {
+            const end = (e) => {
+                if (!isDragging) return;
+                
+                // 验证指针ID
+                if (e.pointerId !== undefined && e.pointerId !== dragPointerId) {
+                    return;
+                }
+                
                 isDragging = false;
+                dragPointerId = null;
             };
             
             // 绑定事件 (仅绑定在标题栏上，不影响内容区域的点击)
             
-            // 鼠标
-            titleBar.onmousedown = start;
-            document.addEventListener('mousemove', move);
-            document.addEventListener('mouseup', end);
+            // 使用 Pointer Events API（统一处理鼠标和触摸）
+            if (window.PointerEvent) {
+                titleBar.addEventListener('pointerdown', start, { passive: false });
+                titleBar.addEventListener('pointermove', move, { passive: false });
+                titleBar.addEventListener('pointerup', end);
+                titleBar.addEventListener('pointercancel', end);
+                titleBar.addEventListener('pointerleave', end);
+            } else {
+                // 备用：鼠标事件
+                titleBar.addEventListener('mousedown', start);
+                document.addEventListener('mousemove', move);
+                document.addEventListener('mouseup', end);
+                
+                // 备用：触摸事件
+                titleBar.addEventListener('touchstart', start, { passive: false });
+                document.addEventListener('touchmove', move, { passive: false });
+                document.addEventListener('touchend', end);
+                document.addEventListener('touchcancel', end);
+            }
             
-            // 触摸 (手机/平板)
-            titleBar.ontouchstart = start;
-            // passive: false 允许我们在 move 时阻止屏幕滚动
-            document.addEventListener('touchmove', move, {passive: false});
-            document.addEventListener('touchend', end);
-            
-            // 点击窗口任意位置聚焦
-            el.addEventListener('mousedown', () => focusWin(id));
-            el.addEventListener('touchstart', () => focusWin(id), {passive: true});
+            // 点击窗口任意位置聚焦（但不触发拖拽）
+            el.addEventListener('mousedown', (e) => {
+                // 如果点击的是画板区域，不要聚焦窗口（让画板处理事件）
+                if (e.target.closest('.paint-app')) return;
+                focusWin(id);
+            });
+            el.addEventListener('touchstart', (e) => {
+                if (e.target.closest('.paint-app')) return;
+                focusWin(id);
+            }, { passive: true });
+            el.addEventListener('pointerdown', (e) => {
+                if (e.target.closest('.paint-app')) return;
+                focusWin(id);
+            }, { passive: true });
         }
 
         function makeResizable(el) {
@@ -3421,7 +3558,7 @@
                             </div>
                             <div class="paint-tool-group">
                                 <label>颜色</label>
-                                <input type="color" class="color-picker" id="paint-color-${SYSTEM.idCounter+1}" value="#ffffff">
+                                <input type="color" class="color-picker" id="paint-color-${SYSTEM.idCounter+1}" value="#000000">
                             </div>
                             <div class="paint-tool-group">
                                 <label>大小</label>
@@ -3436,9 +3573,9 @@
                                 </button>
                             </div>
                         </div>
-                        <div class="paint-canvas-container" id="paint-container-${SYSTEM.idCounter+1}" style="background:#222; overflow:hidden;">
-                    <canvas class="paint-canvas" id="paint-canvas-${SYSTEM.idCounter+1}"></canvas>
-                </div>
+                        <div class="paint-canvas-container" id="paint-container-${SYSTEM.idCounter+1}" style="background:#ffffff; overflow:hidden;">
+                            <canvas class="paint-canvas" id="paint-canvas-${SYSTEM.idCounter+1}"></canvas>
+                        </div>
                     </div>
                 `,
                 onInit: (w, winId) => {
@@ -3446,35 +3583,44 @@
                     const canvas = document.getElementById('paint-canvas-' + winId);
                     const ctx = canvas.getContext('2d', { alpha: false });
 
+                    // 虚拟画布 - 存储完整图像
                     const vCanvas = document.createElement('canvas');
                     const vCtx = vCanvas.getContext('2d', { alpha: false });
                     
+                    // 设置缓冲区大小
                     const bufferW = Math.max(window.screen.width, 1920);
                     const bufferH = Math.max(window.screen.height, 1080);
                     vCanvas.width = bufferW;
                     vCanvas.height = bufferH;
                     
+                    // 初始化白色背景
                     vCtx.fillStyle = '#ffffff';
                     vCtx.fillRect(0, 0, bufferW, bufferH);
 
+                    // 同步画布尺寸并绘制
                     const syncCanvas = () => {
                         canvas.width = container.clientWidth;
                         canvas.height = container.clientHeight;
                         ctx.drawImage(vCanvas, 0, 0);
                     };
 
+                    // 监听容器尺寸变化
                     const ro = new ResizeObserver(() => syncCanvas());
                     ro.observe(container);
 
-                    let isDrawing = false, lastX = 0, lastY = 0;
+                    // 绘制状态
+                    let isDrawing = false;
+                    let lastX = 0, lastY = 0;
                     let tool = 'brush';
+                    let activePointerId = null;
                     
                     const colorPicker = document.getElementById('paint-color-' + winId);
                     const sizePicker = document.getElementById('paint-size-' + winId);
 
+                    // 绘制函数
                     const draw = (x1, y1, x2, y2) => {
                         const color = tool === 'eraser' ? '#ffffff' : colorPicker.value;
-                        const size = sizePicker.value;
+                        const size = parseInt(sizePicker.value) || 5;
 
                         [ctx, vCtx].forEach(c => {
                             c.beginPath();
@@ -3488,37 +3634,135 @@
                         });
                     };
 
-                    canvas.onmousedown = e => {
-                        isDrawing = true;
-                        lastX = e.offsetX;
-                        lastY = e.offsetY;
+                    // 获取坐标（支持鼠标和触摸）
+                    const getCoords = (e) => {
+                        const rect = canvas.getBoundingClientRect();
+                        let clientX, clientY;
+                        
+                        if (e.touches && e.touches.length > 0) {
+                            clientX = e.touches[0].clientX;
+                            clientY = e.touches[0].clientY;
+                        } else if (e.changedTouches && e.changedTouches.length > 0) {
+                            clientX = e.changedTouches[0].clientX;
+                            clientY = e.changedTouches[0].clientY;
+                        } else {
+                            clientX = e.clientX;
+                            clientY = e.clientY;
+                        }
+                        
+                        return {
+                            x: clientX - rect.left,
+                            y: clientY - rect.top
+                        };
                     };
-                    
-                    canvas.onmousemove = e => {
-                        if(!isDrawing) return;
-                        const curX = e.offsetX;
-                        const curY = e.offsetY;
+
+                    // 开始绘制
+                    const startDrawing = (e) => {
+                        // 防止默认行为（滚动、缩放等）
+                        if (e.cancelable) e.preventDefault();
+                        
+                        // 处理多点触控 - 只响应第一个触点
+                        if (e.pointerId !== undefined) {
+                            if (activePointerId === null) {
+                                activePointerId = e.pointerId;
+                            } else if (activePointerId !== e.pointerId) {
+                                return; // 忽略其他触点
+                            }
+                        }
+                        
+                        isDrawing = true;
+                        const coords = getCoords(e);
+                        lastX = coords.x;
+                        lastY = coords.y;
+                    };
+
+                    // 绘制中
+                    const drawMove = (e) => {
+                        if (!isDrawing) return;
+                        
+                        // 防止默认行为
+                        if (e.cancelable) e.preventDefault();
+                        
+                        // 验证指针ID
+                        if (e.pointerId !== undefined && e.pointerId !== activePointerId) {
+                            return;
+                        }
+                        
+                        const coords = getCoords(e);
+                        const curX = coords.x;
+                        const curY = coords.y;
                         
                         draw(lastX, lastY, curX, curY);
                         
                         lastX = curX;
                         lastY = curY;
                     };
+
+                    // 结束绘制
+                    const endDrawing = (e) => {
+                        if (!isDrawing) return;
+                        
+                        // 验证指针ID
+                        if (e.pointerId !== undefined && e.pointerId !== activePointerId) {
+                            return;
+                        }
+                        
+                        isDrawing = false;
+                        activePointerId = null;
+                    };
+
+                    // 使用 Pointer Events API（统一处理鼠标和触摸）
+                    canvas.addEventListener('pointerdown', startDrawing, { passive: false });
+                    canvas.addEventListener('pointermove', drawMove, { passive: false });
+                    canvas.addEventListener('pointerup', endDrawing);
+                    canvas.addEventListener('pointercancel', endDrawing);
+                    canvas.addEventListener('pointerleave', endDrawing);
+
+                    // 备用：鼠标事件（兼容旧浏览器）
+                    canvas.addEventListener('mousedown', (e) => {
+                        if (!window.PointerEvent) startDrawing(e);
+                    });
+                    canvas.addEventListener('mousemove', (e) => {
+                        if (!window.PointerEvent) drawMove(e);
+                    });
+                    canvas.addEventListener('mouseup', (e) => {
+                        if (!window.PointerEvent) endDrawing(e);
+                    });
+                    canvas.addEventListener('mouseleave', (e) => {
+                        if (!window.PointerEvent) endDrawing(e);
+                    });
+
+                    // 备用：触摸事件（兼容旧浏览器）
+                    canvas.addEventListener('touchstart', (e) => {
+                        if (!window.PointerEvent) startDrawing(e);
+                    }, { passive: false });
+                    canvas.addEventListener('touchmove', (e) => {
+                        if (!window.PointerEvent) drawMove(e);
+                    }, { passive: false });
+                    canvas.addEventListener('touchend', (e) => {
+                        if (!window.PointerEvent) endDrawing(e);
+                    });
+                    canvas.addEventListener('touchcancel', (e) => {
+                        if (!window.PointerEvent) endDrawing(e);
+                    });
+
+                    // 工具按钮事件
+                    const brushBtn = document.getElementById('paint-brush-' + winId);
+                    const eraserBtn = document.getElementById('paint-eraser-' + winId);
                     
-                    canvas.onmouseup = canvas.onmouseleave = () => { isDrawing = false; };
-                    
-                    document.getElementById('paint-brush-' + winId).onclick = function() {
+                    brushBtn.onclick = function() {
                         tool = 'brush';
                         this.classList.add('active');
-                        document.getElementById('paint-eraser-' + winId).classList.remove('active');
+                        eraserBtn.classList.remove('active');
                     };
                     
-                    document.getElementById('paint-eraser-' + winId).onclick = function() {
+                    eraserBtn.onclick = function() {
                         tool = 'eraser';
                         this.classList.add('active');
-                        document.getElementById('paint-brush-' + winId).classList.remove('active');
+                        brushBtn.classList.remove('active');
                     };
                     
+                    // 清空画布
                     document.getElementById('paint-clear-' + winId).onclick = () => {
                         if(!confirm("确定清空画布吗？")) return;
                         vCtx.fillStyle = '#ffffff';
@@ -3526,6 +3770,7 @@
                         syncCanvas();
                     };
                     
+                    // 保存图片
                     document.getElementById('paint-save-' + winId).onclick = () => {
                         const name = prompt('请输入文件名:', '画作.png');
                         if(!name) return;
@@ -3549,9 +3794,20 @@
                         }, 'image/png');
                     };
 
+                    // 初始同步
+                    syncCanvas();
+
+                    // 清理
                     const originalClose = window.closeWin;
                     window.closeWin = function(closeId) {
-                        if(closeId === winId) ro.disconnect();
+                        if(closeId === winId) {
+                            ro.disconnect();
+                            canvas.removeEventListener('pointerdown', startDrawing);
+                            canvas.removeEventListener('pointermove', drawMove);
+                            canvas.removeEventListener('pointerup', endDrawing);
+                            canvas.removeEventListener('pointercancel', endDrawing);
+                            canvas.removeEventListener('pointerleave', endDrawing);
+                        }
                         originalClose(closeId);
                     };
                 }
@@ -3619,6 +3875,190 @@
                         });
                     }
                 });
+            });
+        }
+
+        // === V86 虚拟机应用 ===
+        function openV86() {
+            const winId = createWindow({
+                title: 'V86 虚拟机',
+                winType: 'v86',
+                iconHtml: '<svg class="icon-svg sm" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>',
+                width: 800, height: 600,
+                content: `
+                    <div class="v86-app">
+                        <div class="v86-toolbar">
+                            <input type="file" id="v86-file-${SYSTEM.idCounter+1}" accept=".img,.iso,.bin" style="display:none">
+                            <button class="notepad-btn" onclick="document.getElementById('v86-file-${SYSTEM.idCounter+1}').click()">
+                                <svg class="icon-svg sm" viewBox="0 0 24 24" style="display:inline;vertical-align:middle;margin-right:4px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                                加载镜像
+                            </button>
+                            <button class="notepad-btn" id="v86-reset-${SYSTEM.idCounter+1}">
+                                <svg class="icon-svg sm" viewBox="0 0 24 24" style="display:inline;vertical-align:middle;margin-right:4px"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+                                重置
+                            </button>
+                            <button class="notepad-btn" id="v86-pause-${SYSTEM.idCounter+1}">
+                                暂停
+                            </button>
+                            <span style="color:var(--text-muted);font-size:12px;margin-left:auto" id="v86-status-${SYSTEM.idCounter+1}">就绪</span>
+                        </div>
+                        <div class="v86-screen-container" id="v86-screen-${SYSTEM.idCounter+1}">
+                            <div style="white-space: pre; font: 14px monospace; line-height: 14px; display: none;"></div>
+                            <canvas style="display:none"></canvas>
+                            <div id="v86-placeholder-${SYSTEM.idCounter+1}" style="color:#666;text-align:center;padding:40px">
+                                <svg class="icon-svg xl" viewBox="0 0 24 24" style="color:#444;margin-bottom:16px"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+                                <p>点击"加载镜像"选择 .img 或 .iso 文件启动虚拟机</p>
+                                <p style="font-size:12px;color:#555;margin-top:8px">支持: 软盘镜像、CD-ROM 镜像</p>
+                            </div>
+                        </div>
+                    </div>
+                `,
+                onInit: (w, id) => {
+                    let emulator = null;
+                    const screenContainer = document.getElementById(`v86-screen-${id}`);
+                    const placeholder = document.getElementById(`v86-placeholder-${id}`);
+                    const statusText = document.getElementById(`v86-status-${id}`);
+                    const fileInput = document.getElementById(`v86-file-${id}`);
+                    const resetBtn = document.getElementById(`v86-reset-${id}`);
+                    const pauseBtn = document.getElementById(`v86-pause-${id}`);
+                    const updateStatus = (msg, showNotify = false) => {
+                        statusText.innerText = msg;
+                        if (showNotify) {
+                            Notify.info('V86', msg);
+                        }
+                    };
+
+                    // 鼠标锁定功能
+                    const lockMouse = async () => {
+                        if (!emulator) return;
+                        try {
+                            await screenContainer.requestPointerLock();
+                        } catch (err) {
+                            console.log('鼠标锁定失败:', err);
+                        }
+                    };
+
+                    const unlockMouse = () => {
+                        if (document.pointerLockElement === screenContainer) {
+                            document.exitPointerLock();
+                        }
+                    };
+
+                    // 监听指针锁定变化
+                    const onPointerLockChange = () => {
+                        if (document.pointerLockElement === screenContainer) {
+                            screenContainer.classList.add('locked');
+                        } else {
+                            screenContainer.classList.remove('locked');
+                        }
+                    };
+
+                    document.addEventListener('pointerlockchange', onPointerLockChange);
+
+                    // 点击屏幕锁定鼠标
+                    screenContainer.addEventListener('click', (e) => {
+                        if (emulator && document.pointerLockElement !== screenContainer) {
+                            lockMouse();
+                        }
+                    });
+
+                    // 清理函数
+                    w.onDestroy = () => {
+                        unlockMouse();
+                        document.removeEventListener('pointerlockchange', onPointerLockChange);
+                    };
+
+                    const initV86 = (fileName, buffer) => {
+                        placeholder.style.display = 'none';
+                        
+                        // 清除之前的 canvas
+                        const oldCanvas = screenContainer.querySelector('canvas');
+                        if (oldCanvas) oldCanvas.remove();
+                        
+                        // 创建新的 canvas
+                        const canvas = document.createElement('canvas');
+                        canvas.style.display = 'block';
+                        screenContainer.appendChild(canvas);
+
+                        const V86Constructor = window.V86Starter || window.V86;
+                        if (!V86Constructor) {
+                            updateStatus('V86 库未加载', true);
+                            return;
+                        }
+
+                        const settings = {
+                            wasm_path: "https://cdn.jsdelivr.net/npm/v86@latest/build/v86.wasm",
+                            bios: { url: "https://cdn.jsdelivr.net/npm/v86@latest/bios/seabios.bin" },
+                            vga_bios: { url: "https://cdn.jsdelivr.net/npm/v86@latest/bios/vgabios.bin" },
+                            screen_container: screenContainer,
+                            memory_size: 64 * 1024 * 1024,
+                            vga_memory_size: 8 * 1024 * 1024,
+                            autostart: true
+                        };
+
+                        if (fileName.toLowerCase().endsWith('.iso')) {
+                            settings.cdrom = { buffer: buffer };
+                            updateStatus('正在从 CD-ROM 启动...');
+                        } else {
+                            settings.fda = { buffer: buffer };
+                            updateStatus('正在从软盘启动...');
+                        }
+
+                        try {
+                            emulator = new V86Constructor(settings);
+                            updateStatus('虚拟机运行中: ' + fileName, true);
+
+                            emulator.add_listener("serial0-output-char", function(char) {
+                                // 串口输出到控制台
+                                if (char === '\n') console.log('[V86 Serial]');
+                                else process.stdout?.write?.(char);
+                            });
+
+                        } catch (err) {
+                            console.error(err);
+                            updateStatus('启动失败: ' + err.message, true);
+                            placeholder.style.display = 'block';
+                        }
+                    };
+
+                    fileInput.onchange = (e) => {
+                        const file = e.target.files[0];
+                        if (!file) return;
+
+                        const reader = new FileReader();
+                        updateStatus('正在读取文件...');
+                        
+                        reader.onload = (ev) => {
+                            initV86(file.name, ev.target.result);
+                        };
+                        reader.readAsArrayBuffer(file);
+                    };
+
+                    resetBtn.onclick = () => {
+                        if (emulator) {
+                            emulator.restart();
+                            updateStatus('虚拟机已重置', true);
+                        } else {
+                            updateStatus('请先加载镜像', true);
+                        }
+                    };
+
+                    pauseBtn.onclick = () => {
+                        if (!emulator) {
+                            updateStatus('请先加载镜像', true);
+                            return;
+                        }
+                        if (pauseBtn.innerText === '暂停') {
+                            emulator.stop();
+                            pauseBtn.innerText = '继续';
+                            updateStatus('虚拟机已暂停', true);
+                        } else {
+                            emulator.run();
+                            pauseBtn.innerText = '暂停';
+                            updateStatus('虚拟机继续运行', true);
+                        }
+                    };
+                }
             });
         }
 
