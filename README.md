@@ -1,12 +1,12 @@
 <div align="center">
 
-# JISHENG OS // SYSTEM ARCHIVE v9.0
+# JISHENG OS // SYSTEM ARCHIVE v10.1
 
 *A Single-File Ultimate Persistent Operating System*
 
 <kbd>STATE: FINAL</kbd> • <kbd>STATUS: STABLE</kbd> • <kbd>NATURE: PERSISTENT</kbd>
 
-> **“ 我是一个运行在单 HTML 文件中的持久化数字实体。代号：简生 · 最终逻辑体。”**
+> **" 我是一个运行在单 HTML 文件中的持久化数字实体。代号：简生 · 最终逻辑体。"**
 
 </div>
 
@@ -52,6 +52,8 @@
 * **[持久化记事本]** 支持编辑、新建及跨时空的"另存为"操作。
 * **[全功能计算器]** 精确浮点运算，支持百分比及正负极性切换。
 * **[V86 虚拟机]** 基于 WebAssembly 的 x86 模拟器，支持运行 `.img` 软盘镜像和 `.iso` CD-ROM 镜像，鼠标点击屏幕锁定，按 ESC 退出。
+* **[JSZip 解压引擎]** 原生 JavaScript 实现的 ZIP 格式解析器，支持 `.zip` 标准压缩包快速提取。
+* **[7z 解压引擎]** 基于 7z-wasm 的底层解压协议，支持 `.7z` `.rar` `.tar` `.gz` `.bz2` `.xz` `.cab` `.tgz` 等全格式压缩包无损提取。
 
 #### 💽 05. 文件系统驱动 (Filesystem Core)
 > 底层级别的多媒体解析能力。
@@ -59,7 +61,7 @@
 * `IMAGE`：Base64 实时渲染与动态壁纸设定。
 * `VIDEO`：原生 `.mp4` 弹窗级流畅解码。
 * `PDF`：原生阅读引擎，支持矢量缩放与分页。
-* `ARCHIVE`：**虚拟解压引擎**，无损透视并提取 `.zip` 包内结构。
+* `ARCHIVE`：**虚拟解压引擎**，无损透视并提取 `.zip` `.7z` `.rar` `.tar` `.gz` `.bz2` `.xz` `.cab` `.tgz` 等压缩包结构。
 
 ---
 
@@ -72,7 +74,7 @@
 | **DOC** | `.pdf` | 原生渲染引擎 / 矢量缩放 / 翻页 |
 | **TEXT** | `.txt` `.md` `.json` | 读写权限 / 代码高亮 / 本地持久化 |
 | **WEB** | `.html` `.css` `.js` | 源码编辑 / DOM 隔离渲染预览 |
-| **ARCHIVE**| `.zip` | **虚拟解压引擎** / 结构透视 / 内容提取 |
+| **ARCHIVE**| `.zip` `.7z` `.rar` `.tar` `.gz` `.bz2` `.xz` `.cab` `.tgz` | **虚拟解压引擎** / 结构透视 / 内容提取 |
 | **VM** | `.img` `.iso` | V86 虚拟机 / x86 模拟 / 软盘与光盘启动 |
 
 ---
@@ -103,9 +105,9 @@
 
 ### 🛠️ TECHNICAL SPECS // 技术规格
 
-* **SYSTEM BUILD**：`v9.0.0`
+* **SYSTEM BUILD**：`v10.1.0`
 * **RENDER ENGINE**：`Ultra-Glass 拟物态 (Backdrop-filter: 40px)`
-* **CORE DRIVERS**：`BrowserFS` / `IndexedDB` / `JSZip`
+* **CORE DRIVERS**：`BrowserFS` / `IndexedDB` / `JSZip` / `7z-wasm` / `V86`
 * **LATENCY**：`< 16ms (60FPS Silk Smooth)`
 * **STORAGE LIMIT**：取决于宿主配额（约物理硬盘容量的 `50%`）
 
@@ -117,7 +119,7 @@
 
 **[ 系统自检完成：逻辑回路 100% 闭环 ]**
 
-**[ JISHENG OS v9.0 已就绪。期待与您的下一次链接。]**
+**[ JISHENG OS v10.1 已就绪。期待与您的下一次链接。]**
 
 <br>
 
