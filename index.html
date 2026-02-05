@@ -500,9 +500,13 @@
             text-align: center;
         }
         .about-card .logo { 
-            font-size: 48px; margin-bottom: 16px;
-            background: linear-gradient(135deg, #0078d4, #00d4ff);
-            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            font-size: 48px; 
+            font-weight: 700; 
+            margin-bottom: 16px; 
+            letter-spacing: -2px;
+            background: linear-gradient(135deg, #0078d4, #00d4ff); 
+            -webkit-background-clip: text; 
+            -webkit-text-fill-color: transparent;
         }
         .about-card h3 { font-size: 18px; font-weight: 700; margin-bottom: 8px; }
         .about-card p { font-size: 12px; color: var(--text-muted); line-height: 1.6; }
@@ -1637,6 +1641,8 @@
                                 iconSvg = '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line>';
                             } else if(file.match(/\.zip$/i)) {
                                 iconSvg = '<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2v11z"/><path d="M12 10v4"/><path d="M12 14l2-2"/>';
+                            } else if(isArchiveFile(file)) {
+                                iconSvg = '<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2v11z"/><path d="M12 10v4"/><path d="M12 14l2-2"/>';
                             } else if(file.match(/\.html?$/i)) {
                                 iconSvg = '<circle cx="12" cy="12" r="10"/><path d="M2 12h20"/>';
                             }
@@ -2045,7 +2051,7 @@
                     <div class="context-item" onclick="openFile('${filename}'); closeCtx()">
                         <svg class="icon-svg" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg><span>打开</span>
                     </div>
-                    ${filename.endsWith('.zip') ? `<div class="context-item" onclick="extractZip('${filename}'); closeCtx()"><svg class="icon-svg" viewBox="0 0 24 24"><path d="M21 8v13H3V8"/></svg><span>解压</span></div>` : ''}
+                    ${isArchiveFile(filename) ? `<div class="context-item" onclick="extractZip('${filename}'); closeCtx()"><svg class="icon-svg" viewBox="0 0 24 24"><path d="M21 8v13H3V8"/></svg><span>解压</span></div>` : ''}
                     <div class="context-divider"></div>
                     <div class="context-item" onclick="renameDesktopFile('${filename}'); closeCtx()">
                         <svg class="icon-svg" viewBox="0 0 24 24"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
@@ -2095,6 +2101,7 @@
                     : files.map(file => {
                         let icon = '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>';
                         if(file.match(/\.(jpg|png|gif|webp)$/i)) icon = '<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/>';
+                        if(isArchiveFile(file)) icon = '<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2v11z"/><path d="M12 10v4"/><path d="M12 14l2-2"/>';
                         
                         return `
                             <div class="folder-item" data-filename="${file}" data-path="${path}/${file}"
@@ -2252,13 +2259,12 @@
                     </div>
                 `;
             } else {
-                const isZip = filename.toLowerCase().endsWith('.zip');
                 html = `
                     <div class="context-item" onclick="openFileFromPath('${fullPath}', '${filename}'); closeCtx()">
                         <svg class="icon-svg" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
                         <span>打开</span>
                     </div>
-                    ${isZip ? `<div class="context-item" onclick="extractZipFromPath('${fullPath}'); closeCtx()"><svg class="icon-svg" viewBox="0 0 24 24"><path d="M21 8v13H3V8"/></svg><span>解压</span></div>` : ''}
+                    ${isArchiveFile(filename) ? `<div class="context-item" onclick="extractZipFromPath('${fullPath}'); closeCtx()"><svg class="icon-svg" viewBox="0 0 24 24"><path d="M21 8v13H3V8"/></svg><span>解压</span></div>` : ''}
                     <div class="context-divider"></div>
                     <div class="context-item" onclick="renameFolderItem('${windowId}', '${filename}'); closeCtx()">
                         <svg class="icon-svg" viewBox="0 0 24 24"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
@@ -2345,70 +2351,6 @@
                 } else {
                     openFolderWindow(folderName);
                     Notify.success('重命名成功', `已重命名为 "${newName}"`);
-                }
-            });
-        }
-
-        function extractZipFromPath(zipPath) {
-            const filename = zipPath.split('/').pop();
-            const folderName = filename.replace(/\.zip$/i, '');
-            const targetDir = SYSTEM.desktopPath + '/' + folderName;
-
-            const progressEl = document.createElement('div');
-            progressEl.className = 'extract-progress';
-            progressEl.innerHTML = `
-                <h4>正在解压...</h4>
-                <div class="bar"><div class="bar-fill" id="extract-bar"></div></div>
-                <p id="extract-status">读取压缩包...</p>
-            `;
-            document.body.appendChild(progressEl);
-
-            SYSTEM.fs.readFile(zipPath, async (err, data) => {
-                if (err) { progressEl.remove(); Notify.error('解压失败', '读取文件错误'); return; }
-
-                try {
-                    document.getElementById('extract-status').innerText = '解析文件结构...';
-                    const zip = await JSZip.loadAsync(data);
-                    
-                    await new Promise((resolve) => {
-                        SYSTEM.fs.mkdir(targetDir, (err) => {
-                            if(err && err.code !== 'EEXIST') resolve(err);
-                            else resolve();
-                        });
-                    });
-
-                    const files = Object.keys(zip.files).filter(name => !zip.files[name].dir);
-                    const total = files.length;
-                    let done = 0;
-
-                    for (const relativePath of files) {
-                        const zipEntry = zip.files[relativePath];
-                        const content = await zipEntry.async('arraybuffer');
-                        const buffer = SYSTEM.Buffer.from(content);
-                        
-                        const fullPath = targetDir + '/' + relativePath;
-                        const parentDir = fullPath.substring(0, fullPath.lastIndexOf('/'));
-                        await ensureDir(parentDir);
-
-                        document.getElementById('extract-status').innerText = relativePath;
-                        
-                        await new Promise((resolve) => {
-                            SYSTEM.fs.writeFile(fullPath, buffer, () => resolve());
-                        });
-
-                        done++;
-                        document.getElementById('extract-bar').style.width = (done / total * 100) + '%';
-                    }
-
-                    progressEl.remove();
-                    refreshDesktop();
-                    Notify.success('解压完成', `已解压到 "${folderName}"`);
-                    openFolderWindow(folderName);
-
-                } catch (e) { 
-                    progressEl.remove(); 
-                    Notify.error('解压出错', e.message); 
-                    console.error(e);
                 }
             });
         }
@@ -2777,11 +2719,9 @@
                     openNotepad(data, filename);
                 });
             } 
-            // 4. 处理 ZIP 文件 (在桌面调用)
-            else if(filename.match(/\.zip$/i)) {
-                // 如果是直接在桌面调用 openFile，由于 openFile 转接到了这里，我们需要判断是否在桌面路径
-                // 或者直接调用解压函数
-                extractZip(filename); 
+            // 4. 处理压缩文件 (支持 zip/7z/rar/tar/gz 等格式)
+            else if(isArchiveFile(filename)) {
+                extractArchive(fullPath);
             } 
             // 5. 处理 PDF 文件
             else if(filename.match(/\.pdf$/i)) {
@@ -2871,73 +2811,140 @@
             });
         }
 
-        // === ZIP解压 (修复版) ===
-        async function extractZip(filename) {
-            // 如果传入的是完整路径，提取文件名
-            const cleanFilename = filename.split('/').pop();
-            const zipPath = SYSTEM.desktopPath + '/' + cleanFilename;
-            const folderName = cleanFilename.replace(/\.zip$/i, '');
-            const targetDir = SYSTEM.desktopPath + '/' + folderName;
+        // ============================================
+        // 统一解压函数 - 支持 zip/7z/rar/tar/gz 等格式
+        // ============================================
+
+        function isArchiveFile(filename) {
+            return /\.(zip|7z|rar|tar|gz|bz2|xz|cab|tgz)$/i.test(filename);
+        }
+
+        function getArchiveType(filename) {
+            const ext = filename.toLowerCase().split('.').pop();
+            if (ext === 'zip') return 'zip';
+            if (['7z', 'rar', 'tar', 'gz', 'bz2', 'xz', 'cab', 'tgz'].includes(ext)) return '7z';
+            return 'unknown';
+        }
+
+        async function extractArchive(filePath) {
+            const filename = filePath.split('/').pop();
+            const folderName = filename.replace(/\.(zip|7z|rar|tar|gz|bz2|xz|cab|tgz)$/i, '');
+            const parentDir = filePath.substring(0, filePath.lastIndexOf('/'));
+            const targetDir = parentDir + '/' + folderName;
+            const archiveType = getArchiveType(filename);
 
             const progressEl = document.createElement('div');
             progressEl.className = 'extract-progress';
             progressEl.innerHTML = `
-                <h4>正在解压...</h4>
+                <h4>正在解压: ${filename}</h4>
                 <div class="bar"><div class="bar-fill" id="extract-bar"></div></div>
                 <p id="extract-status">读取压缩包...</p>
             `;
             document.body.appendChild(progressEl);
 
-            SYSTEM.fs.readFile(zipPath, async (err, data) => {
-                if (err) { progressEl.remove(); Notify.error('解压失败', '读取文件错误'); return; }
+            const updateProgress = (percent) => {
+                const bar = document.getElementById('extract-bar');
+                if (bar) bar.style.width = percent + '%';
+            };
+            const updateStatus = (text) => {
+                const status = document.getElementById('extract-status');
+                if (status) status.innerText = text;
+            };
 
-                try {
-                    document.getElementById('extract-status').innerText = '解析文件结构...';
-                    const zip = await JSZip.loadAsync(data);
-                    
-                    // 创建根目录
-                    await new Promise((resolve) => {
-                        SYSTEM.fs.mkdir(targetDir, (err) => {
-                            if(err && err.code !== 'EEXIST') resolve(err);
-                            else resolve();
-                        });
+            try {
+                updateStatus('读取压缩包...');
+                updateProgress(5);
+                
+                const fileData = await new Promise((resolve, reject) => {
+                    SYSTEM.fs.readFile(filePath, (err, data) => {
+                        if (err) reject(err);
+                        else resolve(data);
                     });
+                });
 
+                await new Promise(resolve => {
+                    SYSTEM.fs.mkdir(targetDir, () => resolve());
+                });
+
+                let extractedFiles = [];
+
+                if (archiveType === 'zip') {
+                    updateStatus('解析 ZIP 结构...');
+                    updateProgress(10);
+                    
+                    const zip = await JSZip.loadAsync(fileData);
                     const files = Object.keys(zip.files).filter(name => !zip.files[name].dir);
                     const total = files.length;
-                    let done = 0;
 
-                    for (const relativePath of files) {
+                    for (let i = 0; i < files.length; i++) {
+                        const relativePath = files[i];
                         const zipEntry = zip.files[relativePath];
+                        
+                        updateStatus(relativePath);
+                        updateProgress(10 + (i / total) * 85);
+                        
                         const content = await zipEntry.async('arraybuffer');
-                        const buffer = SYSTEM.Buffer.from(content);
-                        
-                        // 确保父目录存在
-                        const fullPath = targetDir + '/' + relativePath;
-                        const parentDir = fullPath.substring(0, fullPath.lastIndexOf('/'));
-                        await ensureDir(parentDir);
-
-                        document.getElementById('extract-status').innerText = relativePath;
-                        
-                        await new Promise((resolve) => {
-                            SYSTEM.fs.writeFile(fullPath, buffer, () => resolve());
+                        extractedFiles.push({
+                            path: relativePath,
+                            data: new Uint8Array(content)
                         });
-
-                        done++;
-                        document.getElementById('extract-bar').style.width = (done / total * 100) + '%';
                     }
-
-                    progressEl.remove();
-                    refreshDesktop();
-                    Notify.success('解压完成', `已解压到 "${folderName}"`);
-                    openFolderWindow(folderName);
-
-                } catch (e) { 
-                    progressEl.remove(); 
-                    Notify.error('解压出错', e.message); 
-                    console.error(e);
+                } else if (archiveType === '7z') {
+                    if (!window.sevenZipReady) {
+                        throw new Error('7z引擎未加载，请刷新页面重试');
+                    }
+                    
+                    updateStatus('使用 7z 引擎解压...');
+                    updateProgress(20);
+                    
+                    extractedFiles = await window.sevenZipEngine.extract(fileData, filename);
+                    updateProgress(90);
+                    
+                    window.sevenZipEngine.cleanup();
+                } else {
+                    throw new Error('不支持的压缩格式');
                 }
-            });
+
+                updateStatus('写入文件...');
+                const total = extractedFiles.length;
+                
+                for (let i = 0; i < extractedFiles.length; i++) {
+                    const file = extractedFiles[i];
+                    const fullPath = targetDir + '/' + file.path;
+                    
+                    const fileParentDir = fullPath.substring(0, fullPath.lastIndexOf('/'));
+                    await ensureDir(fileParentDir);
+                    
+                    const buffer = SYSTEM.Buffer ? SYSTEM.Buffer.from(file.data) : file.data;
+                    
+                    await new Promise(resolve => {
+                        SYSTEM.fs.writeFile(fullPath, buffer, () => resolve());
+                    });
+                    
+                    updateProgress(90 + (i / total) * 10);
+                }
+
+                progressEl.remove();
+                Notify.success('解压完成', `已解压 ${extractedFiles.length} 个文件到 "${folderName}"`);
+                
+                if (typeof refreshDesktop === 'function') refreshDesktop();
+                if (typeof loadDirectory === 'function') loadDirectory(parentDir);
+                if (typeof openFolderWindow === 'function') openFolderWindow(folderName);
+
+            } catch (e) {
+                progressEl.remove();
+                Notify.error('解压失败', e.message);
+                console.error('解压错误:', e);
+            }
+        }
+
+        function extractZip(filename) {
+            const path = SYSTEM.desktopPath + '/' + filename.split('/').pop();
+            extractArchive(path);
+        }
+
+        function extractZipFromPath(filePath) {
+            extractArchive(filePath);
         }
 
         async function ensureDir(path) {
@@ -2983,7 +2990,6 @@
 
         function ctxFile(e, filename) {
             e.preventDefault(); e.stopPropagation();
-            const isZip = filename.toLowerCase().endsWith('.zip');
             
             let menuItems = `
                 <div class="context-item" onclick="openFile('${filename}'); closeCtx()">
@@ -2992,7 +2998,7 @@
                 </div>
             `;
 
-            if (isZip) {
+            if (isArchiveFile(filename)) {
                 menuItems += `
                     <div class="context-item" onclick="extractZip('${filename}'); closeCtx()">
                         <svg class="icon-svg" viewBox="0 0 24 24"><path d="M21 8v13H3V8"/><path d="M1 3h22v5H1z"/><path d="M10 12h4"/></svg>
@@ -4071,9 +4077,8 @@
                     <div class="content-area dark" style="overflow-y:auto">
                         <div class="settings-content">
                             <div class="about-card">
-                                <div class="logo">JS</div>
-                                <h3>JISHENG OS</h3>
-                                <p>Ultimate Web Operating System<br>Version 5.0 • Build 2024</p>
+                                <div class="logo">JISHENG OS</div>
+                                <p>Ultimate Web Operating System<br>Version 10.1 • Build 2026</p>
                             </div>
                             
                             <div class="settings-section" style="margin-top:20px">
@@ -4100,7 +4105,7 @@
                                 <h4>关于</h4>
                                 <div class="settings-item">
                                     <label>系统版本</label>
-                                    <span>3.0.0</span>
+                                    <span>10.1.0</span>
                                 </div>
                                 <div class="settings-item">
                                     <label>内核</label>
@@ -4160,6 +4165,91 @@
 
         // 启动
         window.onload = initKernel;
+    </script>
+
+    <!-- ========== 7z-wasm 解压引擎（放在 </body> 前面）========== -->
+    <script type="module">
+    import SevenZip from 'https://cdn.jsdelivr.net/npm/7z-wasm@1.2.0/7zz.es6.min.js';
+
+    class SevenZipEngine {
+        constructor() {
+            this.sevenZip = null;
+            this.ready = false;
+        }
+
+        async init() {
+            try {
+                this.sevenZip = await SevenZip({
+                    print: (t) => console.log('[7z]', t),
+                    printErr: (t) => console.error('[7z]', t)
+                });
+                this.ready = true;
+                console.log('✅ 7z-wasm 引擎加载成功');
+                return true;
+            } catch (e) {
+                console.error('❌ 7z-wasm 加载失败:', e);
+                return false;
+            }
+        }
+
+        async extract(arrayBuffer, filename) {
+            if (!this.ready) throw new Error('7z引擎未加载');
+            
+            const data = new Uint8Array(arrayBuffer);
+            
+            const stream = this.sevenZip.FS.open(filename, 'w+');
+            this.sevenZip.FS.write(stream, data, 0, data.length);
+            this.sevenZip.FS.close(stream);
+            
+            this.sevenZip.callMain(['x', '-y', filename]);
+            
+            try { this.sevenZip.FS.unlink(filename); } catch(e) {}
+            
+            return this.collectFiles('/');
+        }
+
+        collectFiles(path = '/') {
+            const files = [];
+            const skip = ['tmp', 'home', 'dev', 'proc'];
+            try {
+                const entries = this.sevenZip.FS.readdir(path);
+                for (const entry of entries) {
+                    if (entry === '.' || entry === '..' || skip.includes(entry)) continue;
+                    const fullPath = path === '/' ? '/' + entry : path + '/' + entry;
+                    try {
+                        const stat = this.sevenZip.FS.stat(fullPath);
+                        if (this.sevenZip.FS.isDir(stat.mode)) {
+                            files.push(...this.collectFiles(fullPath));
+                        } else if (this.sevenZip.FS.isFile(stat.mode)) {
+                            if (!fullPath.match(/\.(7z|zip|rar|tar|gz|bz2|xz|cab)$/i)) {
+                                files.push({
+                                    path: fullPath.substring(1),
+                                    name: entry,
+                                    data: this.sevenZip.FS.readFile(fullPath),
+                                    size: stat.size
+                                });
+                            }
+                        }
+                    } catch (e) {}
+                }
+            } catch (e) {}
+            return files;
+        }
+
+        cleanup() {
+            if (!this.ready) return;
+            const files = this.collectFiles('/');
+            for (const f of files) {
+                try { this.sevenZip.FS.unlink('/' + f.path); } catch(e) {}
+            }
+        }
+    }
+
+    window.sevenZipEngine = new SevenZipEngine();
+    window.sevenZipEngine.init().then(ok => {
+        window.sevenZipReady = ok;
+        console.log('7z引擎状态:', ok ? '就绪' : '失败');
+    });
     </script>
 </body>
 </html>
