@@ -1,6 +1,6 @@
 <div align="center">
 
-# JISHENG OS // SYSTEM ARCHIVE v10.1
+# JISHENG OS // SYSTEM ARCHIVE v10.2
 
 *A Single-File Ultimate Persistent Operating System*
 
@@ -53,7 +53,8 @@
 * **[全功能计算器]** 精确浮点运算，支持百分比及正负极性切换。
 * **[V86 虚拟机]** 基于 WebAssembly 的 x86 模拟器，支持运行 `.img` 软盘镜像和 `.iso` CD-ROM 镜像，鼠标点击屏幕锁定，按 ESC 退出。
 * **[JSZip 解压引擎]** 原生 JavaScript 实现的 ZIP 格式解析器，支持 `.zip` 标准压缩包快速提取。
-* **[7z 解压引擎]** 基于 7z-wasm 的底层解压协议，支持 `.7z` `.rar` `.tar` `.gz` `.bz2` `.xz` `.cab` `.tgz` 等全格式压缩包无损提取。
+* **[7z 虚拟解压引擎]** 基于 7z-wasm 的底层解压协议，支持 `.7z` `.rar` `.tar` `.gz` `.bz2` `.xz` `.cab` `.tgz` 等全格式压缩包无损提取。
+* **[HTML 编辑器]** 集成 CodeMirror 的代码编辑器，支持 HTML/CSS/JS 实时预览、语法高亮、代码格式化、折叠/展开、查找替换、多语言模式切换，以及文件导入导出功能。
 
 #### 💽 05. 文件系统驱动 (Filesystem Core)
 > 底层级别的多媒体解析能力。
@@ -105,9 +106,9 @@
 
 ### 🛠️ TECHNICAL SPECS // 技术规格
 
-* **SYSTEM BUILD**：`v10.1.0`
+* **SYSTEM BUILD**：`v10.2.0`
 * **RENDER ENGINE**：`Ultra-Glass 拟物态 (Backdrop-filter: 40px)`
-* **CORE DRIVERS**：`BrowserFS` / `IndexedDB` / `JSZip` / `7z-wasm` / `V86`
+* **CORE DRIVERS**：`BrowserFS` / `IndexedDB` / `JSZip` / `7z-wasm` / `V86` / `CodeMirror`
 * **LATENCY**：`< 16ms (60FPS Silk Smooth)`
 * **STORAGE LIMIT**：取决于宿主配额（约物理硬盘容量的 `50%`）
 
@@ -119,7 +120,7 @@
 
 **[ 系统自检完成：逻辑回路 100% 闭环 ]**
 
-**[ JISHENG OS v10.1 已就绪。期待与您的下一次链接。]**
+**[ JISHENG OS v10.2 已就绪。期待与您的下一次链接。]**
 
 <br>
 
