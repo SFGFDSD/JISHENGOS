@@ -3002,7 +3002,7 @@
                 openMangaViewer(fullPath, filename);
             } 
             // 3. 处理文本文件
-            else if(filename.match(/\.txt$/i)) {
+            else if(filename.match(/\.(txt|md)$/i)) {
                 SYSTEM.fs.readFile(fullPath, 'utf8', (err, data) => {
                     if(err) { Notify.error('打开失败', err.message); return; }
                     openNotepad(data, filename);
@@ -3042,6 +3042,26 @@
                         width: 800, height: 600,
                         content: `<div class="content-area dark" style="display:flex;align-items:center;justify-content:center;overflow:hidden">
                             <video src="${dataUrl}" controls autoplay style="max-width:100%;max-height:100%"></video>
+                        </div>`
+                    });
+                });
+            }
+            // 7. 处理音频文件 (MP3/M4A)
+            else if(filename.match(/\.(mp3|m4a)$/i)) {
+                SYSTEM.fs.readFile(fullPath, (err, data) => {
+                    if(err) { Notify.error('打开失败', err.message); return; }
+                    const base64 = SYSTEM.Buffer.from(data).toString('base64');
+                    const ext = filename.match(/\.(mp3|m4a)$/i)[1].toLowerCase();
+                    const mimeType = ext === 'm4a' ? 'audio/mp4' : 'audio/mpeg';
+                    const dataUrl = `data:${mimeType};base64,${base64}`;
+                    
+                    createWindow({
+                        title: filename,
+                        iconHtml: '<svg class="icon-svg sm" viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>',
+                        width: 500, height: 200,
+                        content: `<div class="content-area dark" style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;overflow:hidden">
+                            <div style="margin-bottom:20px;color:#8b949e;font-size:14px">${filename}</div>
+                            <audio src="${dataUrl}" controls autoplay style="width:100%"></audio>
                         </div>`
                     });
                 });
