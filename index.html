@@ -29,6 +29,52 @@
     <script src="https://unpkg.com/jszip@3.10.1/dist/jszip.min.js"></script>
     <!-- V86 虚拟机模拟器 -->
     <script src="https://cdn.jsdelivr.net/npm/v86@latest/build/libv86.js"></script>
+    
+    <!-- CodeMirror 代码编辑器 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/material-darker.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/dialog/dialog.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/fold/foldgutter.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/hint/show-hint.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/search/matchesonscrollbar.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/xml/xml.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/css/css.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/htmlmixed/htmlmixed.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/markdown/markdown.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/python/python.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/clike/clike.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/shell/shell.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/closebrackets.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/closetag.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/matchbrackets.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/matchtags.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/trailingspace.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/fold/foldcode.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/fold/foldgutter.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/fold/xml-fold.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/fold/brace-fold.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/fold/comment-fold.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/fold/indent-fold.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/search/search.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/search/searchcursor.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/search/jump-to-line.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/search/match-highlighter.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/scroll/annotatescrollbar.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/search/matchesonscrollbar.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/dialog/dialog.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/comment/comment.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/hint/show-hint.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/hint/html-hint.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/hint/css-hint.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/hint/javascript-hint.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/hint/xml-hint.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/hint/anyword-hint.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/selection/active-line.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/js-beautify/1.14.11/beautify.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/js-beautify/1.14.11/beautify-css.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/js-beautify/1.14.11/beautify-html.min.js"></script>
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -915,6 +961,228 @@
             align-items: center; justify-content: center; cursor: pointer; z-index: 10001;
         }
         .window.truly-fullscreen.manga-full .manga-exit-btn { display: flex; }
+
+        /* === 代码编辑器样式 === */
+        .editor-app { display: flex; flex-direction: column; height: 100%; background: #0d1117; overflow: hidden; }
+        .editor-toolbar {
+            display: flex; align-items: center; background: #161b22;
+            border-bottom: 1px solid #30363d; padding: 0 8px; height: 40px;
+            flex-shrink: 0; gap: 2px; overflow-x: auto; overflow-y: hidden;
+        }
+        .editor-toolbar-group { display: flex; align-items: center; gap: 1px; }
+        .editor-toolbar-divider { width: 1px; height: 20px; background: #30363d; margin: 0 6px; flex-shrink: 0; }
+        .editor-tb-btn {
+            display: flex; align-items: center; justify-content: center; gap: 5px;
+            padding: 4px 8px; height: 30px; border: none; background: transparent;
+            color: #8b949e; border-radius: 6px; cursor: pointer;
+            font-size: 12px; white-space: nowrap; transition: all .15s; flex-shrink: 0;
+        }
+        .editor-tb-btn:hover { background: #30363d; color: #e6edf3; }
+        .editor-tb-btn:active { transform: scale(.95); }
+        .editor-tb-btn svg { width: 15px; height: 15px; flex-shrink: 0; }
+        .editor-tb-btn.accent { color: #3fb950; }
+        .editor-tb-btn.accent:hover { background: #3fb95020; }
+        .editor-tb-btn.danger { color: #f85149; }
+        .editor-tb-btn.danger:hover { background: #f8514920; }
+        .editor-lang-select {
+            background: #21262d; color: #e6edf3;
+            border: 1px solid #30363d; border-radius: 6px;
+            padding: 3px 8px; font-size: 12px; height: 28px; cursor: pointer; outline: none;
+        }
+        .editor-lang-select:focus { border-color: #58a6ff; }
+        .editor-search-bar {
+            display: none; align-items: center; gap: 6px;
+            background: #161b22; border-bottom: 1px solid #30363d;
+            padding: 4px 12px; height: 36px; flex-shrink: 0;
+        }
+        .editor-search-bar.open { display: flex; }
+        .editor-search-seg { display: flex; align-items: center; gap: 4px; }
+        .editor-search-seg-label { font-size: 11px; color: #484f58; flex-shrink: 0; }
+        .editor-search-input-wrap { position: relative; display: flex; align-items: center; }
+        .editor-search-input {
+            width: 180px; background: #21262d; color: #e6edf3;
+            border: 1px solid #30363d; border-radius: 5px;
+            padding: 3px 40px 3px 8px; font-size: 12px; outline: none; font-family: inherit; height: 26px;
+        }
+        .editor-search-input:focus { border-color: #58a6ff; }
+        .editor-search-input::placeholder { color: #484f58; }
+        .editor-search-count {
+            position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
+            font-size: 10px; color: #484f58; pointer-events: none; white-space: nowrap;
+        }
+        .editor-replace-input {
+            width: 160px; background: #21262d; color: #e6edf3;
+            border: 1px solid #30363d; border-radius: 5px;
+            padding: 3px 8px; font-size: 12px; outline: none; font-family: inherit; height: 26px;
+        }
+        .editor-replace-input:focus { border-color: #58a6ff; }
+        .editor-replace-input::placeholder { color: #484f58; }
+        .editor-s-btn {
+            display: flex; align-items: center; justify-content: center;
+            width: 24px; height: 24px; border: none; background: transparent;
+            color: #8b949e; border-radius: 4px; cursor: pointer;
+            transition: all .15s; flex-shrink: 0;
+        }
+        .editor-s-btn:hover { background: #30363d; color: #e6edf3; }
+        .editor-s-btn svg { width: 12px; height: 12px; }
+        .editor-s-toggle {
+            display: flex; align-items: center; justify-content: center;
+            padding: 1px 5px; height: 22px; border: 1px solid #30363d;
+            background: transparent; color: #8b949e;
+            border-radius: 3px; cursor: pointer; font-size: 10px;
+            transition: all .15s; flex-shrink: 0; font-weight: 600;
+        }
+        .editor-s-toggle:hover { border-color: #8b949e; color: #e6edf3; }
+        .editor-s-toggle.active { border-color: #58a6ff; color: #58a6ff; background: #1f6feb22; }
+        .editor-search-sep { width: 1px; height: 18px; background: #30363d; flex-shrink: 0; }
+        .editor-main-container { display: flex; flex: 1; overflow: hidden; }
+        .editor-sidebar {
+            width: 44px; background: #161b22; border-right: 1px solid #30363d;
+            display: flex; flex-direction: column; align-items: center; padding: 8px 0; gap: 4px; flex-shrink: 0;
+        }
+        .editor-side-btn {
+            width: 34px; height: 34px; border: none; background: transparent;
+            color: #8b949e; border-radius: 8px; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            transition: all .15s; position: relative;
+        }
+        .editor-side-btn:hover { background: #30363d; color: #e6edf3; }
+        .editor-side-btn.active { color: #58a6ff; background: #1f6feb22; }
+        .editor-side-btn.active::before {
+            content: ''; position: absolute; left: -1px; top: 6px; bottom: 6px;
+            width: 2px; background: #58a6ff; border-radius: 1px;
+        }
+        .editor-side-btn svg { width: 18px; height: 18px; }
+        .editor-sidebar-spacer { flex: 1; }
+        .editor-section { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+        .editor-wrapper { flex: 1; position: relative; overflow: hidden; }
+        .editor-resizer {
+            width: 5px; cursor: col-resize; background: #30363d;
+            transition: background .15s; flex-shrink: 0; position: relative;
+        }
+        .editor-resizer:hover, .editor-resizer.dragging { background: #58a6ff; }
+        .editor-resizer::before {
+            content: ''; position: absolute; top: 0; bottom: 0; left: -4px; right: -4px; z-index: 10;
+        }
+        .editor-preview-section {
+            display: flex; flex-direction: column; width: 45%; min-width: 120px; background: #0d1117;
+        }
+        .editor-preview-header {
+            display: none;
+        }
+        .editor-preview-title { font-size: 12px; color: #8b949e; display: flex; align-items: center; gap: 6px; }
+        .editor-preview-title svg { width: 14px; height: 14px; }
+        .editor-preview-actions { display: flex; gap: 2px; }
+        .editor-preview-btn {
+            width: 28px; height: 28px; border: none; background: transparent;
+            color: #8b949e; border-radius: 6px; cursor: pointer;
+            display: flex; align-items: center; justify-content: center; transition: all .15s;
+        }
+        .editor-preview-btn:hover { background: #30363d; color: #e6edf3; }
+        .editor-preview-btn svg { width: 14px; height: 14px; }
+        /* 预览标题栏移到主工具栏 */
+        .editor-toolbar {
+            display: flex; align-items: center; background: #161b22;
+            border-bottom: 1px solid #30363d; padding: 0 8px; height: 40px;
+            flex-shrink: 0; gap: 2px; overflow-x: auto; overflow-y: hidden;
+        }
+        .editor-toolbar-left {
+            display: flex; align-items: center; gap: 2px; flex: 1;
+        }
+        .editor-toolbar-right {
+            display: flex; align-items: center; gap: 8px;
+            padding-left: 12px; border-left: 1px solid #30363d;
+        }
+        .editor-preview-frame-wrapper { flex: 1; position: relative; background: #0d1117; }
+        .editor-preview-frame-wrapper iframe { width: 100%; height: 100%; border: none; background: #0d1117; }
+        .editor-preview-loading {
+            position: absolute; top: 0; left: 0; right: 0; height: 2px;
+            background: transparent; z-index: 10; overflow: hidden;
+        }
+        .editor-preview-loading.active::after {
+            content: ''; position: absolute; top: 0; left: -50%; width: 50%; height: 100%;
+            background: #58a6ff; animation: editor-loading-bar 1s ease-in-out infinite;
+        }
+        @keyframes editor-loading-bar { 0% { left: -50% } 100% { left: 100% } }
+        .editor-status-bar {
+            display: flex; align-items: center; justify-content: space-between;
+            height: 24px; background: #161b22; border-top: 1px solid #30363d;
+            padding: 0 12px; font-size: 11px; color: #8b949e; flex-shrink: 0;
+        }
+        .editor-status-left, .editor-status-right { display: flex; align-items: center; gap: 14px; }
+        .editor-status-item { display: flex; align-items: center; gap: 4px; }
+        .editor-status-dot { width: 7px; height: 7px; border-radius: 50%; background: #3fb950; }
+        .editor-cm-search-highlight { background: rgba(210, 153, 34, .35) !important; }
+        .editor-cm-search-current { background: rgba(210, 153, 34, .8) !important; outline: 1px solid #d29922; }
+        
+        /* CodeMirror 主题覆盖 */
+        .editor-app .CodeMirror {
+            height: 100% !important; background: #0d1117 !important;
+            color: #e6edf3 !important;
+            font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'SF Mono', 'Consolas', 'Monaco', monospace !important;
+            font-size: 14px !important; line-height: 1.6 !important;
+        }
+        .editor-app .cm-s-material-darker .cm-keyword { color: #ff7b72 !important; }
+        .editor-app .cm-s-material-darker .cm-atom { color: #79c0ff !important; }
+        .editor-app .cm-s-material-darker .cm-number { color: #79c0ff !important; }
+        .editor-app .cm-s-material-darker .cm-def { color: #d2a8ff !important; }
+        .editor-app .cm-s-material-darker .cm-variable { color: #e6edf3 !important; }
+        .editor-app .cm-s-material-darker .cm-variable-2 { color: #ffa657 !important; }
+        .editor-app .cm-s-material-darker .cm-variable-3, .editor-app .cm-s-material-darker .cm-type { color: #79c0ff !important; }
+        .editor-app .cm-s-material-darker .cm-property { color: #79c0ff !important; }
+        .editor-app .cm-s-material-darker .cm-operator { color: #ff7b72 !important; }
+        .editor-app .cm-s-material-darker .cm-comment { color: #8b949e !important; font-style: italic; }
+        .editor-app .cm-s-material-darker .cm-string { color: #a5d6ff !important; }
+        .editor-app .cm-s-material-darker .cm-string-2 { color: #a5d6ff !important; }
+        .editor-app .cm-s-material-darker .cm-meta { color: #79c0ff !important; }
+        .editor-app .cm-s-material-darker .cm-qualifier { color: #d2a8ff !important; }
+        .editor-app .cm-s-material-darker .cm-builtin { color: #ffa657 !important; }
+        .editor-app .cm-s-material-darker .cm-bracket { color: #8b949e !important; }
+        .editor-app .cm-s-material-darker .cm-tag { color: #7ee787 !important; }
+        .editor-app .cm-s-material-darker .cm-attribute { color: #79c0ff !important; }
+        .editor-app .cm-s-material-darker .cm-header { color: #79c0ff !important; font-weight: bold; }
+        .editor-app .cm-s-material-darker .cm-link { color: #a5d6ff !important; }
+        .editor-app .cm-s-material-darker .cm-error { color: #f85149 !important; }
+        .editor-app .cm-s-material-darker .CodeMirror-gutters { background: #0d1117 !important; border-right: 1px solid #30363d !important; }
+        .editor-app .cm-s-material-darker .CodeMirror-linenumber { color: #484f58 !important; padding: 0 12px 0 8px !important; }
+        .editor-app .cm-s-material-darker .CodeMirror-activeline-background { background: #161b22 !important; }
+        .editor-app .cm-s-material-darker .CodeMirror-selected { background: #264f78 !important; }
+        .editor-app .cm-s-material-darker .CodeMirror-focused .CodeMirror-selected { background: #264f78 !important; }
+        .editor-app .cm-s-material-darker .CodeMirror-cursor { border-left: 2px solid #58a6ff !important; }
+        .editor-app .cm-s-material-darker .CodeMirror-matchingbracket { color: #e6edf3 !important; background: #3fb95030 !important; outline: 1px solid #3fb95060; }
+        .editor-app .cm-s-material-darker .CodeMirror-nonmatchingbracket { color: #f85149 !important; background: #f8514930 !important; }
+        .editor-app .cm-s-material-darker .CodeMirror-foldgutter-open, .editor-app .cm-s-material-darker .CodeMirror-foldgutter-folded { color: #484f58 !important; }
+        .editor-app .cm-s-material-darker .CodeMirror-foldgutter-open:hover, .editor-app .cm-s-material-darker .CodeMirror-foldgutter-folded:hover { color: #e6edf3 !important; }
+        .editor-app .cm-s-material-darker .cm-searching { background: rgba(210, 153, 34, .4) !important; color: #fff !important; }
+        .editor-app .CodeMirror-dialog {
+            background: #161b22 !important; border-bottom: 1px solid #30363d !important;
+            color: #e6edf3 !important; padding: 6px 12px !important;
+        }
+        .editor-app .CodeMirror-dialog input {
+            background: #21262d !important; color: #e6edf3 !important;
+            border: 1px solid #30363d !important; border-radius: 4px !important;
+            padding: 3px 8px !important; outline: none !important;
+        }
+        .editor-app .CodeMirror-dialog input:focus { border-color: #58a6ff !important; }
+        .editor-app .CodeMirror-hints {
+            background: #161b22 !important; border: 1px solid #30363d !important;
+            border-radius: 6px !important; box-shadow: 0 8px 24px rgba(0,0,0,.4) !important;
+            font-family: 'JetBrains Mono', monospace !important; font-size: 13px !important;
+            z-index: 99999 !important; overflow: hidden;
+        }
+        .editor-app .CodeMirror-hint { color: #e6edf3 !important; padding: 4px 10px !important; }
+        .editor-app li.CodeMirror-hint-active { background: #58a6ff !important; color: #fff !important; }
+        
+        /* 拖拽防选中 - 修复iframe拦截拖拽问题 */
+        .no-select { user-select: none !important; -webkit-user-select: none !important; }
+        .no-select iframe { pointer-events: none !important; }
+        
+        @media(max-width:768px) {
+            .editor-preview-section, .editor-resizer { display: none; }
+            .editor-tb-btn span { display: none; }
+            .editor-search-input { width: 120px; }
+            .editor-replace-input { width: 100px; }
+        }
     </style>
 </head>
 <body>
@@ -995,6 +1263,12 @@
                     <line x1="8" y1="21" x2="16" y2="21"/>
                     <line x1="12" y1="17" x2="12" y2="21"/>
                     <path d="M6 8h2M6 12h2M10 8h8M10 12h8"/>
+                </svg>
+            </div>
+            <div class="taskbar-icon" onclick="openCodeEditor()" title="HTML编辑器">
+                <svg class="icon-svg" viewBox="0 0 24 24">
+                    <polyline points="16 18 22 12 16 6"/>
+                    <polyline points="8 6 2 12 8 18"/>
                 </svg>
             </div>
         </div>
@@ -1083,6 +1357,13 @@
                     <path d="M6 8h2M6 12h2M10 8h8M10 12h8"/>
                 </svg>
                 <span>V86 VM</span>
+            </div>
+            <div class="menu-item" onclick="openCodeEditor(); toggleStartMenu()">
+                <svg class="icon-svg lg" viewBox="0 0 24 24">
+                    <polyline points="16 18 22 12 16 6"/>
+                    <polyline points="8 6 2 12 8 18"/>
+                </svg>
+                <span>HTML Editor</span>
             </div>
         </div>
     </div>
@@ -1614,6 +1895,14 @@
                     name: 'V86 虚拟机',
                     action: 'openV86()',
                     icon: '<rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/><path d="M6 8h2M6 12h2M10 8h8M10 12h8"/>'
+                });
+
+                // 添加代码编辑器到系统应用列表
+                systemApps.push({
+                    id: 'app-editor',
+                    name: 'HTML编辑器',
+                    action: 'openCodeEditor()',
+                    icon: '<svg class="icon-svg" viewBox="0 0 24 24"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>'
                 });
 
                 // 渲染系统应用
@@ -4068,6 +4357,551 @@
             });
         }
 
+        // ========== 代码编辑器 ==========
+        function openCodeEditor(initialContent = '', filename = '未命名.html') {
+            const winId = createWindow({
+                title: 'HTML编辑器',
+                winType: 'editor',
+                iconHtml: '<svg class="icon-svg sm" viewBox="0 0 24 24"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>',
+                width: 1000, height: 650,
+                content: `
+                    <div class="editor-app" id="editor-app-${SYSTEM.idCounter+1}">
+                        <input type="file" id="editor-file-input-${SYSTEM.idCounter+1}" style="display:none">
+                        <div class="editor-toolbar">
+                            <div class="editor-toolbar-left">
+                                <div class="editor-toolbar-group">
+                                    <button class="editor-tb-btn accent" id="editor-run-${SYSTEM.idCounter+1}" title="运行 (Ctrl+Enter)">
+                                        <svg viewBox="0 0 16 16" fill="currentColor"><path d="M4 2l10 6-10 6V2z"/></svg><span>运行</span>
+                                    </button>
+                                </div>
+                                <div class="editor-toolbar-divider"></div>
+                                <div class="editor-toolbar-group">
+                                    <button class="editor-tb-btn" id="editor-format-${SYSTEM.idCounter+1}" title="格式化 (Ctrl+Shift+F)">
+                                        <svg viewBox="0 0 16 16" fill="currentColor"><path d="M2 3h7v1H2V3zm0 4h12v1H2V7zm0 4h9v1H2v-1zm10-8l3 2.5L12 8V3z"/></svg><span>格式化</span>
+                                    </button>
+                                    <button class="editor-tb-btn" id="editor-fold-${SYSTEM.idCounter+1}" title="折叠全部">
+                                        <svg viewBox="0 0 16 16" fill="currentColor"><path d="M4 4h8v1H4V4zm2 3h4v1H6V7zm-2 3h8v1H4v-1z"/></svg><span>折叠</span>
+                                    </button>
+                                    <button class="editor-tb-btn" id="editor-unfold-${SYSTEM.idCounter+1}" title="展开全部">
+                                        <svg viewBox="0 0 16 16" fill="currentColor"><path d="M2 3h12v1H2V3zm0 3h12v1H2V6zm0 3h12v1H2V9zm0 3h12v1H2v-1z"/></svg><span>展开</span>
+                                    </button>
+                                </div>
+                                <div class="editor-toolbar-divider"></div>
+                                <div class="editor-toolbar-group">
+                                    <button class="editor-tb-btn" id="editor-undo-${SYSTEM.idCounter+1}" title="撤销 (Ctrl+Z)">
+                                        <svg viewBox="0 0 16 16" fill="currentColor"><path d="M2 8a1 1 0 011-1h5.586L6.293 4.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L8.586 9H3a1 1 0 01-1-1z" transform="scale(-1,1) translate(-16,0)"/></svg><span>撤销</span>
+                                    </button>
+                                    <button class="editor-tb-btn" id="editor-redo-${SYSTEM.idCounter+1}" title="重做 (Ctrl+Y)">
+                                        <svg viewBox="0 0 16 16" fill="currentColor"><path d="M2 8a1 1 0 011-1h5.586L6.293 4.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L8.586 9H3a1 1 0 01-1-1z"/></svg><span>重做</span>
+                                    </button>
+                                </div>
+                                <div class="editor-toolbar-divider"></div>
+                                <div class="editor-toolbar-group">
+                                    <button class="editor-tb-btn" id="editor-search-${SYSTEM.idCounter+1}" title="查找与替换 (Ctrl+F)">
+                                        <svg viewBox="0 0 16 16" fill="currentColor"><path d="M10.68 11.74a6 6 0 01-7.922-8.982 6 6 0 018.982 7.922l3.04 3.04a.749.749 0 01-.326 1.275.749.749 0 01-.734-.215l-3.04-3.04zM11.5 7a4.499 4.499 0 10-8.997 0A4.499 4.499 0 0011.5 7z"/></svg><span>查找</span>
+                                    </button>
+                                </div>
+                                <div class="editor-toolbar-divider"></div>
+                                <div class="editor-toolbar-group">
+                                    <select class="editor-lang-select" id="editor-lang-${SYSTEM.idCounter+1}" title="语言模式">
+                                        <option value="htmlmixed">HTML</option>
+                                        <option value="css">CSS</option>
+                                        <option value="javascript">JavaScript</option>
+                                        <option value="markdown">Markdown</option>
+                                        <option value="application/json">JSON</option>
+                                        <option value="python">Python</option>
+                                        <option value="text/x-csrc">C / C++</option>
+                                        <option value="text/x-java">Java</option>
+                                        <option value="shell">Shell</option>
+                                    </select>
+                                </div>
+                                <div class="editor-toolbar-divider"></div>
+                                <div class="editor-toolbar-group">
+                                    <button class="editor-tb-btn danger" id="editor-clear-${SYSTEM.idCounter+1}" title="清空">
+                                        <svg viewBox="0 0 16 16" fill="currentColor"><path d="M11 1.75V3h2.25a.75.75 0 010 1.5H2.75a.75.75 0 010-1.5H5V1.75C5 .784 5.784 0 6.75 0h2.5C10.216 0 11 .784 11 1.75zM4.496 6.675l.66 6.6a.25.25 0 00.249.225h5.19a.25.25 0 00.249-.225l.66-6.6a.75.75 0 011.492.149l-.66 6.6A1.748 1.748 0 0110.595 15h-5.19a1.75 1.75 0 01-1.741-1.575l-.66-6.6a.75.75 0 111.492-.15zM6.5 1.75V3h3V1.75a.25.25 0 00-.25-.25h-2.5a.25.25 0 00-.25.25z"/></svg><span>清空</span>
+                                    </button>
+                                </div>
+                                <div class="editor-toolbar-divider"></div>
+                                <div class="editor-toolbar-group">
+                                    <button class="editor-tb-btn" id="editor-import-${SYSTEM.idCounter+1}" title="导入文件">
+                                        <svg viewBox="0 0 16 16" fill="currentColor"><path d="M2.75 14A1.75 1.75 0 011 12.25v-2.5a.75.75 0 011.5 0v2.5c0 .138.112.25.25.25h10.5a.25.25 0 00.25-.25v-2.5a.75.75 0 011.5 0v2.5A1.75 1.75 0 0113.25 14H2.75zm4.5-6.19l-1.72 1.72a.749.749 0 01-1.275-.326.749.749 0 01.215-.734l3-3a.75.75 0 011.06 0l3 3a.749.749 0 01-.326 1.275.749.749 0 01-.734-.215L8.75 7.81V1.75a.75.75 0 00-1.5 0v6.06z" transform="rotate(180 8 8)"/></svg><span>导入</span>
+                                    </button>
+                                    <button class="editor-tb-btn" id="editor-export-${SYSTEM.idCounter+1}" title="导出文件">
+                                        <svg viewBox="0 0 16 16" fill="currentColor"><path d="M2.75 14A1.75 1.75 0 011 12.25v-2.5a.75.75 0 011.5 0v2.5c0 .138.112.25.25.25h10.5a.25.25 0 00.25-.25v-2.5a.75.75 0 011.5 0v2.5A1.75 1.75 0 0113.25 14H2.75zm4.5-6.19l-1.72 1.72a.749.749 0 01-1.275-.326.749.749 0 01.215-.734l3-3a.75.75 0 011.06 0l3 3a.749.749 0 01-.326 1.275.749.749 0 01-.734-.215L8.75 7.81V1.75a.75.75 0 00-1.5 0v6.06z"/></svg><span>导出</span>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="editor-toolbar-right">
+                                <div class="editor-preview-title">
+                                    <svg viewBox="0 0 16 16" fill="currentColor"><path d="M0 2.75C0 1.784.784 1 1.75 1h12.5c.966 0 1.75.784 1.75 1.75v10.5A1.75 1.75 0 0114.25 15H1.75A1.75 1.75 0 010 13.25V2.75zm1.75-.25a.25.25 0 00-.25.25v10.5c0 .138.112.25.25.25h12.5a.25.25 0 00.25-.25V2.75a.25.25 0 00-.25-.25H1.75z"/><path d="M4 6.5a.5.5 0 01.5-.5h7a.5.5 0 010 1h-7a.5.5 0 01-.5-.5zm.5 2.5a.5.5 0 000 1h4a.5.5 0 000-1h-4z"/></svg>
+                                    实时预览
+                                </div>
+                                <div class="editor-preview-actions">
+                                    <button class="editor-preview-btn" id="editor-refresh-preview-${SYSTEM.idCounter+1}" title="刷新预览">
+                                        <svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 3a5 5 0 104.546 2.914.5.5 0 01.908-.418A6 6 0 118 2v1z"/><path d="M8 4.466V.534a.25.25 0 01.41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 018 4.466z"/></svg>
+                                    </button>
+                                    <button class="editor-preview-btn" id="editor-open-new-${SYSTEM.idCounter+1}" title="在新窗口打开">
+                                        <svg viewBox="0 0 16 16" fill="currentColor"><path d="M3.75 2h3.5a.75.75 0 010 1.5h-3.5a.25.25 0 00-.25.25v8.5c0 .138.112.25.25.25h8.5a.25.25 0 00.25-.25v-3.5a.75.75 0 011.5 0v3.5A1.75 1.75 0 0112.25 14h-8.5A1.75 1.75 0 012 12.25v-8.5C2 2.784 2.784 2 3.75 2zm6.854-1h4.146a.25.25 0 01.25.25v4.146a.25.25 0 01-.427.177L13.03 4.03 9.28 7.78a.751.751 0 01-1.042-.018.751.751 0 01-.018-1.042l3.75-3.75-1.543-1.543A.25.25 0 0110.604 1z"/></svg>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="editor-search-bar" id="editor-search-bar-${SYSTEM.idCounter+1}">
+                            <span class="editor-search-seg-label">查找</span>
+                            <div class="editor-search-input-wrap">
+                                <input type="text" class="editor-search-input" id="editor-search-input-${SYSTEM.idCounter+1}" placeholder="搜索..." spellcheck="false">
+                                <span class="editor-search-count" id="editor-search-count-${SYSTEM.idCounter+1}"></span>
+                            </div>
+                            <div class="editor-search-seg">
+                                <button class="editor-s-toggle" id="editor-btn-case-${SYSTEM.idCounter+1}" title="区分大小写">Aa</button>
+                                <button class="editor-s-toggle" id="editor-btn-word-${SYSTEM.idCounter+1}" title="全词匹配">W</button>
+                                <button class="editor-s-toggle" id="editor-btn-regex-${SYSTEM.idCounter+1}" title="正则表达式">.*</button>
+                            </div>
+                            <div class="editor-search-seg">
+                                <button class="editor-s-btn" id="editor-search-prev-${SYSTEM.idCounter+1}" title="上一个 (Shift+Enter)">
+                                    <svg viewBox="0 0 16 16" fill="currentColor"><path d="M3.22 9.78a.749.749 0 010-1.06l4.25-4.25a.749.749 0 011.06 0l4.25 4.25a.749.749 0 11-1.06 1.06L8 6.06 4.28 9.78a.749.749 0 01-1.06 0z"/></svg>
+                                </button>
+                                <button class="editor-s-btn" id="editor-search-next-${SYSTEM.idCounter+1}" title="下一个 (Enter)">
+                                    <svg viewBox="0 0 16 16" fill="currentColor"><path d="M12.78 6.22a.749.749 0 010 1.06l-4.25 4.25a.749.749 0 01-1.06 0L3.22 7.28a.749.749 0 111.06-1.06L8 9.94l3.72-3.72a.749.749 0 011.06 0z"/></svg>
+                                </button>
+                            </div>
+                            <div class="editor-search-sep"></div>
+                            <span class="editor-search-seg-label">替换</span>
+                            <input type="text" class="editor-replace-input" id="editor-replace-input-${SYSTEM.idCounter+1}" placeholder="替换为..." spellcheck="false">
+                            <div class="editor-search-seg">
+                                <button class="editor-s-btn" id="editor-replace-current-${SYSTEM.idCounter+1}" title="替换当前 (Enter)">
+                                    <svg viewBox="0 0 16 16" fill="currentColor"><path d="M2 3.5h5v1H2v-1zm0 4h12v1H2v-1zm0 4h7v1H2v-1zm11.5-8a2.5 2.5 0 100 5 2.5 2.5 0 000-5zm-1 2.5a1 1 0 112 0 1 1 0 01-2 0z"/></svg>
+                                </button>
+                                <button class="editor-s-btn" id="editor-replace-all-${SYSTEM.idCounter+1}" title="替换全部">
+                                    <svg viewBox="0 0 16 16" fill="currentColor"><path d="M2 3h5v1H2V3zm0 4h12v1H2V7zm0 4h7v1H2v-1zM11 3h4v1h-4V3zm0 8h4v1h-4v-1z"/></svg>
+                                </button>
+                            </div>
+                            <div style="flex:1"></div>
+                            <button class="editor-s-btn" id="editor-search-close-${SYSTEM.idCounter+1}" title="关闭 (Esc)">
+                                <svg viewBox="0 0 16 16" fill="currentColor"><path d="M3.72 3.72a.75.75 0 011.06 0L8 6.94l3.22-3.22a.749.749 0 111.06 1.06L9.06 8l3.22 3.22a.749.749 0 11-1.06 1.06L8 9.06l-3.22 3.22a.749.749 0 01-1.06-1.06L6.94 8 3.72 4.78a.75.75 0 010-1.06z"/></svg>
+                            </button>
+                        </div>
+                        <div class="editor-main-container">
+                            <div class="editor-sidebar">
+                                <button class="editor-side-btn active" title="编辑器">
+                                    <svg viewBox="0 0 16 16" fill="currentColor"><path d="M4.708 5.578L2.061 8.224l2.647 2.646-.708.708L.94 8.578V7.87L4 4.87l.708.708zm7.292 5.37l2.647-2.646L12 5.656l.708-.708 3.06 3v.708L12.708 11.7l-.708-.752zM7.584 11.2L9.14 4.8l.98.2-1.556 6.4-.98-.2z"/></svg>
+                                </button>
+                                <div class="editor-sidebar-spacer"></div>
+                            </div>
+                            <div class="editor-section">
+                                <div class="editor-wrapper">
+                                    <textarea id="editor-textarea-${SYSTEM.idCounter+1}"></textarea>
+                                </div>
+                            </div>
+                            <div class="editor-resizer" id="editor-resizer-${SYSTEM.idCounter+1}"></div>
+                            <div class="editor-preview-section" id="editor-preview-section-${SYSTEM.idCounter+1}">
+                                <div class="editor-preview-loading" id="editor-preview-loading-${SYSTEM.idCounter+1}"></div>
+                                <div class="editor-preview-frame-wrapper">
+                                    <iframe id="editor-preview-frame-${SYSTEM.idCounter+1}" sandbox="allow-scripts allow-modals allow-forms allow-same-origin allow-popups allow-top-navigation allow-popups-to-escape-sandbox"></iframe>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="editor-status-bar">
+                            <div class="editor-status-left">
+                                <div class="editor-status-item"><span class="editor-status-dot"></span><span>就绪</span></div>
+                                <div class="editor-status-item" id="editor-status-cursor-${SYSTEM.idCounter+1}">行 1, 列 1</div>
+                                <div class="editor-status-item" id="editor-status-selection-${SYSTEM.idCounter+1}"></div>
+                            </div>
+                            <div class="editor-status-right">
+                                <div class="editor-status-item" id="editor-status-lines-${SYSTEM.idCounter+1}">0 行</div>
+                                <div class="editor-status-item" id="editor-status-chars-${SYSTEM.idCounter+1}">0 字符</div>
+                                <div class="editor-status-item" id="editor-status-lang-${SYSTEM.idCounter+1}">HTML</div>
+                                <div class="editor-status-item">UTF-8</div>
+                            </div>
+                        </div>
+                    </div>
+                `,
+                onInit: (w, id) => {
+                    initCodeEditorWindow(id, initialContent, filename);
+                }
+            });
+        }
+
+        function initCodeEditorWindow(winId, initialContent, filename) {
+            let editor = null;
+            const sState = { query: '', currentIndex: -1, matches: [], markers: [], caseSensitive: false, wholeWord: false, regex: false };
+            
+            const textarea = document.getElementById(`editor-textarea-${winId}`);
+            const previewFrame = document.getElementById(`editor-preview-frame-${winId}`);
+            const previewLoading = document.getElementById(`editor-preview-loading-${winId}`);
+            const searchBar = document.getElementById(`editor-search-bar-${winId}`);
+            const searchInput = document.getElementById(`editor-search-input-${winId}`);
+            const replaceInput = document.getElementById(`editor-replace-input-${winId}`);
+            const searchCount = document.getElementById(`editor-search-count-${winId}`);
+            const langSelect = document.getElementById(`editor-lang-${winId}`);
+            const fileInput = document.getElementById(`editor-file-input-${winId}`);
+            
+            // 初始化 CodeMirror
+            editor = CodeMirror.fromTextArea(textarea, {
+                mode: 'htmlmixed',
+                theme: 'material-darker',
+                lineNumbers: true,
+                lineWrapping: true,
+                foldGutter: true,
+                gutters: ['CodeMirror-linenumbers', 'CodeMirror-foldgutter'],
+                matchBrackets: true,
+                autoCloseBrackets: true,
+                matchTags: { bothTags: true },
+                autoCloseTags: true,
+                styleActiveLine: true,
+                showTrailingSpace: true,
+                extraKeys: {
+                    'Ctrl-F': () => toggleEditorSearchBar(true),
+                    'Ctrl-H': () => { toggleEditorSearchBar(true); setTimeout(() => replaceInput.focus(), 50); },
+                    'Ctrl-Enter': updateEditorPreview,
+                    'Ctrl-S': (e) => { e.preventDefault(); saveEditorToFile(); },
+                    'Ctrl-Shift-F': formatEditorCode,
+                    'F3': (e) => { e.preventDefault(); editorSearchNext(); }
+                }
+            });
+            
+            if (initialContent) {
+                editor.setValue(initialContent);
+            } else {
+                editor.setValue('');
+            }
+            
+            // 更新预览
+            function updateEditorPreview() {
+                const code = editor.getValue();
+                previewLoading.classList.add('active');
+                const htmlContent = code || '<html><body style="margin:0;background:#0d1117;"></body></html>';
+                try {
+                    const doc = previewFrame.contentDocument || previewFrame.contentWindow.document;
+                    doc.open();
+                    doc.write(htmlContent);
+                    doc.close();
+                } catch (e) {
+                    previewFrame.src = URL.createObjectURL(new Blob([htmlContent], { type: 'text/html' }));
+                }
+                setTimeout(() => previewLoading.classList.remove('active'), 500);
+            }
+            
+            // 格式化代码
+            function formatEditorCode() {
+                const code = editor.getValue();
+                const lang = langSelect.value;
+                let fmt = code;
+                try {
+                    if (lang === 'htmlmixed' || lang === 'xml') {
+                        fmt = html_beautify(code, { indent_size: 2, wrap_line_length: 120, indent_inner_html: true, preserve_newlines: true, max_preserve_newlines: 2, end_with_newline: true });
+                    } else if (lang === 'css') {
+                        fmt = css_beautify(code, { indent_size: 2, end_with_newline: true });
+                    } else if (lang === 'javascript' || lang === 'application/json') {
+                        fmt = js_beautify(code, { indent_size: 2, end_with_newline: true });
+                    }
+                    const c = editor.getCursor();
+                    editor.setValue(fmt);
+                    editor.setCursor(c);
+                    Notify.success('代码已格式化');
+                } catch (e) {
+                    Notify.error('格式化失败');
+                }
+            }
+            
+            // 搜索功能
+            function toggleEditorSearchBar(show) {
+                if (show) {
+                    searchBar.classList.add('open');
+                    searchInput.focus();
+                    if (editor.getSelection()) searchInput.value = editor.getSelection();
+                    performEditorSearch();
+                } else {
+                    searchBar.classList.remove('open');
+                    clearEditorHighlights();
+                    sState.query = '';
+                    sState.currentIndex = -1;
+                    sState.matches = [];
+                    searchCount.textContent = '';
+                    editor.focus();
+                    editor.refresh();
+                }
+            }
+            
+            function performEditorSearch() {
+                const raw = searchInput.value;
+                sState.query = raw;
+                clearEditorHighlights();
+                sState.matches = [];
+                sState.currentIndex = -1;
+                if (!raw) { searchCount.textContent = ''; return; }
+                
+                let searchQuery;
+                const cf = !sState.caseSensitive;
+                if (sState.regex) {
+                    try { searchQuery = new RegExp(raw, cf ? 'gi' : 'g'); } catch (e) { searchCount.textContent = '无效正则'; return; }
+                } else if (sState.wholeWord) {
+                    const esc = raw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                    searchQuery = new RegExp('\\b' + esc + '\\b', cf ? 'gi' : 'g');
+                } else {
+                    searchQuery = raw;
+                }
+                
+                const cursor = editor.getSearchCursor(searchQuery, CodeMirror.Pos(0, 0), { caseFold: cf && !sState.regex });
+                while (cursor.findNext()) {
+                    sState.matches.push({ from: cursor.from(), to: cursor.to() });
+                    sState.markers.push(editor.markText(cursor.from(), cursor.to(), { className: 'editor-cm-search-highlight' }));
+                }
+                
+                if (!sState.matches.length) { searchCount.textContent = '无结果'; return; }
+                
+                const cur = editor.getCursor();
+                let nearest = 0;
+                for (let i = 0; i < sState.matches.length; i++) {
+                    const m = sState.matches[i];
+                    if (m.from.line > cur.line || (m.from.line === cur.line && m.from.ch >= cur.ch)) { nearest = i; break; }
+                    nearest = i;
+                }
+                goToEditorMatch(nearest);
+            }
+            
+            function goToEditorMatch(idx) {
+                if (!sState.matches.length) return;
+                sState.markers.forEach(m => m.clear());
+                sState.markers = [];
+                sState.matches.forEach((m, i) => {
+                    sState.markers.push(editor.markText(m.from, m.to, { className: i === idx ? 'editor-cm-search-current' : 'editor-cm-search-highlight' }));
+                });
+                sState.currentIndex = idx;
+                const m = sState.matches[idx];
+                editor.scrollIntoView({ from: m.from, to: m.to }, 80);
+                editor.setCursor(m.to);
+                searchCount.textContent = `${idx + 1} / ${sState.matches.length}`;
+            }
+            
+            function editorSearchNext() {
+                if (!sState.matches.length) { if (searchInput.value) performEditorSearch(); return; }
+                goToEditorMatch((sState.currentIndex + 1) % sState.matches.length);
+            }
+            
+            function editorSearchPrev() {
+                if (!sState.matches.length) { if (searchInput.value) performEditorSearch(); return; }
+                goToEditorMatch((sState.currentIndex - 1 + sState.matches.length) % sState.matches.length);
+            }
+            
+            function clearEditorHighlights() { sState.markers.forEach(m => m.clear()); sState.markers = []; }
+            
+            function replaceEditorCurrent() {
+                if (!sState.matches.length || sState.currentIndex < 0) return;
+                const rv = replaceInput.value;
+                const m = sState.matches[sState.currentIndex];
+                editor.setSelection(m.from, m.to);
+                editor.replaceSelection(rv);
+                Notify.success('已替换 1 处');
+                setTimeout(() => performEditorSearch(), 50);
+            }
+            
+            function replaceEditorAll() {
+                if (!sState.matches.length) return;
+                const rv = replaceInput.value;
+                const cnt = sState.matches.length;
+                for (let i = sState.matches.length - 1; i >= 0; i--) {
+                    const m = sState.matches[i];
+                    editor.replaceRange(rv, m.from, m.to);
+                }
+                Notify.success(`已替换 ${cnt} 处`);
+                setTimeout(() => performEditorSearch(), 50);
+            }
+            
+            // 更新状态栏
+            function updateEditorStatusBar() {
+                const c = editor.getCursor();
+                document.getElementById(`editor-status-cursor-${winId}`).textContent = `行 ${c.line + 1}, 列 ${c.ch + 1}`;
+                document.getElementById(`editor-status-lines-${winId}`).textContent = `${editor.lineCount()} 行`;
+                document.getElementById(`editor-status-chars-${winId}`).textContent = `${editor.getValue().length.toLocaleString()} 字符`;
+                const sel = editor.getSelection();
+                document.getElementById(`editor-status-selection-${winId}`).textContent = sel ? `已选 ${sel.length} 字符` : '';
+            }
+            
+            // 保存到文件
+            function saveEditorToFile() {
+                if (!SYSTEM.mounted) {
+                    Notify.error('文件系统未就绪');
+                    return;
+                }
+                const path = SYSTEM.desktopPath + '/' + filename;
+                SYSTEM.fs.writeFile(path, editor.getValue(), 'utf8', err => {
+                    if (err) Notify.error('保存失败', err.message);
+                    else { refreshDesktop(); Notify.success('保存成功', `文件已保存为 "${filename}"`); }
+                });
+            }
+            
+            // 导入文件
+            function importEditorFile() {
+                fileInput.onchange = function() {
+                    const f = this.files[0];
+                    if (!f) return;
+                    const r = new FileReader();
+                    r.onload = function(e) {
+                        const ext = f.name.split('.').pop().toLowerCase();
+                        const map = { 'html': 'htmlmixed', 'htm': 'htmlmixed', 'css': 'css', 'js': 'javascript', 'json': 'application/json', 'md': 'markdown', 'py': 'python', 'java': 'text/x-java', 'c': 'text/x-csrc', 'cpp': 'text/x-csrc', 'sh': 'shell', 'xml': 'xml', 'txt': 'htmlmixed' };
+                        const lang = map[ext] || 'htmlmixed';
+                        editor.setValue(e.target.result);
+                        editor.setOption('mode', lang);
+                        langSelect.value = lang;
+                        const names = { 'htmlmixed': 'HTML', 'css': 'CSS', 'javascript': 'JavaScript', 'markdown': 'Markdown', 'application/json': 'JSON', 'python': 'Python', 'text/x-csrc': 'C/C++', 'text/x-java': 'Java', 'shell': 'Shell' };
+                        document.getElementById(`editor-status-lang-${winId}`).textContent = names[lang] || lang;
+                        Notify.success(`已导入: ${f.name}`);
+                    };
+                    r.readAsText(f);
+                    this.value = '';
+                };
+                fileInput.click();
+            }
+            
+            // 导出文件
+            function exportEditorFile() {
+                const code = editor.getValue();
+                const extMap = { 'htmlmixed': '.html', 'css': '.css', 'javascript': '.js', 'markdown': '.md', 'application/json': '.json', 'python': '.py', 'text/x-csrc': '.c', 'text/x-java': '.java', 'shell': '.sh' };
+                const lang = langSelect.value;
+                const name = 'code' + (extMap[lang] || '.txt');
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(new Blob([code], { type: 'text/plain;charset=utf-8' }));
+                a.download = name;
+                a.click();
+                Notify.success(`已导出: ${name}`);
+            }
+            
+            // 在新窗口打开
+            function openEditorInNewWindow() {
+                const url = URL.createObjectURL(new Blob([editor.getValue()], { type: 'text/html' }));
+                window.open(url, '_blank');
+                setTimeout(() => URL.revokeObjectURL(url), 10000);
+            }
+            
+            // 初始化分割线拖拽
+            function initEditorResizer() {
+                const resizer = document.getElementById(`editor-resizer-${winId}`);
+                const editorSection = resizer.previousElementSibling;
+                const previewSection = document.getElementById(`editor-preview-section-${winId}`);
+                const container = resizer.parentElement;
+                
+                resizer.addEventListener('mousedown', function(e) {
+                    e.preventDefault();
+                    const startX = e.clientX;
+                    const sidebar = document.querySelector(`#editor-app-${winId} .editor-sidebar`);
+                    const sidebarW = sidebar.offsetWidth;
+                    const containerW = container.offsetWidth;
+                    const startEditorW = editorSection.offsetWidth;
+                    const startPreviewW = previewSection.offsetWidth;
+                    
+                    resizer.classList.add('dragging');
+                    document.body.classList.add('no-select');
+                    
+                    function onMove(e) {
+                        const dx = e.clientX - startX;
+                        const available = containerW - sidebarW - 5;
+                        let newEditorW = startEditorW + dx;
+                        let newPreviewW = startPreviewW - dx;
+                        
+                        const minEditor = 200;
+                        const minPreview = 120;
+                        if (newEditorW < minEditor) { newEditorW = minEditor; newPreviewW = available - minEditor; }
+                        if (newPreviewW < minPreview) { newPreviewW = minPreview; newEditorW = available - minPreview; }
+                        
+                        editorSection.style.flex = 'none';
+                        editorSection.style.width = newEditorW + 'px';
+                        previewSection.style.width = newPreviewW + 'px';
+                    }
+                    
+                    function onUp() {
+                        resizer.classList.remove('dragging');
+                        document.body.classList.remove('no-select');
+                        document.removeEventListener('mousemove', onMove);
+                        document.removeEventListener('mouseup', onUp);
+                        editor.refresh();
+                    }
+                    
+                    document.addEventListener('mousemove', onMove);
+                    document.addEventListener('mouseup', onUp);
+                });
+            }
+            
+            // 绑定事件
+            document.getElementById(`editor-run-${winId}`).onclick = () => { updateEditorPreview(); Notify.success('预览已刷新'); };
+            document.getElementById(`editor-format-${winId}`).onclick = formatEditorCode;
+            document.getElementById(`editor-fold-${winId}`).onclick = () => { for (let i = 0; i < editor.lineCount(); i++) editor.foldCode(CodeMirror.Pos(i, 0)); Notify.info('已折叠'); };
+            document.getElementById(`editor-unfold-${winId}`).onclick = () => { for (let i = 0; i < editor.lineCount(); i++) editor.foldCode(CodeMirror.Pos(i, 0), null, 'unfold'); Notify.info('已展开'); };
+            document.getElementById(`editor-undo-${winId}`).onclick = () => editor.execCommand('undo');
+            document.getElementById(`editor-redo-${winId}`).onclick = () => editor.execCommand('redo');
+            document.getElementById(`editor-search-${winId}`).onclick = () => toggleEditorSearchBar(true);
+            document.getElementById(`editor-clear-${winId}`).onclick = () => { if (editor.getValue()) { editor.setValue(''); Notify.info('已清空'); } };
+            document.getElementById(`editor-import-${winId}`).onclick = importEditorFile;
+            document.getElementById(`editor-export-${winId}`).onclick = exportEditorFile;
+            document.getElementById(`editor-refresh-preview-${winId}`).onclick = updateEditorPreview;
+            document.getElementById(`editor-open-new-${winId}`).onclick = openEditorInNewWindow;
+            
+            // 搜索栏事件
+            document.getElementById(`editor-search-close-${winId}`).onclick = () => toggleEditorSearchBar(false);
+            document.getElementById(`editor-search-next-${winId}`).onclick = editorSearchNext;
+            document.getElementById(`editor-search-prev-${winId}`).onclick = editorSearchPrev;
+            document.getElementById(`editor-replace-current-${winId}`).onclick = replaceEditorCurrent;
+            document.getElementById(`editor-replace-all-${winId}`).onclick = replaceEditorAll;
+            
+            // 搜索选项切换
+            document.getElementById(`editor-btn-case-${winId}`).onclick = function() {
+                sState.caseSensitive = !sState.caseSensitive;
+                this.classList.toggle('active', sState.caseSensitive);
+                if (sState.query) performEditorSearch();
+            };
+            document.getElementById(`editor-btn-word-${winId}`).onclick = function() {
+                sState.wholeWord = !sState.wholeWord;
+                this.classList.toggle('active', sState.wholeWord);
+                if (sState.query) performEditorSearch();
+            };
+            document.getElementById(`editor-btn-regex-${winId}`).onclick = function() {
+                sState.regex = !sState.regex;
+                this.classList.toggle('active', sState.regex);
+                if (sState.query) performEditorSearch();
+            };
+            
+            // 语言切换
+            langSelect.onchange = function() {
+                editor.setOption('mode', this.value);
+                const names = { 'htmlmixed': 'HTML', 'css': 'CSS', 'javascript': 'JavaScript', 'markdown': 'Markdown', 'application/json': 'JSON', 'python': 'Python', 'text/x-csrc': 'C/C++', 'text/x-java': 'Java', 'shell': 'Shell' };
+                document.getElementById(`editor-status-lang-${winId}`).textContent = names[this.value] || this.value;
+                Notify.info(`语言: ${names[this.value] || this.value}`);
+            };
+            
+            // 搜索输入事件
+            searchInput.addEventListener('input', performEditorSearch);
+            searchInput.addEventListener('keydown', e => {
+                if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); editorSearchNext(); }
+                else if (e.key === 'Enter' && e.shiftKey) { e.preventDefault(); editorSearchPrev(); }
+                else if (e.key === 'Escape') toggleEditorSearchBar(false);
+            });
+            replaceInput.addEventListener('keydown', e => {
+                if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); replaceEditorCurrent(); }
+                else if (e.key === 'Enter' && e.shiftKey) { e.preventDefault(); replaceEditorAll(); }
+                else if (e.key === 'Escape') toggleEditorSearchBar(false);
+            });
+            
+            // 编辑器事件
+            editor.on('cursorActivity', updateEditorStatusBar);
+            editor.on('change', () => {
+                updateEditorStatusBar();
+                updateEditorPreview();
+            });
+            
+            // 初始化
+            initEditorResizer();
+            updateEditorStatusBar();
+            updateEditorPreview();
+            
+            // 窗口销毁时清理
+            const winEl = document.getElementById(`win-${winId}`);
+            if (winEl) {
+                winEl.onDestroy = () => {
+                    if (editor) editor.toTextArea();
+                };
+            }
+        }
+
         function openSettings() {
             createWindow({
                 title: '系统设置',
@@ -4078,7 +4912,7 @@
                         <div class="settings-content">
                             <div class="about-card">
                                 <div class="logo">JISHENG OS</div>
-                                <p>Ultimate Web Operating System<br>Version 10.1 • Build 2026</p>
+                                <p>Ultimate Web Operating System<br>Version 10.2 • Build 2026</p>
                             </div>
                             
                             <div class="settings-section" style="margin-top:20px">
@@ -4105,7 +4939,7 @@
                                 <h4>关于</h4>
                                 <div class="settings-item">
                                     <label>系统版本</label>
-                                    <span>10.1.0</span>
+                                    <span>10.2.0</span>
                                 </div>
                                 <div class="settings-item">
                                     <label>内核</label>
