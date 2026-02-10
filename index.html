@@ -509,7 +509,7 @@
         .wp-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
         .wp-thumb { 
             aspect-ratio: 16/9; background-size: cover; background-position: center;
-            border-radius: 8px; cursor: pointer; border: 2px solid transparent;
+            border-radius: 8px; cursor: pointer;
             transition: all 0.2s;
         }
         .wp-thumb:hover { transform: scale(1.03); box-shadow: 0 8px 24px rgba(0,0,0,0.4); }
@@ -1193,7 +1193,7 @@
    
 
     <!-- 壁纸 -->
-    <div id="dynamic-bg" style="background-image: url('https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=1920');"></div>
+    <div id="dynamic-bg" style="background-image: url('https://images.unsplash.com/photo-1446776811953-b23d57bd21aa?w=1920');"></div>
   
 
     <!-- 窗口吸附预览 -->
@@ -1490,12 +1490,12 @@
 
         // 预设壁纸
         const wallpapers = [
-            'https://images.unsplash.com/photo-1579546929518-9e396f3cc809?w=1920',
-            'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=1920',
-            'https://images.unsplash.com/photo-1557683316-973673baf926?w=1920',
-            'https://images.unsplash.com/photo-1614850523459-c2f4c699c52e?w=1920',
+            'https://images.unsplash.com/photo-1518418248320-a4de2fbc87c2?w=1920',
+            'https://images.unsplash.com/photo-1614121181207-4b6c334d353d?w=1920',
+            'https://images.unsplash.com/photo-1506102383123-c8ef1e872756?w=1920',
+            'https://images.unsplash.com/photo-1510075644440-2c2b60679e1a?w=1920',
             'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=1920',
-            'https://images.unsplash.com/photo-1506318137071-a8bcbf6755dd?w=1920'
+            'https://images.unsplash.com/photo-1446776811953-b23d57bd21aa?w=1920'
         ];
 
         // === 通知系统 (任务栏内嵌版) ===
@@ -1718,7 +1718,7 @@
         function loadUserConfig() {
             SYSTEM.fs.readFile(SYSTEM.configPath, 'utf8', (err, data) => {
                 if (!err && data) setBg(data, false);
-                else setBg(wallpapers[4], false);
+                else setBg('https://images.unsplash.com/photo-1446776811953-b23d57bd21aa?w=1920', false);
                 
                 refreshDesktop();
                 renderCalendar();
