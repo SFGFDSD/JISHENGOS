@@ -331,7 +331,7 @@
         .address-bar input::placeholder { color: var(--text-muted); }
 
         .content-area { flex: 1; background: #fff; position: relative; overflow: hidden; display: flex; flex-direction: column; }
-        .content-area.dark { background: #1a1a24; }
+        .content-area.dark { background: rgba(20, 20, 28, 0.85); backdrop-filter: blur(20px); }
         iframe { width: 100%; height: 100%; border: none; }
         
         .loading-overlay {
@@ -1448,7 +1448,8 @@
             selectedIcons: [],           
             iconPositions: {},           
             gridSize: 90, 
-            iconPositionsPath: '/system/config/icon-positions.json' 
+            iconPositionsPath: '/system/config/icon-positions.json',
+            localFolders: {} 
         };
 
         function toggleWinFullscreen(id, type) {
@@ -1864,9 +1865,18 @@
         }
 
         // 2. 替换原有的 refreshDesktop (改为绝对定位布局)
-        function refreshDesktop() {
+        async function refreshDesktop() {
             const container = document.getElementById('desktop-icons');
             container.innerHTML = '';
+            
+            // 加载已保存的挂载文件夹
+            if (Object.keys(SYSTEM.localFolders).length === 0) {
+                try {
+                    await loadMountedFolders();
+                } catch (e) {
+                    console.error('加载挂载文件夹失败:', e);
+                }
+            }
             
             loadIconPositions(() => {
                 // 系统固定应用
@@ -1948,6 +1958,17 @@
                         });
                     });
                 }
+                
+                // 渲染挂载的本地文件夹
+                Object.keys(SYSTEM.localFolders).forEach(folderId => {
+                    const folderInfo = SYSTEM.localFolders[folderId];
+                    const fileId = folderId;
+                    const defaultPos = getNextPos();
+                    const pos = SYSTEM.iconPositions[fileId] || defaultPos;
+                    
+                    const iconSvg = '<path d="M18 19a5 5 0 0 1-5-5v8"/><path d="M9 20H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H20a2 2 0 0 1 2 2v5"/><circle cx="13" cy="12" r="2"/><circle cx="20" cy="19" r="2"/>';
+                    container.appendChild(createLocalFolderIconElement(fileId, folderInfo.name, iconSvg, folderId, pos));
+                });
             });
             
             initDesktopEvents();
@@ -2022,6 +2043,69 @@
             el.ondblclick = () => { eval(action); clearSelection(); };
             
             return el;
+        }
+
+        // 3.5 创建本地文件夹图标 DOM 元素
+        function createLocalFolderIconElement(id, name, iconSvg, folderId, pos) {
+            const el = document.createElement('div');
+            el.className = 'desktop-icon';
+            el.id = id;
+            el.dataset.localFolder = folderId;
+            el.style.left = pos.x + 'px';
+            el.style.top = pos.y + 'px';
+            
+            el.innerHTML = `<svg class="icon-svg xl" viewBox="0 0 24 24">${iconSvg}</svg><div class="label">${name}</div>`;
+            
+            const handleStart = (e) => {
+                if(e.button === 2) return;
+                e.stopPropagation();
+                if(e.ctrlKey) {
+                    toggleIconSelection(el);
+                } else if(!SYSTEM.selectedIcons.includes(id)) {
+                    clearSelection();
+                    selectIcon(el);
+                }
+                
+                if(!longPressTriggered) {
+                    startIconDrag(e, el);
+                } else {
+                    startIconDrag(e, el, true);
+                }
+            };
+
+            el.onmousedown = handleStart;
+            el.ontouchstart = (e) => { handleStart(e); };
+
+            el.oncontextmenu = (e) => {
+                e.preventDefault(); e.stopPropagation();
+                if(!SYSTEM.selectedIcons.includes(id)) {
+                    clearSelection();
+                    selectIcon(el);
+                }
+                const pos = getClientXY(e);
+                showLocalFolderContextMenu(pos.x, pos.y, folderId, name);
+            };
+
+            el.ondblclick = () => { openLocalFolder(folderId); clearSelection(); };
+            
+            return el;
+        }
+
+        // 本地文件夹右键菜单
+        function showLocalFolderContextMenu(x, y, folderId, name) {
+            const cm = document.getElementById('context-menu');
+            cm.innerHTML = `
+                <div class="context-item" onclick="openLocalFolder('${folderId}'); closeCtx()">
+                    <svg class="icon-svg" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+                    <span>打开</span>
+                </div>
+                <div class="context-divider"></div>
+                <div class="context-item" onclick="unmountLocalFolder('${folderId}'); closeCtx()" style="color:var(--win-close-red)">
+                    <svg class="icon-svg" viewBox="0 0 24 24" style="color:var(--win-close-red)"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+                    <span>卸载挂载</span>
+                </div>
+            `;
+            showCtx(x, y);
         }
 
         // 4. 图标拖拽逻辑 (Windows 风格)
@@ -2930,6 +3014,15 @@
             
             const cm = document.getElementById('context-menu');
             cm.innerHTML = `
+                <div class="context-item" onclick="refreshDesktop(); closeCtx()">
+                    <svg class="icon-svg" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+                    <span>刷新桌面</span>
+                </div>
+                <div class="context-item" onclick="openWallpaperPanel(); closeCtx()">
+                    <svg class="icon-svg" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
+                    <span>更换壁纸</span>
+                </div>
+                <div class="context-divider"></div>
                 <div class="context-item" onclick="document.getElementById('global-upload-file').click(); closeCtx()">
                     <svg class="icon-svg" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
                     <span>上传文件</span>
@@ -2938,14 +3031,9 @@
                     <svg class="icon-svg" viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2v11z"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/></svg>
                     <span>上传文件夹</span>
                 </div>
-                <div class="context-divider"></div>
-                <div class="context-item" onclick="refreshDesktop(); closeCtx()">
-                    <svg class="icon-svg" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
-                    <span>刷新桌面</span>
-                </div>
-                <div class="context-item" onclick="openWallpaperPanel(); closeCtx()">
-                    <svg class="icon-svg" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-                    <span>更换壁纸</span>
+                <div class="context-item" onclick="mountLocalFolder(); closeCtx()">
+                    <svg class="icon-svg" viewBox="0 0 24 24"><path d="M18 19a5 5 0 0 1-5-5v8"/><path d="M9 20H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H20a2 2 0 0 1 2 2v5"/><circle cx="13" cy="12" r="2"/><circle cx="20" cy="19" r="2"/></svg>
+                    <span>挂载本地文件夹</span>
                 </div>
                 <div class="context-divider"></div>
                 <div class="context-item" onclick="createNewFolder(); closeCtx()">
@@ -3273,6 +3361,770 @@
         // === 右键菜单 ===
         function closeCtx() {
             document.getElementById('context-menu').classList.remove('open');
+        }
+
+        // === 挂载本地文件夹功能 (File System Access API) ===
+        // IndexedDB 数据库名称和版本
+        const MOUNTED_FOLDERS_DB = 'MountedFoldersDB';
+        const MOUNTED_FOLDERS_STORE = 'folders';
+        let mountedFoldersDB = null;
+
+        // 初始化 IndexedDB
+        async function initMountedFoldersDB() {
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open(MOUNTED_FOLDERS_DB, 1);
+                
+                request.onerror = () => reject(request.error);
+                request.onsuccess = () => {
+                    mountedFoldersDB = request.result;
+                    resolve(mountedFoldersDB);
+                };
+                
+                request.onupgradeneeded = (event) => {
+                    const db = event.target.result;
+                    if (!db.objectStoreNames.contains(MOUNTED_FOLDERS_STORE)) {
+                        db.createObjectStore(MOUNTED_FOLDERS_STORE, { keyPath: 'id' });
+                    }
+                };
+            });
+        }
+
+        // 保存挂载的文件夹到 IndexedDB
+        async function saveMountedFolder(folderId, folderName, dirHandle) {
+            if (!mountedFoldersDB) await initMountedFoldersDB();
+            
+            return new Promise((resolve, reject) => {
+                const transaction = mountedFoldersDB.transaction([MOUNTED_FOLDERS_STORE], 'readwrite');
+                const store = transaction.objectStore(MOUNTED_FOLDERS_STORE);
+                
+                const request = store.put({
+                    id: folderId,
+                    name: folderName,
+                    handle: dirHandle
+                });
+                
+                request.onsuccess = () => resolve();
+                request.onerror = () => reject(request.error);
+            });
+        }
+
+        // 从 IndexedDB 加载挂载的文件夹
+        async function loadMountedFolders() {
+            if (!mountedFoldersDB) await initMountedFoldersDB();
+            
+            return new Promise((resolve, reject) => {
+                const transaction = mountedFoldersDB.transaction([MOUNTED_FOLDERS_STORE], 'readonly');
+                const store = transaction.objectStore(MOUNTED_FOLDERS_STORE);
+                const request = store.getAll();
+                
+                request.onsuccess = () => {
+                    const folders = request.result;
+                    folders.forEach(folder => {
+                        SYSTEM.localFolders[folder.id] = {
+                            handle: folder.handle,
+                            name: folder.name,
+                            id: folder.id
+                        };
+                    });
+                    resolve();
+                };
+                request.onerror = () => reject(request.error);
+            });
+        }
+
+        // 从 IndexedDB 删除挂载的文件夹
+        async function removeMountedFolder(folderId) {
+            if (!mountedFoldersDB) await initMountedFoldersDB();
+            
+            return new Promise((resolve, reject) => {
+                const transaction = mountedFoldersDB.transaction([MOUNTED_FOLDERS_STORE], 'readwrite');
+                const store = transaction.objectStore(MOUNTED_FOLDERS_STORE);
+                const request = store.delete(folderId);
+                
+                request.onsuccess = () => resolve();
+                request.onerror = () => reject(request.error);
+            });
+        }
+
+        async function mountLocalFolder() {
+            if (!('showDirectoryPicker' in window)) {
+                Notify.error('不支持', '当前浏览器不支持 File System Access API');
+                return;
+            }
+            
+            try {
+                const dirHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
+                const folderId = 'local-folder-' + Date.now();
+                const folderName = dirHandle.name;
+                
+                SYSTEM.localFolders[folderId] = {
+                    handle: dirHandle,
+                    name: folderName,
+                    id: folderId
+                };
+                
+                // 保存到 IndexedDB
+                await saveMountedFolder(folderId, folderName, dirHandle);
+                
+                refreshDesktop();
+                Notify.success('挂载成功', `已挂载: ${folderName}`);
+            } catch (e) {
+                if (e.name !== 'AbortError') {
+                    Notify.error('挂载失败', e.message);
+                }
+            }
+        }
+
+        async function openLocalFolder(folderId) {
+            const folderInfo = SYSTEM.localFolders[folderId];
+            if (!folderInfo) {
+                Notify.error('错误', '文件夹未挂载');
+                return;
+            }
+            
+            const dirHandle = folderInfo.handle;
+            const items = [];
+            
+            for await (const [name, handle] of dirHandle.entries()) {
+                items.push({ name, handle, kind: handle.kind });
+            }
+            
+            items.sort((a, b) => {
+                if (a.kind !== b.kind) return a.kind === 'directory' ? -1 : 1;
+                return a.name.localeCompare(b.name);
+            });
+            
+            openLocalFolderWindow(folderInfo, items);
+        }
+
+        function openLocalFolderWindow(folderInfo, items) {
+            const windowId = 'local-folder-' + Date.now();
+            
+            createWindow({
+                title: folderInfo.name,
+                iconHtml: '<svg class="icon-svg sm" viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2v11z"/></svg>',
+                width: 500, height: 400,
+                content: renderLocalFolderContent(folderInfo, items, windowId),
+                onInit: (w, id) => {
+                    initLocalFolderSelection(windowId, folderInfo);
+                }
+            });
+        }
+
+        function renderLocalFolderContent(folderInfo, items, windowId) {
+            let itemsHtml = '';
+            
+            items.forEach(item => {
+                let iconSvg;
+                if (item.kind === 'directory') {
+                    iconSvg = '<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2v11z"/>';
+                } else if (item.name.match(/\.(jpg|png|gif|webp)$/i)) {
+                    iconSvg = '<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/>';
+                } else if (isArchiveFile(item.name)) {
+                    iconSvg = '<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2v11z"/><path d="M12 10v4"/><path d="M12 14l2-2"/>';
+                } else {
+                    iconSvg = '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>';
+                }
+                
+                itemsHtml += `
+                    <div class="folder-item" data-name="${item.name}" data-kind="${item.kind}" data-folder-id="${folderInfo.id}"
+                         ondblclick="openLocalFolderItem('${folderInfo.id}', '${item.name}')"
+                         onmousedown="handleLocalFolderItemMouseDown(event, '${windowId}')"
+                         oncontextmenu="handleLocalFolderItemContextMenu(event, '${windowId}', '${item.name}', '${folderInfo.id}')">
+                        <svg class="icon-svg" viewBox="0 0 24 24">${iconSvg}</svg>
+                        <span>${item.name}</span>
+                    </div>
+                `;
+            });
+            
+            if (items.length === 0) {
+                itemsHtml = '<div style="padding:40px;text-align:center;color:#888">文件夹为空</div>';
+            }
+            
+            return `
+                <div class="content-area dark" id="folder-content-${windowId}" style="padding:8px;overflow-y:auto;position:relative;height:100%">
+                    <div class="folder-selection-box" id="folder-selection-${windowId}"></div>
+                    ${itemsHtml}
+                </div>
+            `;
+        }
+
+        function getFileIconSvg(filename) {
+            if (filename.match(/\.(jpg|png|gif|webp|jpeg)$/i)) {
+                return '<rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>';
+            } else if (filename.match(/\.(txt|md)$/i)) {
+                return '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>';
+            } else if (filename.match(/\.(zip|7z|rar|tar|gz)$/i)) {
+                return '<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2v11z"/><path d="M12 10v4"/><path d="M12 14l2-2"/>';
+            } else if (filename.match(/\.(html?|htm)$/i)) {
+                return '<circle cx="12" cy="12" r="10"/><path d="M2 12h20"/>';
+            } else if (filename.match(/\.(mp4|avi|mov|mkv)$/i)) {
+                return '<rect x="2" y="2" width="20" height="20" rx="2"/><polygon points="10 8 16 12 10 16 10 8"/>';
+            } else if (filename.match(/\.(mp3|wav|flac|m4a)$/i)) {
+                return '<path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>';
+            } else if (filename.match(/\.(js|ts|py|java|c|cpp|css)$/i)) {
+                return '<polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>';
+            } else if (filename.match(/\.pdf$/i)) {
+                return '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>';
+            }
+            return '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>';
+        }
+
+        // === 本地文件夹框选逻辑 ===
+        function initLocalFolderSelection(windowId, folderInfo) {
+            const contentArea = document.getElementById('folder-content-' + windowId);
+            const selectionBox = document.getElementById('folder-selection-' + windowId);
+            let isSelecting = false, startX, startY;
+            
+            contentArea.onmousedown = (e) => {
+                if(e.button !== 0) return;
+                if(isSelecting) return;
+                if(e.target.closest('.folder-item')) return;
+                
+                e.preventDefault();
+                e.stopPropagation();
+                clearLocalFolderSelection(windowId);
+                isSelecting = true;
+                contentArea.dataset.isSelecting = 'true';
+                
+                const rect = contentArea.getBoundingClientRect();
+                startX = e.clientX - rect.left;
+                startY = e.clientY - rect.top;
+                
+                selectionBox.style.display = 'block';
+                selectionBox.style.width = '0';
+                selectionBox.style.height = '0';
+                selectionBox.style.left = startX + 'px';
+                selectionBox.style.top = startY + 'px';
+            };
+            
+            contentArea.onmousemove = (e) => {
+                if(!isSelecting) return;
+                
+                const rect = contentArea.getBoundingClientRect();
+                const curX = e.clientX - rect.left;
+                const curY = e.clientY - rect.top;
+                
+                const left = Math.min(startX, curX);
+                const top = Math.min(startY, curY);
+                const width = Math.abs(startX - curX);
+                const height = Math.abs(startY - curY);
+                
+                selectionBox.style.left = left + 'px';
+                selectionBox.style.top = top + 'px';
+                selectionBox.style.width = width + 'px';
+                selectionBox.style.height = height + 'px';
+                
+                const items = contentArea.querySelectorAll('.folder-item');
+                items.forEach(item => {
+                    const itemRect = item.getBoundingClientRect();
+                    const contentRect = contentArea.getBoundingClientRect();
+                    
+                    const itemLeft = itemRect.left - contentRect.left;
+                    const itemTop = itemRect.top - contentRect.top;
+                    const itemRight = itemLeft + itemRect.width;
+                    const itemBottom = itemTop + itemRect.height;
+                    
+                    const intersect = !(itemRight < left || itemLeft > left + width || 
+                                       itemBottom < top || itemTop > top + height);
+                    
+                    if(intersect) {
+                        item.classList.add('selected');
+                    } else {
+                        item.classList.remove('selected');
+                    }
+                });
+            };
+            
+            contentArea.onmouseup = () => {
+                isSelecting = false;
+                contentArea.dataset.isSelecting = 'false';
+                selectionBox.style.display = 'none';
+            };
+            
+            contentArea.onmouseleave = () => {
+                isSelecting = false;
+                contentArea.dataset.isSelecting = 'false';
+                selectionBox.style.display = 'none';
+            };
+        }
+
+        function clearLocalFolderSelection(windowId) {
+            const contentArea = document.getElementById('folder-content-' + windowId);
+            if(contentArea) {
+                contentArea.querySelectorAll('.folder-item.selected').forEach(item => {
+                    item.classList.remove('selected');
+                });
+            }
+        }
+
+        function handleLocalFolderItemMouseDown(e, windowId) {
+            if(e.button !== 0) return;
+            
+            const contentArea = document.getElementById('folder-content-' + windowId);
+            if(!contentArea) return;
+            
+            if(contentArea.dataset.isSelecting === 'true') return;
+            
+            const item = e.currentTarget;
+            
+            if(e.ctrlKey) {
+                item.classList.toggle('selected');
+            } else if(!item.classList.contains('selected')) {
+                clearLocalFolderSelection(windowId);
+                item.classList.add('selected');
+            }
+            
+            setupLocalFolderItemDrag(e, windowId);
+        }
+
+        function handleLocalFolderItemContextMenu(e, windowId, filename, folderId) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            const contentArea = document.getElementById('folder-content-' + windowId);
+            if(!contentArea) return;
+            
+            const item = e.currentTarget;
+            if(!item.classList.contains('selected')) {
+                clearLocalFolderSelection(windowId);
+                item.classList.add('selected');
+            }
+            
+            const selectedItems = Array.from(contentArea.querySelectorAll('.folder-item.selected'));
+            const count = selectedItems.length;
+            
+            const cm = document.getElementById('context-menu');
+            let html = '';
+            
+            if(count > 1) {
+                html = `
+                    <div class="context-item" onclick="exportLocalFolderItems('${windowId}', '${folderId}'); closeCtx()">
+                        <svg class="icon-svg" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                        <span>导出选中 (${count})</span>
+                    </div>
+                `;
+            } else {
+                html = `
+                    <div class="context-item" onclick="openLocalFolderItem('${folderId}', '${filename}'); closeCtx()">
+                        <svg class="icon-svg" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+                        <span>打开</span>
+                    </div>
+                    <div class="context-divider"></div>
+                    <div class="context-item" onclick="exportLocalFolderItem('${folderId}', '${filename}'); closeCtx()">
+                        <svg class="icon-svg" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                        <span>导出到桌面</span>
+                    </div>
+                `;
+            }
+            
+            cm.innerHTML = html;
+            showCtx(e.clientX, e.clientY);
+        }
+
+        // === 本地文件夹拖拽逻辑 ===
+        function setupLocalFolderItemDrag(e, windowId) {
+            const contentArea = document.getElementById('folder-content-' + windowId);
+            if(!contentArea) return;
+            
+            const selectedItems = Array.from(contentArea.querySelectorAll('.folder-item.selected'));
+            if(selectedItems.length === 0) return;
+            
+            const startX = e.clientX;
+            const startY = e.clientY;
+            let isDragging = false;
+            let dragPreview = null;
+            
+            const onMouseMove = (moveEvent) => {
+                const dx = moveEvent.clientX - startX;
+                const dy = moveEvent.clientY - startY;
+                
+                if(!isDragging && (Math.abs(dx) > 5 || Math.abs(dy) > 5)) {
+                    isDragging = true;
+                    document.body.style.cursor = 'move';
+                    
+                    const filesData = selectedItems.map(item => ({
+                        name: item.dataset.name,
+                        kind: item.dataset.kind,
+                        folderId: item.dataset.folderId
+                    }));
+                    
+                    dragPreview = createDragPreview(filesData, moveEvent.clientX, moveEvent.clientY);
+                }
+                
+                if(isDragging && dragPreview) {
+                    dragPreview.style.left = (moveEvent.clientX + 10) + 'px';
+                    dragPreview.style.top = (moveEvent.clientY + 10) + 'px';
+                }
+            };
+            
+            const onMouseUp = async (upEvent) => {
+                document.removeEventListener('mousemove', onMouseMove);
+                document.removeEventListener('mouseup', onMouseUp);
+                document.body.style.cursor = '';
+                
+                if(dragPreview) {
+                    dragPreview.remove();
+                    dragPreview = null;
+                }
+                
+                if(!isDragging) return;
+                
+                const target = upEvent.target;
+                const desktop = document.getElementById('desktop');
+                
+                const desktopIcon = target.closest('.desktop-icon');
+                const folderWindow = target.closest('.window');
+                
+                // 拖拽到桌面背景
+                if (desktop.contains(target) || target === desktop || target.id === 'desktop-icons' || target.id === 'desktop-grid' || target.id === 'selection-box') {
+                    await exportLocalFolderItemsToDesktop(selectedItems);
+                }
+                // 拖拽到桌面文件夹图标
+                else if (desktopIcon && desktopIcon.dataset.filename) {
+                    const targetFolderName = desktopIcon.dataset.filename;
+                    await exportLocalFolderItemsToFolder(selectedItems, targetFolderName);
+                }
+                // 拖拽到其他文件夹窗口
+                else if (folderWindow) {
+                    const titleText = folderWindow.querySelector('.window-title-text')?.innerText;
+                    if (titleText) {
+                        await exportLocalFolderItemsToFolder(selectedItems, titleText);
+                    }
+                }
+            };
+            
+            document.addEventListener('mousemove', onMouseMove);
+            document.addEventListener('mouseup', onMouseUp);
+        }
+
+        // 导出本地文件夹文件到桌面
+        async function exportLocalFolderItemsToDesktop(selectedItems) {
+            let exportedCount = 0;
+            const total = selectedItems.length;
+            
+            for (const item of selectedItems) {
+                const folderId = item.dataset.folderId;
+                const filename = item.dataset.name;
+                const kind = item.dataset.kind;
+                
+                const folderInfo = SYSTEM.localFolders[folderId];
+                if (!folderInfo) continue;
+                
+                try {
+                    if (kind === 'file') {
+                        const fileHandle = await folderInfo.handle.getFileHandle(filename);
+                        const file = await fileHandle.getFile();
+                        const content = await file.arrayBuffer();
+                        
+                        const destPath = SYSTEM.desktopPath + '/' + filename;
+                        await new Promise((resolve, reject) => {
+                            SYSTEM.fs.writeFile(destPath, Buffer.from(content), (err) => {
+                                if (err) reject(err);
+                                else resolve();
+                            });
+                        });
+                        exportedCount++;
+                    } else if (kind === 'directory') {
+                        // 导出文件夹：创建目录并递归复制
+                        const destPath = SYSTEM.desktopPath + '/' + filename;
+                        const dirHandle = await folderInfo.handle.getDirectoryHandle(filename);
+                        await exportDirectoryRecursive(dirHandle, destPath);
+                        exportedCount++;
+                    }
+                } catch (e) {
+                    console.error('导出失败:', filename, e);
+                }
+            }
+            
+            if (exportedCount > 0) {
+                refreshDesktop();
+                Notify.success('导出成功', `已导出 ${exportedCount} 项到桌面`);
+            }
+        }
+
+        // 递归导出目录
+        async function exportDirectoryRecursive(dirHandle, destPath) {
+            return new Promise((resolve, reject) => {
+                SYSTEM.fs.mkdir(destPath, async (err) => {
+                    if (err && err.code !== 'EEXIST') {
+                        reject(err);
+                        return;
+                    }
+                    
+                    try {
+                        for await (const [name, handle] of dirHandle.entries()) {
+                            const itemPath = destPath + '/' + name;
+                            
+                            if (handle.kind === 'file') {
+                                const file = await handle.getFile();
+                                const content = await file.arrayBuffer();
+                                await new Promise((res, rej) => {
+                                    SYSTEM.fs.writeFile(itemPath, Buffer.from(content), (e) => {
+                                        if (e) rej(e);
+                                        else res();
+                                    });
+                                });
+                            } else {
+                                await exportDirectoryRecursive(handle, itemPath);
+                            }
+                        }
+                        resolve();
+                    } catch (e) {
+                        reject(e);
+                    }
+                });
+            });
+        }
+
+        // 导出本地文件夹文件到指定文件夹
+        async function exportLocalFolderItemsToFolder(selectedItems, targetFolderName) {
+            let exportedCount = 0;
+            const targetPath = SYSTEM.desktopPath + '/' + targetFolderName;
+            
+            for (const item of selectedItems) {
+                const folderId = item.dataset.folderId;
+                const filename = item.dataset.name;
+                const kind = item.dataset.kind;
+                
+                const folderInfo = SYSTEM.localFolders[folderId];
+                if (!folderInfo) continue;
+                
+                try {
+                    if (kind === 'file') {
+                        const fileHandle = await folderInfo.handle.getFileHandle(filename);
+                        const file = await fileHandle.getFile();
+                        const content = await file.arrayBuffer();
+                        
+                        const destPath = targetPath + '/' + filename;
+                        await new Promise((resolve, reject) => {
+                            SYSTEM.fs.writeFile(destPath, Buffer.from(content), (err) => {
+                                if (err) reject(err);
+                                else resolve();
+                            });
+                        });
+                        exportedCount++;
+                    } else if (kind === 'directory') {
+                        const destPath = targetPath + '/' + filename;
+                        const dirHandle = await folderInfo.handle.getDirectoryHandle(filename);
+                        await exportDirectoryRecursive(dirHandle, destPath);
+                        exportedCount++;
+                    }
+                } catch (e) {
+                    console.error('导出失败:', filename, e);
+                }
+            }
+            
+            if (exportedCount > 0) {
+                Notify.success('导出成功', `已导出 ${exportedCount} 项到 ${targetFolderName}`);
+            }
+        }
+
+        // 导出单个文件到桌面
+        async function exportLocalFolderItem(folderId, filename) {
+            const folderInfo = SYSTEM.localFolders[folderId];
+            if (!folderInfo) return;
+            
+            try {
+                // 先尝试作为文件
+                try {
+                    const fileHandle = await folderInfo.handle.getFileHandle(filename);
+                    const file = await fileHandle.getFile();
+                    const content = await file.arrayBuffer();
+                    
+                    const destPath = SYSTEM.desktopPath + '/' + filename;
+                    SYSTEM.fs.writeFile(destPath, Buffer.from(content), (err) => {
+                        if (err) {
+                            Notify.error('导出失败', err.message);
+                        } else {
+                            refreshDesktop();
+                            Notify.success('导出成功', `已导出 ${filename} 到桌面`);
+                        }
+                    });
+                } catch {
+                    // 如果不是文件，尝试作为文件夹
+                    const dirHandle = await folderInfo.handle.getDirectoryHandle(filename);
+                    const destPath = SYSTEM.desktopPath + '/' + filename;
+                    await exportDirectoryRecursive(dirHandle, destPath);
+                    refreshDesktop();
+                    Notify.success('导出成功', `已导出文件夹 ${filename} 到桌面`);
+                }
+            } catch (e) {
+                Notify.error('导出失败', e.message);
+            }
+        }
+
+        // 导出多个选中文件
+        async function exportLocalFolderItems(windowId, folderId) {
+            const contentArea = document.getElementById('folder-content-' + windowId);
+            if (!contentArea) return;
+            
+            const selectedItems = Array.from(contentArea.querySelectorAll('.folder-item.selected'));
+            await exportLocalFolderItemsToDesktop(selectedItems);
+        }
+
+        async function openLocalFolderItem(folderId, itemName) {
+            const folderInfo = SYSTEM.localFolders[folderId];
+            if (!folderInfo) return;
+            
+            try {
+                const handle = await folderInfo.handle.getDirectoryHandle(itemName);
+                const items = [];
+                for await (const [name, h] of handle.entries()) {
+                    items.push({ name, handle: h, kind: h.kind });
+                }
+                items.sort((a, b) => {
+                    if (a.kind !== b.kind) return a.kind === 'directory' ? -1 : 1;
+                    return a.name.localeCompare(b.name);
+                });
+                
+                // 为子文件夹创建新的 ID 并存储
+                const subFolderId = 'local-folder-' + Date.now();
+                SYSTEM.localFolders[subFolderId] = {
+                    handle: handle,
+                    name: folderInfo.name + '/' + itemName,
+                    id: subFolderId,
+                    parentId: folderId
+                };
+                
+                openLocalFolderWindow(SYSTEM.localFolders[subFolderId], items);
+            } catch {
+                try {
+                    const fileHandle = await folderInfo.handle.getFileHandle(itemName);
+                    const file = await fileHandle.getFile();
+                    const content = await file.arrayBuffer();
+                    
+                    if (itemName.match(/\.(jpg|png|gif|webp|jpeg)$/i)) {
+                        // 打开本地文件夹图片查看器（漫画阅读器风格）
+                        openLocalImageViewer(folderInfo.handle, itemName);
+                    } else if (itemName.match(/\.(txt|md|js|css|html?|json|py|c|cpp|java)$/i)) {
+                        const text = await file.text();
+                        openNotepad(text, itemName);
+                    } else if (itemName.match(/\.(mp4|webm)$/i)) {
+                        const blob = new Blob([content], { type: file.type });
+                        const url = URL.createObjectURL(blob);
+                        createWindow({
+                            title: itemName,
+                            iconHtml: '<svg class="icon-svg sm" viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="20" rx="2"/><polygon points="10 8 16 12 10 16 10 8"/></svg>',
+                            width: 800,
+                            height: 600,
+                            content: `<div class="content-area dark" style="display:flex;align-items:center;justify-content:center;background:#000"><video src="${url}" controls autoplay style="max-width:100%;max-height:100%"></video></div>`
+                        });
+                    } else if (itemName.match(/\.(mp3|wav|flac|m4a)$/i)) {
+                        const blob = new Blob([content], { type: file.type });
+                        const url = URL.createObjectURL(blob);
+                        createWindow({
+                            title: itemName,
+                            iconHtml: '<svg class="icon-svg sm" viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>',
+                            width: 500,
+                            height: 200,
+                            content: `<div class="content-area dark" style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px"><div style="margin-bottom:20px;color:#8b949e;font-size:14px">${itemName}</div><audio src="${url}" controls autoplay style="width:100%"></audio></div>`
+                        });
+                    } else {
+                        Notify.warning('不支持的格式', '暂时无法预览此类型文件');
+                    }
+                } catch (e) {
+                    Notify.error('打开失败', e.message);
+                }
+            }
+        }
+
+        // 本地文件夹图片查看器（漫画阅读器风格）
+        async function openLocalImageViewer(dirHandle, targetFilename) {
+            const imageFiles = [];
+            
+            // 收集目录中所有图片文件
+            for await (const [name, handle] of dirHandle.entries()) {
+                if (handle.kind === 'file' && name.match(/\.(jpg|jpeg|png|webp|gif)$/i)) {
+                    imageFiles.push(name);
+                }
+            }
+            
+            // 自然排序
+            imageFiles.sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
+            
+            const winId = createWindow({
+                title: '漫画阅读器 - ' + targetFilename,
+                winType: 'manga',
+                iconHtml: '<svg class="icon-svg sm" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M21 15l-3-3L6 21"/></svg>',
+                width: 800, height: 600,
+                content: `
+                    <div class="content-area dark" style="position:relative; height:100%; overflow:hidden;">
+                        <div id="manga-viewer-${SYSTEM.idCounter+1}" style="overflow-y:auto; background:#000; height:100%; display:flex; flex-direction:column; align-items:center;">
+                            <div id="manga-loading-${SYSTEM.idCounter+1}" style="padding:40px; color:#666;">正在加载图片序列...</div>
+                        </div>
+                    </div>
+                `,
+                onInit: async (w, id) => {
+                    const viewer = document.getElementById(`manga-viewer-${id}`);
+                    const loading = document.getElementById(`manga-loading-${id}`);
+                    const targetIndex = imageFiles.indexOf(targetFilename);
+                    let loadedCount = 0;
+                    const totalImages = imageFiles.length;
+                    
+                    // 按顺序加载所有图片
+                    for (let i = 0; i < imageFiles.length; i++) {
+                        const filename = imageFiles[i];
+                        try {
+                            const fileHandle = await dirHandle.getFileHandle(filename);
+                            const file = await fileHandle.getFile();
+                            const blob = new Blob([await file.arrayBuffer()], { type: file.type });
+                            const url = URL.createObjectURL(blob);
+                            
+                            const img = document.createElement('img');
+                            img.src = url;
+                            img.style.width = '100%';
+                            img.style.maxWidth = '1000px';
+                            img.style.display = 'block';
+                            img.style.pointerEvents = 'none';
+                            img.dataset.index = i;
+                            
+                            // 图片加载完成后的回调
+                            img.onload = () => {
+                                loadedCount++;
+                                // 当目标图片加载完成且所有图片都加载后，滚动到目标图片
+                                if (i === targetIndex && loadedCount >= targetIndex + 1) {
+                                    img.scrollIntoView({ behavior: 'auto', block: 'start' });
+                                }
+                            };
+                            
+                            viewer.appendChild(img);
+                        } catch (e) {
+                            console.error('加载图片失败:', filename, e);
+                            loadedCount++;
+                        }
+                    }
+                    
+                    if (loading) loading.remove();
+                    
+                    // 如果目标图片是第0张，直接滚动
+                    if (targetIndex === 0) {
+                        setTimeout(() => {
+                            const firstImg = viewer.querySelector('img');
+                            if (firstImg) {
+                                firstImg.scrollIntoView({ behavior: 'auto', block: 'start' });
+                            }
+                        }, 50);
+                    }
+                }
+            });
+        }
+
+        async function unmountLocalFolder(folderId) {
+            if (SYSTEM.localFolders[folderId]) {
+                const name = SYSTEM.localFolders[folderId].name;
+                delete SYSTEM.localFolders[folderId];
+                
+                // 从 IndexedDB 删除
+                try {
+                    await removeMountedFolder(folderId);
+                } catch (e) {
+                    console.error('从 IndexedDB 删除失败:', e);
+                }
+                
+                refreshDesktop();
+                Notify.success('已卸载', `已卸载: ${name}`);
+            }
         }
 
 
@@ -4932,7 +5784,7 @@
                         <div class="settings-content">
                             <div class="about-card">
                                 <div class="logo">JISHENG OS</div>
-                                <p>Ultimate Web Operating System<br>Version 10.2 • Build 2026</p>
+                                <p>Ultimate Web Operating System<br>Version 10.3 • Build 2026</p>
                             </div>
                             
                             <div class="settings-section" style="margin-top:20px">
@@ -4959,7 +5811,7 @@
                                 <h4>关于</h4>
                                 <div class="settings-item">
                                     <label>系统版本</label>
-                                    <span>10.2.0</span>
+                                    <span>10.3.0</span>
                                 </div>
                                 <div class="settings-item">
                                     <label>内核</label>
