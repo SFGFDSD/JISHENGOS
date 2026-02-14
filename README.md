@@ -1,6 +1,6 @@
 <div align="center">
 
-# JISHENG OS // SYSTEM ARCHIVE v10.2
+# JISHENG OS // SYSTEM ARCHIVE v10.3
 
 *A Single-File Ultimate Persistent Operating System*
 
@@ -65,6 +65,15 @@
 * `PDF`：原生阅读引擎，支持矢量缩放与分页。
 * `ARCHIVE`：**虚拟解压引擎**，无损透视并提取 `.zip` `.7z` `.rar` `.tar` `.gz` `.bz2` `.xz` `.cab` `.tgz` 等压缩包结构。
 
+#### 📂 06. 本地文件夹挂载系统 (Local Folder Mount)
+> 突破浏览器沙箱，直接读写物理机文件系统。
+
+* **[File System Access API 原生桥接]** 通过浏览器原生 API 直接挂载本地文件夹，无需上传下载，实现虚拟系统与物理机的无缝连接。
+* **[无缝双向同步]** 支持从挂载文件夹拖拽文件到虚拟桌面，或从虚拟桌面导出到挂载文件夹，操作体验完全一致。
+* **[漫画阅读器集成]** 挂载文件夹中的图片序列可直接以漫画阅读器模式浏览，支持自然排序和无限滚动。
+* **[持久化挂载记忆]** 使用 IndexedDB 存储挂载句柄，刷新页面后自动恢复挂载状态，无需重复授权。
+* **[完整文件操作]** 支持框选、多选、拖拽、导出等完整的文件管理操作，与原生文件夹体验一致。
+
 ---
 
 ### 📂 UNIVERSAL FORMAT PROTOCOL // 全格式兼容协议
@@ -108,9 +117,9 @@
 
 ### 🛠️ TECHNICAL SPECS // 技术规格
 
-* **SYSTEM BUILD**：`v10.2.0`
+* **SYSTEM BUILD**：`v10.3.0`
 * **RENDER ENGINE**：`Ultra-Glass 拟物态 (Backdrop-filter: 40px)`
-* **CORE DRIVERS**：`BrowserFS` / `IndexedDB` / `JSZip` / `7z-wasm` / `V86` / `CodeMirror`
+* **CORE DRIVERS**：`BrowserFS` / `IndexedDB` / `File System Access API` / `JSZip` / `7z-wasm` / `V86` / `CodeMirror`
 * **LATENCY**：`< 16ms (60FPS Silk Smooth)`
 * **STORAGE LIMIT**：取决于宿主配额（约物理硬盘容量的 `50%`）
 
@@ -122,7 +131,7 @@
 
 **[ 系统自检完成：逻辑回路 100% 闭环 ]**
 
-**[ JISHENG OS v10.2 已就绪。期待与您的下一次链接。]**
+**[ JISHENG OS v10.3 已就绪。期待与您的下一次链接。]**
 
 <br>
 
