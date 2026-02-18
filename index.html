@@ -3417,9 +3417,28 @@
                 const store = transaction.objectStore(MOUNTED_FOLDERS_STORE);
                 const request = store.getAll();
                 
-                request.onsuccess = () => {
+                request.onsuccess = async () => {
                     const folders = request.result;
-                    folders.forEach(folder => {
+                    const validFolders = [];
+                    
+                    for (const folder of folders) {
+                        try {
+                            if (folder.handle && typeof folder.handle.queryPermission === 'function') {
+                                const permission = await folder.handle.queryPermission({ mode: 'read' });
+                                if (permission === 'granted') {
+                                    validFolders.push(folder);
+                                } else {
+                                    await removeMountedFolder(folder.id);
+                                }
+                            } else {
+                                await removeMountedFolder(folder.id);
+                            }
+                        } catch (e) {
+                            await removeMountedFolder(folder.id);
+                        }
+                    }
+                    
+                    validFolders.forEach(folder => {
                         SYSTEM.localFolders[folder.id] = {
                             handle: folder.handle,
                             name: folder.name,
