@@ -801,25 +801,23 @@
             cursor: none;
         }
 
-        /* === 通知系统 (任务栏内嵌版 - 无限长度修复) === */
+        /* === 通知系统=== */
         #taskbar-notify-area {
             position: absolute;
-            /* 锚定在右侧，紧贴系统托盘(WiFi等) */
             right: 140px;
-            top: 6px;
-            bottom: 6px;
+            top: 0;
+            bottom: 0;
             
-            /* 核心修改：移除固定宽度限制，允许利用所有剩余空间 */
             width: auto;
-            max-width: calc(100vw - 155px); /* 只有当长度超过屏幕剩余空间时才限制，防止覆盖开始按钮 */
+            max-width: calc(100vw - 155px);
             
             display: flex;
             align-items: center;
-            justify-content: flex-end; /* 让短消息靠右，长消息向左延伸 */
+            justify-content: flex-end;
             
             pointer-events: none;
             z-index: 1005;
-            overflow: hidden; /* 隐藏滑出前的状态 */
+            overflow: visible;
         }
         
         /* 移动端适配：同样放宽限制 */
@@ -849,14 +847,12 @@
             box-shadow: 0 4px 12px rgba(0,0,0,0.3);
             cursor: pointer;
             
-            /* 动画保持不变：从右向左滑出 */
             transform: translateX(120%);
             opacity: 0;
             animation: slideLeftOut 0.5s cubic-bezier(0.19, 1, 0.22, 1) forwards;
             
-            /* 核心修改：确保内部文本不换行，完整显示 */
             white-space: nowrap;
-            flex-shrink: 0; /* 防止被挤压 */
+            flex-shrink: 0;
         }
 
         /* 动画关键帧 */
@@ -3417,28 +3413,9 @@
                 const store = transaction.objectStore(MOUNTED_FOLDERS_STORE);
                 const request = store.getAll();
                 
-                request.onsuccess = async () => {
+                request.onsuccess = () => {
                     const folders = request.result;
-                    const validFolders = [];
-                    
-                    for (const folder of folders) {
-                        try {
-                            if (folder.handle && typeof folder.handle.queryPermission === 'function') {
-                                const permission = await folder.handle.queryPermission({ mode: 'read' });
-                                if (permission === 'granted') {
-                                    validFolders.push(folder);
-                                } else {
-                                    await removeMountedFolder(folder.id);
-                                }
-                            } else {
-                                await removeMountedFolder(folder.id);
-                            }
-                        } catch (e) {
-                            await removeMountedFolder(folder.id);
-                        }
-                    }
-                    
-                    validFolders.forEach(folder => {
+                    folders.forEach(folder => {
                         SYSTEM.localFolders[folder.id] = {
                             handle: folder.handle,
                             name: folder.name,
@@ -5373,12 +5350,6 @@
                             </button>
                         </div>
                         <div class="editor-main-container">
-                            <div class="editor-sidebar">
-                                <button class="editor-side-btn active" title="编辑器">
-                                    <svg viewBox="0 0 16 16" fill="currentColor"><path d="M4.708 5.578L2.061 8.224l2.647 2.646-.708.708L.94 8.578V7.87L4 4.87l.708.708zm7.292 5.37l2.647-2.646L12 5.656l.708-.708 3.06 3v.708L12.708 11.7l-.708-.752zM7.584 11.2L9.14 4.8l.98.2-1.556 6.4-.98-.2z"/></svg>
-                                </button>
-                                <div class="editor-sidebar-spacer"></div>
-                            </div>
                             <div class="editor-section">
                                 <div class="editor-wrapper">
                                     <textarea id="editor-textarea-${SYSTEM.idCounter+1}"></textarea>
@@ -5394,7 +5365,6 @@
                         </div>
                         <div class="editor-status-bar">
                             <div class="editor-status-left">
-                                <div class="editor-status-item"><span class="editor-status-dot"></span><span>就绪</span></div>
                                 <div class="editor-status-item" id="editor-status-cursor-${SYSTEM.idCounter+1}">行 1, 列 1</div>
                                 <div class="editor-status-item" id="editor-status-selection-${SYSTEM.idCounter+1}"></div>
                             </div>
@@ -5675,8 +5645,6 @@
                 resizer.addEventListener('mousedown', function(e) {
                     e.preventDefault();
                     const startX = e.clientX;
-                    const sidebar = document.querySelector(`#editor-app-${winId} .editor-sidebar`);
-                    const sidebarW = sidebar.offsetWidth;
                     const containerW = container.offsetWidth;
                     const startEditorW = editorSection.offsetWidth;
                     const startPreviewW = previewSection.offsetWidth;
@@ -5686,7 +5654,7 @@
                     
                     function onMove(e) {
                         const dx = e.clientX - startX;
-                        const available = containerW - sidebarW - 5;
+                        const available = containerW - 5;
                         let newEditorW = startEditorW + dx;
                         let newPreviewW = startPreviewW - dx;
                         
