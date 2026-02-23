@@ -445,11 +445,13 @@
 
         /* === 右键菜单 === */
         .context-menu {
-            position: fixed; min-width: 220px; background: var(--glass-surface-light);
-            backdrop-filter: blur(30px); border: 1px solid var(--glass-border); border-radius: 8px;
-            padding: 6px; z-index: 3000; 
+            position: fixed; min-width: 220px; background: var(--glass-surface);
+            backdrop-filter: blur(40px) saturate(120%);
+            -webkit-backdrop-filter: blur(40px) saturate(120%);
+            border: 1px solid var(--glass-border); border-radius: 8px;
+            padding: 6px; z-index: 3000;
             opacity: 0; transform: scale(0.95); pointer-events: none;
-            transition: all 0.12s ease; box-shadow: 0 12px 32px rgba(0,0,0,0.5);
+            transition: all 0.12s ease; box-shadow: 0 20px 50px -12px rgba(0, 0, 0, 0.6);
         }
         .context-menu.open { opacity: 1; transform: scale(1); pointer-events: auto; }
         
