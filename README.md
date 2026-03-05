@@ -1,6 +1,6 @@
 <div align="center">
 
-# JISHENG OS // SYSTEM ARCHIVE v10.3
+# JISHENG OS // SYSTEM ARCHIVE v10.4
 
 *A Single-File Ultimate Persistent Operating System*
 
@@ -57,22 +57,24 @@
 * **[HTML 编辑器]** 集成 CodeMirror 的代码编辑器，支持 HTML/CSS/JS 实时预览、语法高亮、代码格式化、折叠/展开、查找替换、多语言模式切换，以及文件导入导出功能。
 
 #### 💽 05. 文件系统驱动 (Filesystem Core)
-> 底层级别的多媒体解析能力。
+> 底层级别的多媒体解析与物理文件系统桥接能力。
 
 * `IMAGE`：Base64 实时渲染与动态壁纸设定。
 * `VIDEO`：原生 `.mp4` 弹窗级流畅解码。
 * `AUDIO`：原生 `.mp3` `.m4a` 音频播放，支持播放与完整控制。
 * `PDF`：原生阅读引擎，支持矢量缩放与分页。
 * `ARCHIVE`：**虚拟解压引擎**，无损透视并提取 `.zip` `.7z` `.rar` `.tar` `.gz` `.bz2` `.xz` `.cab` `.tgz` 等压缩包结构。
-
-#### 📂 06. 本地文件夹挂载系统 (Local Folder Mount)
-> 突破浏览器沙箱，直接读写物理机文件系统。
-
-* **[File System Access API 原生桥接]** 通过浏览器原生 API 直接挂载本地文件夹，无需上传下载，实现虚拟系统与物理机的无缝连接。
-* **[无缝双向同步]** 支持从挂载文件夹拖拽文件到虚拟桌面，或从虚拟桌面导出到挂载文件夹，操作体验完全一致。
-* **[漫画阅读器集成]** 挂载文件夹中的图片序列可直接以漫画阅读器模式浏览，支持自然排序和无限滚动。
+* **[本地文件夹挂载]** 通过 File System Access API 直接挂载物理机文件夹，突破浏览器沙箱限制，实现虚拟系统与物理机的无缝双向同步。
 * **[持久化挂载记忆]** 使用 IndexedDB 存储挂载句柄，刷新页面后自动恢复挂载状态，无需重复授权。
 * **[完整文件操作]** 支持框选、多选、拖拽、导出等完整的文件管理操作，与原生文件夹体验一致。
+
+#### 🎯 06. 智能任务栏系统 (Smart Taskbar)
+> 优雅高效的窗口管理与导航中枢。
+
+* **[Aero Peek 桌面预览]** 鼠标悬停任务栏最右侧细条，所有窗口瞬间透明化，快速查看桌面内容。
+* **[一键显示桌面]** 点击任务栏最右侧按钮，一键最小化/恢复所有窗口，高效管理桌面空间。
+* **[窗口悬停虚化]** 鼠标悬停任务栏运行窗口时，其他窗口自动虚化（Aero Peek效果），突出显示目标窗口。
+* **[集成关闭按钮]** 任务栏运行窗口右侧集成关闭按钮，鼠标悬停显示，一键关闭无需切换到窗口。
 
 ---
 
@@ -117,7 +119,7 @@
 
 ### 🛠️ TECHNICAL SPECS // 技术规格
 
-* **SYSTEM BUILD**：`v10.3.0`
+* **SYSTEM BUILD**：`v10.4.0`
 * **RENDER ENGINE**：`Ultra-Glass 拟物态 (Backdrop-filter: 40px)`
 * **CORE DRIVERS**：`BrowserFS` / `IndexedDB` / `File System Access API` / `JSZip` / `7z-wasm` / `V86` / `CodeMirror`
 * **LATENCY**：`< 16ms (60FPS Silk Smooth)`
@@ -131,7 +133,7 @@
 
 **[ 系统自检完成：逻辑回路 100% 闭环 ]**
 
-**[ JISHENG OS v10.3 已就绪。期待与您的下一次链接。]**
+**[ JISHENG OS v10.4 已就绪。期待与您的下一次链接。]**
 
 <br>
 
