@@ -393,7 +393,7 @@
             width: 16px; height: 3px; background: var(--accent-blue); border-radius: 2px;
         }
 
-        .system-tray { display: flex; align-items: center; padding-right: 16px; gap: 6px; height: 100%; }
+        .system-tray { display: flex; align-items: center; gap: 6px; height: 100%; }
         .tray-icon { 
             width: 32px; height: 32px; border-radius: 4px;
             display: flex; align-items: center; justify-content: center;
@@ -1181,6 +1181,158 @@
             .editor-search-input { width: 120px; }
             .editor-replace-input { width: 100px; }
         }
+
+        /* === Aero Peek 系统 === */
+
+        /* 桌面预览按钮（任务栏最右端） */
+        .aero-peek-btn {
+            width: 12px;
+            height: 100%;
+            background: rgba(255,255,255,0.05);
+            border-left: 1px solid rgba(255,255,255,0.1);
+            cursor: pointer;
+            transition: background 0.15s;
+            flex-shrink: 0;
+            margin-right: -4px;
+            padding-right: 4px;
+        }
+        .aero-peek-btn:hover {
+            background: rgba(255,255,255,0.15);
+        }
+
+        /* 窗口透明化效果（桌面预览模式） */
+        .window.aero-peek-transparent {
+            opacity: 0.05 !important;
+            transition: opacity 0.2s ease !important;
+            pointer-events: none !important;
+        }
+
+        /* 窗口虚化效果（单窗口预览模式，其他窗口虚化） */
+        .window.aero-peek-dim {
+            opacity: 0.15 !important;
+            filter: blur(2px) !important;
+            transition: opacity 0.2s ease, filter 0.2s ease !important;
+            pointer-events: none !important;
+        }
+
+        /* 被预览的窗口保持清晰 */
+        .window.aero-peek-highlight {
+            opacity: 1 !important;
+            filter: none !important;
+            box-shadow: 
+                0 0 0 2px rgba(0, 120, 212, 0.6),
+                0 30px 70px rgba(0,0,0,0.6) !important;
+            transition: opacity 0.2s ease, filter 0.2s ease !important;
+            z-index: 9000 !important;
+        }
+
+        /* === 任务栏固定快捷方式（只负责启动） === */
+        .taskbar-icon.pinned {
+            position: relative;
+        }
+        .taskbar-icon.pinned:not(.has-windows)::after {
+            display: none;
+        }
+
+        /* === 运行中窗口的条状图标 === */
+        .taskbar-running-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 0 12px;
+            height: 100%;
+            border-radius: 0;
+            cursor: pointer;
+            background: transparent;
+            border: none;
+            border-bottom: 2px solid transparent;
+            transition: all 0.15s;
+            max-width: 160px;
+            min-width: 44px;
+            position: relative;
+            flex-shrink: 1;
+            overflow: hidden;
+        }
+        .taskbar-running-item:hover {
+            background: rgba(255,255,255,0.06);
+        }
+        .taskbar-running-item.focused {
+            background: rgba(255,255,255,0.08);
+            border-bottom-color: rgba(0, 120, 212, 0.6);
+            box-shadow: inset 0 -1px 0 0 rgba(0, 120, 212, 0.3);
+        }
+        .taskbar-running-item.minimized-item {
+            opacity: 0.5;
+        }
+        .taskbar-running-item.minimized-item.focused {
+            border-bottom-color: rgba(0, 120, 212, 0.4);
+            box-shadow: inset 0 -1px 0 0 rgba(0, 120, 212, 0.2);
+        }
+        .taskbar-running-item .running-icon {
+            width: 20px;
+            height: 20px;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .taskbar-running-item .running-icon .icon-svg {
+            width: 18px;
+            height: 18px;
+            color: rgba(255,255,255,0.85);
+        }
+        .taskbar-running-item .running-title {
+            font-size: 12px;
+            color: var(--text-main);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            flex: 1;
+            line-height: 1;
+        }
+
+        /* 任务栏运行项关闭按钮 */
+        .taskbar-running-item .running-close-btn {
+            width: 18px;
+            height: 18px;
+            border-radius: 3px;
+            border: none;
+            background: transparent;
+            color: var(--text-muted);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            opacity: 0;
+            transition: all 0.15s;
+            margin-left: 4px;
+        }
+        .taskbar-running-item:hover .running-close-btn {
+            opacity: 1;
+        }
+        .taskbar-running-item .running-close-btn:hover {
+            background: var(--win-close-red);
+            color: white;
+        }
+        .taskbar-running-item .running-close-btn svg {
+            width: 12px;
+            height: 12px;
+            stroke: currentColor;
+            stroke-width: 2;
+            fill: none;
+        }
+
+        /* 运行区域容器 */
+        .taskbar-running-area {
+            display: flex;
+            align-items: center;
+            gap: 0;
+            flex: 1;
+            overflow: hidden;
+            min-width: 0;
+            height: 100%;
+        }
     </style>
 </head>
 <body>
@@ -1216,17 +1368,18 @@
                 <rect x="14" y="14" width="7" height="7" rx="1"/>
             </svg>
         </div>
-        <div class="taskbar-apps">
-            <div class="taskbar-icon" onclick="openBrowser()" title="浏览器">
+        <div class="taskbar-apps" id="taskbar-apps">
+            <!-- 固定快捷方式（只负责打开应用） -->
+            <div class="taskbar-icon pinned" onclick="openBrowser()" title="浏览器">
                 <svg class="icon-svg" viewBox="0 0 24 24">
                     <circle cx="12" cy="12" r="10"/>
                     <path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
                 </svg>
             </div>
-            <div class="taskbar-icon" onclick="openNotepad()" title="记事本">
-                <svg class="icon-svg" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
+            <div class="taskbar-icon pinned" onclick="openNotepad()" title="记事本">
+                <svg class="icon-svg" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
             </div>
-            <div class="taskbar-icon" onclick="openCalculator()" title="计算器">
+            <div class="taskbar-icon pinned" onclick="openCalculator()" title="计算器">
                 <svg class="icon-svg" viewBox="0 0 24 24">
                     <rect x="4" y="2" width="16" height="20" rx="2"/>
                     <line x1="8" y1="6" x2="16" y2="6"/>
@@ -1241,7 +1394,7 @@
                     <line x1="16" y1="18" x2="16" y2="18.01"/>
                 </svg>
             </div>
-            <div class="taskbar-icon" onclick="openPaint()" title="画板">
+            <div class="taskbar-icon pinned" onclick="openPaint()" title="画板">
                 <svg class="icon-svg" viewBox="0 0 24 24">
                     <path d="M12 19l7-7 3 3-7 7-3-3z"/>
                     <path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/>
@@ -1249,13 +1402,13 @@
                     <circle cx="11" cy="11" r="2"/>
                 </svg>
             </div>
-            <div class="taskbar-icon" onclick="openSettings()" title="设置">
+            <div class="taskbar-icon pinned" onclick="openSettings()" title="设置">
                 <svg class="icon-svg" viewBox="0 0 24 24">
                     <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
                     <circle cx="12" cy="12" r="3"/>
                 </svg>
             </div>
-            <div class="taskbar-icon" onclick="openV86()" title="V86 虚拟机">
+            <div class="taskbar-icon pinned" onclick="openV86()" title="V86虚拟机">
                 <svg class="icon-svg" viewBox="0 0 24 24">
                     <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
                     <line x1="8" y1="21" x2="16" y2="21"/>
@@ -1263,17 +1416,16 @@
                     <path d="M6 8h2M6 12h2M10 8h8M10 12h8"/>
                 </svg>
             </div>
-            <div class="taskbar-icon" onclick="openCodeEditor()" title="HTML编辑器">
+            <div class="taskbar-icon pinned" onclick="openCodeEditor()" title="HTML编辑器">
                 <svg class="icon-svg" viewBox="0 0 24 24">
                     <polyline points="16 18 22 12 16 6"/>
                     <polyline points="8 6 2 12 8 18"/>
                 </svg>
             </div>
+            <!-- 运行中窗口的条状图标动态插入这里 -->
+            <div class="taskbar-running-area" id="taskbar-running-area"></div>
         </div>
-
-        <!-- 【新增】任务栏内通知区域 -->
         <div id="taskbar-notify-area"></div>
-
         <div class="system-tray">
             <div class="tray-icon">
                 <svg class="icon-svg" viewBox="0 0 24 24">
@@ -1286,6 +1438,12 @@
             <div class="clock" id="clock" onclick="toggleCalendar()">
                 <div class="time" id="time">12:00</div>
                 <div class="date" id="date">2024/01/01</div>
+            </div>
+            <div class="aero-peek-btn" id="aero-peek-btn"
+                 onmouseenter="aeroPeekDesktopEnter()"
+                 onmouseleave="aeroPeekDesktopLeave()"
+                 onclick="aeroPeekDesktopClick()"
+                 title="显示桌面">
             </div>
         </div>
     </div>
@@ -4320,6 +4478,7 @@
                 setTimeout(() => w.remove(), 200);
             }
             SYSTEM.windows = SYSTEM.windows.filter(win => win.id !== id);
+            setTimeout(updateTaskbarRunningItems, 30);
         };
 
         window.minimizeWin = function(id) {
@@ -4328,6 +4487,7 @@
                 win.minimized = true;
                 win.element.classList.add('minimized');
             }
+            setTimeout(updateTaskbarRunningItems, 30);
         };
 
         window.maximizeWin = function(id) {
@@ -4357,6 +4517,7 @@
                     win.element.classList.remove('minimized');
                 }
             }
+            setTimeout(updateTaskbarRunningItems, 30);
         };
 
         // === 修复后的拖拽逻辑 (完美支持手机/平板) ===
@@ -5792,7 +5953,7 @@
                         <div class="settings-content">
                             <div class="about-card">
                                 <div class="logo">JISHENG OS</div>
-                                <p>Ultimate Web Operating System<br>Version 10.3 • Build 2026</p>
+                                <p>Ultimate Web Operating System<br>Version 10.4 • Build 2026</p>
                             </div>
                             
                             <div class="settings-section" style="margin-top:20px">
@@ -5819,7 +5980,7 @@
                                 <h4>关于</h4>
                                 <div class="settings-item">
                                     <label>系统版本</label>
-                                    <span>10.3.0</span>
+                                    <span>10.4.0</span>
                                 </div>
                                 <div class="settings-item">
                                     <label>内核</label>
@@ -5875,6 +6036,233 @@
                 const req = indexedDB.deleteDatabase('JISHENG_OS_V3');
                 req.onsuccess = () => location.reload();
             }
+        }
+
+        // ============================================
+        // === Aero Peek 系统 + 运行窗口任务栏 ===
+        // ============================================
+
+        const AeroPeek = {
+            isDesktopPeeking: false,
+            isDesktopLocked: false,
+            previewTimer: null,
+            currentPreviewWinId: null,
+            savedWindowStates: [],
+            previewHideTimer: null,
+        };
+
+        // === 窗口标题对应的图标SVG ===
+        function getWindowIconSVG(title) {
+            if (!title) return '<svg class="icon-svg" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>';
+            
+            if (title.includes('浏览器'))
+                return '<svg class="icon-svg" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>';
+            if (title.includes('记事本'))
+                return '<svg class="icon-svg" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>';
+            if (title.includes('计算器'))
+                return '<svg class="icon-svg" viewBox="0 0 24 24"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/></svg>';
+            if (title.includes('画板'))
+                return '<svg class="icon-svg" viewBox="0 0 24 24"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><circle cx="11" cy="11" r="2"/></svg>';
+            if (title.includes('设置'))
+                return '<svg class="icon-svg" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/></svg>';
+            if (title.includes('V86'))
+                return '<svg class="icon-svg" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>';
+            if (title.includes('编辑器') || title.includes('HTML'))
+                return '<svg class="icon-svg" viewBox="0 0 24 24"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>';
+            
+            return '<svg class="icon-svg" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>';
+        }
+
+        // ============================================
+        // 1. 运行窗口任务栏条状图标管理
+        // ============================================
+
+        function updateTaskbarRunningItems() {
+            const area = document.getElementById('taskbar-running-area');
+            if (!area) return;
+            
+            const existingIds = new Set();
+            
+            // 更新/添加
+            SYSTEM.windows.forEach(w => {
+                existingIds.add(w.id);
+                let item = document.getElementById('taskbar-run-' + w.id);
+                
+                if (!item) {
+                    // 创建新的条状图标
+                    item = document.createElement('div');
+                    item.className = 'taskbar-running-item';
+                    item.id = 'taskbar-run-' + w.id;
+                    item.dataset.winId = w.id;
+                    
+                    item.innerHTML = `
+                        <div class="running-icon">${getWindowIconSVG(w.title)}</div>
+                        <div class="running-title">${w.title || '窗口'}</div>
+                        <button class="running-close-btn" title="关闭窗口">
+                            <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                        </button>
+                    `;
+                    
+                    // 点击：聚焦/最小化
+                    item.addEventListener('click', function(e) {
+                        // 如果点击的是关闭按钮，不执行聚焦/最小化
+                        if (e.target.closest('.running-close-btn')) return;
+                        
+                        const winId = parseInt(this.dataset.winId);
+                        const win = SYSTEM.windows.find(ww => ww.id === winId);
+                        if (!win) return;
+                        
+                        if (win.element.classList.contains('focused') && !win.minimized) {
+                            minimizeWin(winId);
+                        } else {
+                            focusWin(winId);
+                        }
+                        setTimeout(updateTaskbarRunningItems, 30);
+                    });
+                    
+                    // 关闭按钮点击事件
+                    const closeBtn = item.querySelector('.running-close-btn');
+                    if (closeBtn) {
+                        closeBtn.addEventListener('click', function(e) {
+                            e.stopPropagation();
+                            const winId = parseInt(item.dataset.winId);
+                            closeWin(winId);
+                            setTimeout(updateTaskbarRunningItems, 30);
+                        });
+                    }
+                    
+                    // 悬停：显示Aero Peek效果（虚化其他窗口）
+                    item.addEventListener('mouseenter', function(e) {
+                        const winId = parseInt(this.dataset.winId);
+                        onRunningItemHover(e, winId);
+                    });
+                    item.addEventListener('mouseleave', function(e) {
+                        const winId = parseInt(this.dataset.winId);
+                        onRunningItemLeave(e, winId);
+                    });
+                    
+                    area.appendChild(item);
+                }
+                
+                // 更新状态
+                item.classList.toggle('focused', w.element.classList.contains('focused'));
+                item.classList.toggle('minimized-item', !!w.minimized);
+                
+                // 更新标题（可能变化）
+                const titleEl = item.querySelector('.running-title');
+                if (titleEl && titleEl.textContent !== w.title) {
+                    titleEl.textContent = w.title || '窗口';
+                }
+            });
+            
+            // 删除已关闭的窗口图标
+            Array.from(area.children).forEach(child => {
+                const winId = parseInt(child.dataset.winId);
+                if (!existingIds.has(winId)) {
+                    child.style.transition = 'opacity 0.15s, transform 0.15s';
+                    child.style.opacity = '0';
+                    child.style.transform = 'scale(0.8)';
+                    setTimeout(() => child.remove(), 150);
+                }
+            });
+        }
+
+        // ============================================
+        // 2. 任务栏悬停预览效果（Aero Peek）
+        // ============================================
+
+        function onRunningItemHover(event, winId) {
+            const win = SYSTEM.windows.find(w => w.id === winId);
+            if (!win) return;
+            
+            // 虚化其他窗口，高亮当前窗口
+            SYSTEM.windows.forEach(w => {
+                if (w.id === winId && !w.minimized) {
+                    w.element.classList.add('aero-peek-highlight');
+                    w.element.classList.remove('aero-peek-dim');
+                } else if (!w.minimized) {
+                    w.element.classList.add('aero-peek-dim');
+                    w.element.classList.remove('aero-peek-highlight');
+                }
+            });
+        }
+
+        function onRunningItemLeave(event, winId) {
+            clearAeroPeekEffects();
+        }
+
+        function clearAeroPeekEffects() {
+            SYSTEM.windows.forEach(w => {
+                w.element.classList.remove('aero-peek-dim');
+                w.element.classList.remove('aero-peek-highlight');
+            });
+        }
+
+        // ============================================
+        // 3. 桌面预览模式（右下角按钮）
+        // ============================================
+
+        function aeroPeekDesktopEnter() {
+            if (AeroPeek.isDesktopLocked) return;
+            
+            AeroPeek.previewTimer = setTimeout(() => {
+                AeroPeek.isDesktopPeeking = true;
+                SYSTEM.windows.forEach(w => {
+                    if (!w.minimized) {
+                        w.element.classList.add('aero-peek-transparent');
+                    }
+                });
+            }, 300);
+        }
+
+        function aeroPeekDesktopLeave() {
+            if (AeroPeek.previewTimer) {
+                clearTimeout(AeroPeek.previewTimer);
+                AeroPeek.previewTimer = null;
+            }
+            
+            if (AeroPeek.isDesktopPeeking && !AeroPeek.isDesktopLocked) {
+                AeroPeek.isDesktopPeeking = false;
+                SYSTEM.windows.forEach(w => {
+                    w.element.classList.remove('aero-peek-transparent');
+                });
+            }
+        }
+
+        function aeroPeekDesktopClick() {
+            if (AeroPeek.isDesktopLocked) {
+                // 恢复所有窗口
+                AeroPeek.isDesktopLocked = false;
+                AeroPeek.isDesktopPeeking = false;
+                
+                AeroPeek.savedWindowStates.forEach(state => {
+                    const win = SYSTEM.windows.find(w => w.id === state.id);
+                    if (win) {
+                        win.minimized = false;
+                        win.element.classList.remove('minimized');
+                        win.element.classList.remove('aero-peek-transparent');
+                    }
+                });
+                AeroPeek.savedWindowStates = [];
+            } else {
+                // 最小化所有窗口
+                AeroPeek.isDesktopLocked = true;
+                AeroPeek.isDesktopPeeking = false;
+                
+                AeroPeek.savedWindowStates = SYSTEM.windows
+                    .filter(w => !w.minimized)
+                    .map(w => ({ id: w.id }));
+                
+                SYSTEM.windows.forEach(w => {
+                    w.element.classList.remove('aero-peek-transparent');
+                    if (!w.minimized) {
+                        w.minimized = true;
+                        w.element.classList.add('minimized');
+                    }
+                });
+            }
+            
+            updateTaskbarRunningItems();
         }
 
         // 启动
