@@ -2582,6 +2582,10 @@
                     </div>
                     ${isArchiveFile(filename) ? `<div class="context-item" onclick="extractZip('${filename}'); closeCtx()"><svg class="icon-svg" viewBox="0 0 24 24"><path d="M21 8v13H3V8"/></svg><span>解压</span></div>` : ''}
                     <div class="context-divider"></div>
+                    <div class="context-item" onclick="downloadFile('${filename}'); closeCtx()">
+                        <svg class="icon-svg" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>
+                        <span>下载</span>
+                    </div>
                     <div class="context-item" onclick="renameDesktopFile('${filename}'); closeCtx()">
                         <svg class="icon-svg" viewBox="0 0 24 24"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
                         <span>重命名</span>
@@ -2795,6 +2799,10 @@
                     </div>
                     ${isArchiveFile(filename) ? `<div class="context-item" onclick="extractZipFromPath('${fullPath}'); closeCtx()"><svg class="icon-svg" viewBox="0 0 24 24"><path d="M21 8v13H3V8"/></svg><span>解压</span></div>` : ''}
                     <div class="context-divider"></div>
+                    <div class="context-item" onclick="downloadFolderItem('${windowId}', '${filename}'); closeCtx()">
+                        <svg class="icon-svg" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>
+                        <span>下载</span>
+                    </div>
                     <div class="context-item" onclick="renameFolderItem('${windowId}', '${filename}'); closeCtx()">
                         <svg class="icon-svg" viewBox="0 0 24 24"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
                         <span>重命名</span>
@@ -4344,6 +4352,10 @@
             }
 
             menuItems += `
+                <div class="context-item" onclick="downloadFile('${filename}'); closeCtx()">
+                    <svg class="icon-svg" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>
+                    <span>下载</span>
+                </div>
                 <div class="context-item" onclick="renameFile('${filename}'); closeCtx()">
                     <svg class="icon-svg" viewBox="0 0 24 24"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
                     <span>重命名</span>
@@ -4391,6 +4403,57 @@
                 else { 
                     refreshDesktop(); 
                     Notify.success('重命名成功', `已重命名为 "${newName}"`); 
+                }
+            });
+        }
+
+        function downloadFile(filename) {
+            const filePath = SYSTEM.desktopPath + '/' + filename;
+            downloadFileInternal(filePath, filename);
+        }
+
+        function downloadFolderItem(windowId, filename) {
+            const contentArea = document.getElementById('folder-content-' + windowId);
+            if(!contentArea) return;
+            const folderName = contentArea.closest('.window').querySelector('.window-title-text').innerText;
+            const filePath = SYSTEM.desktopPath + '/' + folderName + '/' + filename;
+            
+            downloadFileInternal(filePath, filename);
+        }
+
+        function downloadFileInternal(filePath, filename) {
+            SYSTEM.fs.stat(filePath, (err, stats) => {
+                if(err) {
+                    return;
+                }
+                
+                if(stats.isDirectory()) {
+                    // 文件夹：打包为 zip 下载
+                    const zip = new JSZip();
+                    const rootFolder = zip.folder(filename);
+                    addFolderToZipSync(rootFolder, filePath, () => {
+                        zip.generateAsync({ type: 'blob', compression: 'DEFLATE' })
+                        .then(blob => {
+                            const a = document.createElement('a');
+                            a.href = URL.createObjectURL(blob);
+                            a.download = filename + '.zip';
+                            a.click();
+                            URL.revokeObjectURL(a.href);
+                        });
+                    });
+                } else {
+                    // 普通文件：直接下载
+                    SYSTEM.fs.readFile(filePath, (err, data) => {
+                        if(err) {
+                            return;
+                        }
+                        const blob = new Blob([data]);
+                        const a = document.createElement('a');
+                        a.href = URL.createObjectURL(blob);
+                        a.download = filename;
+                        a.click();
+                        URL.revokeObjectURL(a.href);
+                    });
                 }
             });
         }
@@ -5953,7 +6016,7 @@
                         <div class="settings-content">
                             <div class="about-card">
                                 <div class="logo">JISHENG OS</div>
-                                <p>Ultimate Web Operating System<br>Version 10.4 • Build 2026</p>
+                                <p>Ultimate Web Operating System<br>Version 10.4.1 • Build 2026</p>
                             </div>
                             
                             <div class="settings-section" style="margin-top:20px">
@@ -5980,7 +6043,7 @@
                                 <h4>关于</h4>
                                 <div class="settings-item">
                                     <label>系统版本</label>
-                                    <span>10.4.0</span>
+                                    <span>10.4.1</span>
                                 </div>
                                 <div class="settings-item">
                                     <label>内核</label>
