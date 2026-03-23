@@ -611,12 +611,14 @@
         /* === 日历面板 === */
         .calendar-panel {
             position: fixed; bottom: calc(var(--taskbar-height) + 12px); right: 12px;
-            width: 320px; background: var(--glass-surface-light);
-            backdrop-filter: blur(50px); border-radius: 10px; border: 1px solid var(--glass-border);
+            width: 320px; background: var(--glass-surface);
+            backdrop-filter: blur(40px) saturate(120%);
+            -webkit-backdrop-filter: blur(40px) saturate(120%);
+            border-radius: 10px; border: 1px solid var(--glass-border);
             padding: 20px; z-index: 2000;
             transform: translateY(20px); opacity: 0; pointer-events: none;
             transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-            box-shadow: 0 16px 48px rgba(0,0,0,0.5);
+            box-shadow: 0 20px 50px -12px rgba(0, 0, 0, 0.6);
         }
         .calendar-panel.open { transform: translateY(0); opacity: 1; pointer-events: auto; }
         
@@ -6016,7 +6018,7 @@
                         <div class="settings-content">
                             <div class="about-card">
                                 <div class="logo">JISHENG OS</div>
-                                <p>Ultimate Web Operating System<br>Version 10.4.1 • Build 2026</p>
+                                <p>Ultimate Web Operating System<br>Version 10.4.2 • Build 2026</p>
                             </div>
                             
                             <div class="settings-section" style="margin-top:20px">
@@ -6043,7 +6045,7 @@
                                 <h4>关于</h4>
                                 <div class="settings-item">
                                     <label>系统版本</label>
-                                    <span>10.4.1</span>
+                                    <span>10.4.2</span>
                                 </div>
                                 <div class="settings-item">
                                     <label>内核</label>
