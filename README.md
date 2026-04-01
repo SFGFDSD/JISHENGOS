@@ -1,6 +1,6 @@
 <div align="center">
 
-# JISHENG OS // SYSTEM ARCHIVE v10.4.2
+# JISHENG OS // SYSTEM ARCHIVE v10.4.3
 
 *A Single-File Ultimate Persistent Operating System*
 
@@ -86,7 +86,7 @@
 | **VIDEO** | `.mp4` | 系统级弹窗播放 / 画中画支持 |
 | **AUDIO** | `.mp3` `.m4a` | 系统级弹窗播放 / 播放 / 完整控制 |
 | **DOC** | `.pdf` | 原生渲染引擎 / 矢量缩放 / 翻页 |
-| **TEXT** | `.txt` `.md` `.json` | 读写权限 / 代码高亮 / 本地持久化 |
+| **TEXT** | `.txt` `.md` `.csv` `.json` | 读写权限 / 代码高亮 / 本地持久化 |
 | **WEB** | `.html` `.css` `.js` | 源码编辑 / DOM 隔离渲染预览 |
 | **ARCHIVE**| `.zip` `.7z` `.rar` `.tar` `.gz` `.bz2` `.xz` `.cab` `.tgz` | **虚拟解压引擎** / 结构透视 / 内容提取 |
 | **VM** | `.img` `.iso` | V86 虚拟机 / x86 模拟 / 软盘与光盘启动 |
@@ -119,7 +119,7 @@
 
 ### 🛠️ TECHNICAL SPECS // 技术规格
 
-* **SYSTEM BUILD**：`v10.4.2`
+* **SYSTEM BUILD**：`v10.4.3`
 * **RENDER ENGINE**：`Ultra-Glass 拟物态 (Backdrop-filter: 40px)`
 * **CORE DRIVERS**：`BrowserFS` / `IndexedDB` / `File System Access API` / `JSZip` / `7z-wasm` / `V86` / `CodeMirror`
 * **LATENCY**：`< 16ms (60FPS Silk Smooth)`
@@ -133,7 +133,7 @@
 
 **[ 系统自检完成：逻辑回路 100% 闭环 ]**
 
-**[ JISHENG OS v10.4.2 已就绪。期待与您的下一次链接。]**
+**[ JISHENG OS v10.4.3 已就绪。期待与您的下一次链接。]**
 
 <br>
 
