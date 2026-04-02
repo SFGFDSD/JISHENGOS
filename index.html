@@ -3322,8 +3322,16 @@
                     });
                 });
             }
+            // 8. 其他文件类型 - 尝试用记事本打开
             else {
-                Notify.warning('不支持的格式', '暂时无法打开此类型文件');
+                SYSTEM.fs.readFile(fullPath, 'utf8', (err, data) => {
+                    if(err) { 
+                        Notify.warning('不支持的格式', '暂时无法打开此类型文件'); 
+                        return; 
+                    }
+                    openNotepad(data, filename);
+                    Notify.info('文本模式', '已使用记事本打开该文件');
+                });
             }
         }
 
