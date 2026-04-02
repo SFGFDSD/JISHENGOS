@@ -364,6 +364,49 @@
             line-height: 1.6;
         }
 
+        /* === CSV 表格查看器样式 === */
+        .csv-toolbar {
+            padding: 8px 12px; background: rgba(0,0,0,0.2);
+            border-bottom: 1px solid var(--glass-border); display: flex; gap: 8px; align-items: center;
+        }
+        .csv-btn {
+            background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border);
+            color: var(--text-main); padding: 4px 12px; border-radius: 4px; font-size: 12px; cursor: pointer;
+            transition: 0.2s;
+        }
+        .csv-btn:hover { background: rgba(255,255,255,0.15); }
+        .csv-info {
+            margin-left: auto; color: var(--text-muted); font-size: 12px;
+        }
+        .csv-container {
+            flex: 1; overflow: auto; background: #1e1e1e; padding: 16px;
+        }
+        .csv-container::-webkit-scrollbar { width: 8px; height: 8px; }
+        .csv-container::-webkit-scrollbar-track { background: transparent; }
+        .csv-container::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 4px; }
+        .csv-container::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.25); }
+        .csv-container::-webkit-scrollbar-corner { background: transparent; }
+        .csv-table {
+            width: 100%; border-collapse: collapse; font-size: 13px;
+            background: #252526; border-radius: 4px; overflow: hidden;
+        }
+        .csv-table th {
+            background: #2d2d30; color: var(--text-main); padding: 10px 12px;
+            text-align: left; font-weight: 500; border-bottom: 1px solid var(--glass-border);
+            position: sticky; top: 0;
+        }
+        .csv-table td {
+            padding: 8px 12px; border-bottom: 1px solid rgba(255,255,255,0.05);
+            color: #e0e0e0; white-space: nowrap;
+        }
+        .csv-table tr:hover td { background: rgba(255,255,255,0.03); }
+        .csv-table tr:nth-child(even) { background: rgba(255,255,255,0.01); }
+        .csv-editor {
+            flex: 1; background: #1e1e1e; border: none; color: #e0e0e0;
+            padding: 16px; font-family: 'Consolas', monospace; font-size: 14px; resize: none;
+            line-height: 1.6; width: 100%;
+        }
+
         /* === 任务栏 === */
         .taskbar {
             position: fixed; bottom: 0; left: 0; right: 0; height: var(--taskbar-height);
@@ -3256,9 +3299,16 @@
             // 2. 处理图片文件 (改为调用漫画查看器)
             else if(filename.match(/\.(jpg|png|gif|webp|jpeg)$/i)) {
                 openMangaViewer(fullPath, filename);
-            } 
-            // 3. 处理文本文件
-            else if(filename.match(/\.(txt|md|csv)$/i)) {
+            }
+            // 3. 处理 CSV 文件 (使用表格查看器)
+            else if(filename.match(/\.csv$/i)) {
+                SYSTEM.fs.readFile(fullPath, 'utf8', (err, data) => {
+                    if(err) { Notify.error('打开失败', err.message); return; }
+                    openCSVViewer(data, filename);
+                });
+            }
+            // 4. 处理文本文件
+            else if(filename.match(/\.(txt|md)$/i)) {
                 SYSTEM.fs.readFile(fullPath, 'utf8', (err, data) => {
                     if(err) { Notify.error('打开失败', err.message); return; }
                     openNotepad(data, filename);
@@ -4839,6 +4889,130 @@
                     };
                     
                     updateUI();
+                }
+            });
+        }
+
+        // CSV 表格查看器
+        function openCSVViewer(content = '', filename = '未命名.csv') {
+            const winId = SYSTEM.idCounter + 1;
+            
+            // 解析 CSV 数据
+            function parseCSV(text) {
+                const rows = [];
+                const lines = text.trim().split('\n');
+                for (const line of lines) {
+                    if (!line.trim()) continue;
+                    const row = [];
+                    let cell = '';
+                    let inQuotes = false;
+                    for (let i = 0; i < line.length; i++) {
+                        const char = line[i];
+                        const nextChar = line[i + 1];
+                        if (char === '"') {
+                            if (inQuotes && nextChar === '"') {
+                                cell += '"';
+                                i++;
+                            } else {
+                                inQuotes = !inQuotes;
+                            }
+                        } else if (char === ',' && !inQuotes) {
+                            row.push(cell.trim());
+                            cell = '';
+                        } else {
+                            cell += char;
+                        }
+                    }
+                    row.push(cell.trim());
+                    rows.push(row);
+                }
+                return rows;
+            }
+            
+            const rows = parseCSV(content);
+            const colCount = rows.length > 0 ? Math.max(...rows.map(r => r.length)) : 0;
+            
+            // 生成表格 HTML
+            let tableHtml = '<table class="csv-table"><thead><tr>';
+            for (let i = 0; i < colCount; i++) {
+                tableHtml += `<th>列 ${i + 1}</th>`;
+            }
+            tableHtml += '</tr></thead><tbody>';
+            
+            for (const row of rows) {
+                tableHtml += '<tr>';
+                for (let i = 0; i < colCount; i++) {
+                    const cell = row[i] || '';
+                    tableHtml += `<td>${cell.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</td>`;
+                }
+                tableHtml += '</tr>';
+            }
+            tableHtml += '</tbody></table>';
+            
+            const id = createWindow({
+                title: 'CSV 表格 - ' + filename,
+                iconHtml: '<svg class="icon-svg sm" viewBox="0 0 24 24"><path d="M3 3h18v18H3V3zm2 2v14h14V5H5z"/><path d="M3 9h18M3 15h18M9 3v18M15 3v18"/></svg>',
+                width: 800, height: 600,
+                content: `
+                    <div class="csv-toolbar">
+                        <button class="csv-btn" id="csv-edit-${winId}">编辑源码</button>
+                        <button class="csv-btn" id="csv-save-${winId}">保存</button>
+                        <span class="csv-info">${rows.length} 行 × ${colCount} 列</span>
+                    </div>
+                    <div class="csv-container" id="csv-container-${winId}">
+                        ${tableHtml}
+                    </div>
+                    <textarea class="csv-editor" id="csv-editor-${winId}" style="display:none">${content}</textarea>
+                `,
+                onInit: (w, winId) => {
+                    let isEditMode = false;
+                    const container = document.getElementById('csv-container-' + winId);
+                    const editor = document.getElementById('csv-editor-' + winId);
+                    
+                    document.getElementById('csv-edit-' + winId).onclick = () => {
+                        isEditMode = !isEditMode;
+                        if (isEditMode) {
+                            container.style.display = 'none';
+                            editor.style.display = 'block';
+                            document.getElementById('csv-edit-' + winId).innerText = '查看表格';
+                        } else {
+                            // 重新解析并显示
+                            const newContent = editor.value;
+                            const newRows = parseCSV(newContent);
+                            const newColCount = newRows.length > 0 ? Math.max(...newRows.map(r => r.length)) : 0;
+                            
+                            let newTableHtml = '<table class="csv-table"><thead><tr>';
+                            for (let i = 0; i < newColCount; i++) {
+                                newTableHtml += `<th>列 ${i + 1}</th>`;
+                            }
+                            newTableHtml += '</tr></thead><tbody>';
+                            
+                            for (const row of newRows) {
+                                newTableHtml += '<tr>';
+                                for (let i = 0; i < newColCount; i++) {
+                                    const cell = row[i] || '';
+                                    newTableHtml += `<td>${cell.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</td>`;
+                                }
+                                newTableHtml += '</tr>';
+                            }
+                            newTableHtml += '</tbody></table>';
+                            
+                            container.innerHTML = newTableHtml;
+                            container.style.display = 'block';
+                            editor.style.display = 'none';
+                            document.getElementById('csv-edit-' + winId).innerText = '编辑源码';
+                            document.querySelector('.csv-info').innerText = `${newRows.length} 行 × ${newColCount} 列`;
+                        }
+                    };
+                    
+                    document.getElementById('csv-save-' + winId).onclick = () => {
+                        const saveContent = isEditMode ? editor.value : editor.value;
+                        const path = SYSTEM.desktopPath + '/' + filename;
+                        SYSTEM.fs.writeFile(path, saveContent, 'utf8', err => {
+                            if (err) Notify.error('保存失败', err.message);
+                            else { refreshDesktop(); Notify.success('保存成功', `文件已保存为 "${filename}"`); }
+                        });
+                    };
                 }
             });
         }
