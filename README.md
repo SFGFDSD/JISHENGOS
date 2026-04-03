@@ -1,6 +1,6 @@
 <div align="center">
 
-# JISHENG OS // SYSTEM ARCHIVE v10.4.3
+# JISHENG OS // SYSTEM ARCHIVE v10.4.4
 
 *A Single-File Ultimate Persistent Operating System*
 
@@ -119,7 +119,7 @@
 
 ### 🛠️ TECHNICAL SPECS // 技术规格
 
-* **SYSTEM BUILD**：`v10.4.3`
+* **SYSTEM BUILD**：`v10.4.4`
 * **RENDER ENGINE**：`Ultra-Glass 拟物态 (Backdrop-filter: 40px)`
 * **CORE DRIVERS**：`BrowserFS` / `IndexedDB` / `File System Access API` / `JSZip` / `7z-wasm` / `V86` / `CodeMirror`
 * **LATENCY**：`< 16ms (60FPS Silk Smooth)`
@@ -133,7 +133,7 @@
 
 **[ 系统自检完成：逻辑回路 100% 闭环 ]**
 
-**[ JISHENG OS v10.4.3 已就绪。期待与您的下一次链接。]**
+**[ JISHENG OS v10.4.4 已就绪。期待与您的下一次链接。]**
 
 <br>
 
