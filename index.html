@@ -1388,7 +1388,7 @@
    
 
     <!-- 壁纸 -->
-    <div id="dynamic-bg" style="background-image: url('https://images.unsplash.com/photo-1446776811953-b23d57bd21aa?w=1920');"></div>
+    <div id="dynamic-bg" style="background-image: url('https://images.unsplash.com/photo-1614121181207-4b6c334d353d?w=1920');"></div>
   
 
     <!-- 窗口吸附预览 -->
@@ -1398,7 +1398,7 @@
      <div class="desktop" id="desktop"> 
          <!-- 新增：网格层和框选层 --> 
          <div class="desktop-grid-overlay" id="desktop-grid"></div> 
-         <div class="selection-box" id="selection-box"></div> 
+         <div class="selection-box" id="selection-box"></div>
          
          <div class="desktop-icons" id="desktop-icons"></div> 
      </div>
@@ -2616,7 +2616,11 @@
             let html = '';
             
             if(count > 1) {
-                html = `<div class="context-item" onclick="deleteSelected(); closeCtx()" style="color:var(--win-close-red)">
+                html = `<div class="context-item" onclick="downloadSelectedFiles(); closeCtx()">
+                    <svg class="icon-svg" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>
+                    <span>下载选中 (${count})</span>
+                </div>
+                <div class="context-item" onclick="deleteSelected(); closeCtx()" style="color:var(--win-close-red)">
                     <svg class="icon-svg" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
                     <span>删除选中 (${count})</span>
                 </div>`;
@@ -2833,7 +2837,11 @@
             
             if(count > 1) {
                 html = `
-                    <div class="context-item" onclick="deleteFolderItems('${windowId}'); closeCtx()">
+                    <div class="context-item" onclick="downloadSelectedFolderItems('${windowId}'); closeCtx()">
+                        <svg class="icon-svg" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>
+                        <span>下载选中 (${count})</span>
+                    </div>
+                    <div class="context-item" onclick="deleteFolderItems('${windowId}'); closeCtx()" style="color:var(--win-close-red)">
                         <svg class="icon-svg" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
                         <span>删除选中 (${count})</span>
                     </div>
@@ -4520,6 +4528,125 @@
             });
         }
 
+        function downloadSelectedFiles() {
+            const selectedIds = SYSTEM.selectedIcons.filter(id => id.startsWith('file-'));
+            if(selectedIds.length === 0) return;
+            
+            const files = selectedIds.map(id => {
+                const el = document.getElementById(id);
+                return el ? el.dataset.filename : null;
+            }).filter(f => f);
+            
+            if(files.length === 0) return;
+            
+            if(files.length === 1) {
+                downloadFile(files[0]);
+                return;
+            }
+            
+            const zip = new JSZip();
+            let processedCount = 0;
+            
+            files.forEach(filename => {
+                const filePath = SYSTEM.desktopPath + '/' + filename;
+                SYSTEM.fs.stat(filePath, (err, stats) => {
+                    if(err) {
+                        processedCount++;
+                        if(processedCount === files.length) {
+                            generateAndDownloadZip(zip, 'selected_files');
+                        }
+                        return;
+                    }
+                    
+                    if(stats.isDirectory()) {
+                        const folder = zip.folder(filename);
+                        addFolderToZipSync(folder, filePath, () => {
+                            processedCount++;
+                            if(processedCount === files.length) {
+                                generateAndDownloadZip(zip, 'selected_files');
+                            }
+                        });
+                    } else {
+                        SYSTEM.fs.readFile(filePath, (err, data) => {
+                            if(!err) {
+                                zip.file(filename, data);
+                            }
+                            processedCount++;
+                            if(processedCount === files.length) {
+                                generateAndDownloadZip(zip, 'selected_files');
+                            }
+                        });
+                    }
+                });
+            });
+        }
+
+        function downloadSelectedFolderItems(windowId) {
+            const contentArea = document.getElementById('folder-content-' + windowId);
+            if(!contentArea) return;
+            
+            const folderName = contentArea.closest('.window').querySelector('.window-title-text').innerText;
+            const basePath = SYSTEM.desktopPath + '/' + folderName;
+            
+            const selectedItems = Array.from(contentArea.querySelectorAll('.folder-item.selected'));
+            if(selectedItems.length === 0) return;
+            
+            const files = selectedItems.map(item => item.dataset.filename);
+            
+            if(files.length === 1) {
+                downloadFolderItem(windowId, files[0]);
+                return;
+            }
+            
+            const zip = new JSZip();
+            let processedCount = 0;
+            
+            files.forEach(filename => {
+                const filePath = basePath + '/' + filename;
+                SYSTEM.fs.stat(filePath, (err, stats) => {
+                    if(err) {
+                        processedCount++;
+                        if(processedCount === files.length) {
+                            generateAndDownloadZip(zip, folderName + '_selected');
+                        }
+                        return;
+                    }
+                    
+                    if(stats.isDirectory()) {
+                        const folder = zip.folder(filename);
+                        addFolderToZipSync(folder, filePath, () => {
+                            processedCount++;
+                            if(processedCount === files.length) {
+                                generateAndDownloadZip(zip, folderName + '_selected');
+                            }
+                        });
+                    } else {
+                        SYSTEM.fs.readFile(filePath, (err, data) => {
+                            if(!err) {
+                                zip.file(filename, data);
+                            }
+                            processedCount++;
+                            if(processedCount === files.length) {
+                                generateAndDownloadZip(zip, folderName + '_selected');
+                            }
+                        });
+                    }
+                });
+            });
+        }
+
+        function generateAndDownloadZip(zip, name) {
+            zip.generateAsync({ type: 'blob', compression: 'DEFLATE' })
+            .then(blob => {
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = name + '.zip';
+                a.click();
+                URL.revokeObjectURL(a.href);
+                Notify.success('下载完成', `已打包 ${name}.zip`);
+            });
+        }
+
         document.addEventListener('click', e => {
             if(!e.target.closest('.context-menu')) closeCtx();
             if(!e.target.closest('.start-menu') && !e.target.closest('.start-btn')) {
@@ -6202,7 +6329,7 @@
                         <div class="settings-content">
                             <div class="about-card">
                                 <div class="logo">JISHENG OS</div>
-                                <p>Ultimate Web Operating System<br>Version 10.4.3 • Build 2026</p>
+                                <p>Ultimate Web Operating System<br>Version 10.4.4 • Build 2026</p>
                             </div>
                             
                             <div class="settings-section" style="margin-top:20px">
@@ -6229,7 +6356,7 @@
                                 <h4>关于</h4>
                                 <div class="settings-item">
                                     <label>系统版本</label>
-                                    <span>10.4.3</span>
+                                    <span>10.4.4</span>
                                 </div>
                                 <div class="settings-item">
                                     <label>内核</label>
