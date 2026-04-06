@@ -1243,18 +1243,19 @@
 
         /* 桌面预览按钮（任务栏最右端） */
         .aero-peek-btn {
-            width: 12px;
+            width: 8px;
             height: 100%;
-            background: rgba(255,255,255,0.05);
-            border-left: 1px solid rgba(255,255,255,0.1);
+            background: transparent;
+            border-left: 1px solid transparent;
             cursor: pointer;
-            transition: background 0.15s;
+            transition: all 0.2s ease;
             flex-shrink: 0;
             margin-right: -4px;
             padding-right: 4px;
         }
         .aero-peek-btn:hover {
-            background: rgba(255,255,255,0.15);
+            background: rgba(255,255,255,0.08);
+            border-left: 1px solid rgba(255,255,255,0.1);
         }
 
         /* 窗口透明化效果（桌面预览模式） */
