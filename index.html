@@ -422,8 +422,8 @@
         /* === 任务栏 === */
         .taskbar {
             position: fixed; bottom: 0; left: 0; right: 0; height: var(--taskbar-height);
-            background: rgba(16, 16, 22, 0.92);
-            backdrop-filter: blur(30px); border-top: 1px solid var(--glass-border);
+            background: rgba(16, 16, 22, 0.75);
+            backdrop-filter: blur(40px) saturate(180%); border-top: 1px solid rgba(255,255,255,0.08);
             display: flex; align-items: center; justify-content: space-between; z-index: 1000;
         }
         
@@ -435,7 +435,7 @@
         .start-btn .icon-svg { width: 20px; height: 20px; color: var(--text-main); }
         .start-btn:hover { background: rgba(255,255,255,0.06); }
         
-        .taskbar-apps { flex: 1; display: flex; height: 100%; padding-left: 8px; gap: 2px; }
+        .taskbar-apps { flex: 1; display: flex; height: 100%; padding-left: 8px; gap: 0; }
         .taskbar-icon {
             width: 44px; height: 100%; 
             display: flex; align-items: center; justify-content: center;
@@ -500,10 +500,10 @@
 
         /* === 右键菜单 === */
         .context-menu {
-            position: fixed; min-width: 220px; background: var(--glass-surface);
-            backdrop-filter: blur(40px) saturate(120%);
-            -webkit-backdrop-filter: blur(40px) saturate(120%);
-            border: 1px solid var(--glass-border); border-radius: 8px;
+            position: fixed; min-width: 220px; background: rgba(16, 16, 22, 0.75);
+            backdrop-filter: blur(40px) saturate(180%);
+            -webkit-backdrop-filter: blur(40px) saturate(180%);
+            border: 1px solid rgba(255,255,255,0.08); border-radius: 8px;
             padding: 6px; z-index: 3000;
             opacity: 0; transform: scale(0.95); pointer-events: none;
             transition: all 0.12s ease; box-shadow: 0 20px 50px -12px rgba(0, 0, 0, 0.6);
@@ -523,12 +523,12 @@
         /* === 壁纸面板 === */
         .wallpaper-panel {
             position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0.95);
-            width: 560px; max-height: 85vh; background: var(--glass-surface-light);
-            border-radius: 12px; border: 1px solid var(--glass-border); z-index: 2500;
+            width: 560px; max-height: 85vh; background: rgba(16, 16, 22, 0.75);
+            border-radius: 12px; border: 1px solid rgba(255,255,255,0.08); z-index: 2500;
             opacity: 0; pointer-events: none; transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
             display: flex; flex-direction: column; overflow: hidden;
             box-shadow: 0 24px 64px rgba(0,0,0,0.6);
-            backdrop-filter: blur(50px);
+            backdrop-filter: blur(40px) saturate(180%);
         }
         .wallpaper-panel.open { transform: translate(-50%, -50%) scale(1); opacity: 1; pointer-events: auto; }
         
@@ -666,10 +666,10 @@
         /* === 日历面板 === */
         .calendar-panel {
             position: fixed; bottom: calc(var(--taskbar-height) + 12px); right: 12px;
-            width: 320px; background: var(--glass-surface);
-            backdrop-filter: blur(40px) saturate(120%);
-            -webkit-backdrop-filter: blur(40px) saturate(120%);
-            border-radius: 10px; border: 1px solid var(--glass-border);
+            width: 320px; background: rgba(16, 16, 22, 0.75);
+            backdrop-filter: blur(40px) saturate(180%);
+            -webkit-backdrop-filter: blur(40px) saturate(180%);
+            border-radius: 10px; border: 1px solid rgba(255,255,255,0.08);
             padding: 20px; z-index: 2000;
             transform: translateY(20px); opacity: 0; pointer-events: none;
             transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
