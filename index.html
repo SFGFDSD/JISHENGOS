@@ -2628,47 +2628,85 @@
         // 6. 新的右键菜单逻辑 (支持多选)
         function showIconContextMenu(x, y) {
             const cm = document.getElementById('context-menu');
-            const count = SYSTEM.selectedIcons.length;
-            const isFile = count === 1 && SYSTEM.selectedIcons[0].startsWith('file-');
+            
+            const targetEl = document.elementFromPoint(x, y)?.closest('.desktop-icon');
+            if (!targetEl) return;
+
+            const targetId = targetEl.id;
+            const isSystemApp = !targetId.startsWith('file-') && !targetEl.dataset.localFolder;
+            const isLocalFolder = !!targetEl.dataset.localFolder;
+            
+            if (isSystemApp) {
+                cm.innerHTML = `
+                    <div class="context-item" onclick="document.getElementById('${targetId}').ondblclick(); closeCtx()">
+                        <svg class="icon-svg" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+                        <span>打开</span>
+                    </div>
+                `;
+                showCtx(x, y);
+                return;
+            }
+
+            const selectedFiles = SYSTEM.selectedIcons.filter(id => id.startsWith('file-') || document.getElementById(id)?.dataset.localFolder);
+            const count = selectedFiles.length;
+            
+            const filename = targetEl.dataset.filename;
             
             let html = '';
             
-            if(count > 1) {
-                html = `<div class="context-item" onclick="downloadSelectedFiles(); closeCtx()">
-                    <svg class="icon-svg" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>
-                    <span>下载选中 (${count})</span>
+            html += `
+                <div class="context-item" onclick="document.getElementById('${targetId}').ondblclick(); closeCtx()">
+                    <svg class="icon-svg" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+                    <span>打开</span>
                 </div>
-                <div class="context-item" onclick="deleteSelected(); closeCtx()" style="color:var(--win-close-red)">
-                    <svg class="icon-svg" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
-                    <span>删除选中 (${count})</span>
+            `;
+
+            if (!isLocalFolder && filename && isArchiveFile(filename)) {
+                html += `
+                <div class="context-item" onclick="extractZip('${filename}'); closeCtx()">
+                    <svg class="icon-svg" viewBox="0 0 24 24"><path d="M21 8v13H3V8"/></svg>
+                    <span>解压</span>
                 </div>`;
-            } else if(isFile) {
-                const id = SYSTEM.selectedIcons[0];
-                const filename = document.getElementById(id).dataset.filename;
-                html = `
-                    <div class="context-item" onclick="openFile('${filename}'); closeCtx()">
-                        <svg class="icon-svg" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg><span>打开</span>
-                    </div>
-                    ${isArchiveFile(filename) ? `<div class="context-item" onclick="extractZip('${filename}'); closeCtx()"><svg class="icon-svg" viewBox="0 0 24 24"><path d="M21 8v13H3V8"/></svg><span>解压</span></div>` : ''}
-                    <div class="context-divider"></div>
-                    <div class="context-item" onclick="downloadFile('${filename}'); closeCtx()">
+            }
+
+            html += `<div class="context-divider"></div>`;
+
+            if (count > 1) {
+                html += `
+                    <div class="context-item" onclick="downloadSelectedFiles(); closeCtx()">
                         <svg class="icon-svg" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>
-                        <span>下载</span>
+                        <span>下载选中 (${count})</span>
                     </div>
-                    <div class="context-item" onclick="renameDesktopFile('${filename}'); closeCtx()">
-                        <svg class="icon-svg" viewBox="0 0 24 24"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
-                        <span>重命名</span>
-                    </div>
-                    <div class="context-item" onclick="deleteFile('${filename}'); closeCtx()" style="color:var(--win-close-red)">
-                        <svg class="icon-svg" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/></svg><span>删除</span>
+                    <div class="context-item" onclick="deleteSelected(); closeCtx()" style="color:var(--win-close-red)">
+                        <svg class="icon-svg" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+                        <span>删除选中 (${count})</span>
                     </div>
                 `;
             } else {
-                // 应用图标右键
-                const id = SYSTEM.selectedIcons[0];
-                html = `<div class="context-item" onclick="document.getElementById('${id}').ondblclick(); closeCtx()">
-                    <svg class="icon-svg" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg><span>打开</span>
-                </div>`;
+                if (isLocalFolder) {
+                    const folderId = targetEl.dataset.localFolder;
+                    html += `
+                        <div class="context-item" onclick="unmountLocalFolder('${folderId}'); closeCtx()" style="color:var(--win-close-red)">
+                            <svg class="icon-svg" viewBox="0 0 24 24" style="color:var(--win-close-red)"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+                            <span>卸载挂载</span>
+                        </div>
+                    `;
+                } else {
+                    html += `
+                        <div class="context-item" onclick="downloadFile('${filename}'); closeCtx()">
+                            <svg class="icon-svg" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>
+                            <span>下载</span>
+                        </div>
+                        <div class="context-item" onclick="renameDesktopFile('${filename}'); closeCtx()">
+                            <svg class="icon-svg" viewBox="0 0 24 24"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+                            <span>重命名</span>
+                        </div>
+                        <div class="context-item" onclick="deleteFile('${filename}'); closeCtx()" style="color:var(--win-close-red)">
+                            <svg class="icon-svg" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/></svg>
+                            <span>删除</span>
+                        </div>
+                    `;
+                }
             }
             
             cm.innerHTML = html;
