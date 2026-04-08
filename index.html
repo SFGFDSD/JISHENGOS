@@ -2165,6 +2165,8 @@
                                 iconSvg = '<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2v11z"/><path d="M12 10v4"/><path d="M12 14l2-2"/>';
                             } else if(file.match(/\.html?$/i)) {
                                 iconSvg = '<circle cx="12" cy="12" r="10"/><path d="M2 12h20"/>';
+                            } else if(file.match(/\.(mp4|avi|mov|mkv|webm|flv|wmv)$/i)) {
+                                iconSvg = '<rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"/><line x1="7" y1="2" x2="7" y2="22"/><line x1="17" y1="2" x2="17" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="2" y1="7" x2="7" y2="7"/><line x1="2" y1="17" x2="7" y2="17"/><line x1="17" y1="17" x2="22" y2="17"/><line x1="17" y1="7" x2="22" y2="7"/>';
                             }
 
                             // 异步检查是否为文件夹
@@ -4306,7 +4308,14 @@
                     if (itemName.match(/\.(jpg|png|gif|webp|jpeg)$/i)) {
                         // 打开本地文件夹图片查看器（漫画阅读器风格）
                         openLocalImageViewer(folderInfo.handle, itemName);
-                    } else if (itemName.match(/\.(txt|md|js|css|html?|json|py|c|cpp|java)$/i)) {
+                    } else if (itemName.match(/\.html?$/i)) {
+                        // HTML 文件 → 内置浏览器打开（优先处理，避免被文本正则匹配）
+                        const text = await file.text();
+                        const blob = new Blob([text], { type: 'text/html' });
+                        const url = URL.createObjectURL(blob);
+                        openBrowser(url);
+                        Notify.success('正在打开', '已在浏览器中加载 HTML 文件');
+                    } else if (itemName.match(/\.(txt|md|js|css|json|py|c|cpp|java)$/i)) {
                         const text = await file.text();
                         openNotepad(text, itemName);
                     } else if (itemName.match(/\.(mp4|webm)$/i)) {
@@ -4314,7 +4323,7 @@
                         const url = URL.createObjectURL(blob);
                         createWindow({
                             title: itemName,
-                            iconHtml: '<svg class="icon-svg sm" viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="20" rx="2"/><polygon points="10 8 16 12 10 16 10 8"/></svg>',
+                            iconHtml: '<svg class="icon-svg sm" viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"/><line x1="7" y1="2" x2="7" y2="22"/><line x1="17" y1="2" x2="17" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="2" y1="7" x2="7" y2="7"/><line x1="2" y1="17" x2="7" y2="17"/><line x1="17" y1="17" x2="22" y2="17"/><line x1="17" y1="7" x2="22" y2="7"/></svg>',
                             width: 800,
                             height: 600,
                             content: `<div class="content-area dark" style="display:flex;align-items:center;justify-content:center;background:#000"><video src="${url}" controls autoplay style="max-width:100%;max-height:100%"></video></div>`
@@ -4329,8 +4338,32 @@
                             height: 200,
                             content: `<div class="content-area dark" style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px"><div style="margin-bottom:20px;color:#8b949e;font-size:14px">${itemName}</div><audio src="${url}" controls autoplay style="width:100%"></audio></div>`
                         });
+                    } else if (itemName.match(/\.csv$/i)) {
+                        // CSV 文件 → 表格查看器
+                        const text = await file.text();
+                        openCSVViewer(text, itemName);
+                    } else if (itemName.match(/\.pdf$/i)) {
+                        // PDF 文件 → iframe 预览
+                        const base64 = btoa(new Uint8Array(content).reduce((s, b) => s + String.fromCharCode(b), ''));
+                        const dataUrl = `data:application/pdf;base64,${base64}`;
+                        createWindow({
+                            title: itemName,
+                            iconHtml: '<svg class="icon-svg sm" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/><text x="8" y="18" font-size="4" fill="currentColor">PDF</text></svg>',
+                            width: 800, height: 600,
+                            content: `<div class="content-area dark" style="overflow:hidden"><iframe src="${dataUrl}" style="width:100%;height:100%;border:none"></iframe></div>`
+                        });
+                    } else if (isArchiveFile(itemName)) {
+                        // 压缩文件 → 在网页内解压到 BrowserFS 虚拟文件系统
+                        extractLocalArchive(folderInfo, itemName, content);
                     } else {
-                        Notify.warning('不支持的格式', '暂时无法预览此类型文件');
+                        // 其他格式 → 尝试用记事本打开文本内容
+                        try {
+                            const text = await file.text();
+                            openNotepad(text, itemName);
+                            Notify.info('文本模式', '已使用记事本打开该文件');
+                        } catch (e) {
+                            Notify.warning('不支持的格式', '暂时无法打开此类型文件');
+                        }
                     }
                 } catch (e) {
                     Notify.error('打开失败', e.message);
@@ -4417,6 +4450,112 @@
                     }
                 }
             });
+        }
+
+        // 本地挂载文件夹的压缩文件 → 在网页内解压到 BrowserFS 虚拟文件系统
+        async function extractLocalArchive(folderInfo, itemName, fileData) {
+            const folderName = itemName.replace(/\.(zip|7z|rar|tar|gz|bz2|xz|cab|tgz)$/i, '');
+            const targetDir = SYSTEM.desktopPath + '/' + folderName;
+            const archiveType = getArchiveType(itemName);
+
+            const progressEl = document.createElement('div');
+            progressEl.className = 'extract-progress';
+            progressEl.innerHTML = `
+                <h4>正在解压: ${itemName}</h4>
+                <div class="bar"><div class="bar-fill" id="extract-bar"></div></div>
+                <p id="extract-status">读取压缩包...</p>
+            `;
+            document.body.appendChild(progressEl);
+
+            const updateProgress = (percent) => {
+                const bar = document.getElementById('extract-bar');
+                if (bar) bar.style.width = percent + '%';
+            };
+            const updateStatus = (text) => {
+                const status = document.getElementById('extract-status');
+                if (status) status.innerText = text;
+            };
+
+            try {
+                updateStatus('读取压缩包...');
+                updateProgress(5);
+
+                // fileData 已经是 ArrayBuffer，直接使用
+                const data = (fileData instanceof ArrayBuffer) ? fileData : fileData.buffer || fileData;
+
+                await new Promise(resolve => {
+                    SYSTEM.fs.mkdir(targetDir, () => resolve());
+                });
+
+                let extractedFiles = [];
+
+                if (archiveType === 'zip') {
+                    updateStatus('解析 ZIP 结构...');
+                    updateProgress(10);
+
+                    const zip = await JSZip.loadAsync(data);
+                    const files = Object.keys(zip.files).filter(name => !zip.files[name].dir);
+                    const total = files.length;
+
+                    for (let i = 0; i < files.length; i++) {
+                        const relativePath = files[i];
+                        const zipEntry = zip.files[relativePath];
+
+                        updateStatus(relativePath);
+                        updateProgress(10 + (i / total) * 85);
+
+                        const content = await zipEntry.async('arraybuffer');
+                        extractedFiles.push({
+                            path: relativePath,
+                            data: new Uint8Array(content)
+                        });
+                    }
+                } else if (archiveType === '7z') {
+                    if (!window.sevenZipReady) {
+                        throw new Error('7z引擎未加载，请刷新页面重试');
+                    }
+
+                    updateStatus('使用 7z 引擎解压...');
+                    updateProgress(20);
+
+                    extractedFiles = await window.sevenZipEngine.extract(data, itemName);
+                    updateProgress(90);
+
+                    window.sevenZipEngine.cleanup();
+                } else {
+                    throw new Error('不支持的压缩格式');
+                }
+
+                updateStatus('写入文件...');
+                const total = extractedFiles.length;
+
+                for (let i = 0; i < extractedFiles.length; i++) {
+                    const file = extractedFiles[i];
+                    const fullPath = targetDir + '/' + file.path;
+
+                    const fileParentDir = fullPath.substring(0, fullPath.lastIndexOf('/'));
+                    await ensureDir(fileParentDir);
+
+                    const buffer = SYSTEM.Buffer ? SYSTEM.Buffer.from(file.data) : file.data;
+
+                    await new Promise(resolve => {
+                        SYSTEM.fs.writeFile(fullPath, buffer, () => resolve());
+                    });
+
+                    updateProgress(90 + (i / total) * 10);
+                }
+
+                progressEl.remove();
+                Notify.success('解压完成', `已解压 ${extractedFiles.length} 个文件到桌面 "${folderName}"`);
+
+                if (typeof refreshDesktop === 'function') refreshDesktop();
+                openFolderWindow(folderName);
+
+            } catch (e) {
+                progressEl.remove();
+                Notify.error('解压失败', e.message);
+                console.error('解压错误:', e);
+            }
         }
 
         async function unmountLocalFolder(folderId) {
@@ -6385,7 +6524,7 @@
                         <div class="settings-content">
                             <div class="about-card">
                                 <div class="logo">JISHENG OS</div>
-                                <p>Ultimate Web Operating System<br>Version 10.4.4 • Build 2026</p>
+                                <p>Ultimate Web Operating System<br>Version 10.4.5 • Build 2026</p>
                             </div>
                             
                             <div class="settings-section" style="margin-top:20px">
@@ -6412,7 +6551,7 @@
                                 <h4>关于</h4>
                                 <div class="settings-item">
                                     <label>系统版本</label>
-                                    <span>10.4.4</span>
+                                    <span>10.4.5</span>
                                 </div>
                                 <div class="settings-item">
                                     <label>内核</label>
