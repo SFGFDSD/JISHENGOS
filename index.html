@@ -1712,6 +1712,9 @@
             if (e.touches && e.touches.length > 0) {
                 return { x: e.touches[0].clientX, y: e.touches[0].clientY };
             }
+            if (e.changedTouches && e.changedTouches.length > 0) {
+                return { x: e.changedTouches[0].clientX, y: e.changedTouches[0].clientY };
+            }
             return { x: e.clientX, y: e.clientY };
         }
 
@@ -2448,10 +2451,14 @@
             longPressTriggered = false;
 
             if(dragState && !dragState.isNativeDragMode && dragState.hasMoved) {
+                // 保存引用，因为 dragState 会在后面被置 null
+                const icons = dragState.icons;
+                const movedToBody = dragState._movedToBody;
+
                 // === 先将图标移回桌面容器，恢复 absolute 定位 ===
                 const container = document.getElementById('desktop-icons');
-                if (dragState._movedToBody) {
-                    dragState.icons.forEach(i => {
+                if (movedToBody) {
+                    icons.forEach(i => {
                         i.el.classList.remove('dragging');
                         i.el.style.position = 'absolute';
                         // 将 fixed 坐标转换为相对于 desktop-icons 的 absolute 坐标
@@ -2462,12 +2469,11 @@
                         i.el.style.top = (currentTop - containerRect.top) + 'px';
                         container.appendChild(i.el);
                     });
-                    dragState._movedToBody = false;
                 }
 
                 // === 检测是否拖拽到了文件夹窗口或桌面文件夹图标上 ===
                 const pos = getClientXY(e);
-                const targetEl = document.elementFromPoint(pos.x, pos.y);
+                const targetEl = (pos.x != null && pos.y != null) ? document.elementFromPoint(pos.x, pos.y) : null;
 
                 const folderWindow = targetEl?.closest('.window');
                 const desktopIcon = targetEl?.closest('.desktop-icon');
@@ -2478,8 +2484,7 @@
                     const titleText = folderWindow.querySelector('.window-title-text')?.innerText;
                     if (titleText) {
                         const targetPath = SYSTEM.desktopPath + '/' + titleText;
-                        // 只处理有 filename 的图标（文件图标），不处理系统应用图标
-                        const fileIcons = dragState.icons.filter(i => i.el.dataset.filename);
+                        const fileIcons = icons.filter(i => i.el.dataset.filename);
                         if (fileIcons.length > 0) {
                             moveDesktopFilesToFolder(fileIcons, targetPath, titleText);
                             movedToFolder = true;
@@ -2488,12 +2493,11 @@
                 }
                 // 检查是否拖到了桌面文件夹图标上
                 else if (desktopIcon && desktopIcon.dataset.filename) {
-                    // 确认目标是文件夹（不是正在拖拽的图标自身）
-                    const isSelf = dragState.icons.some(i => i.el === desktopIcon);
+                    const isSelf = icons.some(i => i.el === desktopIcon);
                     if (!isSelf) {
                         const targetFolderName = desktopIcon.dataset.filename;
                         const targetPath = SYSTEM.desktopPath + '/' + targetFolderName;
-                        const fileIcons = dragState.icons.filter(i => i.el.dataset.filename);
+                        const fileIcons = icons.filter(i => i.el.dataset.filename);
                         if (fileIcons.length > 0) {
                             moveDesktopFilesToFolder(fileIcons, targetPath, targetFolderName);
                             movedToFolder = true;
@@ -2502,30 +2506,31 @@
                 }
 
                 if (!movedToFolder) {
-                    // 原有逻辑：在桌面内重新排列图标位置
-                    const maxW = window.innerWidth - 90;
-                    const maxH = window.innerHeight - 100;
-                    
-                    dragState.icons.forEach(i => {
-                        i.el.classList.remove('dragging');
-                        i.el.style.outline = 'none';
-                        let x = Math.round(i.el.offsetLeft / SYSTEM.gridSize) * SYSTEM.gridSize + 24;
-                        let y = Math.round(i.el.offsetTop / SYSTEM.gridSize) * SYSTEM.gridSize + 24;
-                        
-                        x = Math.max(24, Math.min(x, maxW));
-                        y = Math.max(24, Math.min(y, maxH));
+                    // 使用 requestAnimationFrame 确保 DOM 布局完成后再读取 offsetLeft/offsetTop
+                    requestAnimationFrame(() => {
+                        const maxW = window.innerWidth - 90;
+                        const maxH = window.innerHeight - 100;
 
-                        i.el.style.transition = 'all 0.2s';
-                        i.el.style.left = x + 'px';
-                        i.el.style.top = y + 'px';
-                        setTimeout(() => i.el.style.transition = '', 200);
+                        icons.forEach(i => {
+                            i.el.classList.remove('dragging');
+                            i.el.style.outline = 'none';
+                            let x = Math.round(i.el.offsetLeft / SYSTEM.gridSize) * SYSTEM.gridSize + 24;
+                            let y = Math.round(i.el.offsetTop / SYSTEM.gridSize) * SYSTEM.gridSize + 24;
 
-                        SYSTEM.iconPositions[i.id] = {x, y};
+                            x = Math.max(24, Math.min(x, maxW));
+                            y = Math.max(24, Math.min(y, maxH));
+
+                            i.el.style.transition = 'all 0.2s';
+                            i.el.style.left = x + 'px';
+                            i.el.style.top = y + 'px';
+                            setTimeout(() => i.el.style.transition = '', 200);
+
+                            SYSTEM.iconPositions[i.id] = {x, y};
+                        });
+                        saveIconPositions();
                     });
-                    saveIconPositions();
                 } else {
-                    // 移动到文件夹后，清理图标状态
-                    dragState.icons.forEach(i => {
+                    icons.forEach(i => {
                         i.el.classList.remove('dragging');
                         i.el.style.outline = 'none';
                     });
@@ -2548,13 +2553,12 @@
                         Notify.warning('部分失败', `成功 ${processedCount} 个，失败 ${errorCount} 个`);
                     }
                     refreshDesktop();
-                    // 刷新已打开的目标文件夹窗口
-                    document.querySelectorAll('.window').forEach(win => {
-                        const titleText = win.querySelector('.window-title-text')?.innerText;
-                        if (titleText === targetFolderName) {
-                            openFolderWindow(targetFolderName);
-                        }
+                    const hasFolderWin = Array.from(document.querySelectorAll('.window')).some(win => {
+                        return win.querySelector('.window-title-text')?.innerText === targetFolderName;
                     });
+                    if (hasFolderWin) {
+                        openFolderWindow(targetFolderName);
+                    }
                     return;
                 }
 
@@ -2906,6 +2910,15 @@
 
         // 7. 替换 openFolderWindow (支持从文件夹拖出、框选、多选)
         function openFolderWindow(folderName) {
+            document.querySelectorAll('.window').forEach(win => {
+                const titleText = win.querySelector('.window-title-text')?.innerText;
+                if (titleText === folderName) {
+                    const winId = parseInt(win.id.replace('win-', ''));
+                    win.remove();
+                    SYSTEM.windows = SYSTEM.windows.filter(w => w.id !== winId);
+                }
+            });
+
             const path = SYSTEM.desktopPath + '/' + folderName;
             SYSTEM.fs.readdir(path, (err, files) => {
                 if(err) { Notify.error('错误', err.message); return; }
@@ -2923,6 +2936,7 @@
                             <div class="folder-item" data-filename="${file}" data-path="${path}/${file}"
                                  ondblclick="openFileFromPath('${path}/${file}', '${file}')"
                                  onmousedown="handleFolderItemMouseDown(event, '${windowId}')"
+                                 ontouchstart="handleFolderItemTouchStart(event, '${windowId}')"
                                  oncontextmenu="handleFolderItemContextMenu(event, '${windowId}', '${file}', '${path}/${file}')">
                                 <svg class="icon-svg" viewBox="0 0 24 24">${icon}</svg>
                                 <span>${file}</span>
@@ -2952,61 +2966,40 @@
             const contentArea = document.getElementById('folder-content-' + windowId);
             const selectionBox = document.getElementById('folder-selection-' + windowId);
             let isSelecting = false, startX, startY;
-            
-            contentArea.onmousedown = (e) => {
-                if(e.button !== 0) return;
-                
-                if(isSelecting) return;
-                
-                if(e.target.closest('.folder-item')) return;
-                
-                e.preventDefault();
-                e.stopPropagation();
-                clearFolderSelection(windowId);
-                isSelecting = true;
-                contentArea.dataset.isSelecting = 'true';
-                
-                const rect = contentArea.getBoundingClientRect();
-                startX = e.clientX - rect.left;
-                startY = e.clientY - rect.top;
-                
-                selectionBox.style.display = 'block';
-                selectionBox.style.width = '0';
-                selectionBox.style.height = '0';
-                selectionBox.style.left = startX + 'px';
-                selectionBox.style.top = startY + 'px';
+            let lastClientX = 0, lastClientY = 0;
+            let scrollInterval = null;
+
+            const getPos = (e) => {
+                if (e.touches && e.touches.length > 0) return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+                if (e.changedTouches && e.changedTouches.length > 0) return { x: e.changedTouches[0].clientX, y: e.changedTouches[0].clientY };
+                return { x: e.clientX, y: e.clientY };
             };
-            
-            contentArea.onmousemove = (e) => {
-                if(!isSelecting) return;
-                
+
+            const updateSelectionBox = () => {
                 const rect = contentArea.getBoundingClientRect();
-                const curX = e.clientX - rect.left;
-                const curY = e.clientY - rect.top;
-                
+                const curX = lastClientX - rect.left + contentArea.scrollLeft;
+                const curY = lastClientY - rect.top + contentArea.scrollTop;
+
                 const left = Math.min(startX, curX);
                 const top = Math.min(startY, curY);
                 const width = Math.abs(startX - curX);
                 const height = Math.abs(startY - curY);
-                
+
                 selectionBox.style.left = left + 'px';
                 selectionBox.style.top = top + 'px';
                 selectionBox.style.width = width + 'px';
                 selectionBox.style.height = height + 'px';
-                
+
                 const items = contentArea.querySelectorAll('.folder-item');
                 items.forEach(item => {
-                    const itemRect = item.getBoundingClientRect();
-                    const contentRect = contentArea.getBoundingClientRect();
-                    
-                    const itemLeft = itemRect.left - contentRect.left;
-                    const itemTop = itemRect.top - contentRect.top;
-                    const itemRight = itemLeft + itemRect.width;
-                    const itemBottom = itemTop + itemRect.height;
-                    
-                    const intersect = !(itemRight < left || itemLeft > left + width || 
+                    const itemLeft = item.offsetLeft;
+                    const itemTop = item.offsetTop;
+                    const itemRight = itemLeft + item.offsetWidth;
+                    const itemBottom = itemTop + item.offsetHeight;
+
+                    const intersect = !(itemRight < left || itemLeft > left + width ||
                                        itemBottom < top || itemTop > top + height);
-                    
+
                     if(intersect) {
                         item.classList.add('selected');
                     } else {
@@ -3014,38 +3007,125 @@
                     }
                 });
             };
-            
-            contentArea.onmouseup = () => {
+
+            const startAutoScroll = (speed) => {
+                stopAutoScroll();
+                scrollInterval = setInterval(() => {
+                    contentArea.scrollTop += speed;
+                    updateSelectionBox();
+                }, 16);
+            };
+
+            const stopAutoScroll = () => {
+                if (scrollInterval) {
+                    clearInterval(scrollInterval);
+                    scrollInterval = null;
+                }
+            };
+
+            const handleStart = (e) => {
+                if(e.button === 2) return;
+                if(isSelecting) return;
+                if(e.target.closest('.folder-item')) return;
+
+                e.preventDefault();
+                e.stopPropagation();
+                clearFolderSelection(windowId);
+                isSelecting = true;
+                contentArea.dataset.isSelecting = 'true';
+
+                const pos = getPos(e);
+                const rect = contentArea.getBoundingClientRect();
+                lastClientX = pos.x;
+                lastClientY = pos.y;
+                startX = pos.x - rect.left + contentArea.scrollLeft;
+                startY = pos.y - rect.top + contentArea.scrollTop;
+
+                selectionBox.style.display = 'block';
+                selectionBox.style.width = '0';
+                selectionBox.style.height = '0';
+                selectionBox.style.left = startX + 'px';
+                selectionBox.style.top = startY + 'px';
+            };
+
+            const handleMove = (e) => {
+                if(!isSelecting) return;
+                if(e.type === 'touchmove') e.preventDefault();
+
+                const pos = getPos(e);
+                lastClientX = pos.x;
+                lastClientY = pos.y;
+
+                const rect = contentArea.getBoundingClientRect();
+                const scrollZone = 40;
+                const scrollSpeed = 12;
+
+                stopAutoScroll();
+
+                if (pos.y < rect.top + scrollZone && pos.y > rect.top - 60) {
+                    const ratio = Math.min(1, (rect.top + scrollZone - pos.y) / scrollZone);
+                    startAutoScroll(-ratio * scrollSpeed);
+                } else if (pos.y > rect.bottom - scrollZone && pos.y < rect.bottom + 60) {
+                    const ratio = Math.min(1, (pos.y - (rect.bottom - scrollZone)) / scrollZone);
+                    startAutoScroll(ratio * scrollSpeed);
+                }
+
+                updateSelectionBox();
+            };
+
+            const handleEnd = () => {
                 isSelecting = false;
                 contentArea.dataset.isSelecting = 'false';
                 selectionBox.style.display = 'none';
+                stopAutoScroll();
             };
-            
-            contentArea.onmouseleave = () => {
-                isSelecting = false;
-                contentArea.dataset.isSelecting = 'false';
-                selectionBox.style.display = 'none';
-            };
+
+            contentArea.onmousedown = handleStart;
+            contentArea.ontouchstart = handleStart;
+
+            document.addEventListener('mousemove', handleMove);
+            document.addEventListener('touchmove', handleMove, { passive: false });
+
+            document.addEventListener('mouseup', handleEnd);
+            document.addEventListener('touchend', handleEnd);
         }
 
         function handleFolderItemMouseDown(e, windowId) {
             if(e.button !== 0) return;
-            
+
             const contentArea = document.getElementById('folder-content-' + windowId);
             if(!contentArea) return;
-            
+
             if(contentArea.dataset.isSelecting === 'true') return;
-            
+
             const item = e.currentTarget;
-            
+
             if(e.ctrlKey) {
                 item.classList.toggle('selected');
             } else if(!item.classList.contains('selected')) {
                 clearFolderSelection(windowId);
                 item.classList.add('selected');
             }
-            
+
             setupFolderItemDrag(e, windowId);
+        }
+
+        function handleFolderItemTouchStart(e, windowId) {
+            const contentArea = document.getElementById('folder-content-' + windowId);
+            if(!contentArea) return;
+
+            if(contentArea.dataset.isSelecting === 'true') return;
+
+            const item = e.currentTarget;
+
+            if(!item.classList.contains('selected')) {
+                clearFolderSelection(windowId);
+                item.classList.add('selected');
+            }
+
+            e.stopPropagation();
+            // 不调用 preventDefault()，允许浏览器处理触摸滚动
+            setupFolderItemDrag(e, windowId, item);
         }
 
         function handleFolderItemContextMenu(e, windowId, filename, fullPath) {
@@ -3179,56 +3259,123 @@
             });
         }
 
-        function setupFolderItemDrag(e, windowId) {
+        function setupFolderItemDrag(e, windowId, touchItem) {
             const contentArea = document.getElementById('folder-content-' + windowId);
             if(!contentArea) return;
-            
+
             const selectedItems = Array.from(contentArea.querySelectorAll('.folder-item.selected'));
             if(selectedItems.length === 0) return;
-            
-            const startX = e.clientX;
-            const startY = e.clientY;
+
+            const getPos = (e) => {
+                if (e.touches && e.touches.length > 0) return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+                if (e.changedTouches && e.changedTouches.length > 0) return { x: e.changedTouches[0].clientX, y: e.changedTouches[0].clientY };
+                return { x: e.clientX, y: e.clientY };
+            };
+
+            const startPos = getPos(e);
+            const startX = startPos.x;
+            const startY = startPos.y;
             let isDragging = false;
             let dragPreview = null;
-            
-            const onMouseMove = (moveEvent) => {
-                const dx = moveEvent.clientX - startX;
-                const dy = moveEvent.clientY - startY;
-                
-                if(!isDragging && (Math.abs(dx) > 5 || Math.abs(dy) > 5)) {
-                    isDragging = true;
-                    document.body.style.cursor = 'move';
-                    
-                    const folderName = contentArea.closest('.window').querySelector('.window-title-text').innerText;
-                    const path = SYSTEM.desktopPath + '/' + folderName;
-                    
-                    const filesData = selectedItems.map(item => ({
-                        filename: item.dataset.filename,
-                        path: item.dataset.path
-                    }));
-                    
-                    dragPreview = createDragPreview(filesData, moveEvent.clientX, moveEvent.clientY);
+            let longPressTimer = null;
+            let longPressTriggered = false;
+            let touchMoveRegistered = false;
+
+            // 长按检测（仅触摸设备）
+            if (e.type === 'touchstart' && touchItem) {
+                longPressTimer = setTimeout(() => {
+                    longPressTriggered = true;
+                    // 触发上下文菜单
+                    const filename = touchItem.dataset.filename;
+                    const fullPath = touchItem.dataset.path;
+                    if (filename && fullPath) {
+                        handleFolderItemContextMenu({
+                            preventDefault: () => {},
+                            stopPropagation: () => {},
+                            clientX: startX,
+                            clientY: startY,
+                            currentTarget: touchItem
+                        }, windowId, filename, fullPath);
+                    }
+                }, 500);
+            }
+
+            const onMove = (moveEvent) => {
+                const pos = getPos(moveEvent);
+                const dx = pos.x - startX;
+                const dy = pos.y - startY;
+
+                // 长按已触发，取消后续拖拽
+                if (longPressTriggered) {
+                    cleanup();
+                    return;
                 }
-                
+
+                // 移动超过阈值，取消长按
+                if (longPressTimer && (Math.abs(dx) > 5 || Math.abs(dy) > 5)) {
+                    clearTimeout(longPressTimer);
+                    longPressTimer = null;
+                }
+
+                if(!isDragging && (Math.abs(dx) > 5 || Math.abs(dy) > 5)) {
+                    // 判断是水平拖拽还是垂直滚动
+                    // 水平拖拽（dx > dy）才启动拖拽，否则让浏览器处理滚动
+                    if (Math.abs(dx) > Math.abs(dy) * 1.2) {
+                        isDragging = true;
+                        document.body.style.cursor = 'move';
+
+                        const filesData = selectedItems.map(item => ({
+                            filename: item.dataset.filename,
+                            path: item.dataset.path
+                        }));
+
+                        dragPreview = createDragPreview(filesData, pos.x, pos.y);
+
+                        // 确认是拖拽后，注册非passive的touchmove来阻止滚动
+                        if (!touchMoveRegistered && moveEvent.type === 'touchmove') {
+                            touchMoveRegistered = true;
+                            document.removeEventListener('touchmove', onMove);
+                            document.addEventListener('touchmove', onMove, { passive: false });
+                        }
+                    }
+                    // 否则是垂直滚动，不阻止，让浏览器自然滚动
+                }
+
                 if(isDragging && dragPreview) {
-                    dragPreview.style.left = (moveEvent.clientX + 10) + 'px';
-                    dragPreview.style.top = (moveEvent.clientY + 10) + 'px';
+                    if(moveEvent.type === 'touchmove') moveEvent.preventDefault();
+                    dragPreview.style.left = (pos.x + 10) + 'px';
+                    dragPreview.style.top = (pos.y + 10) + 'px';
                 }
             };
-            
-            const onMouseUp = (upEvent) => {
-                document.removeEventListener('mousemove', onMouseMove);
-                document.removeEventListener('mouseup', onMouseUp);
+
+            const cleanup = () => {
+                if(longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
+                document.removeEventListener('mousemove', onMove);
+                document.removeEventListener('mouseup', onUp);
+                document.removeEventListener('touchmove', onMove);
+                document.removeEventListener('touchend', onUp);
                 document.body.style.cursor = '';
-                
+            };
+
+            const onUp = (upEvent) => {
+                if(longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
+
+                document.removeEventListener('mousemove', onMove);
+                document.removeEventListener('mouseup', onUp);
+                document.removeEventListener('touchmove', onMove);
+                document.removeEventListener('touchend', onUp);
+                document.body.style.cursor = '';
+
                 if(dragPreview) {
                     dragPreview.remove();
                     dragPreview = null;
                 }
-                
+
                 if(!isDragging) return;
-                
-                const target = upEvent.target;
+
+                const pos = getPos(upEvent);
+                const target = document.elementFromPoint(pos.x, pos.y);
+                if(!target) return;
                 const desktop = document.getElementById('desktop');
                 
                 const folderName = contentArea.closest('.window').querySelector('.window-title-text').innerText;
@@ -3401,8 +3548,12 @@
                 processNext();
             };
             
-            document.addEventListener('mousemove', onMouseMove);
-            document.addEventListener('mouseup', onMouseUp);
+            document.addEventListener('mousemove', onMove);
+            document.addEventListener('mouseup', onUp);
+            // 触摸事件初始用 passive: true，允许浏览器处理滚动
+            // 确认是水平拖拽后会在 onMove 中切换为 passive: false
+            document.addEventListener('touchmove', onMove, { passive: true });
+            document.addEventListener('touchend', onUp);
         }
 
         function createDragPreview(filesData, x, y) {
@@ -4019,6 +4170,7 @@
                     <div class="folder-item" data-name="${item.name}" data-kind="${item.kind}" data-folder-id="${folderInfo.id}"
                          ondblclick="openLocalFolderItem('${folderInfo.id}', '${item.name}')"
                          onmousedown="handleLocalFolderItemMouseDown(event, '${windowId}')"
+                         ontouchstart="handleLocalFolderItemTouchStart(event, '${windowId}')"
                          oncontextmenu="handleLocalFolderItemContextMenu(event, '${windowId}', '${item.name}', '${folderInfo.id}')">
                         <svg class="icon-svg" viewBox="0 0 24 24">${iconSvg}</svg>
                         <span>${item.name}</span>
@@ -4066,59 +4218,40 @@
             const contentArea = document.getElementById('folder-content-' + windowId);
             const selectionBox = document.getElementById('folder-selection-' + windowId);
             let isSelecting = false, startX, startY;
-            
-            contentArea.onmousedown = (e) => {
-                if(e.button !== 0) return;
-                if(isSelecting) return;
-                if(e.target.closest('.folder-item')) return;
-                
-                e.preventDefault();
-                e.stopPropagation();
-                clearLocalFolderSelection(windowId);
-                isSelecting = true;
-                contentArea.dataset.isSelecting = 'true';
-                
-                const rect = contentArea.getBoundingClientRect();
-                startX = e.clientX - rect.left;
-                startY = e.clientY - rect.top;
-                
-                selectionBox.style.display = 'block';
-                selectionBox.style.width = '0';
-                selectionBox.style.height = '0';
-                selectionBox.style.left = startX + 'px';
-                selectionBox.style.top = startY + 'px';
+            let lastClientX = 0, lastClientY = 0;
+            let scrollInterval = null;
+
+            const getPos = (e) => {
+                if (e.touches && e.touches.length > 0) return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+                if (e.changedTouches && e.changedTouches.length > 0) return { x: e.changedTouches[0].clientX, y: e.changedTouches[0].clientY };
+                return { x: e.clientX, y: e.clientY };
             };
-            
-            contentArea.onmousemove = (e) => {
-                if(!isSelecting) return;
-                
+
+            const updateSelectionBox = () => {
                 const rect = contentArea.getBoundingClientRect();
-                const curX = e.clientX - rect.left;
-                const curY = e.clientY - rect.top;
-                
+                const curX = lastClientX - rect.left + contentArea.scrollLeft;
+                const curY = lastClientY - rect.top + contentArea.scrollTop;
+
                 const left = Math.min(startX, curX);
                 const top = Math.min(startY, curY);
                 const width = Math.abs(startX - curX);
                 const height = Math.abs(startY - curY);
-                
+
                 selectionBox.style.left = left + 'px';
                 selectionBox.style.top = top + 'px';
                 selectionBox.style.width = width + 'px';
                 selectionBox.style.height = height + 'px';
-                
+
                 const items = contentArea.querySelectorAll('.folder-item');
                 items.forEach(item => {
-                    const itemRect = item.getBoundingClientRect();
-                    const contentRect = contentArea.getBoundingClientRect();
-                    
-                    const itemLeft = itemRect.left - contentRect.left;
-                    const itemTop = itemRect.top - contentRect.top;
-                    const itemRight = itemLeft + itemRect.width;
-                    const itemBottom = itemTop + itemRect.height;
-                    
-                    const intersect = !(itemRight < left || itemLeft > left + width || 
+                    const itemLeft = item.offsetLeft;
+                    const itemTop = item.offsetTop;
+                    const itemRight = itemLeft + item.offsetWidth;
+                    const itemBottom = itemTop + item.offsetHeight;
+
+                    const intersect = !(itemRight < left || itemLeft > left + width ||
                                        itemBottom < top || itemTop > top + height);
-                    
+
                     if(intersect) {
                         item.classList.add('selected');
                     } else {
@@ -4126,18 +4259,87 @@
                     }
                 });
             };
-            
-            contentArea.onmouseup = () => {
+
+            const startAutoScroll = (speed) => {
+                stopAutoScroll();
+                scrollInterval = setInterval(() => {
+                    contentArea.scrollTop += speed;
+                    updateSelectionBox();
+                }, 16);
+            };
+
+            const stopAutoScroll = () => {
+                if (scrollInterval) {
+                    clearInterval(scrollInterval);
+                    scrollInterval = null;
+                }
+            };
+
+            const handleStart = (e) => {
+                if(e.button === 2) return;
+                if(isSelecting) return;
+                if(e.target.closest('.folder-item')) return;
+
+                e.preventDefault();
+                e.stopPropagation();
+                clearLocalFolderSelection(windowId);
+                isSelecting = true;
+                contentArea.dataset.isSelecting = 'true';
+
+                const pos = getPos(e);
+                const rect = contentArea.getBoundingClientRect();
+                lastClientX = pos.x;
+                lastClientY = pos.y;
+                startX = pos.x - rect.left + contentArea.scrollLeft;
+                startY = pos.y - rect.top + contentArea.scrollTop;
+
+                selectionBox.style.display = 'block';
+                selectionBox.style.width = '0';
+                selectionBox.style.height = '0';
+                selectionBox.style.left = startX + 'px';
+                selectionBox.style.top = startY + 'px';
+            };
+
+            const handleMove = (e) => {
+                if(!isSelecting) return;
+                if(e.type === 'touchmove') e.preventDefault();
+
+                const pos = getPos(e);
+                lastClientX = pos.x;
+                lastClientY = pos.y;
+
+                const rect = contentArea.getBoundingClientRect();
+                const scrollZone = 40;
+                const scrollSpeed = 12;
+
+                stopAutoScroll();
+
+                if (pos.y < rect.top + scrollZone && pos.y > rect.top - 60) {
+                    const ratio = Math.min(1, (rect.top + scrollZone - pos.y) / scrollZone);
+                    startAutoScroll(-ratio * scrollSpeed);
+                } else if (pos.y > rect.bottom - scrollZone && pos.y < rect.bottom + 60) {
+                    const ratio = Math.min(1, (pos.y - (rect.bottom - scrollZone)) / scrollZone);
+                    startAutoScroll(ratio * scrollSpeed);
+                }
+
+                updateSelectionBox();
+            };
+
+            const handleEnd = () => {
                 isSelecting = false;
                 contentArea.dataset.isSelecting = 'false';
                 selectionBox.style.display = 'none';
+                stopAutoScroll();
             };
-            
-            contentArea.onmouseleave = () => {
-                isSelecting = false;
-                contentArea.dataset.isSelecting = 'false';
-                selectionBox.style.display = 'none';
-            };
+
+            contentArea.onmousedown = handleStart;
+            contentArea.ontouchstart = handleStart;
+
+            document.addEventListener('mousemove', handleMove);
+            document.addEventListener('touchmove', handleMove, { passive: false });
+
+            document.addEventListener('mouseup', handleEnd);
+            document.addEventListener('touchend', handleEnd);
         }
 
         function clearLocalFolderSelection(windowId) {
@@ -4151,22 +4353,40 @@
 
         function handleLocalFolderItemMouseDown(e, windowId) {
             if(e.button !== 0) return;
-            
+
             const contentArea = document.getElementById('folder-content-' + windowId);
             if(!contentArea) return;
-            
+
             if(contentArea.dataset.isSelecting === 'true') return;
-            
+
             const item = e.currentTarget;
-            
+
             if(e.ctrlKey) {
                 item.classList.toggle('selected');
             } else if(!item.classList.contains('selected')) {
                 clearLocalFolderSelection(windowId);
                 item.classList.add('selected');
             }
-            
+
             setupLocalFolderItemDrag(e, windowId);
+        }
+
+        function handleLocalFolderItemTouchStart(e, windowId) {
+            const contentArea = document.getElementById('folder-content-' + windowId);
+            if(!contentArea) return;
+
+            if(contentArea.dataset.isSelecting === 'true') return;
+
+            const item = e.currentTarget;
+
+            if(!item.classList.contains('selected')) {
+                clearLocalFolderSelection(windowId);
+                item.classList.add('selected');
+            }
+
+            e.stopPropagation();
+            // 不调用 preventDefault()，允许浏览器处理触摸滚动
+            setupLocalFolderItemDrag(e, windowId, item);
         }
 
         function handleLocalFolderItemContextMenu(e, windowId, filename, folderId) {
@@ -4214,59 +4434,127 @@
         }
 
         // === 本地文件夹拖拽逻辑 ===
-        function setupLocalFolderItemDrag(e, windowId) {
+        function setupLocalFolderItemDrag(e, windowId, touchItem) {
             const contentArea = document.getElementById('folder-content-' + windowId);
             if(!contentArea) return;
-            
+
             const selectedItems = Array.from(contentArea.querySelectorAll('.folder-item.selected'));
             if(selectedItems.length === 0) return;
-            
-            const startX = e.clientX;
-            const startY = e.clientY;
+
+            const getPos = (e) => {
+                if (e.touches && e.touches.length > 0) return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+                if (e.changedTouches && e.changedTouches.length > 0) return { x: e.changedTouches[0].clientX, y: e.changedTouches[0].clientY };
+                return { x: e.clientX, y: e.clientY };
+            };
+
+            const startPos = getPos(e);
+            const startX = startPos.x;
+            const startY = startPos.y;
             let isDragging = false;
             let dragPreview = null;
-            
-            const onMouseMove = (moveEvent) => {
-                const dx = moveEvent.clientX - startX;
-                const dy = moveEvent.clientY - startY;
-                
-                if(!isDragging && (Math.abs(dx) > 5 || Math.abs(dy) > 5)) {
-                    isDragging = true;
-                    document.body.style.cursor = 'move';
-                    
-                    const filesData = selectedItems.map(item => ({
-                        name: item.dataset.name,
-                        kind: item.dataset.kind,
-                        folderId: item.dataset.folderId
-                    }));
-                    
-                    dragPreview = createDragPreview(filesData, moveEvent.clientX, moveEvent.clientY);
+            let longPressTimer = null;
+            let longPressTriggered = false;
+            let touchMoveRegistered = false;
+
+            // 长按检测（仅触摸设备）
+            if (e.type === 'touchstart' && touchItem) {
+                longPressTimer = setTimeout(() => {
+                    longPressTriggered = true;
+                    const itemName = touchItem.dataset.name;
+                    const folderId = touchItem.dataset.folderId;
+                    if (itemName && folderId) {
+                        handleLocalFolderItemContextMenu({
+                            preventDefault: () => {},
+                            stopPropagation: () => {},
+                            clientX: startX,
+                            clientY: startY,
+                            currentTarget: touchItem
+                        }, windowId, itemName, folderId);
+                    }
+                }, 500);
+            }
+
+            const onMove = (moveEvent) => {
+                const pos = getPos(moveEvent);
+                const dx = pos.x - startX;
+                const dy = pos.y - startY;
+
+                // 长按已触发，取消后续拖拽
+                if (longPressTriggered) {
+                    cleanup();
+                    return;
                 }
-                
+
+                // 移动超过阈值，取消长按
+                if (longPressTimer && (Math.abs(dx) > 5 || Math.abs(dy) > 5)) {
+                    clearTimeout(longPressTimer);
+                    longPressTimer = null;
+                }
+
+                if(!isDragging && (Math.abs(dx) > 5 || Math.abs(dy) > 5)) {
+                    // 水平拖拽才启动拖拽，垂直方向让浏览器处理滚动
+                    if (Math.abs(dx) > Math.abs(dy) * 1.2) {
+                        isDragging = true;
+                        document.body.style.cursor = 'move';
+
+                        const filesData = selectedItems.map(item => ({
+                            name: item.dataset.name,
+                            kind: item.dataset.kind,
+                            folderId: item.dataset.folderId
+                        }));
+
+                        dragPreview = createDragPreview(filesData, pos.x, pos.y);
+
+                        // 确认是拖拽后，注册非passive的touchmove来阻止滚动
+                        if (!touchMoveRegistered && moveEvent.type === 'touchmove') {
+                            touchMoveRegistered = true;
+                            document.removeEventListener('touchmove', onMove);
+                            document.addEventListener('touchmove', onMove, { passive: false });
+                        }
+                    }
+                }
+
                 if(isDragging && dragPreview) {
-                    dragPreview.style.left = (moveEvent.clientX + 10) + 'px';
-                    dragPreview.style.top = (moveEvent.clientY + 10) + 'px';
+                    if(moveEvent.type === 'touchmove') moveEvent.preventDefault();
+                    dragPreview.style.left = (pos.x + 10) + 'px';
+                    dragPreview.style.top = (pos.y + 10) + 'px';
                 }
             };
-            
-            const onMouseUp = async (upEvent) => {
-                document.removeEventListener('mousemove', onMouseMove);
-                document.removeEventListener('mouseup', onMouseUp);
+
+            const cleanup = () => {
+                if(longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
+                document.removeEventListener('mousemove', onMove);
+                document.removeEventListener('mouseup', onUp);
+                document.removeEventListener('touchmove', onMove);
+                document.removeEventListener('touchend', onUp);
                 document.body.style.cursor = '';
-                
+            };
+
+            const onUp = async (upEvent) => {
+                if(longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
+
+                document.removeEventListener('mousemove', onMove);
+                document.removeEventListener('mouseup', onUp);
+                document.removeEventListener('touchmove', onMove);
+                document.removeEventListener('touchend', onUp);
+                document.body.style.cursor = '';
+
                 if(dragPreview) {
                     dragPreview.remove();
                     dragPreview = null;
                 }
-                
+
                 if(!isDragging) return;
-                
-                const target = upEvent.target;
+
+                const pos = getPos(upEvent);
+                const target = document.elementFromPoint(pos.x, pos.y);
+                if(!target) return;
+
                 const desktop = document.getElementById('desktop');
-                
+
                 const desktopIcon = target.closest('.desktop-icon');
                 const folderWindow = target.closest('.window');
-                
+
                 // 拖拽到桌面背景
                 if (desktop.contains(target) || target === desktop || target.id === 'desktop-icons' || target.id === 'desktop-grid' || target.id === 'selection-box') {
                     await exportLocalFolderItemsToDesktop(selectedItems);
@@ -4284,9 +4572,12 @@
                     }
                 }
             };
-            
-            document.addEventListener('mousemove', onMouseMove);
-            document.addEventListener('mouseup', onMouseUp);
+
+            document.addEventListener('mousemove', onMove);
+            document.addEventListener('mouseup', onUp);
+            // 触摸事件初始用 passive: true，允许浏览器处理滚动
+            document.addEventListener('touchmove', onMove, { passive: true });
+            document.addEventListener('touchend', onUp);
         }
 
         // 导出本地文件夹文件到桌面
@@ -6704,7 +6995,7 @@
                         <div class="settings-content">
                             <div class="about-card">
                                 <div class="logo">JISHENG OS</div>
-                                <p>Ultimate Web Operating System<br>Version 10.5.0 • Build 2026</p>
+                                <p>Ultimate Web Operating System<br>Version 10.4.5 • Build 2026</p>
                             </div>
                             
                             <div class="settings-section" style="margin-top:20px">
@@ -6731,7 +7022,7 @@
                                 <h4>关于</h4>
                                 <div class="settings-item">
                                     <label>系统版本</label>
-                                    <span>10.5.0</span>
+                                    <span>10.4.5</span>
                                 </div>
                                 <div class="settings-item">
                                     <label>内核</label>
