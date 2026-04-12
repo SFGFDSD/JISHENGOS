@@ -248,8 +248,9 @@
         .window {
             position: absolute; min-width: 400px; min-height: 300px;
             display: flex; flex-direction: column; z-index: 10;
+            overflow: visible;
             transition: opacity 0.2s, transform 0.2s, box-shadow 0.2s;
-            box-shadow: 
+            box-shadow:
                 0 0 0 1px rgba(255,255,255,0.05),
                 0 25px 60px rgba(0,0,0,0.5);
         }
@@ -974,12 +975,15 @@
         }
         .overlay.active { opacity: 1; pointer-events: auto; }
 
-        .resize-handle { position: absolute; z-index: 20; }
-        .resize-handle.n { top: -3px; height: 6px; left:0; right:0; cursor: n-resize; }
-        .resize-handle.s { bottom: -3px; height: 6px; left:0; right:0; cursor: s-resize; }
-        .resize-handle.e { right: -3px; width: 6px; top:0; bottom:0; cursor: e-resize; }
-        .resize-handle.w { left: -3px; width: 6px; top:0; bottom:0; cursor: w-resize; }
-        .resize-handle.se { bottom: -3px; right: -3px; width: 16px; height: 16px; cursor: se-resize; }
+        .resize-handle { position: absolute; z-index: 30; }
+        .resize-handle.n { top: 0; height: 6px; left:0; right:0; cursor: n-resize; }
+        .resize-handle.s { bottom: 0; height: 6px; left:0; right:0; cursor: s-resize; }
+        .resize-handle.e { right: 0; width: 6px; top:0; bottom:0; cursor: e-resize; }
+        .resize-handle.w { left: 0; width: 6px; top:0; bottom:0; cursor: w-resize; }
+        .resize-handle.ne { top: 0; right: 0; width: 12px; height: 12px; cursor: ne-resize; }
+        .resize-handle.nw { top: 0; left: 0; width: 12px; height: 12px; cursor: nw-resize; }
+        .resize-handle.sw { bottom: 0; left: 0; width: 12px; height: 12px; cursor: sw-resize; }
+        .resize-handle.se { bottom: 0; right: 0; width: 16px; height: 16px; cursor: se-resize; }
 
         /* === 滚动条 === */
         ::-webkit-scrollbar { width: 8px; }
@@ -5481,7 +5485,8 @@
                 ${opts.content}
                 <div class="resize-handle n"></div><div class="resize-handle s"></div>
                 <div class="resize-handle e"></div><div class="resize-handle w"></div>
-                <div class="resize-handle se"></div>
+                <div class="resize-handle ne"></div><div class="resize-handle nw"></div>
+                <div class="resize-handle sw"></div><div class="resize-handle se"></div>
             `;
             
             document.getElementById('windows-container').appendChild(w);
@@ -5677,6 +5682,8 @@
             // 手机端禁用调整大小
             if(window.innerWidth <= 768) return;
 
+            const MIN_W = 400, MIN_H = 300;
+
             const handles = el.querySelectorAll('.resize-handle');
             handles.forEach(h => {
                 let isResizing = false, startX, startY, startW, startH, startL, startT, dir;
@@ -5690,10 +5697,29 @@
                 document.addEventListener('mousemove', e => {
                     if(!isResizing) return;
                     const dx = e.clientX - startX, dy = e.clientY - startY;
-                    if(dir.includes('e')) el.style.width = Math.max(400, startW + dx) + 'px';
-                    if(dir.includes('s')) el.style.height = Math.max(300, startH + dy) + 'px';
-                    if(dir.includes('w')) { el.style.width = Math.max(400, startW - dx) + 'px'; el.style.left = startL + dx + 'px'; }
-                    if(dir.includes('n')) { el.style.height = Math.max(300, startH - dy) + 'px'; el.style.top = startT + dy + 'px'; }
+
+                    // 计算期望的新尺寸
+                    let newW = startW, newH = startH, newL = startL, newT = startT;
+
+                    if(dir.includes('e')) newW = startW + dx;
+                    if(dir.includes('s')) newH = startH + dy;
+                    if(dir.includes('w')) { newW = startW - dx; newL = startL + dx; }
+                    if(dir.includes('n')) { newH = startH - dy; newT = startT + dy; }
+
+                    // 限制最小尺寸
+                    if(newW < MIN_W) {
+                        if(dir.includes('w')) newL = startL + (startW - MIN_W);
+                        newW = MIN_W;
+                    }
+                    if(newH < MIN_H) {
+                        if(dir.includes('n')) newT = startT + (startH - MIN_H);
+                        newH = MIN_H;
+                    }
+
+                    el.style.width = newW + 'px';
+                    el.style.height = newH + 'px';
+                    if(dir.includes('w')) el.style.left = newL + 'px';
+                    if(dir.includes('n')) el.style.top = newT + 'px';
                 });
                 document.addEventListener('mouseup', () => { isResizing = false; });
             });
