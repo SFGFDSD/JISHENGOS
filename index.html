@@ -625,35 +625,332 @@
         .about-card p { font-size: 12px; color: var(--text-muted); line-height: 1.6; }
 
         /* === 文件夹窗口样式 === */
-        .folder-item {
-            display: flex; align-items: center; gap: 12px;
-            padding: 10px 14px; border-radius: 6px;
-            cursor: pointer; transition: background 0.15s;
-            border-bottom: 1px solid rgba(255,255,255,0.06);
+
+        /* === 文件夹窗口侧边栏 === */
+        .folder-sidebar {
+            width: 180px;
+            min-width: 100px;
+            background: rgba(0,0,0,0.15);
+            border-right: 1px solid var(--glass-border);
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 1;
+            overflow-y: auto;
+            overflow-x: hidden;
             user-select: none;
+        }
+        .folder-sidebar::-webkit-scrollbar { width: 4px; }
+        .folder-sidebar::-webkit-scrollbar-track { background: transparent; }
+        .folder-sidebar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
+        .folder-sidebar-section {
+            padding: 8px 0;
+        }
+        .folder-sidebar-title {
+            font-size: 11px;
+            color: var(--text-muted);
+            padding: 4px 14px 6px;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .folder-sidebar-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 5px 14px;
+            cursor: pointer;
+            transition: background 0.12s;
+            font-size: 12px;
+            color: var(--text-muted);
+            border-radius: 0;
+        }
+        .folder-sidebar-item:hover {
+            background: rgba(255,255,255,0.08);
+            color: var(--text-main);
+        }
+        .folder-sidebar-item.active {
+            background: rgba(0, 120, 212, 0.25);
+            color: #fff;
+            backdrop-filter: blur(4px);
+        }
+        .folder-sidebar-item svg {
+            width: 16px; height: 16px;
+            flex-shrink: 0;
+            opacity: 0.7;
+        }
+        .folder-sidebar-item.active svg { opacity: 1; }
+        .folder-sidebar-item span {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .folder-item {
+            display: flex; align-items: center;
+            padding: 6px 14px;
+            padding-right: 40px;
+            border-radius: 4px;
+            cursor: pointer; transition: background 0.15s, border 0.15s;
+            border-bottom: 1px solid rgba(255,255,255,0.03);
+            user-select: none;
+            touch-action: manipulation;
+            width: fit-content;
         }
         .folder-item:hover { background: rgba(255,255,255,0.08); }
         .folder-item:last-child { border: none; }
         .folder-item .icon-svg {
-            color: var(--text-muted);
-            width: 24px; height: 24px;
-            min-width: 24px; min-height: 24px;
+            color: rgba(255,255,255,0.9);
+            width: 20px; height: 20px;
+            min-width: 20px; min-height: 20px;
             flex-shrink: 0;
+            margin-right: 10px;
         }
-        .folder-item span {
+        .folder-item .file-name {
             font-size: 13px;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
             min-width: 0;
-            flex: 1;
+            width: 200px;
+            text-shadow: 0 1px 4px rgba(0,0,0,0.9);
+        }
+        .folder-item .file-date {
+            font-size: 11px;
+            color: var(--text-muted);
+            white-space: nowrap;
+            width: 130px;
+            min-width: 130px;
+            text-align: right;
+            flex-shrink: 0;
+            padding-right: 8px;
+            opacity: 0.7;
+        }
+        .folder-item .file-type {
+            font-size: 11px;
+            color: var(--text-muted);
+            white-space: nowrap;
+            width: 90px;
+            min-width: 90px;
+            text-align: right;
+            flex-shrink: 0;
+            padding-right: 8px;
+        }
+        .folder-item .file-size {
+            font-size: 11px;
+            color: var(--text-muted);
+            white-space: nowrap;
+            width: 70px;
+            min-width: 70px;
+            text-align: right;
+            flex-shrink: 0;
         }
         .folder-item.selected {
             background: rgba(0, 120, 212, 0.25);
             border-color: rgba(0, 120, 212, 0.5);
+            backdrop-filter: blur(4px);
         }
-        .folder-item.selected .icon-svg { color: #fff; }
-        .folder-item.selected span { color: #fff; }
+        .folder-item.selected .icon-svg { color: rgba(255,255,255,0.9); }
+        .folder-item.selected .file-name { color: #fff; }
+        .folder-item.selected .file-size,
+        .folder-item.selected .file-date,
+        .folder-item.selected .file-type { color: rgba(255,255,255,0.6); }
+        .folder-item:active { transform: scale(0.98); }
+        .folder-item.drag-over {
+            background: rgba(0, 120, 212, 0.35);
+            outline: 2px dashed var(--accent-blue);
+            outline-offset: -2px;
+        }
+
+        /* === 搜索高亮 === */
+        .search-highlight {
+            background: rgba(0, 120, 212, 0.35);
+            color: #fff;
+            border-radius: 2px;
+            padding: 0 1px;
+        }
+
+        /* === 文件夹窗口工具栏 === */
+        .folder-toolbar {
+            display: flex; align-items: center; gap: 6px;
+            padding: 6px 10px;
+            background: rgba(0,0,0,0.2);
+            border-bottom: 1px solid var(--glass-border);
+            flex-shrink: 0;
+        }
+        .folder-toolbar-btn {
+            display: flex; align-items: center; justify-content: center;
+            width: 30px; height: 28px;
+            border: none; border-radius: 5px;
+            background: transparent;
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .folder-toolbar-btn:hover { background: rgba(255,255,255,0.1); color: var(--text-main); }
+        .folder-toolbar-btn:active { background: rgba(255,255,255,0.15); transform: scale(0.95); }
+        .folder-toolbar-btn.active { background: rgba(0, 120, 212, 0.25); color: #fff; }
+        .folder-toolbar-btn svg { width: 16px; height: 16px; }
+        .folder-toolbar-divider {
+            width: 1px; height: 18px;
+            background: var(--glass-border);
+            margin: 0 2px;
+            flex-shrink: 0;
+        }
+        .folder-search-box {
+            display: flex; align-items: center; gap: 6px;
+            margin-left: auto;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid transparent;
+            border-radius: 5px;
+            padding: 0 8px;
+            height: 28px;
+            transition: all 0.2s;
+            min-width: 0;
+            flex: 0 1 180px;
+        }
+        .folder-search-box:focus-within {
+            border-color: var(--accent-blue);
+            background: rgba(0,0,0,0.3);
+            flex: 0 1 240px;
+        }
+        .folder-search-box svg { width: 14px; height: 14px; color: var(--text-muted); flex-shrink: 0; }
+        .folder-search-box input {
+            flex: 1; background: transparent; border: none;
+            color: var(--text-main); font-size: 12px; font-family: inherit;
+            min-width: 0;
+        }
+        .folder-search-box input::placeholder { color: rgba(138,138,154,0.6); }
+
+        /* === 文件夹列标题 === */
+        .folder-col-header {
+            display: flex; align-items: center;
+            padding: 4px 14px;
+            padding-right: 40px;
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+            user-select: none;
+            flex-shrink: 0;
+            min-width: 590px;
+        }
+        .folder-col-header .col-sort {
+            font-size: 11px;
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: color 0.15s;
+            display: flex; align-items: center;
+        }
+        .folder-col-header .col-sort:hover { color: var(--text-main); }
+        .folder-col-header .col-sort.active { color: #fff; }
+        .folder-col-header .col-sort .sort-arrow { font-size: 10px; opacity: 0.5; margin-left: 3px; width: 10px; text-align: center; }
+        .folder-col-header .col-sort.col-name-sort { width: 240px; min-width: 240px; flex-shrink: 0; padding-left: 30px; }
+        .folder-col-header .col-sort.col-date-sort { width: 138px; min-width: 138px; flex-shrink: 0; justify-content: flex-end; padding-right: 0; }
+        .folder-col-header .col-sort.col-type-sort { width: 98px; min-width: 98px; flex-shrink: 0; justify-content: flex-end; padding-right: 0; }
+        .folder-col-header .col-sort.col-size-sort { width: 70px; min-width: 70px; flex-shrink: 0; justify-content: flex-end; padding-right: 0; }
+
+        /* === 文件列表滚动区域 === */
+        [id^="folder-filelist-"] {
+            min-width: 590px;
+            overflow-x: auto;
+            overflow-y: auto;
+        }
+
+        /* === 文件夹状态栏 === */
+        .folder-statusbar {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 4px 14px;
+            background: rgba(0,0,0,0.15);
+            border-top: 1px solid rgba(255,255,255,0.04);
+            font-size: 11px;
+            color: var(--text-muted);
+            flex-shrink: 0;
+            user-select: none;
+        }
+        .folder-statusbar .status-left { display: flex; align-items: center; gap: 12px; }
+        .folder-statusbar .status-right { display: flex; align-items: center; gap: 8px; }
+
+        /* === 文件夹窗口拖放高亮 === */
+        .folder-content-drop-active {
+            background: rgba(0, 120, 212, 0.08) !important;
+        }
+        .folder-content-drop-active::after {
+            content: '';
+            position: absolute;
+            inset: 8px;
+            border: 2px dashed rgba(0, 120, 212, 0.4);
+            border-radius: 8px;
+            pointer-events: none;
+            z-index: 50;
+        }
+
+        /* === 文件夹网格视图 === */
+        .folder-grid-view {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+            gap: 4px;
+            padding: 12px;
+        }
+        .folder-grid-item {
+            display: flex; flex-direction: column; align-items: center; gap: 6px;
+            padding: 10px 4px 8px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.15s, border 0.15s;
+            user-select: none;
+            text-align: center;
+            touch-action: manipulation;
+        }
+        .folder-grid-item:hover { background: rgba(255,255,255,0.08); }
+        .folder-grid-item .icon-svg {
+            color: rgba(255,255,255,0.9);
+            width: 36px; height: 36px;
+        }
+        .folder-grid-item .file-name {
+            font-size: 11px;
+            line-height: 1.3;
+            max-height: 2.6em;
+            overflow: hidden;
+            word-break: break-all;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            color: var(--text-main);
+            text-shadow: 0 1px 4px rgba(0,0,0,0.9);
+        }
+        .folder-grid-item.selected {
+            background: rgba(0, 120, 212, 0.25);
+            border: 1px solid rgba(0, 120, 212, 0.5);
+            backdrop-filter: blur(4px);
+        }
+        .folder-grid-item.selected .icon-svg { color: rgba(255,255,255,0.9); }
+        .folder-grid-item.selected .file-name { color: #fff; }
+        .folder-grid-item:active { transform: scale(0.98); }
+        .folder-grid-item.drag-over {
+            background: rgba(0, 120, 212, 0.35);
+            outline: 2px dashed var(--accent-blue);
+            outline-offset: -2px;
+        }
+
+        /* === 文件夹面包屑 === */
+        .folder-breadcrumb {
+            display: flex; align-items: center; gap: 2px;
+            padding: 4px 10px;
+            background: rgba(0,0,0,0.12);
+            border-bottom: 1px solid rgba(255,255,255,0.04);
+            font-size: 12px;
+            flex-shrink: 0;
+            overflow-x: auto;
+            white-space: nowrap;
+        }
+        .folder-breadcrumb::-webkit-scrollbar { height: 0; }
+        .folder-breadcrumb .bc-item {
+            color: var(--text-muted);
+            cursor: pointer;
+            padding: 2px 6px;
+            border-radius: 4px;
+            transition: all 0.15s;
+        }
+        .folder-breadcrumb .bc-item:hover { background: rgba(255,255,255,0.08); color: var(--text-main); }
+        .folder-breadcrumb .bc-item.current { color: var(--text-main); font-weight: 500; }
+        .folder-breadcrumb .bc-sep { color: rgba(138,138,154,0.4); font-size: 10px; }
 
         /* === 文件夹窗口框选样式 === */
         .folder-selection-box {
@@ -1688,7 +1985,8 @@
             iconPositions: {},           
             gridSize: 90, 
             iconPositionsPath: '/system/config/icon-positions.json',
-            localFolders: {} 
+            localFolders: {},
+            folderWindowStates: {}
         };
 
         function toggleWinFullscreen(id, type) {
@@ -1973,7 +2271,8 @@
 
         // === 0. 初始化全局上传控件 (文件 & 文件夹) ===
         function initGlobalUploadInputs() {
-            // 1. 创建上传文件控件
+            SYSTEM.uploadTargetPath = SYSTEM.desktopPath;
+            SYSTEM.uploadTargetWindowId = null;
             if(!document.getElementById('global-upload-file')) {
                 const inputFile = document.createElement('input');
                 inputFile.type = 'file';
@@ -2010,14 +2309,17 @@
                     // 如果是上传文件夹，file.webkitRelativePath 会包含 "Folder/Sub/file.txt"
                     // 如果是上传文件，通常只是 "file.txt"
                     const relPath = file.webkitRelativePath || file.name;
-                    const fullPath = SYSTEM.desktopPath + '/' + relPath;
+                    const fullPath = SYSTEM.uploadTargetPath + '/' + relPath;
                     
                     // 确保父目录存在
                     ensureDir(fullPath.substring(0, fullPath.lastIndexOf('/'))).then(() => {
                         SYSTEM.fs.writeFile(fullPath, buffer, () => {
                             count++;
                             // 简单的防抖刷新，或者每完成一个就刷新
-                            if(count === total || count % 5 === 0) refreshDesktop();
+                            if(count === total || count % 5 === 0) {
+                                if(SYSTEM.uploadTargetWindowId) folderRefresh(SYSTEM.uploadTargetWindowId);
+                                else refreshDesktop();
+                            }
                             if(count === total) Notify.success('上传完成', `成功导入 ${total} 个项目`);
                         });
                     });
@@ -2181,7 +2483,7 @@
                             let iconSvg = '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>';
                             let type = 'file';
 
-                            if(file.match(/\.(jpg|png|gif|webp)$/i)) {
+                            if(file.match(/\.(jpg|png|gif|webp|jpeg|bmp|svg)$/i)) {
                                 iconSvg = '<rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>';
                             } else if(file.match(/\.txt$/i)) {
                                 iconSvg = '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line>';
@@ -2956,91 +3258,783 @@
             });
         }
 
-        // 7. 替换 openFolderWindow (支持从文件夹拖出、框选、多选)
+        // 7. 替换 openFolderWindow (增强版：工具栏、文件大小、排序、搜索、状态栏、网格视图)
         // 注意：此函数不再关闭同名窗口，允许正常多开同名文件夹
-        function openFolderWindow(folderName) {
-            const path = SYSTEM.desktopPath + '/' + folderName;
+        function openFolderWindow(folderName, parentPath) {
+            const basePath = parentPath || SYSTEM.desktopPath;
+            const path = basePath + '/' + folderName;
             SYSTEM.fs.readdir(path, (err, files) => {
                 if(err) { Notify.error('错误', err.message); return; }
                 
                 const windowId = 'folder-' + Date.now();
                 
-                let content = files.length === 0 
-                    ? '<div style="padding:40px;text-align:center;color:#888">文件夹为空</div>'
-                    : files.map(file => {
-                        let icon = '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>';
-                        if(file.match(/\.(jpg|png|gif|webp)$/i)) icon = '<rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>';
-                        if(isArchiveFile(file)) icon = '<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2v11z"/><path d="M12 10v4"/><path d="M12 14l2-2"/>';
-                        
-                        return `
-                            <div class="folder-item" data-filename="${file}" data-path="${path}/${file}"
-                                 ondblclick="openFileFromPath('${path}/${file}', '${file}')"
-                                 onmousedown="handleFolderItemMouseDown(event, '${windowId}')"
-                                 ontouchstart="handleFolderItemTouchStart(event, '${windowId}')"
-                                 oncontextmenu="handleFolderItemContextMenu(event, '${windowId}', '${file}', '${path}/${file}')">
-                                <svg class="icon-svg" viewBox="0 0 24 24">${icon}</svg>
-                                <span>${file}</span>
-                            </div>
-                        `;
-                    }).join('');
-                
+                // 存储窗口状态
+                const winState = {
+                    windowId: windowId,
+                    folderName: folderName,
+                    currentPath: path,
+                    parentPath: basePath,
+                    viewMode: 'list', // 'list' or 'grid'
+                    sortBy: 'name',  // 'name', 'size', 'date'
+                    sortAsc: true,
+                    searchQuery: '',
+                    fileStats: {}
+                };
+                SYSTEM.folderWindowStates = SYSTEM.folderWindowStates || {};
+                SYSTEM.folderWindowStates[windowId] = winState;
+
+                // 获取文件统计信息
+                let statsLoaded = 0;
+                const totalFiles = files.length;
+                const onStatsReady = () => {
+                    statsLoaded++;
+                    if (statsLoaded === totalFiles) {
+                        renderFolderContent(windowId);
+                    }
+                };
+
+                if (totalFiles === 0) {
+                    renderFolderContent(windowId);
+                } else {
+                    files.forEach(file => {
+                        const filePath = path + '/' + file;
+                        SYSTEM.fs.stat(filePath, (err, stats) => {
+                            if (!err) {
+                                winState.fileStats[file] = {
+                                    size: stats.size,
+                                    mtime: stats.mtime,
+                                    isDirectory: stats.isDirectory ? stats.isDirectory() : false
+                                };
+                            }
+                            onStatsReady();
+                        });
+                    });
+                }
+
                 const winId = createWindow({
                     title: folderName,
                     iconHtml: '<svg class="icon-svg sm" viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2v11z"/></svg>',
-                    width: 500, height: 400,
+                    width: 920, height: 640,
                     content: `
-                        <div class="content-area dark" id="folder-content-${windowId}" style="padding:8px;overflow-y:auto;position:relative;height:100%">
-                            <div class="folder-selection-box" id="folder-selection-${windowId}"></div>
-                            ${content}
+                        <div class="content-area dark" id="folder-content-${windowId}" style="padding:0;overflow:hidden;position:relative;height:100%;display:flex;flex-direction:column">
+                            ${buildFolderToolbar(windowId)}
+                            <div style="display:flex;flex:1;overflow-y:hidden;overflow-x:auto;position:relative">
+                                <!-- 侧边栏 -->
+                                <div class="folder-sidebar" id="folder-sidebar-${windowId}">
+                                    ${buildFolderSidebar(windowId)}
+                                </div>
+                                <!-- 右侧内容区 -->
+                                <div style="flex:1;display:flex;flex-direction:column;overflow-y:hidden;overflow-x:auto;position:relative">
+                                    <div class="folder-breadcrumb" id="folder-breadcrumb-${windowId}"></div>
+                                    <div class="folder-col-header" id="folder-col-header-${windowId}">
+                                        <div class="col-sort col-name-sort active" data-sort="name" onclick="folderSortBy('${windowId}','name')">
+                                            <span>名称</span>
+                                            <span class="sort-arrow">▲</span>
+                                        </div>
+                                        <div class="col-sort col-date-sort" data-sort="date" onclick="folderSortBy('${windowId}','date')">
+                                            <span>修改日期</span>
+                                            <span class="sort-arrow"></span>
+                                        </div>
+                                        <div class="col-sort col-type-sort" data-sort="type" onclick="folderSortBy('${windowId}','type')">
+                                            <span>类型</span>
+                                            <span class="sort-arrow"></span>
+                                        </div>
+                                        <div class="col-sort col-size-sort" data-sort="size" onclick="folderSortBy('${windowId}','size')">
+                                            <span>大小</span>
+                                            <span class="sort-arrow"></span>
+                                        </div>
+                                    </div>
+                                    <div id="folder-filelist-${windowId}" style="flex:1;overflow-y:auto;position:relative;padding:0 0 60px 0">
+                                        <div class="folder-selection-box" id="folder-selection-${windowId}"></div>
+                                        <div style="padding:40px;text-align:center;color:#888;font-size:13px">加载中...</div>
+                                    </div>
+                                    <div class="folder-statusbar" id="folder-statusbar-${windowId}">
+                                        <div class="status-left">
+                                            <span id="folder-status-count-${windowId}">0 个项目</span>
+                                        </div>
+                                        <div class="status-right">
+                                            <span id="folder-status-size-${windowId}"></span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     `,
                     onInit: (w, id) => {
                         const cleanup = initFolderSelection(windowId);
-                        // 存储清理函数到窗口对象
                         w.cleanup = cleanup;
+                        // 初始化拖放高亮
+                        initFolderDropHighlight(windowId);
+                        // 更新面包屑
+                        updateFolderBreadcrumb(windowId);
+                        // 更新侧边栏文件夹列表
+                        updateSidebarFolderList(windowId);
                     }
                 });
             });
         }
 
-        // 刷新已存在的同名文件夹窗口内容（不关闭窗口，不创建新窗口）
-        // 用于拖拽文件进出文件夹后刷新显示
+        // 构建侧边栏 HTML
+        function buildFolderSidebar(windowId) {
+            return `
+                <div class="folder-sidebar-section">
+                    <div class="folder-sidebar-title">快速访问</div>
+                    <div class="folder-sidebar-item active" id="sidebar-desktop-${windowId}" onclick="sidebarNavigateToDesktop('${windowId}')">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+                        <span>桌面</span>
+                    </div>
+                </div>
+                <div class="folder-sidebar-section">
+                    <div class="folder-sidebar-title">文件夹</div>
+                    <div id="sidebar-folder-list-${windowId}"></div>
+                </div>
+            `;
+        }
+
+        // 侧边栏导航到桌面
+        function sidebarNavigateToDesktop(windowId) {
+            const state = SYSTEM.folderWindowStates[windowId];
+            if (!state) return;
+            state.currentPath = SYSTEM.desktopPath;
+            state.folderName = '桌面';
+            state.parentPath = SYSTEM.desktopPath;
+            state.searchQuery = '';
+            state.fileStats = {};
+            const win = document.getElementById('folder-content-' + windowId)?.closest('.window');
+            if (win) {
+                const titleEl = win.querySelector('.window-title-text');
+                if (titleEl) titleEl.textContent = '桌面';
+            }
+            const searchInput = document.getElementById('folder-search-' + windowId);
+            if (searchInput) searchInput.value = '';
+            updateFolderBreadcrumb(windowId);
+            updateSidebarActive(windowId, 'desktop');
+            renderFolderContent(windowId);
+        }
+
+        // 更新侧边栏激活状态
+        function updateSidebarActive(windowId, activeId) {
+            const sidebar = document.getElementById('folder-sidebar-' + windowId);
+            if (!sidebar) return;
+            sidebar.querySelectorAll('.folder-sidebar-item').forEach(item => item.classList.remove('active'));
+            const target = document.getElementById('sidebar-' + activeId + '-' + windowId);
+            if (target) target.classList.add('active');
+        }
+
+        // 更新侧边栏文件夹列表
+        function updateSidebarFolderList(windowId) {
+            const listEl = document.getElementById('sidebar-folder-list-' + windowId);
+            if (!listEl) return;
+            SYSTEM.fs.readdir(SYSTEM.desktopPath, (err, files) => {
+                if (err) { listEl.innerHTML = ''; return; }
+                let html = '';
+                let pending = files.length;
+                if (pending === 0) { listEl.innerHTML = html; return; }
+                files.forEach(file => {
+                    SYSTEM.fs.stat(SYSTEM.desktopPath + '/' + file, (err, stats) => {
+                        if (!err && stats.isDirectory && typeof stats.isDirectory === 'function' && stats.isDirectory()) {
+                            const safeName = escapeAttr(file);
+                            const isActive = SYSTEM.folderWindowStates[windowId]?.currentPath === SYSTEM.desktopPath + '/' + file;
+                            html += `
+                                <div class="folder-sidebar-item ${isActive ? 'active' : ''}" id="sidebar-folder-${safeName}-${windowId}" data-folder-path="${SYSTEM.desktopPath}/${safeName}" onclick="sidebarNavigateToFolder('${windowId}', '${safeName}')">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2v11z"/></svg>
+                                    <span>${file}</span>
+                                </div>
+                            `;
+                        }
+                        pending--;
+                        if (pending === 0) listEl.innerHTML = html;
+                    });
+                });
+            });
+        }
+
+        // 侧边栏导航到文件夹
+        function sidebarNavigateToFolder(windowId, folderName) {
+            const state = SYSTEM.folderWindowStates[windowId];
+            if (!state) return;
+            state.currentPath = SYSTEM.desktopPath + '/' + folderName;
+            state.folderName = folderName;
+            state.parentPath = SYSTEM.desktopPath;
+            state.searchQuery = '';
+            state.fileStats = {};
+            const win = document.getElementById('folder-content-' + windowId)?.closest('.window');
+            if (win) {
+                const titleEl = win.querySelector('.window-title-text');
+                if (titleEl) titleEl.textContent = folderName;
+            }
+            const searchInput = document.getElementById('folder-search-' + windowId);
+            if (searchInput) searchInput.value = '';
+            updateFolderBreadcrumb(windowId);
+            updateSidebarActive(windowId, 'folder-' + folderName);
+            renderFolderContent(windowId);
+        }
+
+        // 搜索高亮工具函数
+        function highlightText(text, query) {
+            if (!query) return escapeHtml(text);
+            const safeText = escapeHtml(text);
+            const safeQuery = escapeHtml(query).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const regex = new RegExp('(' + safeQuery + ')', 'gi');
+            return safeText.replace(regex, '<span class="search-highlight">$1</span>');
+        }
+
+        function escapeHtml(str) {
+            return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        }
+
+        // 构建工具栏 HTML
+        function buildFolderToolbar(windowId) {
+            return `
+            <div class="folder-toolbar">
+                <button class="folder-toolbar-btn" title="返回上级" onclick="folderGoUp('${windowId}')">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
+                </button>
+                <button class="folder-toolbar-btn" title="刷新" onclick="folderRefresh('${windowId}')">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 4v6h6"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+                </button>
+                <div class="folder-toolbar-divider"></div>
+                <button class="folder-toolbar-btn active" id="folder-view-list-${windowId}" title="列表视图" onclick="folderSetView('${windowId}','list')">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-list"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
+                </button>
+                <button class="folder-toolbar-btn" id="folder-view-grid-${windowId}" title="网格视图" onclick="folderSetView('${windowId}','grid')">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+                </button>
+                <div class="folder-toolbar-divider"></div>
+                <button class="folder-toolbar-btn" title="新建文件夹" onclick="folderCreateNew('${windowId}','folder')">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2v11z"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/></svg>
+                </button>
+                <button class="folder-toolbar-btn" title="新建文本文档" onclick="folderCreateNew('${windowId}','file')">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                </button>
+                <div class="folder-search-box">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                    <input type="text" placeholder="搜索文件..." id="folder-search-${windowId}" oninput="folderSearch('${windowId}', this.value)">
+                </div>
+            </div>
+            `;
+        }
+
+        // 转义字符串用于内联事件属性（防止文件名中的引号/特殊字符破坏HTML）
+        function escapeAttr(str) {
+            return String(str).replace(/&/g,'&amp;').replace(/'/g,'&#39;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        }
+
+        // 格式化文件大小
+        function formatFileSize(bytes) {
+            if (bytes === 0 || bytes == null) return '--';
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+            if (bytes < 1024 * 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+            return (bytes / (1024 * 1024 * 1024)).toFixed(2) + ' GB';
+        }
+
+        // 格式化日期
+        function formatDate(mtime) {
+            if (!mtime) return '--';
+            const d = new Date(mtime);
+            const pad = n => String(n).padStart(2, '0');
+            return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+        }
+
+        // 获取文件图标 SVG path（与桌面图标完全一致）
+        function getFileIconPath(filename, isDir) {
+            if (isDir) return '<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2v11z"/>';
+            if (filename.match(/\.(jpg|png|gif|webp|jpeg|bmp|svg)$/i)) return '<rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>';
+            if (filename.match(/\.txt$/i)) return '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>';
+            if (filename.match(/\.csv$/i)) return '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z M9 2v20 M4 9h16 M4 15h16"/>';
+            if (filename.match(/\.(zip|7z|rar|tar|gz|bz2|xz|cab|tgz)$/i)) return '<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2v11z"/><path d="M12 10v4"/><path d="M12 14l2-2"/>';
+            if (filename.match(/\.html?$/i)) return '<circle cx="12" cy="12" r="10"/><path d="M2 12h20"/>';
+            if (filename.match(/\.(mp4|avi|mov|mkv|webm|flv|wmv)$/i)) return '<rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"/><line x1="7" y1="2" x2="7" y2="22"/><line x1="17" y1="2" x2="17" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="2" y1="7" x2="7" y2="7"/><line x1="2" y1="17" x2="7" y2="17"/><line x1="17" y1="17" x2="22" y2="17"/><line x1="17" y1="7" x2="22" y2="7"/>';
+            if (filename.match(/\.(mp3|wav|flac|m4a|ogg|aac)$/i)) return '<path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>';
+            return '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>';
+        }
+
+        // 渲染文件夹内容
+        function renderFolderContent(windowId) {
+            const state = SYSTEM.folderWindowStates[windowId];
+            if (!state) return;
+
+            const filelistEl = document.getElementById('folder-filelist-' + windowId);
+            const colHeaderEl = document.getElementById('folder-col-header-' + windowId);
+            const statusCountEl = document.getElementById('folder-status-count-' + windowId);
+            const statusSizeEl = document.getElementById('folder-status-size-' + windowId);
+            if (!filelistEl) return;
+
+            // 获取文件列表
+            SYSTEM.fs.readdir(state.currentPath, (err, files) => {
+                if (err) {
+                    filelistEl.innerHTML = '<div style="padding:40px;text-align:center;color:#e81123;font-size:13px">无法读取文件夹</div>';
+                    return;
+                }
+
+                // 获取统计信息
+                let pendingStats = files.length;
+                const allStats = {};
+                
+                const afterStats = () => {
+                    // 过滤搜索
+                    let filtered = files;
+                    if (state.searchQuery) {
+                        const q = state.searchQuery.toLowerCase();
+                        filtered = files.filter(f => f.toLowerCase().includes(q));
+                    }
+
+                    // 排序：文件夹优先，然后按指定字段排序
+                    filtered.sort((a, b) => {
+                        const aDir = allStats[a]?.isDirectory;
+                        const bDir = allStats[b]?.isDirectory;
+                        if (aDir && !bDir) return -1;
+                        if (!aDir && bDir) return 1;
+
+                        let cmp = 0;
+                        if (state.sortBy === 'name') {
+                            cmp = a.localeCompare(b, 'zh-CN');
+                        } else if (state.sortBy === 'size') {
+                            const aSize = allStats[a]?.size || 0;
+                            const bSize = allStats[b]?.size || 0;
+                            cmp = aSize - bSize;
+                        } else if (state.sortBy === 'date') {
+                            const aTime = allStats[a]?.mtime || 0;
+                            const bTime = allStats[b]?.mtime || 0;
+                            cmp = aTime - bTime;
+                        } else if (state.sortBy === 'type') {
+                            const aType = getFileExtension(a).toLowerCase();
+                            const bType = getFileExtension(b).toLowerCase();
+                            cmp = aType.localeCompare(bType);
+                        }
+                        return state.sortAsc ? cmp : -cmp;
+                    });
+
+                    // 更新列标题排序指示器
+                    if (colHeaderEl) {
+                        colHeaderEl.querySelectorAll('.col-sort').forEach(el => {
+                            const sort = el.dataset.sort;
+                            const arrow = el.querySelector('.sort-arrow');
+                            if (sort === state.sortBy) {
+                                el.classList.add('active');
+                                arrow.textContent = state.sortAsc ? '▲' : '▼';
+                            } else {
+                                el.classList.remove('active');
+                                arrow.textContent = '';
+                            }
+                        });
+                    }
+
+                    // 显示/隐藏列标题
+                    if (colHeaderEl) {
+                        colHeaderEl.style.display = state.viewMode === 'list' ? 'flex' : 'none';
+                    }
+
+                    // 生成内容
+                    const selectionBox = filelistEl.querySelector('.folder-selection-box');
+                    filelistEl.innerHTML = '';
+                    if (selectionBox) filelistEl.appendChild(selectionBox);
+
+                    if (filtered.length === 0) {
+                        const emptyMsg = state.searchQuery ? '没有匹配的文件' : '文件夹为空';
+                        filelistEl.insertAdjacentHTML('beforeend', `<div style="padding:40px;text-align:center;color:#888;font-size:13px">${emptyMsg}</div>`);
+                    } else if (state.viewMode === 'list') {
+                        filtered.forEach(file => {
+                            const stats = allStats[file] || {};
+                            const isDir = stats.isDirectory;
+                            const iconPath = getFileIconPath(file, isDir);
+                            const sizeStr = isDir ? '--' : formatFileSize(stats.size);
+                            const dateStr = formatDate(stats.mtime);
+                            const typeStr = isDir ? '文件夹' : getFileExtension(file);
+                            const fullPath = state.currentPath + '/' + file;
+                            const safeFile = escapeAttr(file);
+                            const safePath = escapeAttr(fullPath);
+
+                            const itemHtml = `
+                                <div class="folder-item" data-filename="${safeFile}" data-path="${safePath}" data-isdir="${isDir}"
+                                     ondblclick="handleFolderItemDblClick('${windowId}', '${safeFile}', '${safePath}', ${isDir})"
+                                     onmousedown="handleFolderItemMouseDown(event, '${windowId}')"
+                                     ontouchstart="handleFolderItemTouchStart(event, '${windowId}')"
+                                     oncontextmenu="handleFolderItemContextMenu(event, '${windowId}', '${safeFile}', '${safePath}')">
+                                    <svg class="icon-svg" viewBox="0 0 24 24">${iconPath}</svg>
+                                    <span class="file-name">${highlightText(file, state.searchQuery)}</span>
+                                    <span class="file-date">${dateStr}</span>
+                                    <span class="file-type">${typeStr}</span>
+                                    <span class="file-size">${sizeStr}</span>
+                                </div>
+                            `;
+                            filelistEl.insertAdjacentHTML('beforeend', itemHtml);
+                        });
+                    } else {
+                        // 网格视图
+                        const gridContainer = document.createElement('div');
+                        gridContainer.className = 'folder-grid-view';
+                        filtered.forEach(file => {
+                            const stats = allStats[file] || {};
+                            const isDir = stats.isDirectory;
+                            const iconPath = getFileIconPath(file, isDir);
+                            const fullPath = state.currentPath + '/' + file;
+                            const safeFile = escapeAttr(file);
+                            const safePath = escapeAttr(fullPath);
+
+                            const itemHtml = `
+                                <div class="folder-grid-item" data-filename="${safeFile}" data-path="${safePath}" data-isdir="${isDir}"
+                                     ondblclick="handleFolderItemDblClick('${windowId}', '${safeFile}', '${safePath}', ${isDir})"
+                                     onmousedown="handleFolderItemMouseDown(event, '${windowId}')"
+                                     ontouchstart="handleFolderItemTouchStart(event, '${windowId}')"
+                                     oncontextmenu="handleFolderItemContextMenu(event, '${windowId}', '${safeFile}', '${safePath}')">
+                                    <svg class="icon-svg" viewBox="0 0 24 24">${iconPath}</svg>
+                                    <span class="file-name">${highlightText(file, state.searchQuery)}</span>
+                                </div>
+                            `;
+                            gridContainer.insertAdjacentHTML('beforeend', itemHtml);
+                        });
+                        filelistEl.appendChild(gridContainer);
+                    }
+
+                    // 更新状态栏
+                    const dirCount = filtered.filter(f => allStats[f]?.isDirectory).length;
+                    const fileCount = filtered.length - dirCount;
+                    let statusText = '';
+                    if (dirCount > 0 && fileCount > 0) {
+                        statusText = `${fileCount} 个文件, ${dirCount} 个文件夹`;
+                    } else if (dirCount > 0) {
+                        statusText = `${dirCount} 个文件夹`;
+                    } else {
+                        statusText = `${fileCount} 个文件`;
+                    }
+                    if (state.searchQuery) {
+                        statusText += ` (搜索: "${state.searchQuery}")`;
+                    }
+                    if (statusCountEl) statusCountEl.textContent = statusText;
+
+                    // 计算总大小
+                    let totalSize = 0;
+                    filtered.forEach(f => {
+                        if (!allStats[f]?.isDirectory) {
+                            totalSize += (allStats[f]?.size || 0);
+                        }
+                    });
+                    if (statusSizeEl) statusSizeEl.textContent = totalSize > 0 ? '总计: ' + formatFileSize(totalSize) : '';
+
+                    // 更新侧边栏文件夹列表
+                    updateSidebarFolderList(windowId);
+                };
+
+                if (files.length === 0) {
+                    afterStats();
+                } else {
+                    files.forEach(file => {
+                        const filePath = state.currentPath + '/' + file;
+                        SYSTEM.fs.stat(filePath, (err, stats) => {
+                            if (!err) {
+                                allStats[file] = {
+                                    size: stats.size,
+                                    mtime: stats.mtime,
+                                    isDirectory: typeof stats.isDirectory === 'function' ? stats.isDirectory() : false
+                                };
+                            }
+                            pendingStats--;
+                            if (pendingStats === 0) afterStats();
+                        });
+                    });
+                }
+            });
+        }
+
+        // 文件夹项双击处理
+        function handleFolderItemDblClick(windowId, filename, fullPath, isDir) {
+            if (isDir) {
+                // 打开子文件夹
+                const state = SYSTEM.folderWindowStates[windowId];
+                if (!state) return;
+                state.folderName = filename;
+                state.parentPath = state.currentPath;
+                state.currentPath = fullPath;
+                state.searchQuery = '';
+                state.fileStats = {};
+                // 更新窗口标题
+                const win = document.getElementById('folder-content-' + windowId)?.closest('.window');
+                if (win) {
+                    const titleEl = win.querySelector('.window-title-text');
+                    if (titleEl) titleEl.textContent = filename;
+                }
+                // 清空搜索框
+                const searchInput = document.getElementById('folder-search-' + windowId);
+                if (searchInput) searchInput.value = '';
+                updateFolderBreadcrumb(windowId);
+                renderFolderContent(windowId);
+            } else {
+                openFileFromPath(fullPath, filename);
+            }
+        }
+
+        // 排序
+        function folderSortBy(windowId, sortBy) {
+            const state = SYSTEM.folderWindowStates[windowId];
+            if (!state) return;
+            if (state.sortBy === sortBy) {
+                state.sortAsc = !state.sortAsc;
+            } else {
+                state.sortBy = sortBy;
+                state.sortAsc = true;
+            }
+            if (state.isLocal) {
+                renderLocalFolderItems(windowId);
+            } else {
+                renderFolderContent(windowId);
+            }
+        }
+
+        // 搜索
+        function folderSearch(windowId, query) {
+            const state = SYSTEM.folderWindowStates[windowId];
+            if (!state) return;
+            state.searchQuery = query;
+            if (state.isLocal) {
+                renderLocalFolderItems(windowId);
+            } else {
+                renderFolderContent(windowId);
+            }
+        }
+
+        // 视图切换
+        function folderSetView(windowId, mode) {
+            const state = SYSTEM.folderWindowStates[windowId];
+            if (!state) return;
+            state.viewMode = mode;
+            // 更新按钮状态
+            const listBtn = document.getElementById('folder-view-list-' + windowId);
+            const gridBtn = document.getElementById('folder-view-grid-' + windowId);
+            if (listBtn) listBtn.classList.toggle('active', mode === 'list');
+            if (gridBtn) gridBtn.classList.toggle('active', mode === 'grid');
+            if (state.isLocal) {
+                renderLocalFolderItems(windowId);
+            } else {
+                renderFolderContent(windowId);
+            }
+        }
+
+        // 返回上级
+        function folderGoUp(windowId) {
+            const state = SYSTEM.folderWindowStates[windowId];
+            if (!state) return;
+
+            // 本地文件夹：使用路径历史导航
+            if (state.isLocal) {
+                if (state.pathHistoryIndex <= 0) {
+                    Notify.warning('提示', '已经是最顶层目录');
+                    return;
+                }
+                localFolderNavigateTo(windowId, state.pathHistoryIndex - 1);
+                return;
+            }
+
+            // 虚拟文件夹：原有逻辑
+            if (state.currentPath === SYSTEM.desktopPath) {
+                Notify.warning('提示', '已经是最顶层目录');
+                return;
+            }
+            const parentPath = state.parentPath;
+            const parentName = parentPath === SYSTEM.desktopPath ? '桌面' : parentPath.split('/').pop();
+            state.currentPath = parentPath;
+            state.folderName = parentName;
+            state.parentPath = parentPath.substring(0, parentPath.lastIndexOf('/')) || SYSTEM.desktopPath;
+            state.searchQuery = '';
+            state.fileStats = {};
+            // 更新窗口标题
+            const win = document.getElementById('folder-content-' + windowId)?.closest('.window');
+            if (win) {
+                const titleEl = win.querySelector('.window-title-text');
+                if (titleEl) titleEl.textContent = parentName;
+            }
+            const searchInput = document.getElementById('folder-search-' + windowId);
+            if (searchInput) searchInput.value = '';
+            updateFolderBreadcrumb(windowId);
+            renderFolderContent(windowId);
+        }
+
+        // 刷新
+        function folderRefresh(windowId) {
+            const state = SYSTEM.folderWindowStates[windowId];
+            if (!state) return;
+            if (state.isLocal) {
+                renderLocalFolderItems(windowId);
+                Notify.success('已刷新', '文件夹内容已更新');
+            } else {
+                state.fileStats = {};
+                renderFolderContent(windowId);
+                refreshDesktop();
+                Notify.success('已刷新', '文件夹内容已更新');
+            }
+        }
+
+        // 新建文件/文件夹
+        function folderCreateNew(windowId, type) {
+            const state = SYSTEM.folderWindowStates[windowId];
+            if (!state) return;
+
+            // 本地文件夹：使用 File System Access API
+            if (state.isLocal) {
+                if (type === 'folder') {
+                    const name = prompt('请输入文件夹名称:', '新建文件夹');
+                    if (!name) return;
+                    state.localHandle.getDirectoryHandle(name, { create: true }).then(() => {
+                        renderLocalFolderItems(windowId);
+                        Notify.success('成功', '文件夹已创建');
+                    }).catch(e => {
+                        Notify.error('创建失败', e.message);
+                    });
+                } else {
+                    const name = prompt('请输入文件名称:', '新建文本文档.txt');
+                    if (!name) return;
+                    state.localHandle.getFileHandle(name, { create: true }).then(handle => {
+                        return handle.createWritable();
+                    }).then(writable => {
+                        return writable.close();
+                    }).then(() => {
+                        renderLocalFolderItems(windowId);
+                        Notify.success('成功', '文件已创建');
+                    }).catch(e => {
+                        Notify.error('创建失败', e.message);
+                    });
+                }
+                return;
+            }
+
+            // 虚拟文件夹：原有逻辑
+            if (type === 'folder') {
+                const name = prompt('请输入文件夹名称:', '新建文件夹');
+                if (!name) return;
+                SYSTEM.fs.mkdir(state.currentPath + '/' + name, (err) => {
+                    if (err) Notify.error('创建失败', err.message);
+                    else { renderFolderContent(windowId); refreshDesktop(); Notify.success('成功', '文件夹已创建'); }
+                });
+            } else {
+                const name = prompt('请输入文件名称:', '新建文本文档.txt');
+                if (!name) return;
+                SYSTEM.fs.writeFile(state.currentPath + '/' + name, '', (err) => {
+                    if (err) Notify.error('创建失败', err.message);
+                    else { renderFolderContent(windowId); refreshDesktop(); Notify.success('成功', '文件已创建'); }
+                });
+            }
+        }
+
+        // 更新面包屑导航
+        function updateFolderBreadcrumb(windowId) {
+            const state = SYSTEM.folderWindowStates[windowId];
+            const bcEl = document.getElementById('folder-breadcrumb-' + windowId);
+            if (!state || !bcEl) return;
+
+            // 构建路径层级
+            const parts = [];
+            let p = state.currentPath;
+            while (p && p !== SYSTEM.desktopPath && p.length > SYSTEM.desktopPath.length) {
+                parts.unshift({ name: p.split('/').pop(), path: p });
+                p = p.substring(0, p.lastIndexOf('/'));
+            }
+            parts.unshift({ name: '桌面', path: SYSTEM.desktopPath });
+
+            let html = '';
+            parts.forEach((part, i) => {
+                if (i > 0) html += '<span class="bc-sep">›</span>';
+                const isCurrent = i === parts.length - 1;
+                html += `<span class="bc-item ${isCurrent ? 'current' : ''}" onclick="folderNavigateTo('${windowId}', '${part.path}', '${part.name}')">${part.name}</span>`;
+            });
+            bcEl.innerHTML = html;
+        }
+
+        // 面包屑导航跳转
+        function folderNavigateTo(windowId, targetPath, targetName) {
+            const state = SYSTEM.folderWindowStates[windowId];
+            if (!state || state.currentPath === targetPath) return;
+            state.currentPath = targetPath;
+            state.folderName = targetName;
+            state.parentPath = targetPath.substring(0, targetPath.lastIndexOf('/')) || SYSTEM.desktopPath;
+            state.searchQuery = '';
+            state.fileStats = {};
+            const win = document.getElementById('folder-content-' + windowId)?.closest('.window');
+            if (win) {
+                const titleEl = win.querySelector('.window-title-text');
+                if (titleEl) titleEl.textContent = targetName;
+            }
+            const searchInput = document.getElementById('folder-search-' + windowId);
+            if (searchInput) searchInput.value = '';
+            updateFolderBreadcrumb(windowId);
+            renderFolderContent(windowId);
+        }
+
+        // 初始化文件夹拖放高亮
+        function initFolderDropHighlight(windowId) {
+            const contentArea = document.getElementById('folder-content-' + windowId);
+            if (!contentArea) return;
+
+            let dragCounter = 0;
+            contentArea.addEventListener('dragenter', (e) => {
+                e.preventDefault();
+                dragCounter++;
+                contentArea.classList.add('folder-content-drop-active');
+            });
+            contentArea.addEventListener('dragleave', (e) => {
+                e.preventDefault();
+                dragCounter--;
+                if (dragCounter <= 0) {
+                    dragCounter = 0;
+                    contentArea.classList.remove('folder-content-drop-active');
+                }
+            });
+            contentArea.addEventListener('dragover', (e) => {
+                e.preventDefault();
+            });
+            contentArea.addEventListener('drop', (e) => {
+                e.preventDefault();
+                dragCounter = 0;
+                contentArea.classList.remove('folder-content-drop-active');
+            });
+        }
+
+        // 刷新已存在的同名文件夹窗口内容（增强版）
         function refreshFolderWindow(folderName) {
-            const path = SYSTEM.desktopPath + '/' + folderName;
-            SYSTEM.fs.readdir(path, (err, files) => {
+            SYSTEM.fs.readdir(SYSTEM.desktopPath + '/' + folderName, (err, files) => {
                 if (err) return;
 
                 document.querySelectorAll('.window').forEach(win => {
                     const titleText = win.querySelector('.window-title-text')?.innerText;
                     if (titleText !== folderName) return;
 
+                    // 查找对应的 windowId
                     const contentArea = win.querySelector('.content-area');
                     if (!contentArea) return;
+                    const contentId = contentArea.id; // folder-content-XXXX
+                    const windowId = contentId.replace('folder-content-', '');
+                    const state = SYSTEM.folderWindowStates?.[windowId];
 
-                    let content = files.length === 0
-                        ? '<div style="padding:40px;text-align:center;color:#888">文件夹为空</div>'
-                        : files.map(file => {
-                            let icon = '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>';
-                            if(file.match(/\.(jpg|png|gif|webp)$/i)) icon = '<rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>';
-                            if(isArchiveFile(file)) icon = '<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2v11z"/><path d="M12 10v4"/><path d="M12 14l2-2"/>';
+                    if (state) {
+                        state.fileStats = {};
+                        renderFolderContent(windowId);
+                    } else {
+                        // 旧版窗口，用简单刷新
+                        const path = SYSTEM.desktopPath + '/' + folderName;
+                        let content = files.length === 0
+                            ? '<div style="padding:40px;text-align:center;color:#888">文件夹为空</div>'
+                            : files.map(file => {
+                                let icon = '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>';
+                                if(file.match(/\.(jpg|png|gif|webp|jpeg|bmp|svg)$/i)) icon = '<rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>';
+                                if(isArchiveFile(file)) icon = '<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2v11z"/><path d="M12 10v4"/><path d="M12 14l2-2"/>';
 
-                            return `
-                                <div class="folder-item" data-filename="${file}" data-path="${path}/${file}"
-                                     ondblclick="openFileFromPath('${path}/${file}', '${file}')"
-                                     onmousedown="handleFolderItemMouseDown(event, '${contentArea.id.replace('folder-content-', '')}')"
-                                     ontouchstart="handleFolderItemTouchStart(event, '${contentArea.id.replace('folder-content-', '')}')"
-                                     oncontextmenu="handleFolderItemContextMenu(event, '${contentArea.id.replace('folder-content-', '')}', '${file}', '${path}/${file}')">
-                                    <svg class="icon-svg" viewBox="0 0 24 24">${icon}</svg>
-                                    <span>${file}</span>
-                                </div>
-                            `;
-                        }).join('');
+                                return `
+                                    <div class="folder-item" data-filename="${file}" data-path="${path}/${file}"
+                                         ondblclick="openFileFromPath('${path}/${file}', '${file}')"
+                                         onmousedown="handleFolderItemMouseDown(event, '${contentId.replace('folder-content-', '')}')"
+                                         ontouchstart="handleFolderItemTouchStart(event, '${contentId.replace('folder-content-', '')}')"
+                                         oncontextmenu="handleFolderItemContextMenu(event, '${contentId.replace('folder-content-', '')}', '${file}', '${path}/${file}')">
+                                        <svg class="icon-svg" viewBox="0 0 24 24">${icon}</svg>
+                                        <span class="file-name">${file}</span>
+                                    </div>
+                                `;
+                            }).join('');
 
-                    // 保留 selection-box，只更新文件列表
-                    const selectionBox = contentArea.querySelector('.folder-selection-box');
-                    contentArea.innerHTML = '';
-                    if (selectionBox) contentArea.appendChild(selectionBox);
-                    contentArea.insertAdjacentHTML('beforeend', content);
+                        const selectionBox = contentArea.querySelector('.folder-selection-box');
+                        contentArea.innerHTML = '';
+                        if (selectionBox) contentArea.appendChild(selectionBox);
+                        contentArea.insertAdjacentHTML('beforeend', content);
+                    }
                 });
             });
         }
@@ -3048,7 +4042,11 @@
         // 文件夹窗口框选逻辑
         function initFolderSelection(windowId) {
             const contentArea = document.getElementById('folder-content-' + windowId);
+            const filelistArea = document.getElementById('folder-filelist-' + windowId);
             const selectionBox = document.getElementById('folder-selection-' + windowId);
+            // 兼容新旧结构：优先使用 filelistArea，回退到 contentArea
+            const scrollArea = filelistArea || contentArea;
+            if (!scrollArea || !selectionBox) return () => {};
             let isSelecting = false, startX, startY;
             let lastClientX = 0, lastClientY = 0;
             let scrollInterval = null;
@@ -3060,9 +4058,9 @@
             };
 
             const updateSelectionBox = () => {
-                const rect = contentArea.getBoundingClientRect();
-                const curX = lastClientX - rect.left + contentArea.scrollLeft;
-                const curY = lastClientY - rect.top + contentArea.scrollTop;
+                const rect = scrollArea.getBoundingClientRect();
+                const curX = lastClientX - rect.left + scrollArea.scrollLeft;
+                const curY = lastClientY - rect.top + scrollArea.scrollTop;
 
                 const left = Math.min(startX, curX);
                 const top = Math.min(startY, curY);
@@ -3074,7 +4072,7 @@
                 selectionBox.style.width = width + 'px';
                 selectionBox.style.height = height + 'px';
 
-                const items = contentArea.querySelectorAll('.folder-item');
+                const items = scrollArea.querySelectorAll('.folder-item, .folder-grid-item');
                 items.forEach(item => {
                     const itemLeft = item.offsetLeft;
                     const itemTop = item.offsetTop;
@@ -3095,7 +4093,7 @@
             const startAutoScroll = (speed) => {
                 stopAutoScroll();
                 scrollInterval = setInterval(() => {
-                    contentArea.scrollTop += speed;
+                    scrollArea.scrollTop += speed;
                     updateSelectionBox();
                 }, 16);
             };
@@ -3110,20 +4108,20 @@
             const handleStart = (e) => {
                 if(e.button === 2) return;
                 if(isSelecting) return;
-                if(e.target.closest('.folder-item')) return;
+                if(e.target.closest('.folder-item, .folder-grid-item')) return;
 
                 e.preventDefault();
                 e.stopPropagation();
                 clearFolderSelection(windowId);
                 isSelecting = true;
-                contentArea.dataset.isSelecting = 'true';
+                scrollArea.dataset.isSelecting = 'true';
 
                 const pos = getPos(e);
-                const rect = contentArea.getBoundingClientRect();
+                const rect = scrollArea.getBoundingClientRect();
                 lastClientX = pos.x;
                 lastClientY = pos.y;
-                startX = pos.x - rect.left + contentArea.scrollLeft;
-                startY = pos.y - rect.top + contentArea.scrollTop;
+                startX = pos.x - rect.left + scrollArea.scrollLeft;
+                startY = pos.y - rect.top + scrollArea.scrollTop;
 
                 selectionBox.style.display = 'block';
                 selectionBox.style.width = '0';
@@ -3140,7 +4138,7 @@
                 lastClientX = pos.x;
                 lastClientY = pos.y;
 
-                const rect = contentArea.getBoundingClientRect();
+                const rect = scrollArea.getBoundingClientRect();
                 const scrollZone = 40;
                 const scrollSpeed = 12;
 
@@ -3159,13 +4157,111 @@
 
             const handleEnd = () => {
                 isSelecting = false;
-                contentArea.dataset.isSelecting = 'false';
+                scrollArea.dataset.isSelecting = 'false';
                 selectionBox.style.display = 'none';
                 stopAutoScroll();
             };
 
-            contentArea.onmousedown = handleStart;
-            contentArea.ontouchstart = handleStart;
+            scrollArea.onmousedown = handleStart;
+            scrollArea.ontouchstart = handleStart;
+
+            // 移动端空白区域长按菜单
+            let blankLongPressTimer = null;
+            let blankLongPressTriggered = false;
+            let blankTouchStartX = 0, blankTouchStartY = 0;
+
+            scrollArea.addEventListener('touchstart', (e) => {
+                if (e.target.closest('.folder-item, .folder-grid-item')) return;
+                blankLongPressTriggered = false;
+                const touch = e.touches[0];
+                blankTouchStartX = touch.clientX;
+                blankTouchStartY = touch.clientY;
+                blankLongPressTimer = setTimeout(() => {
+                    blankLongPressTriggered = true;
+                    clearFolderSelection(windowId);
+                    const menuItems = `
+                        <div class="context-item" onclick="folderRefresh('${windowId}'); closeCtx()">
+                            <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 4v6h6"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+                            <span>刷新</span>
+                        </div>
+                        <div class="context-divider"></div>
+                        <div class="context-item" onclick="SYSTEM.uploadTargetPath=SYSTEM.folderWindowStates['${windowId}'].currentPath;SYSTEM.uploadTargetWindowId='${windowId}';document.getElementById('global-upload-file').click();closeCtx()">
+                            <svg class="icon-svg" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                            <span>上传文件</span>
+                        </div>
+                        <div class="context-item" onclick="SYSTEM.uploadTargetPath=SYSTEM.folderWindowStates['${windowId}'].currentPath;SYSTEM.uploadTargetWindowId='${windowId}';document.getElementById('global-upload-folder').click();closeCtx()">
+                            <svg class="icon-svg" viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2v11z"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/></svg>
+                            <span>上传文件夹</span>
+                        </div>
+                        <div class="context-divider"></div>
+                        <div class="context-item" onclick="folderCreateNew('${windowId}','folder'); closeCtx()">
+                            <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2v11z"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/></svg>
+                            <span>新建文件夹</span>
+                        </div>
+                        <div class="context-item" onclick="folderCreateNew('${windowId}','file'); closeCtx()">
+                            <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                            <span>新建文本文档</span>
+                        </div>
+                    `;
+                    document.getElementById('context-menu').innerHTML = menuItems;
+                    showCtx(blankTouchStartX, blankTouchStartY);
+                }, 500);
+            }, { passive: true });
+
+            scrollArea.addEventListener('touchmove', (e) => {
+                if (blankLongPressTimer) {
+                    const touch = e.touches[0];
+                    const dx = touch.clientX - blankTouchStartX;
+                    const dy = touch.clientY - blankTouchStartY;
+                    if (dx * dx + dy * dy > 25) {
+                        clearTimeout(blankLongPressTimer);
+                        blankLongPressTimer = null;
+                    }
+                }
+            }, { passive: true });
+
+            scrollArea.addEventListener('touchend', () => {
+                if (blankLongPressTimer) {
+                    clearTimeout(blankLongPressTimer);
+                    blankLongPressTimer = null;
+                }
+            }, { passive: true });
+
+            // 空白区域右键菜单（桌面端）
+            scrollArea.oncontextmenu = (e) => {
+                if (e.target.closest('.folder-item, .folder-grid-item')) return;
+                e.preventDefault();
+                e.stopPropagation();
+                clearFolderSelection(windowId);
+                const state = SYSTEM.folderWindowStates[windowId];
+                const isLocal = state?.isLocal;
+                const menuItems = `
+                    <div class="context-item" onclick="folderRefresh('${windowId}'); closeCtx()">
+                        <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 4v6h6"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+                        <span>刷新</span>
+                    </div>
+                    <div class="context-divider"></div>
+                    <div class="context-item" onclick="SYSTEM.uploadTargetPath=SYSTEM.folderWindowStates['${windowId}'].currentPath;SYSTEM.uploadTargetWindowId='${windowId}';document.getElementById('global-upload-file').click();closeCtx()">
+                        <svg class="icon-svg" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                        <span>上传文件</span>
+                    </div>
+                    <div class="context-item" onclick="SYSTEM.uploadTargetPath=SYSTEM.folderWindowStates['${windowId}'].currentPath;SYSTEM.uploadTargetWindowId='${windowId}';document.getElementById('global-upload-folder').click();closeCtx()">
+                        <svg class="icon-svg" viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2v11z"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/></svg>
+                        <span>上传文件夹</span>
+                    </div>
+                    <div class="context-divider"></div>
+                    <div class="context-item" onclick="folderCreateNew('${windowId}','folder'); closeCtx()">
+                        <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2v11z"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/></svg>
+                        <span>新建文件夹</span>
+                    </div>
+                    <div class="context-item" onclick="folderCreateNew('${windowId}','file'); closeCtx()">
+                        <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                        <span>新建文本文档</span>
+                    </div>
+                `;
+                document.getElementById('context-menu').innerHTML = menuItems;
+                showCtx(e.clientX, e.clientY);
+            };
 
             document.addEventListener('mousemove', handleMove);
             document.addEventListener('touchmove', handleMove, { passive: false });
@@ -3186,10 +4282,10 @@
         function handleFolderItemMouseDown(e, windowId) {
             if(e.button !== 0) return;
 
-            const contentArea = document.getElementById('folder-content-' + windowId);
-            if(!contentArea) return;
+            const scrollArea = document.getElementById('folder-filelist-' + windowId) || document.getElementById('folder-content-' + windowId);
+            if(!scrollArea) return;
 
-            if(contentArea.dataset.isSelecting === 'true') return;
+            if(scrollArea.dataset.isSelecting === 'true') return;
 
             const item = e.currentTarget;
 
@@ -3203,13 +4299,34 @@
             setupFolderItemDrag(e, windowId);
         }
 
-        function handleFolderItemTouchStart(e, windowId) {
-            const contentArea = document.getElementById('folder-content-' + windowId);
-            if(!contentArea) return;
+        // 移动端双击检测（防止Edge等浏览器将双击识别为缩放）
+        let _lastTapTime = 0;
+        let _lastTapTarget = null;
 
-            if(contentArea.dataset.isSelecting === 'true') return;
+        function handleFolderItemTouchStart(e, windowId) {
+            const scrollArea = document.getElementById('folder-filelist-' + windowId) || document.getElementById('folder-content-' + windowId);
+            if(!scrollArea) return;
+
+            if(scrollArea.dataset.isSelecting === 'true') return;
 
             const item = e.currentTarget;
+            const now = Date.now();
+
+            // 双击检测：同一元素300ms内连续两次触摸 = 双击
+            if (_lastTapTarget === item && now - _lastTapTime < 300) {
+                const filename = item.dataset.filename;
+                const fullPath = item.dataset.path;
+                const isDir = item.dataset.isdir === 'true';
+                handleFolderItemDblClick(windowId, filename, fullPath, isDir);
+                _lastTapTime = 0;
+                _lastTapTarget = null;
+                e.preventDefault();
+                e.stopPropagation();
+                return;
+            }
+
+            _lastTapTime = now;
+            _lastTapTarget = item;
 
             if(!item.classList.contains('selected')) {
                 clearFolderSelection(windowId);
@@ -3234,7 +4351,7 @@
                 item.classList.add('selected');
             }
             
-            const selectedItems = Array.from(contentArea.querySelectorAll('.folder-item.selected'));
+            const selectedItems = Array.from(contentArea.querySelectorAll('.folder-item.selected, .folder-grid-item.selected'));
             const count = selectedItems.length;
             
             const cm = document.getElementById('context-menu');
@@ -3284,10 +4401,12 @@
             const contentArea = document.getElementById('folder-content-' + windowId);
             if(!contentArea) return;
             
-            const folderName = contentArea.closest('.window').querySelector('.window-title-text').innerText;
-            const path = SYSTEM.desktopPath + '/' + folderName;
+            // 使用窗口状态中的路径（支持子文件夹导航）
+            const state = SYSTEM.folderWindowStates?.[windowId];
+            const folderName = state ? state.folderName : contentArea.closest('.window').querySelector('.window-title-text').innerText;
+            const path = state ? state.currentPath : SYSTEM.desktopPath + '/' + folderName;
             
-            const selectedItems = Array.from(contentArea.querySelectorAll('.folder-item.selected'));
+            const selectedItems = Array.from(contentArea.querySelectorAll('.folder-item.selected, .folder-grid-item.selected'));
             let deletedCount = 0;
             const total = selectedItems.length;
             
@@ -3303,7 +4422,9 @@
                     }
                     
                     if(deletedCount === total) {
-                        refreshFolderWindow(folderName);
+                        if (state) { state.fileStats = {}; renderFolderContent(windowId); }
+                        else refreshFolderWindow(folderName);
+                        refreshDesktop();
                         Notify.success('删除成功', `已删除 ${total} 个文件`);
                     }
                 });
@@ -3316,15 +4437,18 @@
             const contentArea = document.getElementById('folder-content-' + windowId);
             if(!contentArea) return;
             
-            const folderName = contentArea.closest('.window').querySelector('.window-title-text').innerText;
-            const path = SYSTEM.desktopPath + '/' + folderName;
+            const state = SYSTEM.folderWindowStates?.[windowId];
+            const folderName = state ? state.folderName : contentArea.closest('.window').querySelector('.window-title-text').innerText;
+            const path = state ? state.currentPath : SYSTEM.desktopPath + '/' + folderName;
             const fullPath = path + '/' + filename;
             
             SYSTEM.fs.unlink(fullPath, (err) => {
                 if(err) {
                     Notify.error('删除失败', err.message);
                 } else {
-                    refreshFolderWindow(folderName);
+                    if (state) { state.fileStats = {}; renderFolderContent(windowId); }
+                    else refreshFolderWindow(folderName);
+                    refreshDesktop();
                     Notify.success('删除成功', `文件 "${filename}" 已删除`);
                 }
             });
@@ -3337,8 +4461,9 @@
             const contentArea = document.getElementById('folder-content-' + windowId);
             if(!contentArea) return;
             
-            const folderName = contentArea.closest('.window').querySelector('.window-title-text').innerText;
-            const path = SYSTEM.desktopPath + '/' + folderName;
+            const state = SYSTEM.folderWindowStates?.[windowId];
+            const folderName = state ? state.folderName : contentArea.closest('.window').querySelector('.window-title-text').innerText;
+            const path = state ? state.currentPath : SYSTEM.desktopPath + '/' + folderName;
             const oldPath = path + '/' + oldName;
             const newPath = path + '/' + newName;
             
@@ -3346,7 +4471,9 @@
                 if(err) {
                     Notify.error('重命名失败', err.message);
                 } else {
-                    refreshFolderWindow(folderName);
+                    if (state) { state.fileStats = {}; renderFolderContent(windowId); }
+                    else refreshFolderWindow(folderName);
+                    refreshDesktop();
                     Notify.success('重命名成功', `已重命名为 "${newName}"`);
                 }
             });
@@ -3356,7 +4483,7 @@
             const contentArea = document.getElementById('folder-content-' + windowId);
             if(!contentArea) return;
 
-            const selectedItems = Array.from(contentArea.querySelectorAll('.folder-item.selected'));
+            const selectedItems = Array.from(contentArea.querySelectorAll('.folder-item.selected, .folder-grid-item.selected'));
             if(selectedItems.length === 0) return;
 
             const getPos = (e) => {
@@ -3697,7 +4824,7 @@
         function clearFolderSelection(windowId) {
             const contentArea = document.getElementById('folder-content-' + windowId);
             if(contentArea) {
-                contentArea.querySelectorAll('.folder-item.selected').forEach(item => {
+                contentArea.querySelectorAll('.folder-item.selected, .folder-grid-item.selected').forEach(item => {
                     item.classList.remove('selected');
                 });
             }
@@ -3725,11 +4852,11 @@
                     <span>更换壁纸</span>
                 </div>
                 <div class="context-divider"></div>
-                <div class="context-item" onclick="document.getElementById('global-upload-file').click(); closeCtx()">
+                <div class="context-item" onclick="SYSTEM.uploadTargetPath=SYSTEM.desktopPath;SYSTEM.uploadTargetWindowId=null;document.getElementById('global-upload-file').click();closeCtx()">
                     <svg class="icon-svg" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
                     <span>上传文件</span>
                 </div>
-                <div class="context-item" onclick="document.getElementById('global-upload-folder').click(); closeCtx()">
+                <div class="context-item" onclick="SYSTEM.uploadTargetPath=SYSTEM.desktopPath;SYSTEM.uploadTargetWindowId=null;document.getElementById('global-upload-folder').click();closeCtx()">
                     <svg class="icon-svg" viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2v11z"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/></svg>
                     <span>上传文件夹</span>
                 </div>
@@ -4222,339 +5349,516 @@
                 Notify.error('错误', '文件夹未挂载');
                 return;
             }
-            
-            const dirHandle = folderInfo.handle;
-            const items = [];
-            
-            for await (const [name, handle] of dirHandle.entries()) {
-                items.push({ name, handle, kind: handle.kind });
-            }
-            
-            items.sort((a, b) => {
-                if (a.kind !== b.kind) return a.kind === 'directory' ? -1 : 1;
-                return a.name.localeCompare(b.name);
-            });
-            
-            openLocalFolderWindow(folderInfo, items);
+            openLocalFolderWindow(folderInfo);
         }
 
-        function openLocalFolderWindow(folderInfo, items) {
+        function openLocalFolderWindow(folderInfo) {
             const windowId = 'local-folder-' + Date.now();
-            
+
+            // 存储窗口状态
+            SYSTEM.folderWindowStates = SYSTEM.folderWindowStates || {};
+            SYSTEM.folderWindowStates[windowId] = {
+                windowId: windowId,
+                folderName: folderInfo.name,
+                currentPath: folderInfo.name,
+                parentPath: null,
+                viewMode: 'list',
+                sortBy: 'name',
+                sortAsc: true,
+                searchQuery: '',
+                isLocal: true,
+                folderInfoId: folderInfo.id,
+                localHandle: folderInfo.handle,
+                parentLocalHandle: null,
+                pathHistory: [folderInfo.name],
+                pathHistoryIndex: 0
+            };
+
             createWindow({
                 title: folderInfo.name,
                 iconHtml: '<svg class="icon-svg sm" viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2v11z"/></svg>',
-                width: 500, height: 400,
-                content: renderLocalFolderContent(folderInfo, items, windowId),
-                onInit: (w, id) => {
-                    const cleanup = initLocalFolderSelection(windowId, folderInfo);
-                    // 存储清理函数到窗口对象
-                    w.cleanup = cleanup;
-                }
-            });
-        }
-
-        function renderLocalFolderContent(folderInfo, items, windowId) {
-            let itemsHtml = '';
-            
-            items.forEach(item => {
-                let iconSvg;
-                if (item.kind === 'directory') {
-                    iconSvg = '<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2v11z"/>';
-                } else if (item.name.match(/\.(jpg|png|gif|webp)$/i)) {
-                    iconSvg = '<rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>';
-                } else if (item.name.match(/\.(mp3|wav|flac|m4a|ogg|aac)$/i)) {
-                    iconSvg = '<path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>';
-                } else if (item.name.match(/\.csv$/i)) {
-                    iconSvg = '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z M9 2v20 M4 9h16 M4 15h16" />';
-                } else if (isArchiveFile(item.name)) {
-                    iconSvg = '<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2v11z"/><path d="M12 10v4"/><path d="M12 14l2-2"/>';
-                } else {
-                    iconSvg = '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>';
-                }
-                
-                itemsHtml += `
-                    <div class="folder-item" data-name="${item.name}" data-kind="${item.kind}" data-folder-id="${folderInfo.id}"
-                         ondblclick="openLocalFolderItem('${folderInfo.id}', '${item.name}')"
-                         onmousedown="handleLocalFolderItemMouseDown(event, '${windowId}')"
-                         ontouchstart="handleLocalFolderItemTouchStart(event, '${windowId}')"
-                         oncontextmenu="handleLocalFolderItemContextMenu(event, '${windowId}', '${item.name}', '${folderInfo.id}')">
-                        <svg class="icon-svg" viewBox="0 0 24 24">${iconSvg}</svg>
-                        <span>${item.name}</span>
+                width: 580, height: 440,
+                content: `
+                    <div class="content-area dark" id="folder-content-${windowId}" style="padding:0;overflow:hidden;position:relative;height:100%;display:flex;flex-direction:column">
+                        ${buildFolderToolbar(windowId)}
+                        <div style="display:flex;flex:1;overflow-y:hidden;overflow-x:auto;position:relative">
+                            <!-- 侧边栏 -->
+                            <div class="folder-sidebar" id="folder-sidebar-${windowId}">
+                                <div class="folder-sidebar-section">
+                                    <div class="folder-sidebar-title">快速访问</div>
+                                    <div class="folder-sidebar-item" id="sidebar-desktop-${windowId}" onclick="sidebarNavigateToDesktop('${windowId}')">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+                                        <span>桌面</span>
+                                    </div>
+                                </div>
+                                <div class="folder-sidebar-section">
+                                    <div class="folder-sidebar-title">挂载文件夹</div>
+                                    <div id="sidebar-folder-list-${windowId}"></div>
+                                </div>
+                            </div>
+                            <!-- 右侧内容区 -->
+                            <div style="flex:1;display:flex;flex-direction:column;overflow-y:hidden;overflow-x:auto;position:relative">
+                                <div class="folder-breadcrumb" id="folder-breadcrumb-${windowId}"></div>
+                                <div class="folder-col-header" id="folder-col-header-${windowId}">
+                                    <div class="col-sort col-name-sort active" data-sort="name" onclick="folderSortBy('${windowId}','name')">
+                                        <span>名称</span>
+                                        <span class="sort-arrow">▲</span>
+                                    </div>
+                                    <div class="col-sort col-date-sort" data-sort="date" onclick="folderSortBy('${windowId}','date')">
+                                        <span>修改日期</span>
+                                        <span class="sort-arrow"></span>
+                                    </div>
+                                    <div class="col-sort col-type-sort" data-sort="type" onclick="folderSortBy('${windowId}','type')">
+                                        <span>类型</span>
+                                        <span class="sort-arrow"></span>
+                                    </div>
+                                    <div class="col-sort col-size-sort" data-sort="size" onclick="folderSortBy('${windowId}','size')">
+                                        <span>大小</span>
+                                        <span class="sort-arrow"></span>
+                                    </div>
+                                </div>
+                                <div id="folder-filelist-${windowId}" style="flex:1;overflow-y:auto;position:relative;padding:0 0 60px 0">
+                                    <div class="folder-selection-box" id="folder-selection-${windowId}"></div>
+                                    <div style="padding:40px;text-align:center;color:#888;font-size:13px">加载中...</div>
+                                </div>
+                                <div class="folder-statusbar" id="folder-statusbar-${windowId}">
+                                    <div class="status-left">
+                                        <span id="folder-status-count-${windowId}">0 个项目</span>
+                                    </div>
+                                    <div class="status-right">
+                                        <span id="folder-status-size-${windowId}"></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                `;
+                `,
+                onInit: (w, id) => {
+                    const cleanup = initFolderSelection(windowId);
+                    w.cleanup = cleanup;
+                    initFolderDropHighlight(windowId);
+                    updateLocalFolderBreadcrumb(windowId);
+                    renderLocalFolderItems(windowId);
+                    updateSidebarFolderList(windowId);
+                }
             });
-            
-            if (items.length === 0) {
-                itemsHtml = '<div style="padding:40px;text-align:center;color:#888">文件夹为空</div>';
-            }
-            
-            return `
-                <div class="content-area dark" id="folder-content-${windowId}" style="padding:8px;overflow-y:auto;position:relative;height:100%">
-                    <div class="folder-selection-box" id="folder-selection-${windowId}"></div>
-                    ${itemsHtml}
-                </div>
-            `;
         }
 
-        function getFileIconSvg(filename) {
-            if (filename.match(/\.(jpg|png|gif|webp|jpeg)$/i)) {
-                return '<rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>';
-            } else if (filename.match(/\.(txt|md)$/i)) {
-                return '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>';
-            } else if (filename.match(/\.(zip|7z|rar|tar|gz)$/i)) {
-                return '<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2v11z"/><path d="M12 10v4"/><path d="M12 14l2-2"/>';
-            } else if (filename.match(/\.(html?|htm)$/i)) {
-                return '<circle cx="12" cy="12" r="10"/><path d="M2 12h20"/>';
-            } else if (filename.match(/\.(mp4|avi|mov|mkv)$/i)) {
-                return '<rect x="2" y="2" width="20" height="20" rx="2"/><polygon points="10 8 16 12 10 16 10 8"/>';
-            } else if (filename.match(/\.(mp3|wav|flac|m4a)$/i)) {
-                return '<path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>';
-            } else if (filename.match(/\.csv$/i)) {
-                return '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z M9 2v20 M4 9h16 M4 15h16" />';
-            } else if (filename.match(/\.(js|ts|py|java|c|cpp|css)$/i)) {
-                return '<polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>';
-            } else if (filename.match(/\.pdf$/i)) {
-                return '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>';
-            }
-            return '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>';
+        // 获取文件扩展名
+        function getFileExtension(filename) {
+            const idx = filename.lastIndexOf('.');
+            if (idx <= 0) return '文件';
+            const ext = filename.substring(idx + 1).toUpperCase();
+            return ext + ' 文件';
         }
 
-        // === 本地文件夹框选逻辑 ===
-        function initLocalFolderSelection(windowId, folderInfo) {
-            const contentArea = document.getElementById('folder-content-' + windowId);
-            const selectionBox = document.getElementById('folder-selection-' + windowId);
-            let isSelecting = false, startX, startY;
-            let lastClientX = 0, lastClientY = 0;
-            let scrollInterval = null;
+        // 渲染本地文件夹内容
+        async function renderLocalFolderItems(windowId) {
+            const state = SYSTEM.folderWindowStates[windowId];
+            if (!state || !state.isLocal) return;
 
-            const getPos = (e) => {
-                if (e.touches && e.touches.length > 0) return { x: e.touches[0].clientX, y: e.touches[0].clientY };
-                if (e.changedTouches && e.changedTouches.length > 0) return { x: e.changedTouches[0].clientX, y: e.changedTouches[0].clientY };
-                return { x: e.clientX, y: e.clientY };
-            };
+            const filelistEl = document.getElementById('folder-filelist-' + windowId);
+            const colHeaderEl = document.getElementById('folder-col-header-' + windowId);
+            const statusCountEl = document.getElementById('folder-status-count-' + windowId);
+            const statusSizeEl = document.getElementById('folder-status-size-' + windowId);
+            if (!filelistEl) return;
 
-            const updateSelectionBox = () => {
-                const rect = contentArea.getBoundingClientRect();
-                const curX = lastClientX - rect.left + contentArea.scrollLeft;
-                const curY = lastClientY - rect.top + contentArea.scrollTop;
+            try {
+                const dirHandle = state.localHandle;
+                const items = [];
+                for await (const [name, handle] of dirHandle.entries()) {
+                    items.push({ name, handle, kind: handle.kind });
+                }
 
-                const left = Math.min(startX, curX);
-                const top = Math.min(startY, curY);
-                const width = Math.abs(startX - curX);
-                const height = Math.abs(startY - curY);
+                // 过滤搜索
+                let filtered = items;
+                if (state.searchQuery) {
+                    const q = state.searchQuery.toLowerCase();
+                    filtered = items.filter(item => item.name.toLowerCase().includes(q));
+                }
 
-                selectionBox.style.left = left + 'px';
-                selectionBox.style.top = top + 'px';
-                selectionBox.style.width = width + 'px';
-                selectionBox.style.height = height + 'px';
-
-                const items = contentArea.querySelectorAll('.folder-item');
-                items.forEach(item => {
-                    const itemLeft = item.offsetLeft;
-                    const itemTop = item.offsetTop;
-                    const itemRight = itemLeft + item.offsetWidth;
-                    const itemBottom = itemTop + item.offsetHeight;
-
-                    const intersect = !(itemRight < left || itemLeft > left + width ||
-                                       itemBottom < top || itemTop > top + height);
-
-                    if(intersect) {
-                        item.classList.add('selected');
-                    } else {
-                        item.classList.remove('selected');
+                // 排序
+                filtered.sort((a, b) => {
+                    if (a.kind !== b.kind) return a.kind === 'directory' ? -1 : 1;
+                    let cmp = 0;
+                    if (state.sortBy === 'name') {
+                        cmp = a.name.localeCompare(b.name, 'zh-CN');
+                    } else if (state.sortBy === 'type') {
+                        cmp = getFileExtension(a.name).localeCompare(getFileExtension(b.name), 'zh-CN');
+                    } else if (state.sortBy === 'size') {
+                        cmp = 0; // 本地文件不显示大小，按名称排序
+                    } else if (state.sortBy === 'date') {
+                        cmp = 0; // 本地文件不显示日期，按名称排序
                     }
+                    return state.sortAsc ? cmp : -cmp;
                 });
-            };
 
-            const startAutoScroll = (speed) => {
-                stopAutoScroll();
-                scrollInterval = setInterval(() => {
-                    contentArea.scrollTop += speed;
-                    updateSelectionBox();
-                }, 16);
-            };
-
-            const stopAutoScroll = () => {
-                if (scrollInterval) {
-                    clearInterval(scrollInterval);
-                    scrollInterval = null;
-                }
-            };
-
-            const handleStart = (e) => {
-                if(e.button === 2) return;
-                if(isSelecting) return;
-                if(e.target.closest('.folder-item')) return;
-
-                e.preventDefault();
-                e.stopPropagation();
-                clearLocalFolderSelection(windowId);
-                isSelecting = true;
-                contentArea.dataset.isSelecting = 'true';
-
-                const pos = getPos(e);
-                const rect = contentArea.getBoundingClientRect();
-                lastClientX = pos.x;
-                lastClientY = pos.y;
-                startX = pos.x - rect.left + contentArea.scrollLeft;
-                startY = pos.y - rect.top + contentArea.scrollTop;
-
-                selectionBox.style.display = 'block';
-                selectionBox.style.width = '0';
-                selectionBox.style.height = '0';
-                selectionBox.style.left = startX + 'px';
-                selectionBox.style.top = startY + 'px';
-            };
-
-            const handleMove = (e) => {
-                if(!isSelecting) return;
-                if(e.type === 'touchmove') e.preventDefault();
-
-                const pos = getPos(e);
-                lastClientX = pos.x;
-                lastClientY = pos.y;
-
-                const rect = contentArea.getBoundingClientRect();
-                const scrollZone = 40;
-                const scrollSpeed = 12;
-
-                stopAutoScroll();
-
-                if (pos.y < rect.top + scrollZone && pos.y > rect.top - 60) {
-                    const ratio = Math.min(1, (rect.top + scrollZone - pos.y) / scrollZone);
-                    startAutoScroll(-ratio * scrollSpeed);
-                } else if (pos.y > rect.bottom - scrollZone && pos.y < rect.bottom + 60) {
-                    const ratio = Math.min(1, (pos.y - (rect.bottom - scrollZone)) / scrollZone);
-                    startAutoScroll(ratio * scrollSpeed);
+                // 更新列标题排序指示器
+                if (colHeaderEl) {
+                    colHeaderEl.querySelectorAll('.col-sort').forEach(el => {
+                        const sort = el.dataset.sort;
+                        const arrow = el.querySelector('.sort-arrow');
+                        if (sort === state.sortBy) {
+                            el.classList.add('active');
+                            arrow.textContent = state.sortAsc ? '▲' : '▼';
+                        } else {
+                            el.classList.remove('active');
+                            arrow.textContent = '';
+                        }
+                    });
                 }
 
-                updateSelectionBox();
-            };
+                // 显示/隐藏列标题
+                if (colHeaderEl) {
+                    colHeaderEl.style.display = state.viewMode === 'list' ? 'flex' : 'none';
+                }
 
-            const handleEnd = () => {
-                isSelecting = false;
-                contentArea.dataset.isSelecting = 'false';
-                selectionBox.style.display = 'none';
-                stopAutoScroll();
-            };
+                // 生成内容
+                const selectionBox = filelistEl.querySelector('.folder-selection-box');
+                filelistEl.innerHTML = '';
+                if (selectionBox) filelistEl.appendChild(selectionBox);
 
-            contentArea.onmousedown = handleStart;
-            contentArea.ontouchstart = handleStart;
+                if (filtered.length === 0) {
+                    const emptyMsg = state.searchQuery ? '没有匹配的文件' : '文件夹为空';
+                    filelistEl.insertAdjacentHTML('beforeend', `<div style="padding:40px;text-align:center;color:#888;font-size:13px">${emptyMsg}</div>`);
+                } else if (state.viewMode === 'list') {
+                    filtered.forEach(item => {
+                        const isDir = item.kind === 'directory';
+                        const iconPath = getFileIconPath(item.name, isDir);
+                        const safeName = escapeAttr(item.name);
+                        const typeStr = isDir ? '文件夹' : getFileExtension(item.name);
 
-            document.addEventListener('mousemove', handleMove);
-            document.addEventListener('touchmove', handleMove, { passive: false });
+                        const itemHtml = `
+                            <div class="folder-item" data-filename="${safeName}" data-kind="${item.kind}" data-folder-id="${state.folderInfoId}"
+                                 ondblclick="handleLocalItemDblClick('${windowId}', '${safeName}', ${isDir})"
+                                 onmousedown="handleFolderItemMouseDown(event, '${windowId}')"
+                                 ontouchstart="handleFolderItemTouchStart(event, '${windowId}')"
+                                 oncontextmenu="handleLocalItemContextMenu(event, '${windowId}', '${safeName}')">
+                                <svg class="icon-svg" viewBox="0 0 24 24">${iconPath}</svg>
+                                <span class="file-name">${highlightText(item.name, state.searchQuery)}</span>
+                                <span class="file-date"></span>
+                                <span class="file-type">${typeStr}</span>
+                                <span class="file-size"></span>
+                            </div>
+                        `;
+                        filelistEl.insertAdjacentHTML('beforeend', itemHtml);
+                    });
+                } else {
+                    // 网格视图
+                    const gridContainer = document.createElement('div');
+                    gridContainer.className = 'folder-grid-view';
+                    filtered.forEach(item => {
+                        const isDir = item.kind === 'directory';
+                        const iconPath = getFileIconPath(item.name, isDir);
+                        const safeName = escapeAttr(item.name);
 
-            document.addEventListener('mouseup', handleEnd);
-            document.addEventListener('touchend', handleEnd);
+                        const itemHtml = `
+                            <div class="folder-grid-item" data-filename="${safeName}" data-kind="${item.kind}" data-folder-id="${state.folderInfoId}"
+                                 ondblclick="handleLocalItemDblClick('${windowId}', '${safeName}', ${isDir})"
+                                 onmousedown="handleFolderItemMouseDown(event, '${windowId}')"
+                                 ontouchstart="handleFolderItemTouchStart(event, '${windowId}')"
+                                 oncontextmenu="handleLocalItemContextMenu(event, '${windowId}', '${safeName}')">
+                                <svg class="icon-svg" viewBox="0 0 24 24">${iconPath}</svg>
+                                <span class="file-name">${highlightText(item.name, state.searchQuery)}</span>
+                            </div>
+                        `;
+                        gridContainer.insertAdjacentHTML('beforeend', itemHtml);
+                    });
+                    filelistEl.appendChild(gridContainer);
+                }
 
-            // 返回清理函数，用于移除事件监听器
-            return function cleanup() {
-                document.removeEventListener('mousemove', handleMove);
-                document.removeEventListener('touchmove', handleMove);
-                document.removeEventListener('mouseup', handleEnd);
-                document.removeEventListener('touchend', handleEnd);
-                stopAutoScroll();
-            };
-        }
+                // 更新状态栏
+                const dirCount = filtered.filter(i => i.kind === 'directory').length;
+                const fileCount = filtered.length - dirCount;
+                let statusText = '';
+                if (dirCount > 0 && fileCount > 0) {
+                    statusText = `${fileCount} 个文件, ${dirCount} 个文件夹`;
+                } else if (dirCount > 0) {
+                    statusText = `${dirCount} 个文件夹`;
+                } else {
+                    statusText = `${fileCount} 个文件`;
+                }
+                if (state.searchQuery) {
+                    statusText += ` (搜索: "${state.searchQuery}")`;
+                }
+                if (statusCountEl) statusCountEl.textContent = statusText;
+                if (statusSizeEl) statusSizeEl.textContent = '';
 
-        function clearLocalFolderSelection(windowId) {
-            const contentArea = document.getElementById('folder-content-' + windowId);
-            if(contentArea) {
-                contentArea.querySelectorAll('.folder-item.selected').forEach(item => {
-                    item.classList.remove('selected');
-                });
+                // 更新侧边栏文件夹列表
+                updateSidebarFolderList(windowId);
+            } catch(e) {
+                console.error('读取本地文件夹失败:', e);
+                filelistEl.innerHTML = '<div style="padding:40px;text-align:center;color:#e81123;font-size:13px">无法读取文件夹</div>';
             }
         }
 
-        function handleLocalFolderItemMouseDown(e, windowId) {
-            if(e.button !== 0) return;
+        // 更新本地文件夹面包屑导航
+        function updateLocalFolderBreadcrumb(windowId) {
+            const state = SYSTEM.folderWindowStates[windowId];
+            const bcEl = document.getElementById('folder-breadcrumb-' + windowId);
+            if (!state || !bcEl || !state.isLocal) return;
 
-            const contentArea = document.getElementById('folder-content-' + windowId);
-            if(!contentArea) return;
-
-            if(contentArea.dataset.isSelecting === 'true') return;
-
-            const item = e.currentTarget;
-
-            if(e.ctrlKey) {
-                item.classList.toggle('selected');
-            } else if(!item.classList.contains('selected')) {
-                clearLocalFolderSelection(windowId);
-                item.classList.add('selected');
-            }
-
-            setupLocalFolderItemDrag(e, windowId);
+            const parts = state.pathHistory.slice(0, state.pathHistoryIndex + 1);
+            let html = '';
+            parts.forEach((part, i) => {
+                if (i > 0) html += '<span class="bc-sep">›</span>';
+                const isCurrent = i === parts.length - 1;
+                html += `<span class="bc-item ${isCurrent ? 'current' : ''}" onclick="localFolderNavigateTo('${windowId}', ${i})">${part}</span>`;
+            });
+            bcEl.innerHTML = html;
         }
 
-        function handleLocalFolderItemTouchStart(e, windowId) {
-            const contentArea = document.getElementById('folder-content-' + windowId);
-            if(!contentArea) return;
+        // 本地文件夹面包屑导航跳转
+        async function localFolderNavigateTo(windowId, targetIndex) {
+            const state = SYSTEM.folderWindowStates[windowId];
+            if (!state || !state.isLocal) return;
+            if (targetIndex === state.pathHistoryIndex) return;
+            if (targetIndex >= state.pathHistory.length) return;
 
-            if(contentArea.dataset.isSelecting === 'true') return;
+            // 需要从根开始重新导航到目标路径
+            const folderInfo = SYSTEM.localFolders[state.folderInfoId];
+            if (!folderInfo) return;
 
-            const item = e.currentTarget;
-
-            if(!item.classList.contains('selected')) {
-                clearLocalFolderSelection(windowId);
-                item.classList.add('selected');
+            let currentHandle = folderInfo.handle;
+            // 从 index 1 开始（index 0 是根目录）
+            for (let i = 1; i <= targetIndex; i++) {
+                const dirName = state.pathHistory[i];
+                currentHandle = await currentHandle.getDirectoryHandle(dirName);
             }
 
-            e.stopPropagation();
-            // 不调用 preventDefault()，允许浏览器处理触摸滚动
-            setupLocalFolderItemDrag(e, windowId, item);
+            state.localHandle = currentHandle;
+            state.pathHistoryIndex = targetIndex;
+            state.currentPath = state.pathHistory[targetIndex];
+            state.folderName = state.pathHistory[targetIndex];
+            state.parentLocalHandle = targetIndex > 0 ? await getParentHandle(state, targetIndex) : null;
+            state.searchQuery = '';
+
+            // 更新窗口标题
+            const win = document.getElementById('folder-content-' + windowId)?.closest('.window');
+            if (win) {
+                const titleEl = win.querySelector('.window-title-text');
+                if (titleEl) titleEl.textContent = state.pathHistory[targetIndex];
+            }
+            const searchInput = document.getElementById('folder-search-' + windowId);
+            if (searchInput) searchInput.value = '';
+
+            updateLocalFolderBreadcrumb(windowId);
+            renderLocalFolderItems(windowId);
         }
 
-        function handleLocalFolderItemContextMenu(e, windowId, filename, folderId) {
+        // 获取父目录 handle（辅助函数）
+        async function getParentHandle(state, currentIndex) {
+            if (currentIndex <= 0) return null;
+            const folderInfo = SYSTEM.localFolders[state.folderInfoId];
+            if (!folderInfo) return null;
+            let handle = folderInfo.handle;
+            for (let i = 1; i < currentIndex; i++) {
+                handle = await handle.getDirectoryHandle(state.pathHistory[i]);
+            }
+            return handle;
+        }
+
+        // 本地文件夹项双击处理
+        async function handleLocalItemDblClick(windowId, filename, isDir) {
+            const state = SYSTEM.folderWindowStates[windowId];
+            if (!state || !state.isLocal) return;
+
+            if (isDir) {
+                // 在当前窗口内导航到子目录
+                try {
+                    const subHandle = await state.localHandle.getDirectoryHandle(filename);
+                    state.parentLocalHandle = state.localHandle;
+                    state.localHandle = subHandle;
+                    state.currentPath = state.currentPath + '/' + filename;
+                    state.folderName = filename;
+                    state.searchQuery = '';
+                    // 更新路径历史
+                    state.pathHistory = state.pathHistory.slice(0, state.pathHistoryIndex + 1);
+                    state.pathHistory.push(filename);
+                    state.pathHistoryIndex = state.pathHistory.length - 1;
+
+                    // 更新窗口标题
+                    const win = document.getElementById('folder-content-' + windowId)?.closest('.window');
+                    if (win) {
+                        const titleEl = win.querySelector('.window-title-text');
+                        if (titleEl) titleEl.textContent = filename;
+                    }
+                    const searchInput = document.getElementById('folder-search-' + windowId);
+                    if (searchInput) searchInput.value = '';
+
+                    updateLocalFolderBreadcrumb(windowId);
+                    renderLocalFolderItems(windowId);
+                } catch (e) {
+                    Notify.error('打开失败', '无法打开子文件夹: ' + e.message);
+                }
+            } else {
+                // 打开文件 - 使用原有逻辑
+                openLocalFileFromHandle(state.localHandle, filename, state.folderInfoId);
+            }
+        }
+
+        // 从本地 handle 打开文件（保留原有文件打开逻辑）
+        async function openLocalFileFromHandle(dirHandle, itemName, folderInfoId) {
+            const folderInfo = SYSTEM.localFolders[folderInfoId];
+            if (!folderInfo) return;
+
+            try {
+                const fileHandle = await dirHandle.getFileHandle(itemName);
+                const file = await fileHandle.getFile();
+                const content = await file.arrayBuffer();
+
+                if (itemName.match(/\.(jpg|png|gif|webp|jpeg)$/i)) {
+                    openLocalImageViewer(dirHandle, itemName);
+                } else if (itemName.match(/\.html?$/i)) {
+                    const text = await file.text();
+                    const blob = new Blob([text], { type: 'text/html' });
+                    const url = URL.createObjectURL(blob);
+                    openBrowser(url);
+                    Notify.success('正在打开', '已在浏览器中加载 HTML 文件');
+                } else if (itemName.match(/\.(txt|md|js|css|json|py|c|cpp|java)$/i)) {
+                    const text = await file.text();
+                    openNotepad(text, itemName);
+                } else if (itemName.match(/\.(mp4|webm)$/i)) {
+                    const blob = new Blob([content], { type: file.type });
+                    const url = URL.createObjectURL(blob);
+                    createWindow({
+                        title: itemName,
+                        iconHtml: '<svg class="icon-svg sm" viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"/><line x1="7" y1="2" x2="7" y2="22"/><line x1="17" y1="2" x2="17" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="2" y1="7" x2="7" y2="7"/><line x1="2" y1="17" x2="7" y2="17"/><line x1="17" y1="17" x2="22" y2="17"/><line x1="17" y1="7" x2="22" y2="7"/></svg>',
+                        width: 800,
+                        height: 600,
+                        content: `<div class="content-area dark" style="display:flex;align-items:center;justify-content:center;background:#000"><video src="${url}" controls autoplay style="max-width:100%;max-height:100%"></video></div>`
+                    });
+                } else if (itemName.match(/\.(mp3|wav|flac|m4a)$/i)) {
+                    const blob = new Blob([content], { type: file.type });
+                    const url = URL.createObjectURL(blob);
+                    createWindow({
+                        title: itemName,
+                        iconHtml: '<svg class="icon-svg sm" viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>',
+                        width: 500,
+                        height: 200,
+                        content: `<div class="content-area dark" style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px"><div style="margin-bottom:20px;color:#8b949e;font-size:14px">${itemName}</div><audio src="${url}" controls autoplay style="width:100%"></audio></div>`
+                    });
+                } else if (itemName.match(/\.csv$/i)) {
+                    const text = await file.text();
+                    openCSVViewer(text, itemName);
+                } else if (itemName.match(/\.pdf$/i)) {
+                    const base64 = btoa(new Uint8Array(content).reduce((s, b) => s + String.fromCharCode(b), ''));
+                    const dataUrl = `data:application/pdf;base64,${base64}`;
+                    createWindow({
+                        title: itemName,
+                        iconHtml: '<svg class="icon-svg sm" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/><text x="8" y="18" font-size="4" fill="currentColor">PDF</text></svg>',
+                        width: 800, height: 600,
+                        content: `<div class="content-area dark" style="overflow:hidden"><iframe src="${dataUrl}" style="width:100%;height:100%;border:none"></iframe></div>`
+                    });
+                } else if (isArchiveFile(itemName)) {
+                    extractLocalArchive(folderInfo, itemName, content);
+                } else {
+                    try {
+                        const text = await file.text();
+                        openNotepad(text, itemName);
+                        Notify.info('文本模式', '已使用记事本打开该文件');
+                    } catch (e) {
+                        Notify.warning('不支持的格式', '暂时无法打开此类型文件');
+                    }
+                }
+            } catch (e) {
+                Notify.error('打开失败', e.message);
+            }
+        }
+
+        // 本地文件夹项右键菜单（增强版 UI）
+        function handleLocalItemContextMenu(e, windowId, filename) {
             e.preventDefault();
             e.stopPropagation();
-            
-            const contentArea = document.getElementById('folder-content-' + windowId);
-            if(!contentArea) return;
-            
+
+            const state = SYSTEM.folderWindowStates[windowId];
+            if (!state || !state.isLocal) return;
+
+            const filelistEl = document.getElementById('folder-filelist-' + windowId);
+            if (!filelistEl) return;
+
             const item = e.currentTarget;
-            if(!item.classList.contains('selected')) {
-                clearLocalFolderSelection(windowId);
+            if (!item.classList.contains('selected')) {
+                clearFolderSelection(windowId);
                 item.classList.add('selected');
             }
-            
-            const selectedItems = Array.from(contentArea.querySelectorAll('.folder-item.selected'));
+
+            const selectedItems = Array.from(filelistEl.querySelectorAll('.folder-item.selected, .folder-grid-item.selected'));
             const count = selectedItems.length;
-            
+            const folderId = state.folderInfoId;
+            const safeFilename = escapeAttr(filename);
+
             const cm = document.getElementById('context-menu');
             let html = '';
-            
-            if(count > 1) {
+
+            if (count > 1) {
                 html = `
-                    <div class="context-item" onclick="exportLocalFolderItems('${windowId}', '${folderId}'); closeCtx()">
+                    <div class="context-item" onclick="exportLocalFolderItemsFromWindow('${windowId}'); closeCtx()">
                         <svg class="icon-svg" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
                         <span>导出选中 (${count})</span>
                     </div>
                 `;
             } else {
+                const kind = item.dataset.kind;
+                const isDir = kind === 'directory';
                 html = `
-                    <div class="context-item" onclick="openLocalFolderItem('${folderId}', '${filename}'); closeCtx()">
+                    <div class="context-item" onclick="handleLocalItemDblClick('${windowId}', '${safeFilename}', ${isDir}); closeCtx()">
                         <svg class="icon-svg" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
                         <span>打开</span>
                     </div>
                     <div class="context-divider"></div>
-                    <div class="context-item" onclick="exportLocalFolderItem('${folderId}', '${filename}'); closeCtx()">
+                    <div class="context-item" onclick="exportLocalFolderItemFromWindow('${windowId}', '${safeFilename}'); closeCtx()">
                         <svg class="icon-svg" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
                         <span>导出到桌面</span>
                     </div>
                 `;
             }
-            
+
             cm.innerHTML = html;
             showCtx(e.clientX, e.clientY);
         }
 
+        // 从窗口导出本地文件夹单个文件
+        async function exportLocalFolderItemFromWindow(windowId, filename) {
+            const state = SYSTEM.folderWindowStates[windowId];
+            if (!state || !state.isLocal) return;
+            await exportLocalFolderItem(state.folderInfoId, filename);
+        }
+
+        // 从窗口导出本地文件夹多个选中文件
+        async function exportLocalFolderItemsFromWindow(windowId) {
+            const filelistEl = document.getElementById('folder-filelist-' + windowId);
+            if (!filelistEl) return;
+            const selectedItems = Array.from(filelistEl.querySelectorAll('.folder-item.selected, .folder-grid-item.selected'));
+            await exportLocalFolderItemsToDesktop(selectedItems);
+        }
+
+        function getFileIconSvg(filename) {
+            // 与桌面图标和 getFileIconPath 完全一致
+            if (filename.match(/\.(jpg|png|gif|webp|jpeg|bmp|svg)$/i)) {
+                return '<rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>';
+            } else if (filename.match(/\.txt$/i)) {
+                return '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>';
+            } else if (filename.match(/\.csv$/i)) {
+                return '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z M9 2v20 M4 9h16 M4 15h16"/>';
+            } else if (filename.match(/\.(zip|7z|rar|tar|gz|bz2|xz|cab|tgz)$/i)) {
+                return '<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2v11z"/><path d="M12 10v4"/><path d="M12 14l2-2"/>';
+            } else if (filename.match(/\.html?$/i)) {
+                return '<circle cx="12" cy="12" r="10"/><path d="M2 12h20"/>';
+            } else if (filename.match(/\.(mp4|avi|mov|mkv|webm|flv|wmv)$/i)) {
+                return '<rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"/><line x1="7" y1="2" x2="7" y2="22"/><line x1="17" y1="2" x2="17" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="2" y1="7" x2="7" y2="7"/><line x1="2" y1="17" x2="7" y2="17"/><line x1="17" y1="17" x2="22" y2="17"/><line x1="17" y1="7" x2="22" y2="7"/>';
+            } else if (filename.match(/\.(mp3|wav|flac|m4a|ogg|aac)$/i)) {
+                return '<path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>';
+            }
+            return '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>';
+        }
+
         // === 本地文件夹拖拽逻辑 ===
         function setupLocalFolderItemDrag(e, windowId, touchItem) {
-            const contentArea = document.getElementById('folder-content-' + windowId);
-            if(!contentArea) return;
+            const filelistArea = document.getElementById('folder-filelist-' + windowId) || document.getElementById('folder-content-' + windowId);
+            if(!filelistArea) return;
 
-            const selectedItems = Array.from(contentArea.querySelectorAll('.folder-item.selected'));
+            const selectedItems = Array.from(filelistArea.querySelectorAll('.folder-item.selected, .folder-grid-item.selected'));
             if(selectedItems.length === 0) return;
 
             const getPos = (e) => {
@@ -4576,16 +5880,15 @@
             if (e.type === 'touchstart' && touchItem) {
                 longPressTimer = setTimeout(() => {
                     longPressTriggered = true;
-                    const itemName = touchItem.dataset.name;
-                    const folderId = touchItem.dataset.folderId;
-                    if (itemName && folderId) {
-                        handleLocalFolderItemContextMenu({
+                    const itemName = touchItem.dataset.filename || touchItem.dataset.name;
+                    if (itemName) {
+                        handleLocalItemContextMenu({
                             preventDefault: () => {},
                             stopPropagation: () => {},
                             clientX: startX,
                             clientY: startY,
                             currentTarget: touchItem
-                        }, windowId, itemName, folderId);
+                        }, windowId, itemName);
                     }
                 }, 500);
             }
@@ -4614,7 +5917,7 @@
                         document.body.style.cursor = 'move';
 
                         const filesData = selectedItems.map(item => ({
-                            name: item.dataset.name,
+                            name: item.dataset.filename || item.dataset.name,
                             kind: item.dataset.kind,
                             folderId: item.dataset.folderId
                         }));
@@ -4703,7 +6006,7 @@
             
             for (const item of selectedItems) {
                 const folderId = item.dataset.folderId;
-                const filename = item.dataset.name;
+                const filename = item.dataset.filename || item.dataset.name;
                 const kind = item.dataset.kind;
                 
                 const folderInfo = SYSTEM.localFolders[folderId];
@@ -4782,7 +6085,7 @@
             
             for (const item of selectedItems) {
                 const folderId = item.dataset.folderId;
-                const filename = item.dataset.name;
+                const filename = item.dataset.filename || item.dataset.name;
                 const kind = item.dataset.kind;
                 
                 const folderInfo = SYSTEM.localFolders[folderId];
@@ -4885,7 +6188,7 @@
                     parentId: folderId
                 };
                 
-                openLocalFolderWindow(SYSTEM.localFolders[subFolderId], items);
+                openLocalFolderWindow(SYSTEM.localFolders[subFolderId]);
             } catch {
                 try {
                     const fileHandle = await folderInfo.handle.getFileHandle(itemName);
@@ -5267,8 +6570,10 @@
         function downloadFolderItem(windowId, filename) {
             const contentArea = document.getElementById('folder-content-' + windowId);
             if(!contentArea) return;
-            const folderName = contentArea.closest('.window').querySelector('.window-title-text').innerText;
-            const filePath = SYSTEM.desktopPath + '/' + folderName + '/' + filename;
+            const state = SYSTEM.folderWindowStates?.[windowId];
+            const folderName = state ? state.folderName : contentArea.closest('.window').querySelector('.window-title-text').innerText;
+            const basePath = state ? state.currentPath : SYSTEM.desktopPath + '/' + folderName;
+            const filePath = basePath + '/' + filename;
             
             downloadFileInternal(filePath, filename);
         }
@@ -7189,7 +8494,7 @@
                         <div class="settings-content">
                             <div class="about-card">
                                 <div class="logo">JISHENG OS</div>
-                                <p>Ultimate Web Operating System<br>Version 10.4.5 • Build 2026</p>
+                                <p>Ultimate Web Operating System<br>Version 10.5.1 • Build 2026</p>
                             </div>
                             
                             <div class="settings-section" style="margin-top:20px">
@@ -7216,7 +8521,7 @@
                                 <h4>关于</h4>
                                 <div class="settings-item">
                                     <label>系统版本</label>
-                                    <span>10.4.5</span>
+                                    <span>10.5.1</span>
                                 </div>
                                 <div class="settings-item">
                                     <label>内核</label>
