@@ -104,8 +104,17 @@
             font-family: 'Inter', -apple-system, 'Segoe UI', sans-serif;
             overflow: hidden;
             user-select: none;
-            touch-action: none;
             -webkit-tap-highlight-color: transparent;
+        }
+
+        /* 只在必要的元素上设置touch-action */
+        .desktop, .title-bar, .paint-app, .paint-toolbar, .paint-canvas-container, .paint-canvas {
+            touch-action: none;
+        }
+
+        /* 确保可滚动元素不受影响 */
+        .content-area, .csv-container, .notepad-area, .editor-main-container, #manga-viewer-*, .panel-content {
+            touch-action: auto;
         }
 
 
@@ -2280,7 +2289,36 @@
                 showIconContextMenu(pos.x, pos.y);
             };
 
-            el.ondblclick = () => { eval(action); clearSelection(); };
+            // 安全的动作执行方式，避免eval注入风险
+            el.ondblclick = () => {
+                // 处理内置应用动作
+                if (action === 'openBrowser()') {
+                    openBrowser();
+                } else if (action === 'openNotepad()') {
+                    openNotepad();
+                } else if (action === 'openCalculator()') {
+                    openCalculator();
+                } else if (action === 'openPaint()') {
+                    openPaint();
+                } else if (action === 'openSettings()') {
+                    openSettings();
+                } else if (action === 'openV86()') {
+                    openV86();
+                } else if (action === 'openCodeEditor()') {
+                    openCodeEditor();
+                } 
+                // 处理文件夹动作
+                else if (action.startsWith('openFolderWindow(')) {
+                    const folderName = action.match(/openFolderWindow\('(.*)'\)/)[1];
+                    openFolderWindow(folderName);
+                } 
+                // 处理文件动作
+                else if (action.startsWith('openFile(')) {
+                    const filename = action.match(/openFile\('(.*)'\)/)[1];
+                    openFile(filename);
+                }
+                clearSelection();
+            };
             
             return el;
         }
@@ -2557,7 +2595,7 @@
                         return win.querySelector('.window-title-text')?.innerText === targetFolderName;
                     });
                     if (hasFolderWin) {
-                        openFolderWindow(targetFolderName);
+                        refreshFolderWindow(targetFolderName);
                     }
                     return;
                 }
@@ -2671,6 +2709,12 @@
                 isSelecting = false; 
                 box.style.display = 'none';
             };
+
+            // 先移除旧的事件监听器，防止重复注册
+            document.removeEventListener('mousemove', handleMove);
+            document.removeEventListener('touchmove', handleMove);
+            document.removeEventListener('mouseup', handleEnd);
+            document.removeEventListener('touchend', handleEnd);
 
             desktop.onmousedown = handleStart;
             desktop.ontouchstart = handleStart;
@@ -2909,16 +2953,8 @@
         }
 
         // 7. 替换 openFolderWindow (支持从文件夹拖出、框选、多选)
+        // 注意：此函数不再关闭同名窗口，允许正常多开同名文件夹
         function openFolderWindow(folderName) {
-            document.querySelectorAll('.window').forEach(win => {
-                const titleText = win.querySelector('.window-title-text')?.innerText;
-                if (titleText === folderName) {
-                    const winId = parseInt(win.id.replace('win-', ''));
-                    win.remove();
-                    SYSTEM.windows = SYSTEM.windows.filter(w => w.id !== winId);
-                }
-            });
-
             const path = SYSTEM.desktopPath + '/' + folderName;
             SYSTEM.fs.readdir(path, (err, files) => {
                 if(err) { Notify.error('错误', err.message); return; }
@@ -2955,8 +2991,52 @@
                         </div>
                     `,
                     onInit: (w, id) => {
-                        initFolderSelection(windowId);
+                        const cleanup = initFolderSelection(windowId);
+                        // 存储清理函数到窗口对象
+                        w.cleanup = cleanup;
                     }
+                });
+            });
+        }
+
+        // 刷新已存在的同名文件夹窗口内容（不关闭窗口，不创建新窗口）
+        // 用于拖拽文件进出文件夹后刷新显示
+        function refreshFolderWindow(folderName) {
+            const path = SYSTEM.desktopPath + '/' + folderName;
+            SYSTEM.fs.readdir(path, (err, files) => {
+                if (err) return;
+
+                document.querySelectorAll('.window').forEach(win => {
+                    const titleText = win.querySelector('.window-title-text')?.innerText;
+                    if (titleText !== folderName) return;
+
+                    const contentArea = win.querySelector('.content-area');
+                    if (!contentArea) return;
+
+                    let content = files.length === 0
+                        ? '<div style="padding:40px;text-align:center;color:#888">文件夹为空</div>'
+                        : files.map(file => {
+                            let icon = '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>';
+                            if(file.match(/\.(jpg|png|gif|webp)$/i)) icon = '<rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>';
+                            if(isArchiveFile(file)) icon = '<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2v11z"/><path d="M12 10v4"/><path d="M12 14l2-2"/>';
+
+                            return `
+                                <div class="folder-item" data-filename="${file}" data-path="${path}/${file}"
+                                     ondblclick="openFileFromPath('${path}/${file}', '${file}')"
+                                     onmousedown="handleFolderItemMouseDown(event, '${contentArea.id.replace('folder-content-', '')}')"
+                                     ontouchstart="handleFolderItemTouchStart(event, '${contentArea.id.replace('folder-content-', '')}')"
+                                     oncontextmenu="handleFolderItemContextMenu(event, '${contentArea.id.replace('folder-content-', '')}', '${file}', '${path}/${file}')">
+                                    <svg class="icon-svg" viewBox="0 0 24 24">${icon}</svg>
+                                    <span>${file}</span>
+                                </div>
+                            `;
+                        }).join('');
+
+                    // 保留 selection-box，只更新文件列表
+                    const selectionBox = contentArea.querySelector('.folder-selection-box');
+                    contentArea.innerHTML = '';
+                    if (selectionBox) contentArea.appendChild(selectionBox);
+                    contentArea.insertAdjacentHTML('beforeend', content);
                 });
             });
         }
@@ -3088,6 +3168,15 @@
 
             document.addEventListener('mouseup', handleEnd);
             document.addEventListener('touchend', handleEnd);
+
+            // 返回清理函数，用于移除事件监听器
+            return function cleanup() {
+                document.removeEventListener('mousemove', handleMove);
+                document.removeEventListener('touchmove', handleMove);
+                document.removeEventListener('mouseup', handleEnd);
+                document.removeEventListener('touchend', handleEnd);
+                stopAutoScroll();
+            };
         }
 
         function handleFolderItemMouseDown(e, windowId) {
@@ -3210,7 +3299,7 @@
                     }
                     
                     if(deletedCount === total) {
-                        openFolderWindow(folderName);
+                        refreshFolderWindow(folderName);
                         Notify.success('删除成功', `已删除 ${total} 个文件`);
                     }
                 });
@@ -3231,7 +3320,7 @@
                 if(err) {
                     Notify.error('删除失败', err.message);
                 } else {
-                    openFolderWindow(folderName);
+                    refreshFolderWindow(folderName);
                     Notify.success('删除成功', `文件 "${filename}" 已删除`);
                 }
             });
@@ -3253,7 +3342,7 @@
                 if(err) {
                     Notify.error('重命名失败', err.message);
                 } else {
-                    openFolderWindow(folderName);
+                    refreshFolderWindow(folderName);
                     Notify.success('重命名成功', `已重命名为 "${newName}"`);
                 }
             });
@@ -3521,8 +3610,15 @@
                 const finishOperation = () => {
                     refreshDesktop();
                     
-                    if(operationType === 'move' && targetFolderName !== '桌面') {
-                        setTimeout(() => openFolderWindow(targetFolderName), 300);
+                    if(operationType === 'move') {
+                        setTimeout(() => {
+                            // 刷新目标文件夹窗口（文件被拖入的目标）
+                            if(targetFolderName !== '桌面') {
+                                refreshFolderWindow(targetFolderName);
+                            }
+                            // 刷新源文件夹窗口（文件被拖出的来源）
+                            refreshFolderWindow(folderName);
+                        }, 300);
                     }
                     
                     if(errorCount > 0) {
@@ -3811,6 +3907,11 @@
                 files.forEach(file => {
                     const curPath = path + '/' + file;
                     SYSTEM.fs.stat(curPath, (err, stats) => {
+                        if(err) {
+                            // 如果出错，跳过当前文件，继续处理其他文件
+                            if(--pending === 0) SYSTEM.fs.rmdir(path, callback);
+                            return;
+                        }
                         if(stats.isDirectory()) {
                             deleteFolderRecursive(curPath, () => {
                                 if(--pending === 0) SYSTEM.fs.rmdir(path, callback);
@@ -4142,7 +4243,9 @@
                 width: 500, height: 400,
                 content: renderLocalFolderContent(folderInfo, items, windowId),
                 onInit: (w, id) => {
-                    initLocalFolderSelection(windowId, folderInfo);
+                    const cleanup = initLocalFolderSelection(windowId, folderInfo);
+                    // 存储清理函数到窗口对象
+                    w.cleanup = cleanup;
                 }
             });
         }
@@ -4340,6 +4443,15 @@
 
             document.addEventListener('mouseup', handleEnd);
             document.addEventListener('touchend', handleEnd);
+
+            // 返回清理函数，用于移除事件监听器
+            return function cleanup() {
+                document.removeEventListener('mousemove', handleMove);
+                document.removeEventListener('touchmove', handleMove);
+                document.removeEventListener('mouseup', handleEnd);
+                document.removeEventListener('touchend', handleEnd);
+                stopAutoScroll();
+            };
         }
 
         function clearLocalFolderSelection(windowId) {
@@ -5390,6 +5502,17 @@
         window.closeWin = function(id) {
             const w = document.getElementById('win-' + id);
             if(w) {
+                // 调用清理函数（如果存在）
+                if(w.cleanup) {
+                    w.cleanup();
+                }
+                
+                // 调用onDestroy回调（如果存在）
+                const winObj = SYSTEM.windows.find(win => win.id === id);
+                if(winObj && winObj.onDestroy) {
+                    winObj.onDestroy();
+                }
+                
                 w.style.transition = 'transform 0.2s, opacity 0.2s';
                 w.style.transform = 'scale(0.9)';
                 w.style.opacity = '0';
