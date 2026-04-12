@@ -5624,8 +5624,27 @@
                 const dx = p.x - startX; 
                 const dy = p.y - startY;
                 
-                el.style.left = startLeft + dx + 'px';
-                el.style.top = Math.max(0, startTop + dy) + 'px';
+                let newLeft = startLeft + dx;
+                let newTop = startTop + dy;
+                
+                // 屏幕边界限制：防止窗口被拖出屏幕
+                const screenW = window.innerWidth;
+                const screenH = window.innerHeight;
+                const taskbarH = 48;
+                const winW = el.offsetWidth;
+                const winH = el.offsetHeight;
+                
+                // 上边界
+                newTop = Math.max(0, newTop);
+                // 左边界（允许窗口大部分出去，但保留一部分可抓取）
+                newLeft = Math.max(-winW + 100, newLeft);
+                // 右边界
+                newLeft = Math.min(screenW - 100, newLeft);
+                // 下边界（不超过任务栏）
+                newTop = Math.min(screenH - taskbarH - 30, newTop);
+                
+                el.style.left = newLeft + 'px';
+                el.style.top = newTop + 'px';
             };
             
             const end = (e) => {
@@ -5715,6 +5734,32 @@
                         if(dir.includes('n')) newT = startT + (startH - MIN_H);
                         newH = MIN_H;
                     }
+
+                    // 屏幕边界限制：防止窗口被拖出屏幕
+                    const screenW = window.innerWidth;
+                    const screenH = window.innerHeight;
+                    // 上边界：窗口顶部不能超出屏幕顶部
+                    if(newT < 0) {
+                        if(dir.includes('n')) newH = startH + startT; // 保持底部不动，收缩高度
+                        newT = 0;
+                    }
+                    // 左边界：窗口左边不能超出屏幕左边
+                    if(newL < 0) {
+                        if(dir.includes('w')) newW = startW + startL; // 保持右边不动，收缩宽度
+                        newL = 0;
+                    }
+                    // 下边界：窗口底部不能超出屏幕底部（留出任务栏空间）
+                    const taskbarH = 48;
+                    if(newT + newH > screenH - taskbarH) {
+                        if(dir.includes('s')) newH = screenH - taskbarH - newT;
+                    }
+                    // 右边界：窗口右边不能超出屏幕右边
+                    if(newL + newW > screenW) {
+                        if(dir.includes('e')) newW = screenW - newL;
+                    }
+                    // 再次确保最小尺寸（边界限制后可能被破坏）
+                    if(newW < MIN_W) newW = MIN_W;
+                    if(newH < MIN_H) newH = MIN_H;
 
                     el.style.width = newW + 'px';
                     el.style.height = newH + 'px';
