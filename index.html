@@ -638,6 +638,7 @@
             overflow-y: auto;
             overflow-x: hidden;
             user-select: none;
+            touch-action: manipulation;
         }
         .folder-sidebar::-webkit-scrollbar { width: 4px; }
         .folder-sidebar::-webkit-scrollbar-track { background: transparent; }
@@ -3425,6 +3426,19 @@
         function updateSidebarFolderList(windowId) {
             const listEl = document.getElementById('sidebar-folder-list-' + windowId);
             if (!listEl) return;
+            const state = SYSTEM.folderWindowStates[windowId];
+
+            if (state && state.isLocal) {
+                // 本地挂载文件夹：从本地 handle 读取子文件夹
+                updateLocalSidebarFolderList(windowId, listEl, state);
+            } else {
+                // BrowserFS 文件夹：从桌面路径读取子文件夹
+                updateBrowserFSSidebarFolderList(windowId, listEl, state);
+            }
+        }
+
+        // BrowserFS 文件夹的侧边栏更新
+        function updateBrowserFSSidebarFolderList(windowId, listEl, state) {
             SYSTEM.fs.readdir(SYSTEM.desktopPath, (err, files) => {
                 if (err) { listEl.innerHTML = ''; return; }
                 let html = '';
@@ -3434,7 +3448,7 @@
                     SYSTEM.fs.stat(SYSTEM.desktopPath + '/' + file, (err, stats) => {
                         if (!err && stats.isDirectory && typeof stats.isDirectory === 'function' && stats.isDirectory()) {
                             const safeName = escapeAttr(file);
-                            const isActive = SYSTEM.folderWindowStates[windowId]?.currentPath === SYSTEM.desktopPath + '/' + file;
+                            const isActive = state?.currentPath === SYSTEM.desktopPath + '/' + file;
                             html += `
                                 <div class="folder-sidebar-item ${isActive ? 'active' : ''}" id="sidebar-folder-${safeName}-${windowId}" data-folder-path="${SYSTEM.desktopPath}/${safeName}" onclick="sidebarNavigateToFolder('${windowId}', '${safeName}')">
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2v11z"/></svg>
@@ -3447,6 +3461,105 @@
                     });
                 });
             });
+        }
+
+        // 本地挂载文件夹的侧边栏更新
+        async function updateLocalSidebarFolderList(windowId, listEl, state) {
+            try {
+                const dirHandle = state.localHandle;
+                if (!dirHandle) { listEl.innerHTML = ''; return; }
+
+                const folders = [];
+                for await (const [name, handle] of dirHandle.entries()) {
+                    if (handle.kind === 'directory') {
+                        folders.push(name);
+                    }
+                }
+                folders.sort((a, b) => a.localeCompare(b, 'zh-CN'));
+
+                let html = '';
+                folders.forEach(name => {
+                    const safeName = escapeAttr(name);
+                    const isActive = state.currentPath === name || state.pathHistory[state.pathHistoryIndex] === name;
+                    html += `
+                        <div class="folder-sidebar-item ${isActive ? 'active' : ''}" id="sidebar-local-folder-${safeName}-${windowId}" onclick="sidebarNavigateToLocalFolder('${windowId}', '${safeName}')">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2v11z"/></svg>
+                            <span>${name}</span>
+                        </div>
+                    `;
+                });
+                listEl.innerHTML = html;
+            } catch(e) {
+                listEl.innerHTML = '';
+            }
+        }
+
+        // 侧边栏导航到本地子文件夹
+        async function sidebarNavigateToLocalFolder(windowId, folderName) {
+            const state = SYSTEM.folderWindowStates[windowId];
+            if (!state || !state.isLocal) return;
+
+            try {
+                const subHandle = await state.localHandle.getDirectoryHandle(folderName);
+                // 保存当前 handle 到历史
+                state.parentLocalHandle = state.localHandle;
+                state.localHandle = subHandle;
+                state.currentPath = folderName;
+                state.folderName = folderName;
+                state.searchQuery = '';
+                state.fileStats = {};
+
+                // 更新路径历史
+                state.pathHistory = state.pathHistory.slice(0, state.pathHistoryIndex + 1);
+                state.pathHistory.push(folderName);
+                state.pathHistoryIndex = state.pathHistory.length - 1;
+
+                const win = document.getElementById('folder-content-' + windowId)?.closest('.window');
+                if (win) {
+                    const titleEl = win.querySelector('.window-title-text');
+                    if (titleEl) titleEl.textContent = folderName;
+                }
+                const searchInput = document.getElementById('folder-search-' + windowId);
+                if (searchInput) searchInput.value = '';
+
+                updateLocalFolderBreadcrumb(windowId);
+                updateSidebarActive(windowId, 'local-folder-' + folderName);
+                renderLocalFolderItems(windowId);
+            } catch(e) {
+                Notify.error('错误', '无法打开文件夹: ' + e.message);
+            }
+        }
+
+        // 侧边栏导航到本地文件夹根目录
+        async function sidebarNavigateToLocalRoot(windowId) {
+            const state = SYSTEM.folderWindowStates[windowId];
+            if (!state || !state.isLocal) return;
+
+            const folderInfo = SYSTEM.localFolders[state.folderInfoId];
+            if (!folderInfo) return;
+
+            // 恢复到原始挂载的根 handle
+            state.localHandle = folderInfo.handle;
+            state.currentPath = folderInfo.name;
+            state.folderName = folderInfo.name;
+            state.parentPath = null;
+            state.parentLocalHandle = null;
+            state.searchQuery = '';
+            state.fileStats = {};
+            state.pathHistory = [folderInfo.name];
+            state.pathHistoryIndex = 0;
+
+            const win = document.getElementById('folder-content-' + windowId)?.closest('.window');
+            if (win) {
+                const titleEl = win.querySelector('.window-title-text');
+                if (titleEl) titleEl.textContent = folderInfo.name;
+            }
+            const searchInput = document.getElementById('folder-search-' + windowId);
+            if (searchInput) searchInput.value = '';
+
+            updateLocalFolderBreadcrumb(windowId);
+            updateSidebarActive(windowId, 'desktop');
+            renderLocalFolderItems(windowId);
         }
 
         // 侧边栏导航到文件夹
@@ -4315,9 +4428,19 @@
             // 双击检测：同一元素300ms内连续两次触摸 = 双击
             if (_lastTapTarget === item && now - _lastTapTime < 300) {
                 const filename = item.dataset.filename;
-                const fullPath = item.dataset.path;
-                const isDir = item.dataset.isdir === 'true';
-                handleFolderItemDblClick(windowId, filename, fullPath, isDir);
+                const state = SYSTEM.folderWindowStates[windowId];
+
+                if (state && state.isLocal) {
+                    // 本地挂载文件夹：使用 data-kind 判断是否为目录
+                    const kind = item.dataset.kind;
+                    const isDir = kind === 'directory';
+                    handleLocalItemDblClick(windowId, filename, isDir);
+                } else {
+                    // BrowserFS 文件夹：使用 data-isdir 和 data-path
+                    const fullPath = item.dataset.path;
+                    const isDir = item.dataset.isdir === 'true';
+                    handleFolderItemDblClick(windowId, filename, fullPath, isDir);
+                }
                 _lastTapTime = 0;
                 _lastTapTarget = null;
                 e.preventDefault();
@@ -4358,7 +4481,14 @@
             let html = '';
             
             if(count > 1) {
+                const safeFullPath = escapeAttr(fullPath);
+                const safeFilename = escapeAttr(filename);
                 html = `
+                    <div class="context-item" onclick="openFileFromPath('${safeFullPath}', '${safeFilename}'); closeCtx()">
+                        <svg class="icon-svg" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+                        <span>打开</span>
+                    </div>
+                    <div class="context-divider"></div>
                     <div class="context-item" onclick="downloadSelectedFolderItems('${windowId}'); closeCtx()">
                         <svg class="icon-svg" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>
                         <span>下载选中 (${count})</span>
@@ -5386,13 +5516,13 @@
                             <div class="folder-sidebar" id="folder-sidebar-${windowId}">
                                 <div class="folder-sidebar-section">
                                     <div class="folder-sidebar-title">快速访问</div>
-                                    <div class="folder-sidebar-item" id="sidebar-desktop-${windowId}" onclick="sidebarNavigateToDesktop('${windowId}')">
-                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
-                                        <span>桌面</span>
+                                    <div class="folder-sidebar-item active" id="sidebar-desktop-${windowId}" onclick="sidebarNavigateToLocalRoot('${windowId}')">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2v11z"/></svg>
+                                        <span>根目录</span>
                                     </div>
                                 </div>
                                 <div class="folder-sidebar-section">
-                                    <div class="folder-sidebar-title">挂载文件夹</div>
+                                    <div class="folder-sidebar-title">子文件夹</div>
                                     <div id="sidebar-folder-list-${windowId}"></div>
                                 </div>
                             </div>
@@ -5792,7 +5922,14 @@
             let html = '';
 
             if (count > 1) {
+                const kind = item.dataset.kind;
+                const isDir = kind === 'directory';
                 html = `
+                    <div class="context-item" onclick="handleLocalItemDblClick('${windowId}', '${safeFilename}', ${isDir}); closeCtx()">
+                        <svg class="icon-svg" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+                        <span>打开</span>
+                    </div>
+                    <div class="context-divider"></div>
                     <div class="context-item" onclick="exportLocalFolderItemsFromWindow('${windowId}'); closeCtx()">
                         <svg class="icon-svg" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
                         <span>导出选中 (${count})</span>
