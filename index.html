@@ -7878,32 +7878,37 @@
                         const viewer = document.getElementById(`manga-viewer-${id}`);
                         const loading = document.getElementById(`manga-loading-${id}`);
                         
-                        // 异步按顺序加载图片
-                        let loadedCount = 0;
-                        imageFiles.forEach((filename, index) => {
+                        // 使用 Promise.all 并行读取所有图片，按序插入 DOM，避免回调乱序
+                        const readPromises = imageFiles.map((filename) => {
                             const fullPath = folderPath + '/' + filename;
-                            SYSTEM.fs.readFile(fullPath, (err, data) => {
-                                if (err) return;
-                                
-                                const blob = new Blob([data]);
-                                const url = URL.createObjectURL(blob);
-                                
+                            return new Promise((resolve) => {
+                                SYSTEM.fs.readFile(fullPath, (err, data) => {
+                                    if (err) { resolve(null); return; }
+                                    const blob = new Blob([data]);
+                                    resolve({ filename, url: URL.createObjectURL(blob) });
+                                });
+                            });
+                        });
+
+                        Promise.all(readPromises).then((results) => {
+                            let firstLoaded = false;
+                            results.forEach((item, index) => {
+                                if (!item) return; // 跳过读取失败的文件
+
                                 const img = document.createElement('img');
-                                img.src = url;
+                                img.src = item.url;
                                 img.id = `manga-img-${id}-${index}`;
                                 img.style.width = '100%';
-                                img.style.maxWidth = '1000px'; // 限制最大宽度
+                                img.style.maxWidth = '1000px';
                                 img.style.display = 'block';
-                                img.style.pointerEvents = 'none'; // 防止干扰窗口操作
-                                
-                                // 按照排序索引插入，确保顺序正确
+                                img.style.pointerEvents = 'none';
+
                                 viewer.appendChild(img);
-                                
-                                loadedCount++;
-                                if(loadedCount === 1) loading.remove(); // 加载出第一张就移除文字
-                                
+
+                                if (!firstLoaded) { loading.remove(); firstLoaded = true; }
+
                                 // 如果是用户点击的那张图片，滚动到该位置
-                                if (filename === targetFilename) {
+                                if (item.filename === targetFilename) {
                                     setTimeout(() => img.scrollIntoView(), 100);
                                 }
                             });
