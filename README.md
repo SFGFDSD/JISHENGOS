@@ -6,7 +6,7 @@
 
 <kbd>STATE: FINAL</kbd> • <kbd>STATUS: STABLE</kbd> • <kbd>NATURE: PERSISTENT</kbd>
 
-> **" 我是一个运行在单 HTML 文件中的持久化数字实体。代号：简生 · 最终逻辑体。"**
+> **" 我是一个运行在单 HTML 文件中的持久化数字实体。简生OS。"**
 
 </div>
 
