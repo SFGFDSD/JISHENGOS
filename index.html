@@ -45,9 +45,6 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/css/css.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/htmlmixed/htmlmixed.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/markdown/markdown.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/python/python.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/clike/clike.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/shell/shell.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/closebrackets.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/closetag.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/matchbrackets.min.js"></script>
@@ -8265,10 +8262,6 @@
                                         <option value="javascript">JavaScript</option>
                                         <option value="markdown">Markdown</option>
                                         <option value="application/json">JSON</option>
-                                        <option value="python">Python</option>
-                                        <option value="text/x-csrc">C / C++</option>
-                                        <option value="text/x-java">Java</option>
-                                        <option value="shell">Shell</option>
                                     </select>
                                 </div>
                                 <div class="editor-toolbar-divider"></div>
@@ -8588,12 +8581,12 @@
                     const r = new FileReader();
                     r.onload = function(e) {
                         const ext = f.name.split('.').pop().toLowerCase();
-                        const map = { 'html': 'htmlmixed', 'htm': 'htmlmixed', 'css': 'css', 'js': 'javascript', 'json': 'application/json', 'md': 'markdown', 'py': 'python', 'java': 'text/x-java', 'c': 'text/x-csrc', 'cpp': 'text/x-csrc', 'sh': 'shell', 'xml': 'xml', 'txt': 'htmlmixed' };
+                        const map = { 'html': 'htmlmixed', 'htm': 'htmlmixed', 'css': 'css', 'js': 'javascript', 'json': 'application/json', 'md': 'markdown', 'xml': 'xml', 'txt': 'htmlmixed' };
                         const lang = map[ext] || 'htmlmixed';
                         editor.setValue(e.target.result);
                         editor.setOption('mode', lang);
                         langSelect.value = lang;
-                        const names = { 'htmlmixed': 'HTML', 'css': 'CSS', 'javascript': 'JavaScript', 'markdown': 'Markdown', 'application/json': 'JSON', 'python': 'Python', 'text/x-csrc': 'C/C++', 'text/x-java': 'Java', 'shell': 'Shell' };
+                        const names = { 'htmlmixed': 'HTML', 'css': 'CSS', 'javascript': 'JavaScript', 'markdown': 'Markdown', 'application/json': 'JSON' };
                         document.getElementById(`editor-status-lang-${winId}`).textContent = names[lang] || lang;
                         Notify.success(`已导入: ${f.name}`);
                     };
@@ -8606,7 +8599,7 @@
             // 导出文件
             function exportEditorFile() {
                 const code = editor.getValue();
-                const extMap = { 'htmlmixed': '.html', 'css': '.css', 'javascript': '.js', 'markdown': '.md', 'application/json': '.json', 'python': '.py', 'text/x-csrc': '.c', 'text/x-java': '.java', 'shell': '.sh' };
+                const extMap = { 'htmlmixed': '.html', 'css': '.css', 'javascript': '.js', 'markdown': '.md', 'application/json': '.json' };
                 const lang = langSelect.value;
                 const name = 'code' + (extMap[lang] || '.txt');
                 const a = document.createElement('a');
@@ -8710,7 +8703,7 @@
             // 语言切换
             langSelect.onchange = function() {
                 editor.setOption('mode', this.value);
-                const names = { 'htmlmixed': 'HTML', 'css': 'CSS', 'javascript': 'JavaScript', 'markdown': 'Markdown', 'application/json': 'JSON', 'python': 'Python', 'text/x-csrc': 'C/C++', 'text/x-java': 'Java', 'shell': 'Shell' };
+                const names = { 'htmlmixed': 'HTML', 'css': 'CSS', 'javascript': 'JavaScript', 'markdown': 'Markdown', 'application/json': 'JSON' };
                 document.getElementById(`editor-status-lang-${winId}`).textContent = names[this.value] || this.value;
                 Notify.info(`语言: ${names[this.value] || this.value}`);
             };
