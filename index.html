@@ -2000,8 +2000,9 @@
             iconPositions: {},           
             gridSize: 90, 
             iconPositionsPath: '/system/config/icon-positions.json',
-            localFolders: {},  // 保留兼容性，实际使用 mountedFolders
-            folderWindowStates: {}
+            localFolders: {},
+            folderWindowStates: {},
+            clipboard: null
         };
 
         function toggleWinFullscreen(id, type) {
@@ -3522,6 +3523,15 @@
 
             if (count > 1) {
                 html += `
+                    <div class="context-item" onclick="copySelectedFiles(); closeCtx()">
+                        <svg class="icon-svg" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                        <span>复制选中</span>
+                    </div>
+                    <div class="context-item" onclick="cutSelectedFiles(); closeCtx()">
+                        <svg class="icon-svg" viewBox="0 0 24 24"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="20" y1="4" x2="8.12" y2="15.88"/><line x1="14.47" y1="14.48" x2="20" y2="20"/><line x1="8.12" y1="8.12" x2="12" y2="12"/></svg>
+                        <span>剪切选中</span>
+                    </div>
+                    <div class="context-divider"></div>
                     <div class="context-item" onclick="downloadSelectedFiles(); closeCtx()">
                         <svg class="icon-svg" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>
                         <span>下载选中 (${count})</span>
@@ -3542,6 +3552,15 @@
                     `;
                 } else {
                     html += `
+                        <div class="context-item" onclick="copyDesktopFile('${filename}'); closeCtx()">
+                            <svg class="icon-svg" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                            <span>复制</span>
+                        </div>
+                        <div class="context-item" onclick="cutDesktopFile('${filename}'); closeCtx()">
+                            <svg class="icon-svg" viewBox="0 0 24 24"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="20" y1="4" x2="8.12" y2="15.88"/><line x1="14.47" y1="14.48" x2="20" y2="20"/><line x1="8.12" y1="8.12" x2="12" y2="12"/></svg>
+                            <span>剪切</span>
+                        </div>
+                        <div class="context-divider"></div>
                         <div class="context-item" onclick="downloadFile('${filename}'); closeCtx()">
                             <svg class="icon-svg" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>
                             <span>下载</span>
@@ -4354,11 +4373,96 @@
             });
             contentArea.addEventListener('dragover', (e) => {
                 e.preventDefault();
+                e.dataTransfer.dropEffect = 'copy';
             });
             contentArea.addEventListener('drop', (e) => {
                 e.preventDefault();
                 dragCounter = 0;
                 contentArea.classList.remove('folder-content-drop-active');
+
+                const state = SYSTEM.folderWindowStates[windowId];
+                if (!state) return;
+                const destPath = state.currentPath;
+
+                const internalData = e.dataTransfer.getData('text/plain');
+                if (internalData) {
+                    try {
+                        const { srcPath, filename } = JSON.parse(internalData);
+                        if (srcPath && filename) {
+                            SYSTEM.fs.readFile(srcPath, (err, data) => {
+                                if (!err) {
+                                    SYSTEM.fs.writeFile(destPath + '/' + filename, data, () => {
+                                        state.fileStats = {};
+                                        renderFolderContent(windowId);
+                                        refreshDesktop();
+                                        Notify.success('移动成功', `已将 "${filename}" 移入文件夹`);
+                                    });
+                                }
+                            });
+                        }
+                    } catch (ex) {}
+                    return;
+                }
+
+                const items = e.dataTransfer.items;
+                if (items && items.length > 0) {
+                    let processCount = 0;
+                    let refreshTimer = null;
+                    const debouncedRefresh = () => {
+                        if (refreshTimer) clearTimeout(refreshTimer);
+                        refreshTimer = setTimeout(() => {
+                            state.fileStats = {};
+                            renderFolderContent(windowId);
+                            refreshDesktop();
+                            Notify.success('导入完成', '所有文件已更新');
+                        }, 200);
+                    };
+
+                    const traverseFileTree = (item, path) => {
+                        path = path || "";
+                        if (item.isFile) {
+                            item.file((file) => {
+                                const reader = new FileReader();
+                                reader.onload = (ev) => {
+                                    const buffer = SYSTEM.Buffer.from(ev.target.result);
+                                    const fullPath = destPath + (path ? '/' + path : '') + '/' + file.name;
+                                    const parentDir = fullPath.substring(0, fullPath.lastIndexOf('/'));
+
+                                    ensureDir(parentDir).then(() => {
+                                        SYSTEM.fs.writeFile(fullPath, buffer, () => {
+                                            processCount++;
+                                            debouncedRefresh();
+                                        });
+                                    });
+                                };
+                                reader.readAsArrayBuffer(file);
+                            });
+                        } else if (item.isDirectory) {
+                            const dirPath = (path ? path + '/' : '') + item.name;
+                            const fullDirPath = destPath + '/' + dirPath;
+
+                            ensureDir(fullDirPath).then(() => {
+                                debouncedRefresh();
+                                const dirReader = item.createReader();
+                                const readEntries = () => {
+                                    dirReader.readEntries((entries) => {
+                                        if (entries.length > 0) {
+                                            entries.forEach((entry) => traverseFileTree(entry, dirPath));
+                                            readEntries();
+                                        }
+                                    });
+                                };
+                                readEntries();
+                            });
+                        }
+                    };
+
+                    for (let i = 0; i < items.length; i++) {
+                        const item = items[i].webkitGetAsEntry ? items[i].webkitGetAsEntry() : null;
+                        if (item) traverseFileTree(item);
+                    }
+                    Notify.info('正在处理', '开始导入文件结构...');
+                }
             });
         }
 
@@ -4613,6 +4717,11 @@
                         <span>刷新</span>
                     </div>
                     <div class="context-divider"></div>
+                    <div class="context-item" onclick="pasteToFolder('${windowId}'); closeCtx()" ${!SYSTEM.clipboard ? 'style="opacity:0.4;pointer-events:none"' : ''}>
+                        <svg class="icon-svg" viewBox="0 0 24 24"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>
+                        <span>粘贴${SYSTEM.clipboard ? ' (' + SYSTEM.clipboard.items.length + ' 项)' : ''}</span>
+                    </div>
+                    <div class="context-divider"></div>
                     <div class="context-item" onclick="SYSTEM.uploadTargetPath=SYSTEM.folderWindowStates['${windowId}'].currentPath;SYSTEM.uploadTargetWindowId='${windowId}';document.getElementById('global-upload-file').click();closeCtx()">
                         <svg class="icon-svg" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
                         <span>上传文件</span>
@@ -4741,6 +4850,15 @@
                         <span>打开</span>
                     </div>
                     <div class="context-divider"></div>
+                    <div class="context-item" onclick="copySelectedFolderItems('${windowId}'); closeCtx()">
+                        <svg class="icon-svg" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                        <span>复制选中</span>
+                    </div>
+                    <div class="context-item" onclick="cutSelectedFolderItems('${windowId}'); closeCtx()">
+                        <svg class="icon-svg" viewBox="0 0 24 24"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="20" y1="4" x2="8.12" y2="15.88"/><line x1="14.47" y1="14.48" x2="20" y2="20"/><line x1="8.12" y1="8.12" x2="12" y2="12"/></svg>
+                        <span>剪切选中</span>
+                    </div>
+                    <div class="context-divider"></div>
                     <div class="context-item" onclick="downloadSelectedFolderItems('${windowId}'); closeCtx()">
                         <svg class="icon-svg" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>
                         <span>下载选中 (${count})</span>
@@ -4757,6 +4875,15 @@
                         <span>打开</span>
                     </div>
                     ${isArchiveFile(filename) ? `<div class="context-item" onclick="extractZipFromPath('${fullPath}'); closeCtx()"><svg class="icon-svg" viewBox="0 0 24 24"><path d="M21 8v13H3V8"/></svg><span>解压</span></div>` : ''}
+                    <div class="context-divider"></div>
+                    <div class="context-item" onclick="copyFolderItem('${windowId}', '${escapeAttr(fullPath)}'); closeCtx()">
+                        <svg class="icon-svg" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                        <span>复制</span>
+                    </div>
+                    <div class="context-item" onclick="cutFolderItem('${windowId}', '${escapeAttr(fullPath)}'); closeCtx()">
+                        <svg class="icon-svg" viewBox="0 0 24 24"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="20" y1="4" x2="8.12" y2="15.88"/><line x1="14.47" y1="14.48" x2="20" y2="20"/><line x1="8.12" y1="8.12" x2="12" y2="12"/></svg>
+                        <span>剪切</span>
+                    </div>
                     <div class="context-divider"></div>
                     <div class="context-item" onclick="downloadFolderItem('${windowId}', '${filename}'); closeCtx()">
                         <svg class="icon-svg" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>
@@ -4783,33 +4910,51 @@
             const contentArea = document.getElementById('folder-content-' + windowId);
             if(!contentArea) return;
             
-            // 使用窗口状态中的路径（支持子文件夹导航）
             const state = SYSTEM.folderWindowStates?.[windowId];
             const folderName = state ? state.folderName : contentArea.closest('.window').querySelector('.window-title-text').innerText;
             const path = state ? state.currentPath : SYSTEM.desktopPath + '/' + folderName;
             
             const selectedItems = Array.from(contentArea.querySelectorAll('.folder-item.selected, .folder-grid-item.selected'));
             let deletedCount = 0;
+            let errorCount = 0;
             const total = selectedItems.length;
             
             selectedItems.forEach(item => {
                 const filename = item.dataset.filename;
+                const isDir = item.dataset.isdir === 'true';
                 const fullPath = path + '/' + filename;
                 
-                SYSTEM.fs.unlink(fullPath, (err) => {
-                    if(err) {
-                        console.error('删除失败:', filename, err);
-                    } else {
-                        deletedCount++;
-                    }
-                    
-                    if(deletedCount === total) {
+                const onDone = () => {
+                    deletedCount++;
+                    if (deletedCount + errorCount === total) {
                         if (state) { state.fileStats = {}; renderFolderContent(windowId); }
                         else refreshFolderWindow(folderName);
                         refreshDesktop();
-                        Notify.success('删除成功', `已删除 ${total} 个文件`);
+                        if (errorCount > 0) Notify.error('部分失败', `已删除 ${deletedCount} 项，失败 ${errorCount} 项`);
+                        else Notify.success('删除成功', `已删除 ${total} 个项目`);
                     }
-                });
+                };
+                const onError = () => {
+                    errorCount++;
+                    if (deletedCount + errorCount === total) {
+                        if (state) { state.fileStats = {}; renderFolderContent(windowId); }
+                        else refreshFolderWindow(folderName);
+                        refreshDesktop();
+                        Notify.error('部分失败', `已删除 ${deletedCount} 项，失败 ${errorCount} 项`);
+                    }
+                };
+
+                if (isDir) {
+                    deleteFolderRecursive(fullPath, (err) => {
+                        if (err) { console.error('删除文件夹失败:', filename, err); onError(); }
+                        else onDone();
+                    });
+                } else {
+                    SYSTEM.fs.unlink(fullPath, (err) => {
+                        if(err) { console.error('删除失败:', filename, err); onError(); }
+                        else onDone();
+                    });
+                }
             });
         }
 
@@ -4823,15 +4968,23 @@
             const folderName = state ? state.folderName : contentArea.closest('.window').querySelector('.window-title-text').innerText;
             const path = state ? state.currentPath : SYSTEM.desktopPath + '/' + folderName;
             const fullPath = path + '/' + filename;
-            
-            SYSTEM.fs.unlink(fullPath, (err) => {
-                if(err) {
-                    Notify.error('删除失败', err.message);
-                } else {
+
+            SYSTEM.fs.stat(fullPath, (err, stats) => {
+                if (err) { Notify.error('删除失败', err.message); return; }
+                const isDir = stats.isDirectory ? (typeof stats.isDirectory === 'function' ? stats.isDirectory() : stats.isDirectory) : false;
+
+                const afterDelete = (deleteErr) => {
+                    if (deleteErr) { Notify.error('删除失败', deleteErr.message); return; }
                     if (state) { state.fileStats = {}; renderFolderContent(windowId); }
                     else refreshFolderWindow(folderName);
                     refreshDesktop();
-                    Notify.success('删除成功', `文件 "${filename}" 已删除`);
+                    Notify.success('删除成功', `"${filename}" 已删除`);
+                };
+
+                if (isDir) {
+                    deleteFolderRecursive(fullPath, afterDelete);
+                } else {
+                    SYSTEM.fs.unlink(fullPath, afterDelete);
                 }
             });
         }
@@ -5234,6 +5387,11 @@
                     <span>更换壁纸</span>
                 </div>
                 <div class="context-divider"></div>
+                <div class="context-item" onclick="pasteToDesktop(); closeCtx()" ${!SYSTEM.clipboard ? 'style="opacity:0.4;pointer-events:none"' : ''}>
+                    <svg class="icon-svg" viewBox="0 0 24 24"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>
+                    <span>粘贴${SYSTEM.clipboard ? ' (' + SYSTEM.clipboard.items.length + ' 项)' : ''}</span>
+                </div>
+                <div class="context-divider"></div>
                 <div class="context-item" onclick="SYSTEM.uploadTargetPath=SYSTEM.desktopPath;SYSTEM.uploadTargetWindowId=null;document.getElementById('global-upload-file').click();closeCtx()">
                     <svg class="icon-svg" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
                     <span>上传文件</span>
@@ -5456,8 +5614,170 @@
             });
         }
 
-        // ============================================
-        // 统一解压函数 - 支持 zip/7z/rar/tar/gz 等格式
+        function copyPathToClipboard(srcPath, isCut) {
+            SYSTEM.fs.stat(srcPath, (err, stats) => {
+                if (err) { Notify.error('操作失败', err.message); return; }
+                const isDir = stats.isDirectory ? (typeof stats.isDirectory === 'function' ? stats.isDirectory() : stats.isDirectory) : false;
+                if (!SYSTEM.clipboard) SYSTEM.clipboard = { operation: 'copy', items: [] };
+                SYSTEM.clipboard.operation = isCut ? 'cut' : 'copy';
+                SYSTEM.clipboard.items = [{ path: srcPath, isDirectory: isDir }];
+                Notify.success(isCut ? '已剪切' : '已复制', stats.isDirectory() ? '文件夹' : srcPath.split('/').pop());
+            });
+        }
+
+        function copyMultiplePathsToClipboard(paths, isCut) {
+            if (!SYSTEM.clipboard) SYSTEM.clipboard = { operation: 'copy', items: [] };
+            SYSTEM.clipboard.operation = isCut ? 'cut' : 'copy';
+            let pending = paths.length;
+            SYSTEM.clipboard.items = [];
+            paths.forEach(srcPath => {
+                SYSTEM.fs.stat(srcPath, (err, stats) => {
+                    if (!err) {
+                        const isDir = stats.isDirectory ? (typeof stats.isDirectory === 'function' ? stats.isDirectory() : stats.isDirectory) : false;
+                        SYSTEM.clipboard.items.push({ path: srcPath, isDirectory: isDir });
+                    }
+                    pending--;
+                    if (pending === 0) {
+                        Notify.success(isCut ? '已剪切' : '已复制', `${SYSTEM.clipboard.items.length} 个项目`);
+                    }
+                });
+            });
+        }
+
+        function copyDesktopFile(filename) {
+            copyPathToClipboard(SYSTEM.desktopPath + '/' + filename, false);
+        }
+        function cutDesktopFile(filename) {
+            copyPathToClipboard(SYSTEM.desktopPath + '/' + filename, true);
+        }
+        function copySelectedFiles() {
+            const paths = SYSTEM.selectedIcons.filter(id => id.startsWith('file-')).map(id => SYSTEM.desktopPath + '/' + document.getElementById(id).dataset.filename);
+            copyMultiplePathsToClipboard(paths, false);
+        }
+        function cutSelectedFiles() {
+            const paths = SYSTEM.selectedIcons.filter(id => id.startsWith('file-')).map(id => SYSTEM.desktopPath + '/' + document.getElementById(id).dataset.filename);
+            copyMultiplePathsToClipboard(paths, true);
+        }
+        function copyFolderItem(windowId, fullPath) {
+            copyPathToClipboard(fullPath, false);
+        }
+        function cutFolderItem(windowId, fullPath) {
+            copyPathToClipboard(fullPath, true);
+        }
+        function copySelectedFolderItems(windowId) {
+            const contentArea = document.getElementById('folder-content-' + windowId);
+            if (!contentArea) return;
+            const paths = Array.from(contentArea.querySelectorAll('.folder-item.selected, .folder-grid-item.selected')).map(item => item.dataset.path);
+            copyMultiplePathsToClipboard(paths, false);
+        }
+        function cutSelectedFolderItems(windowId) {
+            const contentArea = document.getElementById('folder-content-' + windowId);
+            if (!contentArea) return;
+            const paths = Array.from(contentArea.querySelectorAll('.folder-item.selected, .folder-grid-item.selected')).map(item => item.dataset.path);
+            copyMultiplePathsToClipboard(paths, true);
+        }
+
+        function pasteToFolder(windowId) {
+            if (!SYSTEM.clipboard || SYSTEM.clipboard.items.length === 0) { Notify.warning('粘贴失败', '剪贴板为空'); return; }
+            const state = SYSTEM.folderWindowStates[windowId];
+            if (!state) return;
+            const destDir = state.currentPath;
+            executePaste(destDir, windowId);
+        }
+
+        function pasteToDesktop() {
+            if (!SYSTEM.clipboard || SYSTEM.clipboard.items.length === 0) { Notify.warning('粘贴失败', '剪贴板为空'); return; }
+            executePaste(SYSTEM.desktopPath, null);
+        }
+
+        function executePaste(destDir, windowId) {
+            const items = SYSTEM.clipboard.items;
+            const isCut = SYSTEM.clipboard.operation === 'cut';
+            let processed = 0;
+            let errors = 0;
+            const total = items.length;
+
+            const processOne = (item, cb) => {
+                const srcPath = item.path;
+                const filename = srcPath.split('/').pop();
+                const destPath = destDir + '/' + filename;
+
+                if (srcPath === destPath) { processed++; cb(); return; }
+                if (destPath.startsWith(srcPath + '/')) { errors++; cb(); return; }
+
+                if (item.isDirectory) {
+                    copyFolderRecursive(srcPath, destPath, (err) => {
+                        if (err) { errors++; cb(); return; }
+                        if (isCut) {
+                            deleteFolderRecursive(srcPath, () => { processed++; cb(); });
+                        } else { processed++; cb(); }
+                    });
+                } else {
+                    SYSTEM.fs.readFile(srcPath, (err, data) => {
+                        if (err) { errors++; cb(); return; }
+                        SYSTEM.fs.writeFile(destPath, data, (writeErr) => {
+                            if (writeErr) { errors++; cb(); return; }
+                            if (isCut) {
+                                SYSTEM.fs.unlink(srcPath, () => { processed++; cb(); });
+                            } else { processed++; cb(); }
+                        });
+                    });
+                }
+            };
+
+            const finish = () => {
+                refreshDesktop();
+                if (windowId) {
+                    const state = SYSTEM.folderWindowStates[windowId];
+                    if (state) { state.fileStats = {}; renderFolderContent(windowId); }
+                }
+                if (isCut) SYSTEM.clipboard = null;
+                if (errors > 0) {
+                    Notify.error('部分失败', `成功 ${processed} 项，失败 ${errors} 项`);
+                } else {
+                    Notify.success('粘贴成功', `已${isCut ? '移动' : '复制'} ${processed} 个项目`);
+                }
+            };
+
+            let idx = 0;
+            const next = () => {
+                if (idx >= total) { finish(); return; }
+                processOne(items[idx], () => { idx++; next(); });
+            };
+            next();
+        }
+
+        function copyFolderRecursive(srcDir, destDir, callback) {
+            SYSTEM.fs.mkdir(destDir, (mkdirErr) => {
+                if (mkdirErr && mkdirErr.code !== 'EEXIST') { callback(mkdirErr); return; }
+                SYSTEM.fs.readdir(srcDir, (err, files) => {
+                    if (err) { callback(err); return; }
+                    if (files.length === 0) { callback(null); return; }
+                    let pending = files.length;
+                    files.forEach(file => {
+                        const srcPath = srcDir + '/' + file;
+                        const destPath = destDir + '/' + file;
+                        SYSTEM.fs.stat(srcPath, (statErr, stats) => {
+                            if (statErr) { if (--pending === 0) callback(null); return; }
+                            const isDir = stats.isDirectory ? (typeof stats.isDirectory === 'function' ? stats.isDirectory() : stats.isDirectory) : false;
+                            if (isDir) {
+                                copyFolderRecursive(srcPath, destPath, (cpErr) => {
+                                    if (--pending === 0) callback(cpErr);
+                                });
+                            } else {
+                                SYSTEM.fs.readFile(srcPath, (readErr, data) => {
+                                    if (readErr) { if (--pending === 0) callback(readErr); return; }
+                                    SYSTEM.fs.writeFile(destPath, data, (writeErr) => {
+                                        if (--pending === 0) callback(writeErr);
+                                    });
+                                });
+                            }
+                        });
+                    });
+                });
+            });
+        }
+
         // ============================================
 
         function isArchiveFile(filename) {
@@ -5913,6 +6233,41 @@
             SYSTEM.startOpen = false; document.getElementById('start-menu').classList.remove('open');
             SYSTEM.calendarOpen = false; document.getElementById('calendar-panel').classList.remove('open');
         }
+
+        document.addEventListener('keydown', (e) => {
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.closest('.CodeMirror')) return;
+            if (e.ctrlKey || e.metaKey) {
+                if (e.key === 'c' || e.key === 'C') {
+                    if (SYSTEM.selectedIcons.length > 0) {
+                        const fileIds = SYSTEM.selectedIcons.filter(id => id.startsWith('file-'));
+                        if (fileIds.length > 0) {
+                            copySelectedFiles();
+                            e.preventDefault();
+                        }
+                    }
+                } else if (e.key === 'x' || e.key === 'X') {
+                    if (SYSTEM.selectedIcons.length > 0) {
+                        const fileIds = SYSTEM.selectedIcons.filter(id => id.startsWith('file-'));
+                        if (fileIds.length > 0) {
+                            cutSelectedFiles();
+                            e.preventDefault();
+                        }
+                    }
+                } else if (e.key === 'v' || e.key === 'V') {
+                    if (SYSTEM.clipboard && SYSTEM.clipboard.items.length > 0) {
+                        pasteToDesktop();
+                        e.preventDefault();
+                    }
+                }
+            }
+            if (e.key === 'Delete' && SYSTEM.selectedIcons.length > 0) {
+                const fileIds = SYSTEM.selectedIcons.filter(id => id.startsWith('file-'));
+                if (fileIds.length > 0) {
+                    deleteSelected();
+                    e.preventDefault();
+                }
+            }
+        });
 
         function renameFile(oldName) {
             const newName = prompt('请输入新名称:', oldName);
@@ -7878,7 +8233,7 @@
                         <div class="settings-content">
                             <div class="about-card">
                                 <div class="logo">JISHENG OS</div>
-                                <p>Ultimate Web Operating System<br>Version 10.5.1 • Build 2026</p>
+                                <p>Ultimate Web Operating System<br>Version 10.5.2 • Build 2026</p>
                             </div>
                             
                             <div class="settings-section" style="margin-top:20px">
@@ -7905,7 +8260,7 @@
                                 <h4>关于</h4>
                                 <div class="settings-item">
                                     <label>系统版本</label>
-                                    <span>10.5.1</span>
+                                    <span>10.5.2</span>
                                 </div>
                                 <div class="settings-item">
                                     <label>内核</label>
