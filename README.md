@@ -119,7 +119,7 @@
 
 ### 🛠️ TECHNICAL SPECS // 技术规格
 
-* **SYSTEM BUILD**：`v10.5.1`
+* **SYSTEM BUILD**：`v10.5.2`
 * **RENDER ENGINE**：`Ultra-Glass 拟物态 (Backdrop-filter: 40px)`
 * **CORE DRIVERS**：`BrowserFS` / `IndexedDB` / `File System Access API` / `JSZip` / `7z-wasm` / `V86` / `CodeMirror`
 * **LATENCY**：`< 16ms (60FPS Silk Smooth)`
@@ -133,7 +133,7 @@
 
 **[ 系统自检完成：逻辑回路 100% 闭环 ]**
 
-**[ JISHENG OS v10.5.1 已就绪。期待与您的下一次链接。]**
+**[ JISHENG OS v10.5.2 已就绪。期待与您的下一次链接。]**
 
 <br>
 
