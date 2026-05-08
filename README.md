@@ -1,6 +1,6 @@
 <div align="center">
 
-# JISHENG OS // SYSTEM ARCHIVE v10.5.1
+# JISHENG OS // SYSTEM ARCHIVE v10.5.2
 
 *A Single-File Ultimate Persistent Operating System*
 
