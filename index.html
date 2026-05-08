@@ -2841,6 +2841,7 @@
                             } else if(isArchiveFile(file)) {
                                 iconSvg = '<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2v11z"/><path d="M12 10v4"/><path d="M12 14l2-2"/>';
                             } else if(file.match(/\.html?$/i)) {
+                                // 先设置默认HTML图标，后续异步检测是否为JISHENG OS应用
                                 iconSvg = '<circle cx="12" cy="12" r="10"/><path d="M2 12h20"/>';
                             } else if(file.match(/\.(mp4|avi|mov|mkv|webm|flv|wmv)$/i)) {
                                 iconSvg = '<rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"/><line x1="7" y1="2" x2="7" y2="22"/><line x1="17" y1="2" x2="17" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="2" y1="7" x2="7" y2="7"/><line x1="2" y1="17" x2="7" y2="17"/><line x1="17" y1="17" x2="22" y2="17"/><line x1="17" y1="7" x2="22" y2="7"/>';
@@ -2848,11 +2849,29 @@
                                 iconSvg = '<path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>';
                             }
 
-                            // 异步检查是否为文件夹
+                            // 异步检查是否为文件夹（同时检测HTML是否为JISHENG OS应用）
                             SYSTEM.fs.stat(SYSTEM.desktopPath + '/' + file, (err, stats) => {
                                 if(!err && stats.isDirectory()) {
                                     iconSvg = '<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2v11z"/>';
                                     container.appendChild(createIconElement(fileId, file, iconSvg, `openFolderWindow('${file}')`, pos, 'folder', file));
+                                } else if(file.match(/\.html?$/i)) {
+                                    // HTML文件：异步读取内容检测是否为JISHENG OS应用
+                                    SYSTEM.fs.readFile(SYSTEM.desktopPath + '/' + file, 'utf8', (err, data) => {
+                                        let displayName = file;
+                                        let displayIcon = iconSvg;
+                                        if(!err && data) {
+                                            const appConfig = parseJishengApp(data);
+                                            if(appConfig) {
+                                                displayName = appConfig.name;
+                                                if(appConfig.icon && appConfig.icon.includes('<svg')) {
+                                                    displayIcon = appConfig.icon.replace(/<\/?svg[^>]*>/g, '');
+                                                } else {
+                                                    displayIcon = '<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 9h6v6H9z"/>';
+                                                }
+                                            }
+                                        }
+                                        container.appendChild(createIconElement(fileId, displayName, displayIcon, `openFile('${file}')`, pos, 'file', file));
+                                    });
                                 } else {
                                     container.appendChild(createIconElement(fileId, file, iconSvg, `openFile('${file}')`, pos, 'file', file));
                                 }
@@ -3729,7 +3748,7 @@
             Notify.success('已剪切', `已剪切 ${Clipboard.getItems().length} 个项目`);
         }
 
-        // 粘贴到桌面
+        // 粘贴到桌面（顺序处理，避免竞态条件）
         function pasteToDesktop() {
             if (!Clipboard.hasItems()) {
                 Notify.info('剪贴板为空');
@@ -3738,44 +3757,78 @@
             
             const items = Clipboard.getItems();
             const isCut = Clipboard.isCut;
-            const srcPaths = items.map(i => i.path); // 收集所有源路径
+            const srcPaths = items.map(i => i.path);
             let processedCount = 0;
             let errorCount = 0;
             
-            items.forEach(item => {
+            // 顺序处理每个项目，避免同名文件竞态
+            function processNext(index) {
+                if (index >= items.length) {
+                    // 所有项目处理完毕
+                    if (isCut) {
+                        Clipboard.clear();
+                        document.querySelectorAll('.desktop-icon').forEach(el => el.style.opacity = '');
+                        document.querySelectorAll('.folder-item, .folder-grid-item').forEach(el => el.style.opacity = '');
+                    }
+                    refreshAllAffectedWindows(SYSTEM.desktopPath, srcPaths, isCut);
+                    if (errorCount > 0) {
+                        Notify.error('部分失败', `成功 ${processedCount} 个，失败 ${errorCount} 个`);
+                    } else {
+                        Notify.success('粘贴成功', `已${isCut ? '移动' : '复制'} ${processedCount} 个项目`);
+                    }
+                    return;
+                }
+                
+                const item = items[index];
                 const destPath = SYSTEM.desktopPath + '/' + item.filename;
                 
-                // 检查目标是否已存在
+                // 检查目标是否已存在（复制时只要目标存在就生成新名称，剪切时源!=目标才生成）
                 SYSTEM.fs.stat(destPath, (err) => {
-                    if (!err && destPath !== item.path) {
-                        // 目标已存在，生成新名称
-                        const ext = item.filename.includes('.') ? '.' + item.filename.split('.').pop() : '';
-                        const baseName = item.filename.replace(ext, '');
-                        let newName = baseName + ' (副本)' + ext;
+                    if (!err && (isCut ? destPath !== item.path : true)) {
+                        // 目标已存在，生成新名称（参考青丝OS数字叠加方式）
+                        const dotIdx = item.filename.lastIndexOf('.');
+                        let newName;
                         let counter = 1;
+                        if (dotIdx > 0) {
+                            const baseName = item.filename.substring(0, dotIdx);
+                            const ext = item.filename.substring(dotIdx);
+                            newName = baseName + ' (' + counter + ')' + ext;
+                        } else {
+                            newName = item.filename + ' (' + counter + ')';
+                        }
                         
                         const checkAndRename = () => {
                             const newPath = SYSTEM.desktopPath + '/' + newName;
                             SYSTEM.fs.stat(newPath, (err) => {
                                 if (!err) {
                                     counter++;
-                                    newName = baseName + ' (副本' + counter + ')' + ext;
+                                    const dotIdx2 = item.filename.lastIndexOf('.');
+                                    if (dotIdx2 > 0) {
+                                        const baseName = item.filename.substring(0, dotIdx2);
+                                        const ext = item.filename.substring(dotIdx2);
+                                        newName = baseName + ' (' + counter + ')' + ext;
+                                    } else {
+                                        newName = item.filename + ' (' + counter + ')';
+                                    }
                                     checkAndRename();
                                 } else {
-                                    performPaste(item.path, newPath, item.filename, newName, isCut);
+                                    performPaste(item.path, newPath, isCut, () => {
+                                        processNext(index + 1);
+                                    });
                                 }
                             });
                         };
                         checkAndRename();
                     } else {
-                        performPaste(item.path, destPath, item.filename, item.filename, isCut);
+                        performPaste(item.path, destPath, isCut, () => {
+                            processNext(index + 1);
+                        });
                     }
                 });
-            });
+            }
             
-            function performPaste(srcPath, destPath, srcName, destName, isCut) {
+            function performPaste(srcPath, destPath, isCut, done) {
                 if (isCut) {
-                    // 剪切操作
                     SYSTEM.fs.rename(srcPath, destPath, (err) => {
                         if (err) {
                             console.error('剪切失败:', err);
@@ -3783,19 +3836,16 @@
                         } else {
                             processedCount++;
                         }
-                        checkComplete();
+                        done();
                     });
                 } else {
-                    // 复制操作 - 读取后写入
                     SYSTEM.fs.stat(srcPath, (err, stats) => {
                         if (err) {
                             errorCount++;
-                            checkComplete();
+                            done();
                             return;
                         }
-                        
                         if (stats.isDirectory()) {
-                            // 复制文件夹
                             copyFolderRecursive(srcPath, destPath, (err) => {
                                 if (err) {
                                     console.error('复制文件夹失败:', err);
@@ -3803,14 +3853,13 @@
                                 } else {
                                     processedCount++;
                                 }
-                                checkComplete();
+                                done();
                             });
                         } else {
-                            // 复制文件
                             SYSTEM.fs.readFile(srcPath, (err, data) => {
                                 if (err) {
                                     errorCount++;
-                                    checkComplete();
+                                    done();
                                     return;
                                 }
                                 SYSTEM.fs.writeFile(destPath, data, (err) => {
@@ -3820,7 +3869,7 @@
                                     } else {
                                         processedCount++;
                                     }
-                                    checkComplete();
+                                    done();
                                 });
                             });
                         }
@@ -3828,71 +3877,76 @@
                 }
             }
             
-            function checkComplete() {
-                if (processedCount + errorCount === items.length) {
-                    if (isCut) {
-                        Clipboard.clear();
-                        // 恢复所有图标透明度
-                        document.querySelectorAll('.desktop-icon').forEach(el => el.style.opacity = '');
-                        document.querySelectorAll('.folder-item, .folder-grid-item').forEach(el => el.style.opacity = '');
-                    }
-                    
-                    // 刷新所有受影响的窗口
-                    refreshAllAffectedWindows(SYSTEM.desktopPath, srcPaths, isCut);
-                    
-                    if (errorCount > 0) {
-                        Notify.error('部分失败', `成功 ${processedCount} 个，失败 ${errorCount} 个`);
-                    } else {
-                        Notify.success('粘贴成功', `已${isCut ? '移动' : '复制'} ${processedCount} 个项目`);
-                    }
-                }
-            }
+            processNext(0);
         }
 
-        // 递归复制文件夹
+        // 递归复制文件夹（改进错误处理）
         function copyFolderRecursive(srcPath, destPath, callback) {
-            SYSTEM.fs.mkdir(destPath, (err) => {
-                // 忽略文件夹已存在的错误
-                SYSTEM.fs.readdir(srcPath, (err, files) => {
-                    if (err) {
-                        callback(err);
-                        return;
-                    }
-                    
-                    if (files.length === 0) {
-                        callback(null);
-                        return;
-                    }
-                    
-                    let pending = files.length;
-                    files.forEach(file => {
-                        const srcFilePath = srcPath + '/' + file;
-                        const destFilePath = destPath + '/' + file;
+            SYSTEM.fs.mkdir(destPath, (mkdirErr) => {
+                // mkdir 失败时检查是否因为目录已存在（EEXIST），其他错误则中止
+                if (mkdirErr) {
+                    SYSTEM.fs.stat(destPath, (statErr, stats) => {
+                        if (statErr || !stats.isDirectory()) {
+                            callback(mkdirErr);
+                            return;
+                        }
+                        // 目录已存在，继续
+                        copyFolderContents();
+                    });
+                } else {
+                    copyFolderContents();
+                }
+                
+                function copyFolderContents() {
+                    SYSTEM.fs.readdir(srcPath, (err, files) => {
+                        if (err) {
+                            callback(err);
+                            return;
+                        }
                         
-                        SYSTEM.fs.stat(srcFilePath, (err, stats) => {
-                            if (err) {
-                                if (--pending === 0) callback(null);
-                                return;
-                            }
+                        if (files.length === 0) {
+                            callback(null);
+                            return;
+                        }
+                        
+                        let pending = files.length;
+                        let hasError = false;
+                        files.forEach(file => {
+                            const srcFilePath = srcPath + '/' + file;
+                            const destFilePath = destPath + '/' + file;
                             
-                            if (stats.isDirectory()) {
-                                copyFolderRecursive(srcFilePath, destFilePath, () => {
+                            SYSTEM.fs.stat(srcFilePath, (err, stats) => {
+                                if (err) {
+                                    if (!hasError) { hasError = true; }
                                     if (--pending === 0) callback(null);
-                                });
-                            } else {
-                                SYSTEM.fs.readFile(srcFilePath, (err, data) => {
-                                    if (err) {
-                                        if (--pending === 0) callback(null);
-                                        return;
-                                    }
-                                    SYSTEM.fs.writeFile(destFilePath, data, () => {
+                                    return;
+                                }
+                                
+                                if (stats.isDirectory()) {
+                                    copyFolderRecursive(srcFilePath, destFilePath, () => {
                                         if (--pending === 0) callback(null);
                                     });
-                                });
-                            }
+                                } else {
+                                    SYSTEM.fs.readFile(srcFilePath, (err, data) => {
+                                        if (err) {
+                                            console.error('复制文件失败:', srcFilePath, err);
+                                            if (!hasError) { hasError = true; }
+                                            if (--pending === 0) callback(null);
+                                            return;
+                                        }
+                                        SYSTEM.fs.writeFile(destFilePath, data, (writeErr) => {
+                                            if (writeErr) {
+                                                console.error('写入文件失败:', destFilePath, writeErr);
+                                                if (!hasError) { hasError = true; }
+                                            }
+                                            if (--pending === 0) callback(null);
+                                        });
+                                    });
+                                }
+                            });
                         });
                     });
-                });
+                }
             });
         }
 
@@ -5397,7 +5451,7 @@
             Notify.success('已剪切', `已剪切 ${Clipboard.getItems().length} 个项目`);
         }
 
-        // 粘贴到文件夹窗口
+        // 粘贴到文件夹窗口（顺序处理，避免竞态条件）
         function pasteToFolderWindow(windowId) {
             if(!Clipboard.hasItems()) {
                 Notify.info('剪贴板为空');
@@ -5413,44 +5467,78 @@
             const destPath = state.currentPath;
             const items = Clipboard.getItems();
             const isCut = Clipboard.isCut;
-            const srcPaths = items.map(i => i.path); // 收集所有源路径
+            const srcPaths = items.map(i => i.path);
             let processedCount = 0;
             let errorCount = 0;
             
-            items.forEach(item => {
+            // 顺序处理每个项目，避免同名文件竞态
+            function processNext(index) {
+                if (index >= items.length) {
+                    // 所有项目处理完毕
+                    if(isCut) {
+                        Clipboard.clear();
+                        document.querySelectorAll('.folder-item, .folder-grid-item').forEach(el => el.style.opacity = '');
+                        document.querySelectorAll('.desktop-icon').forEach(el => el.style.opacity = '');
+                    }
+                    refreshAllAffectedWindows(destPath, srcPaths, isCut);
+                    if(errorCount > 0) {
+                        Notify.error('部分失败', `成功 ${processedCount} 个，失败 ${errorCount} 个`);
+                    } else {
+                        Notify.success('粘贴成功', `已${isCut ? '移动' : '复制'} ${processedCount} 个项目`);
+                    }
+                    return;
+                }
+                
+                const item = items[index];
                 const targetPath = destPath + '/' + item.filename;
                 
-                // 检查目标是否已存在
+                // 检查目标是否已存在（复制时只要目标存在就生成新名称，剪切时源!=目标才生成）
                 SYSTEM.fs.stat(targetPath, (err) => {
-                    if(!err && targetPath !== item.path) {
-                        // 目标已存在，生成新名称
-                        const ext = item.filename.includes('.') ? '.' + item.filename.split('.').pop() : '';
-                        const baseName = item.filename.replace(ext, '');
-                        let newName = baseName + ' (副本)' + ext;
+                    if(!err && (isCut ? targetPath !== item.path : true)) {
+                        // 目标已存在，生成新名称（参考青丝OS数字叠加方式）
+                        const dotIdx = item.filename.lastIndexOf('.');
+                        let newName;
                         let counter = 1;
+                        if (dotIdx > 0) {
+                            const baseName = item.filename.substring(0, dotIdx);
+                            const ext = item.filename.substring(dotIdx);
+                            newName = baseName + ' (' + counter + ')' + ext;
+                        } else {
+                            newName = item.filename + ' (' + counter + ')';
+                        }
                         
                         const checkAndRename = () => {
                             const newPath = destPath + '/' + newName;
                             SYSTEM.fs.stat(newPath, (err) => {
                                 if(!err) {
                                     counter++;
-                                    newName = baseName + ' (副本' + counter + ')' + ext;
+                                    const dotIdx2 = item.filename.lastIndexOf('.');
+                                    if (dotIdx2 > 0) {
+                                        const baseName = item.filename.substring(0, dotIdx2);
+                                        const ext = item.filename.substring(dotIdx2);
+                                        newName = baseName + ' (' + counter + ')' + ext;
+                                    } else {
+                                        newName = item.filename + ' (' + counter + ')';
+                                    }
                                     checkAndRename();
                                 } else {
-                                    performFolderPaste(item.path, newPath, item.filename, newName, isCut, windowId);
+                                    performFolderPaste(item.path, newPath, isCut, () => {
+                                        processNext(index + 1);
+                                    });
                                 }
                             });
                         };
                         checkAndRename();
                     } else {
-                        performFolderPaste(item.path, targetPath, item.filename, item.filename, isCut, windowId);
+                        performFolderPaste(item.path, targetPath, isCut, () => {
+                            processNext(index + 1);
+                        });
                     }
                 });
-            });
+            }
             
-            function performFolderPaste(srcPath, destPath, srcName, destName, isCut, windowId) {
+            function performFolderPaste(srcPath, destPath, isCut, done) {
                 if(isCut) {
-                    // 剪切操作
                     SYSTEM.fs.rename(srcPath, destPath, (err) => {
                         if(err) {
                             console.error('剪切失败:', err);
@@ -5458,17 +5546,15 @@
                         } else {
                             processedCount++;
                         }
-                        checkFolderComplete(windowId);
+                        done();
                     });
                 } else {
-                    // 复制操作
                     SYSTEM.fs.stat(srcPath, (err, stats) => {
                         if(err) {
                             errorCount++;
-                            checkFolderComplete(windowId);
+                            done();
                             return;
                         }
-                        
                         if(stats.isDirectory()) {
                             copyFolderRecursive(srcPath, destPath, (err) => {
                                 if(err) {
@@ -5477,13 +5563,13 @@
                                 } else {
                                     processedCount++;
                                 }
-                                checkFolderComplete(windowId);
+                                done();
                             });
                         } else {
                             SYSTEM.fs.readFile(srcPath, (err, data) => {
                                 if(err) {
                                     errorCount++;
-                                    checkFolderComplete(windowId);
+                                    done();
                                     return;
                                 }
                                 SYSTEM.fs.writeFile(destPath, data, (err) => {
@@ -5493,7 +5579,7 @@
                                     } else {
                                         processedCount++;
                                     }
-                                    checkFolderComplete(windowId);
+                                    done();
                                 });
                             });
                         }
@@ -5501,27 +5587,7 @@
                 }
             }
             
-            function checkFolderComplete(windowId) {
-                if(processedCount + errorCount === items.length) {
-                    const state = SYSTEM.folderWindowStates?.[windowId];
-                    
-                    if(isCut) {
-                        Clipboard.clear();
-                        // 恢复所有项目透明度
-                        document.querySelectorAll('.folder-item, .folder-grid-item').forEach(el => el.style.opacity = '');
-                        document.querySelectorAll('.desktop-icon').forEach(el => el.style.opacity = '');
-                    }
-                    
-                    // 刷新所有受影响的窗口
-                    refreshAllAffectedWindows(destPath, srcPaths, isCut);
-                    
-                    if(errorCount > 0) {
-                        Notify.error('部分失败', `成功 ${processedCount} 个，失败 ${errorCount} 个`);
-                    } else {
-                        Notify.success('粘贴成功', `已${isCut ? '移动' : '复制'} ${processedCount} 个项目`);
-                    }
-                }
-            }
+            processNext(0);
         }
 
         function setupFolderItemDrag(e, windowId, touchItem) {
@@ -5937,6 +6003,64 @@
             });
         }
 
+        // === JISHENG OS 应用识别 ===
+        /**
+         * 解析HTML文件中的JISHENG OS应用标记
+         * @param {string} htmlContent - HTML文件内容
+         * @returns {Object|null} 应用配置对象，如果不是应用则返回null
+         */
+        function parseJishengApp(htmlContent) {
+            // 只检查前200行，避免处理大文件影响性能
+            const searchContent = htmlContent.split('\n').slice(0, 200).join('\n');
+            // 正则匹配 <!-- JISHENG-OS-APP: {...} -->
+            const match = searchContent.match(/<!--\s*JISHENG-OS-APP:\s*(\{[\s\S]*?\})\s*-->/);
+            if (!match) return null;
+
+            try {
+                const config = JSON.parse(match[1]);
+                if (!config.name) return null; // 必须有name字段
+                return {
+                    name: config.name,
+                    icon: config.icon || null,
+                    width: config.width || 700,
+                    height: config.height || 500
+                };
+            } catch (e) {
+                console.warn('JISHENG-OS-APP 配置解析失败:', e);
+                return null;
+            }
+        }
+
+        /**
+         * 作为JISHENG OS应用打开HTML文件（无地址栏）
+         * @param {string} htmlContent - HTML文件内容
+         * @param {Object} appConfig - 应用配置
+         * @param {string} filename - 文件名
+         */
+        function openJishengApp(htmlContent, appConfig, filename) {
+            const blob = new Blob([htmlContent], { type: 'text/html' });
+            const url = URL.createObjectURL(blob);
+
+            // 根据icon配置生成图标HTML
+            let iconHtml = '<svg class="icon-svg sm" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 9h6v6H9z"/></svg>';
+            // 如果icon是SVG代码，直接使用
+            if (appConfig.icon && appConfig.icon.includes('<svg')) {
+                iconHtml = appConfig.icon;
+            }
+
+            createWindow({
+                title: appConfig.name,
+                iconHtml: iconHtml,
+                width: appConfig.width,
+                height: appConfig.height,
+                content: `
+                    <div class="content-area" style="position:relative;flex:1;">
+                        <iframe src="${url}" sandbox="allow-same-origin allow-scripts allow-forms allow-popups" style="width:100%;height:100%;border:none;"></iframe>
+                    </div>
+                `
+            });
+        }
+
         // === 文件操作 ===
         function openFile(filename) {
             // 直接转接给通用打开函数，保证逻辑统一
@@ -5962,18 +6086,24 @@
                     return;
                 }
                 
-                // 1. 处理 HTML 文件 (自动跳转浏览器)
+                // 1. 处理 HTML 文件
                 if(filename.match(/\.html?$/i)) {
                 SYSTEM.fs.readFile(fullPath, 'utf8', (err, data) => {
                     if(err) { Notify.error('打开失败', err.message); return; }
                     
-                    // 将 HTML 内容转换为 Blob URL
-                    const blob = new Blob([data], { type: 'text/html' });
-                    const url = URL.createObjectURL(blob);
-                    
-                    // 直接调用浏览器打开
-                    openBrowser(url);
-                    Notify.success('正在打开', '已在浏览器中加载 HTML 文件');
+                    // 检测是否为 JISHENG OS 应用
+                    const appConfig = parseJishengApp(data);
+                    if (appConfig) {
+                        // 作为独立应用打开（无地址栏）
+                        openJishengApp(data, appConfig, filename);
+                        Notify.success('正在打开', `已启动应用: ${appConfig.name}`);
+                    } else {
+                        // 普通HTML文件，用浏览器打开
+                        const blob = new Blob([data], { type: 'text/html' });
+                        const url = URL.createObjectURL(blob);
+                        openBrowser(url);
+                        Notify.success('正在打开', '已在浏览器中加载 HTML 文件');
+                    }
                 });
             }
             // 2. 处理图片文件 (改为调用漫画查看器)
@@ -6817,6 +6947,12 @@
                 const windowId = activeWindow.querySelector('.content-area')?.id?.replace('folder-content-', '');
                 if (windowId) {
                     copySelectedFolderItems(windowId);
+                    return;
+                }
+                // 非文件夹窗口（如记事本、设置等），回退到桌面复制
+                if (SYSTEM.selectedIcons && SYSTEM.selectedIcons.length > 0) {
+                    copySelectedDesktopItems();
+                    return;
                 }
             } else {
                 // 桌面复制
@@ -6832,6 +6968,12 @@
                 const windowId = activeWindow.querySelector('.content-area')?.id?.replace('folder-content-', '');
                 if (windowId) {
                     cutSelectedFolderItems(windowId);
+                    return;
+                }
+                // 非文件夹窗口，回退到桌面剪切
+                if (SYSTEM.selectedIcons && SYSTEM.selectedIcons.length > 0) {
+                    cutSelectedDesktopItems();
+                    return;
                 }
             } else {
                 cutSelectedDesktopItems();
@@ -6852,7 +6994,10 @@
                 const windowId = activeWindow.querySelector('.content-area')?.id?.replace('folder-content-', '');
                 if (windowId) {
                     pasteToFolderWindow(windowId);
+                    return;
                 }
+                // 非文件夹窗口，回退到桌面粘贴
+                pasteToDesktop();
             } else {
                 // 桌面粘贴
                 pasteToDesktop();
