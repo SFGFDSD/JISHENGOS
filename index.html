@@ -6060,7 +6060,7 @@
                 height: appConfig.height,
                 content: `
                     <div class="content-area" style="position:relative;flex:1;">
-                        <iframe src="${url}" sandbox="allow-same-origin allow-scripts allow-forms allow-popups" style="width:100%;height:100%;border:none;"></iframe>
+                        <iframe src="${url}" sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-downloads" style="width:100%;height:100%;border:none;"></iframe>
                     </div>
                 `
             });
@@ -7362,7 +7362,7 @@
                     </div>
                     <div class="content-area" style="position:relative;">
                         <div class="loading-overlay" id="loading-${SYSTEM.idCounter+1}"><div class="spinner"></div><span>加载中...</span></div>
-                        <iframe id="browser-frame-${SYSTEM.idCounter+1}" src="${startUrl}" sandbox="allow-same-origin allow-scripts allow-forms allow-popups"></iframe>
+                        <iframe id="browser-frame-${SYSTEM.idCounter+1}" src="${startUrl}" sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-downloads"></iframe>
                     </div>
                 `,
                 onInit: (w, winId) => {
