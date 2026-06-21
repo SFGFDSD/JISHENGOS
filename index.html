@@ -132,6 +132,13 @@
         .icon-svg.lg { width: 32px; height: 32px; }
         .icon-svg.xl { width: 40px; height: 40px; }
 
+        /* 恢复原始内联 SVG 的 stroke-width="2" 视觉效果 */
+        .tb-notify-icon .icon-svg,
+        .icon-svg.tb-notify-icon { stroke-width: 2; }
+        .folder-toolbar .icon-svg { stroke-width: 2; }
+        .window-controls .win-btn:first-child .icon-svg { stroke-width: 2; }
+        .icon-svg.stroke-2 { stroke-width: 2; }
+
         /* === 背景系统 === */
         #dynamic-bg {
             position: absolute; inset: 0;
@@ -517,6 +524,8 @@
             -webkit-backdrop-filter: blur(40px) saturate(180%);
             border: 1px solid rgba(255,255,255,0.08); border-radius: 8px;
             padding: 6px; z-index: 3000;
+            /* 菜单过高时贴顶并内部滚动，保证最底部按钮始终可点击 */
+            max-height: calc(100vh - 16px); overflow-y: auto; overflow-x: hidden;
             opacity: 0; transform: scale(0.95); pointer-events: none;
             transition: all 0.12s ease; box-shadow: 0 20px 50px -12px rgba(0, 0, 0, 0.6);
         }
@@ -1753,68 +1762,17 @@
 
     <!-- 任务栏 -->
     <div class="taskbar">
-        <div class="start-btn" onclick="toggleStartMenu()">
-            <svg class="icon-svg" viewBox="0 0 24 24">
-                <rect x="3" y="3" width="7" height="7" rx="1"/>
-                <rect x="14" y="3" width="7" height="7" rx="1"/>
-                <rect x="3" y="14" width="7" height="7" rx="1"/>
-                <rect x="14" y="14" width="7" height="7" rx="1"/>
-            </svg>
-        </div>
+        <div class="start-btn" data-icon="uiStartMenu" onclick="toggleStartMenu()"></div>
         <div class="taskbar-apps" id="taskbar-apps">
             <!-- 固定快捷方式（只负责打开应用） -->
-            <div class="taskbar-icon pinned" onclick="openBrowser()" title="浏览器">
-                <svg class="icon-svg" viewBox="0 0 24 24">
-                    <circle cx="12" cy="12" r="10"/>
-                    <path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
-                </svg>
-            </div>
-            <div class="taskbar-icon pinned" onclick="openNotepad()" title="记事本">
-                <svg class="icon-svg" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-            </div>
-            <div class="taskbar-icon pinned" onclick="openCalculator()" title="计算器">
-                <svg class="icon-svg" viewBox="0 0 24 24">
-                    <rect x="4" y="2" width="16" height="20" rx="2"/>
-                    <line x1="8" y1="6" x2="16" y2="6"/>
-                    <line x1="8" y1="10" x2="8" y2="10.01"/>
-                    <line x1="12" y1="10" x2="12" y2="10.01"/>
-                    <line x1="16" y1="10" x2="16" y2="10.01"/>
-                    <line x1="8" y1="14" x2="8" y2="14.01"/>
-                    <line x1="12" y1="14" x2="12" y2="14.01"/>
-                    <line x1="16" y1="14" x2="16" y2="14.01"/>
-                    <line x1="8" y1="18" x2="8" y2="18.01"/>
-                    <line x1="12" y1="18" x2="12" y2="18.01"/>
-                    <line x1="16" y1="18" x2="16" y2="18.01"/>
-                </svg>
-            </div>
-            <div class="taskbar-icon pinned" onclick="openPaint()" title="画板">
-                <svg class="icon-svg" viewBox="0 0 24 24">
-                    <path d="M12 19l7-7 3 3-7 7-3-3z"/>
-                    <path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/>
-                    <path d="M2 2l7.586 7.586"/>
-                    <circle cx="11" cy="11" r="2"/>
-                </svg>
-            </div>
-            <div class="taskbar-icon pinned" onclick="openSettings()" title="设置">
-                <svg class="icon-svg" viewBox="0 0 24 24">
-                    <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
-                    <circle cx="12" cy="12" r="3"/>
-                </svg>
-            </div>
-            <div class="taskbar-icon pinned" onclick="openV86()" title="V86虚拟机">
-                <svg class="icon-svg" viewBox="0 0 24 24">
-                    <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
-                    <line x1="8" y1="21" x2="16" y2="21"/>
-                    <line x1="12" y1="17" x2="12" y2="21"/>
-                    <path d="M6 8h2M6 12h2M10 8h8M10 12h8"/>
-                </svg>
-            </div>
-            <div class="taskbar-icon pinned" onclick="openCodeEditor()" title="HTML编辑器">
-                <svg class="icon-svg" viewBox="0 0 24 24">
-                    <polyline points="16 18 22 12 16 6"/>
-                    <polyline points="8 6 2 12 8 18"/>
-                </svg>
-            </div>
+            <div class="taskbar-icon pinned" onclick="openBrowser()" title="浏览器" data-icon="appBrowser"></div>
+            <div class="taskbar-icon pinned" onclick="openFileExplorer()" title="文件资源管理器" data-icon="appExplorer"></div>
+            <div class="taskbar-icon pinned" onclick="openNotepad()" title="记事本" data-icon="appNotepad"></div>
+            <div class="taskbar-icon pinned" onclick="openCalculator()" title="计算器" data-icon="appCalc"></div>
+            <div class="taskbar-icon pinned" onclick="openPaint()" title="画板" data-icon="appPaint"></div>
+            <div class="taskbar-icon pinned" onclick="openSettings()" title="设置" data-icon="appSettings"></div>
+            <div class="taskbar-icon pinned" onclick="openV86()" title="V86虚拟机" data-icon="appVM"></div>
+            <div class="taskbar-icon pinned" onclick="openCodeEditor()" title="HTML编辑器" data-icon="appCode"></div>
             <!-- 运行中窗口的条状图标动态插入这里 -->
             <div class="taskbar-running-area" id="taskbar-running-area"></div>
         </div>
@@ -1847,71 +1805,31 @@
             <h2>Pinned</h2>
         </div>
         <div class="menu-grid">
-            <div class="menu-item" onclick="openBrowser(); toggleStartMenu()">
-                <svg class="icon-svg lg" viewBox="0 0 24 24">
-                    <circle cx="12" cy="12" r="10"/>
-                    <path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
-                </svg>
+            <div class="menu-item" onclick="openBrowser(); toggleStartMenu()" data-icon="appBrowser" data-icon-size="lg">
                 <span>Browser</span>
             </div>
-            <div class="menu-item" onclick="openNotepad(); toggleStartMenu()">
-                 <svg class="icon-svg lg" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
+            <div class="menu-item" onclick="openNotepad(); toggleStartMenu()" data-icon="appNotepad" data-icon-size="lg">
                 <span>Notepad</span>
             </div>
-            <div class="menu-item" onclick="openCalculator(); toggleStartMenu()">
-                <svg class="icon-svg lg" viewBox="0 0 24 24">
-                    <rect x="4" y="2" width="16" height="20" rx="2"/>
-                    <line x1="8" y1="6" x2="16" y2="6"/>
-                    <line x1="8" y1="10" x2="8" y2="10.01"/>
-                    <line x1="12" y1="10" x2="12" y2="10.01"/>
-                    <line x1="16" y1="10" x2="16" y2="10.01"/>
-                </svg>
+            <div class="menu-item" onclick="openCalculator(); toggleStartMenu()" data-icon="appCalc" data-icon-size="lg">
                 <span>Calculator</span>
             </div>
-            <div class="menu-item" onclick="openPaint(); toggleStartMenu()">
-                <svg class="icon-svg lg" viewBox="0 0 24 24">
-                    <path d="M12 19l7-7 3 3-7 7-3-3z"/>
-                    <path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/>
-                    <circle cx="11" cy="11" r="2"/>
-                </svg>
+            <div class="menu-item" onclick="openPaint(); toggleStartMenu()" data-icon="appPaint" data-icon-size="lg">
                 <span>Paint</span>
             </div>
-            <div class="menu-item" onclick="openSettings(); toggleStartMenu()">
-                <svg class="icon-svg lg" viewBox="0 0 24 24">
-                    <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
-                    <circle cx="12" cy="12" r="3"/>
-                </svg>
+            <div class="menu-item" onclick="openSettings(); toggleStartMenu()" data-icon="appSettings" data-icon-size="lg">
                 <span>Settings</span>
             </div>
-            <div class="menu-item" onclick="openWallpaperPanel(); toggleStartMenu()">
-                <svg class="icon-svg lg" viewBox="0 0 24 24">
-                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-                    <circle cx="9" cy="9" r="2"/>
-                    <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>
-                </svg>
+            <div class="menu-item" onclick="openWallpaperPanel(); toggleStartMenu()" data-icon="uiWallpaper" data-icon-size="lg">
                 <span>Wallpaper</span>
             </div>
-            <div class="menu-item" onclick="resetSystem()">
-                <svg class="icon-svg lg" viewBox="0 0 24 24">
-                    <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
-                    <path d="M3 3v5h5"/>
-                </svg>
+            <div class="menu-item" onclick="resetSystem()" data-icon="uiBrowserRefresh" data-icon-size="lg">
                 <span>Reset</span>
             </div>
-            <div class="menu-item" onclick="openV86(); toggleStartMenu()">
-                <svg class="icon-svg lg" viewBox="0 0 24 24">
-                    <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
-                    <line x1="8" y1="21" x2="16" y2="21"/>
-                    <line x1="12" y1="17" x2="12" y2="21"/>
-                    <path d="M6 8h2M6 12h2M10 8h8M10 12h8"/>
-                </svg>
+            <div class="menu-item" onclick="openV86(); toggleStartMenu()" data-icon="appVM" data-icon-size="lg">
                 <span>V86 VM</span>
             </div>
-            <div class="menu-item" onclick="openCodeEditor(); toggleStartMenu()">
-                <svg class="icon-svg lg" viewBox="0 0 24 24">
-                    <polyline points="16 18 22 12 16 6"/>
-                    <polyline points="8 6 2 12 8 18"/>
-                </svg>
+            <div class="menu-item" onclick="openCodeEditor(); toggleStartMenu()" data-icon="appCode" data-icon-size="lg">
                 <span>HTML Editor</span>
             </div>
         </div>
@@ -1922,12 +1840,8 @@
         <div class="calendar-header">
             <h3 id="calendar-title">2024年1月</h3>
             <div class="calendar-nav">
-                <button onclick="changeMonth(-1)">
-                    <svg class="icon-svg sm" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
-                </button>
-                <button onclick="changeMonth(1)">
-                    <svg class="icon-svg sm" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
-                </button>
+                <button onclick="changeMonth(-1)" data-icon="uiChevronLeft" data-icon-size="sm"></button>
+                <button onclick="changeMonth(1)" data-icon="uiChevronRight" data-icon-size="sm"></button>
             </div>
         </div>
         <div class="calendar-weekdays">
@@ -1943,28 +1857,13 @@
     <div class="overlay" id="overlay" onclick="closePanel()"></div>
     <div class="wallpaper-panel" id="wallpaper-panel">
         <div class="panel-header">
-            <h3>
-                <svg class="icon-svg" viewBox="0 0 24 24">
-                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-                    <circle cx="9" cy="9" r="2"/>
-                    <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>
-                </svg>
+            <h3 data-icon="uiWallpaper">
                 个性化
             </h3>
-            <button class="panel-close" onclick="closePanel()">
-                <svg class="icon-svg" viewBox="0 0 24 24">
-                    <line x1="18" y1="6" x2="6" y2="18"/>
-                    <line x1="6" y1="6" x2="18" y2="18"/>
-                </svg>
-            </button>
+            <button class="panel-close" onclick="closePanel()" data-icon="uiClose"></button>
         </div>
         <div class="panel-content">
-            <div class="upload-area" id="drop-zone-wp" onclick="document.getElementById('file-input').click()">
-                <svg class="icon-svg xl" viewBox="0 0 24 24">
-                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                    <polyline points="17 8 12 3 7 8"/>
-                    <line x1="12" y1="3" x2="12" y2="15"/>
-                </svg>
+            <div class="upload-area" id="drop-zone-wp" onclick="document.getElementById('file-input').click()" data-icon="uiUpload" data-icon-size="xl">
                 <p>点击上传或拖拽本地图片</p>
                 <small>支持 JPG, PNG, WebP 格式</small>
             </div>
@@ -2108,13 +2007,6 @@
                 // 清除之前的定时器
                 if (this.timer) clearTimeout(this.timer);
 
-                const icons = {
-                    success: '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>',
-                    error: '<circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>',
-                    warning: '<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>',
-                    info: '<circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>'
-                };
-                
                 const el = document.createElement('div');
                 el.className = 'tb-notification';
                 // 点击可立即关闭
@@ -2125,10 +2017,9 @@
 
                 // 简单的内容布局：图标 + 文本
                 // 如果有 message，显示 "Title: Message"，否则只显示 Title
+                const notifyIconName = 'ui' + type.charAt(0).toUpperCase() + type.slice(1);
                 el.innerHTML = `
-                    <svg class="tb-notify-icon ${type}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        ${icons[type]}
-                    </svg>
+                    ${icon(notifyIconName, 'tb-notify-icon ' + type)}
                     <div class="tb-notify-content ${!message ? 'single' : ''}">
                         <span>
                             <span class="tb-notify-title">${title}</span>
@@ -2181,7 +2072,8 @@
                             });
                         } else {
                             SYSTEM.fs.readFile(filePath, (err, data) => {
-                                if (!err) zip.file(file, data);
+                                // 保留原始修改时间写入 zip 条目，否则 JSZip 默认用当前时间
+                                if (!err) zip.file(file, data, { date: prepareZipWriteDate(new Date(stats.mtime || Date.now())) });
                                 pending--;
                                 if (pending === 0) callback();
                             });
@@ -2206,7 +2098,9 @@
                             currentDragFile = {
                                 blob: blob,
                                 filename: filename + '.zip',
-                                originalName: filename
+                                originalName: filename,
+                                mtime: stats.mtime || Date.now(),
+                                srcPath: filepath
                             };
                             dragFileReady = true;
                             console.log('✓ 文件已准备: ' + filename);
@@ -2222,7 +2116,9 @@
                         currentDragFile = {
                             blob: new Blob([data]),
                             filename: filename,
-                            originalName: filename
+                            originalName: filename,
+                            mtime: stats.mtime || Date.now(),
+                            srcPath: filepath
                         };
                         dragFileReady = true;
                         console.log('✓ 文件已准备: ' + filename);
@@ -2241,7 +2137,7 @@
             const finalFilename = currentDragFile.filename;
             const file = new File([blob], finalFilename, {
                 type: 'application/octet-stream',
-                lastModified: Date.now()
+                lastModified: currentDragFile.mtime || Date.now()
             });
             e.dataTransfer.effectAllowed = 'copyMove';
             if (e.dataTransfer.items && e.dataTransfer.items.add) {
@@ -2251,7 +2147,7 @@
             e.dataTransfer.setData('DownloadURL', 'application/octet-stream:' + finalFilename + ':' + url);
             e.dataTransfer.setData('text/plain', JSON.stringify({
                 filename: currentDragFile.originalName,
-                srcPath: SYSTEM.desktopPath + '/' + currentDragFile.originalName
+                srcPath: currentDragFile.srcPath || (SYSTEM.desktopPath + '/' + currentDragFile.originalName)
             }));
             e.target.style.opacity = '0.4';
             console.log('→ 拖拽到真实桌面');
@@ -2284,6 +2180,49 @@
                 SYSTEM.mounted = true;
                 SYSTEM.rootFs = require('fs').getRootFS ? require('fs').getRootFS() : null;
                 SYSTEM.mountedFolders = {}; // { mountPath: { handle, name, id } }
+                
+                // === 修改时间缓存系统（修复 IndexedDB 等后端不支持 utimes 导致解压后日期丢失）===
+                SYSTEM.mtimeCache = {};
+                try {
+                    const savedMtime = localStorage.getItem('JISHENG_OS_MTIME_CACHE');
+                    if (savedMtime) SYSTEM.mtimeCache = JSON.parse(savedMtime);
+                } catch(e) { SYSTEM.mtimeCache = {}; }
+                
+                SYSTEM.saveMtimeCache = function() {
+                    try { localStorage.setItem('JISHENG_OS_MTIME_CACHE', JSON.stringify(SYSTEM.mtimeCache)); } catch(e) {}
+                };
+                
+                SYSTEM.setMtimeCache = function(path, mtime) {
+                    if (!mtime) return;
+                    const ms = mtime instanceof Date ? mtime.getTime() : Number(mtime);
+                    if (!isNaN(ms) && ms > 0) {
+                        SYSTEM.mtimeCache[path] = ms;
+                        SYSTEM.saveMtimeCache();
+                    }
+                };
+                
+                // 包装 fs.utimes：即使后端（如 IndexedDB）返回 ENOTSUP，也把目标时间写入缓存
+                const originalUtimes = SYSTEM.fs.utimes.bind(SYSTEM.fs);
+                SYSTEM.fs.utimes = function(path, atime, mtime, callback) {
+                    SYSTEM.setMtimeCache(path, mtime);
+                    return originalUtimes(path, atime, mtime, callback);
+                };
+                
+                // 包装 fs.stat：如果路径在缓存中有修改时间，则优先返回缓存值
+                const originalStat = SYSTEM.fs.stat.bind(SYSTEM.fs);
+                SYSTEM.fs.stat = function(path, callback) {
+                    return originalStat(path, function(err, stats) {
+                        if (!err && stats && SYSTEM.mtimeCache[path]) {
+                            try {
+                                const cachedMs = SYSTEM.mtimeCache[path];
+                                stats.mtime = new Date(cachedMs);
+                                stats.mtimeMs = cachedMs;
+                            } catch(e) {}
+                        }
+                        callback(err, stats);
+                    });
+                };
+                // ================================================================
                 
                 // 创建挂载点目录
                 SYSTEM.fs.mkdir('/mnt', () => {});
@@ -2677,6 +2616,11 @@
                     ensureDir(fullPath.substring(0, fullPath.lastIndexOf('/'))).then(() => {
                         SYSTEM.fs.writeFile(fullPath, buffer, (wErr) => {
                             if(wErr) console.error('上传写入失败:', relPath, wErr);
+                            // 保留原始修改时间：上传后用文件本机的 lastModified 回写，
+                            // 否则虚拟 FS 会把 mtime 置为当前时间，导致"修改日期全没了"。
+                            if(!wErr && file.lastModified && SYSTEM.fs.utimes) {
+                                try { SYSTEM.fs.utimes(fullPath, file.lastModified, file.lastModified, () => {}); } catch(e) {}
+                            }
                             onItemDone(!wErr);
                         });
                     }).catch((dirErr) => {
@@ -2791,11 +2735,12 @@
             loadIconPositions(() => {
                 // 系统固定应用
                 const systemApps = [
-                    { id: 'app-browser', name: '浏览器', action: 'openBrowser()', icon: '<circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>' },
-                    { id: 'app-notepad', name: '记事本', action: 'openNotepad()', icon: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line>' },
-                    { id: 'app-calc', name: '计算器', action: 'openCalculator()', icon: '<rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/><line x1="8" y1="10" x2="8" y2="10.01"/><line x1="12" y1="10" x2="12" y2="10.01"/><line x1="16" y1="10" x2="16" y2="10.01"/>' },
-                    { id: 'app-paint', name: '画板', action: 'openPaint()', icon: '<path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><circle cx="11" cy="11" r="2"/>' },
-                    { id: 'app-settings', name: '系统设置', action: 'openSettings()', icon: '<path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/>' }
+                    { id: 'app-browser', name: '浏览器', action: 'openBrowser()', icon: iconBody('appBrowser') },
+                    { id: 'app-explorer', name: '文件资源管理器', action: 'openFileExplorer()', icon: iconBody('appExplorer') },
+                    { id: 'app-notepad', name: '记事本', action: 'openNotepad()', icon: iconBody('appNotepad') },
+                    { id: 'app-calc', name: '计算器', action: 'openCalculator()', icon: iconBody('appCalc') },
+                    { id: 'app-paint', name: '画板', action: 'openPaint()', icon: iconBody('appPaint') },
+                    { id: 'app-settings', name: '系统设置', action: 'openSettings()', icon: iconBody('appSettings') }
                 ];
 
                 // 排列逻辑
@@ -2814,7 +2759,7 @@
                     id: 'app-v86',
                     name: 'V86 虚拟机',
                     action: 'openV86()',
-                    icon: '<rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/><path d="M6 8h2M6 12h2M10 8h8M10 12h8"/>'
+                    icon: iconBody('appVM')
                 });
 
                 // 添加代码编辑器到系统应用列表
@@ -2822,7 +2767,7 @@
                     id: 'app-editor',
                     name: 'HTML编辑器',
                     action: 'openCodeEditor()',
-                    icon: '<svg class="icon-svg" viewBox="0 0 24 24"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>'
+                    icon: iconBody('appCode')
                 });
 
                 // 渲染系统应用
@@ -2841,32 +2786,13 @@
                             const defaultPos = getNextPos();
                             const pos = SYSTEM.iconPositions[fileId] || defaultPos;
                             
-                            let iconSvg = '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>';
+                            let iconSvg = iconBody(fileIconName(file, false));
                             let type = 'file';
-
-                            if(file.match(/\.(jpg|png|gif|webp|jpeg|bmp|svg)$/i)) {
-                                iconSvg = '<rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>';
-                            } else if(file.match(/\.txt$/i)) {
-                                iconSvg = '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line>';
-                            } else if(file.match(/\.csv$/i)) {
-                                iconSvg = '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z M9 2v20 M4 9h16 M4 15h16" />';
-                            } else if(file.match(/\.zip$/i)) {
-                                iconSvg = '<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2v11z"/><path d="M12 10v4"/><path d="M12 14l2-2"/>';
-                            } else if(isArchiveFile(file)) {
-                                iconSvg = '<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2v11z"/><path d="M12 10v4"/><path d="M12 14l2-2"/>';
-                            } else if(file.match(/\.html?$/i)) {
-                                // 先设置默认HTML图标，后续异步检测是否为JISHENG OS应用
-                                iconSvg = '<circle cx="12" cy="12" r="10"/><path d="M2 12h20"/>';
-                            } else if(file.match(/\.(mp4|avi|mov|mkv|webm|flv|wmv)$/i)) {
-                                iconSvg = '<rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"/><line x1="7" y1="2" x2="7" y2="22"/><line x1="17" y1="2" x2="17" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="2" y1="7" x2="7" y2="7"/><line x1="2" y1="17" x2="7" y2="17"/><line x1="17" y1="17" x2="22" y2="17"/><line x1="17" y1="7" x2="22" y2="7"/>';
-                            } else if(file.match(/\.(mp3|wav|flac|m4a|ogg|aac)$/i)) {
-                                iconSvg = '<path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>';
-                            }
 
                             // 异步检查是否为文件夹（同时检测HTML是否为JISHENG OS应用）
                             SYSTEM.fs.stat(SYSTEM.desktopPath + '/' + file, (err, stats) => {
                                 if(!err && stats.isDirectory()) {
-                                    iconSvg = '<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2v11z"/>';
+                                    iconSvg = iconBody('fileFolder');
                                     container.appendChild(createIconElement(fileId, file, iconSvg, `openFolderWindow('${file}')`, pos, 'folder', file));
                                 } else if(file.match(/\.html?$/i)) {
                                     // HTML文件：异步读取内容检测是否为JISHENG OS应用
@@ -2901,9 +2827,9 @@
                     const defaultPos = getNextPos();
                     const pos = SYSTEM.iconPositions[fileId] || defaultPos;
                     
-                    const iconSvg = '<path d="M18 19a5 5 0 0 1-5-5v8"/><path d="M9 20H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H20a2 2 0 0 1 2 2v5"/><circle cx="13" cy="12" r="2"/><circle cx="20" cy="19" r="2"/>';
-                    container.appendChild(createLocalFolderIconElement(fileId, folderInfo.name, iconSvg, folderId, pos));
+                    container.appendChild(createLocalFolderIconElement(fileId, folderInfo.name, iconBody('uiEject'), folderId, pos));
                 });
+                injectStaticIcons();
             });
             
             initDesktopEvents();
@@ -2995,7 +2921,9 @@
                     openV86();
                 } else if (action === 'openCodeEditor()') {
                     openCodeEditor();
-                } 
+                } else if (action === 'openFileExplorer()') {
+                    openFileExplorer();
+                }
                 // 处理文件夹动作
                 else if (action.startsWith('openFolderWindow(')) {
                     const folderName = action.match(/openFolderWindow\('(.*)'\)/)[1];
@@ -3066,15 +2994,15 @@
             const cm = document.getElementById('context-menu');
             cm.innerHTML = `
                 <div class="context-item" onclick="openLocalFolder('${folderId}'); closeCtx()">
-                    <svg class="icon-svg" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+                    ${icon('uiOpen','sm')}
                     <span>打开</span>
                 </div>
                 <div class="context-divider"></div>
                 ${isDisconnected ? `<div class="context-item" onclick="remountFolder('${folderId}'); closeCtx()" style="color:var(--accent-cyan)">
-                    <svg class="icon-svg" viewBox="0 0 24 24" style="color:var(--accent-cyan)"><path d="M18 19a5 5 0 0 1-5-5v8"/><path d="M9 20H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H20a2 2 0 0 1 2 2v5"/><circle cx="13" cy="12" r="2"/><circle cx="20" cy="19" r="2"/></svg>
+                    ${icon('uiEject','sm')}
                     <span>重新挂载</span>
                 </div>` : `<div class="context-item" onclick="unmountLocalFolder('${folderId}'); closeCtx()" style="color:var(--win-close-red)">
-                    <svg class="icon-svg" viewBox="0 0 24 24" style="color:var(--win-close-red)"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+                    ${icon('uiEject','sm')}
                     <span>卸载挂载</span>
                 </div>`}
             `;
@@ -3576,7 +3504,7 @@
             if (isSystemApp) {
                 cm.innerHTML = `
                     <div class="context-item" onclick="document.getElementById('${targetId}').ondblclick(); closeCtx()">
-                        <svg class="icon-svg" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+                        ${icon('uiOpen','sm')}
                         <span>打开</span>
                     </div>
                 `;
@@ -3593,7 +3521,7 @@
             
             html += `
                 <div class="context-item" onclick="document.getElementById('${targetId}').ondblclick(); closeCtx()">
-                    <svg class="icon-svg" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+                    ${icon('uiOpen','sm')}
                     <span>打开</span>
                 </div>
             `;
@@ -3608,7 +3536,7 @@
             if (!isLocalFolder && filename && isArchiveFile(filename)) {
                 html += `
                 <div class="context-item" onclick="extractZip('${filename}'); closeCtx()">
-                    <svg class="icon-svg" viewBox="0 0 24 24"><path d="M21 8v13H3V8"/></svg>
+                    ${icon('uiExtractSimple','sm')}
                     <span>解压</span>
                 </div>`;
             }
@@ -3619,11 +3547,11 @@
             const countLabel = count > 1 ? ` (${count})` : '';
             html += `
                 <div class="context-item" onclick="copySelectedDesktopItems(); closeCtx()">
-                    <svg class="icon-svg" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                    ${icon('uiCopy','sm')}
                     <span>复制${countLabel}</span>
                 </div>
                 <div class="context-item" onclick="cutSelectedDesktopItems(); closeCtx()">
-                    <svg class="icon-svg" viewBox="0 0 24 24"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="20" y1="4" x2="8.12" y2="15.88"/><line x1="14.47" y1="14.48" x2="20" y2="20"/><line x1="8.12" y1="8.12" x2="12" y2="12"/></svg>
+                    ${icon('uiCut','sm')}
                     <span>剪切${countLabel}</span>
                 </div>
             `;
@@ -3632,11 +3560,11 @@
                 html += `
                     <div class="context-divider"></div>
                     <div class="context-item" onclick="downloadSelectedFiles(); closeCtx()">
-                        <svg class="icon-svg" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>
+                        ${icon('uiDownload','sm')}
                         <span>下载选中 (${count})</span>
                     </div>
                     <div class="context-item" onclick="deleteSelected(); closeCtx()" style="color:var(--win-close-red)">
-                        <svg class="icon-svg" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+                        ${icon('uiDelete','sm')}
                         <span>删除选中 (${count})</span>
                     </div>
                 `;
@@ -3645,22 +3573,22 @@
                     const folderId = targetEl.dataset.localFolder;
                     html += `
                         <div class="context-item" onclick="unmountLocalFolder('${folderId}'); closeCtx()" style="color:var(--win-close-red)">
-                            <svg class="icon-svg" viewBox="0 0 24 24" style="color:var(--win-close-red)"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+                            ${icon('uiEject','sm')}
                             <span>卸载挂载</span>
                         </div>
                     `;
                 } else {
                     html += `
                         <div class="context-item" onclick="downloadFile('${filename}'); closeCtx()">
-                            <svg class="icon-svg" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>
+                            ${icon('uiDownload','sm')}
                             <span>下载</span>
                         </div>
                         <div class="context-item" onclick="renameDesktopFile('${filename}'); closeCtx()">
-                            <svg class="icon-svg" viewBox="0 0 24 24"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+                            ${icon('uiRename','sm')}
                             <span>重命名</span>
                         </div>
                         <div class="context-item" onclick="deleteFile('${filename}'); closeCtx()" style="color:var(--win-close-red)">
-                            <svg class="icon-svg" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/></svg>
+                            ${icon('uiDeleteSimple','sm')}
                             <span>删除</span>
                         </div>
                     `;
@@ -3994,6 +3922,9 @@
                                             if (writeErr) {
                                                 console.error('写入文件失败:', destFilePath, writeErr);
                                                 if (!hasError) { hasError = true; }
+                                            } else if (stats.mtime && SYSTEM.fs.utimes) {
+                                                // 复制时保留原始修改时间
+                                                try { SYSTEM.fs.utimes(destFilePath, stats.mtime, stats.mtime, () => {}); } catch(e) {}
                                             }
                                             if (--pending === 0) callback(null);
                                         });
@@ -4062,7 +3993,7 @@
 
                 const winId = createWindow({
                     title: folderName,
-                    iconHtml: '<svg class="icon-svg sm" viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2v11z"/></svg>',
+                    iconHtml: icon('fileFolder', 'sm'),
                     width: 920, height: 640,
                     content: `
                         <div class="content-area dark" id="folder-content-${windowId}" style="padding:0;overflow:hidden;position:relative;height:100%;display:flex;flex-direction:column">
@@ -4123,6 +4054,111 @@
             });
         }
 
+        function openFileExplorer() {
+            const path = SYSTEM.desktopPath;
+            SYSTEM.fs.readdir(path, (err, files) => {
+                if(err) { Notify.error('错误', err.message); return; }
+                const windowId = 'folder-' + Date.now();
+                const winState = {
+                    windowId: windowId,
+                    folderName: '桌面',
+                    currentPath: path,
+                    parentPath: path,
+                    viewMode: 'list',
+                    sortBy: 'name',
+                    sortAsc: true,
+                    searchQuery: '',
+                    fileStats: {}
+                };
+                SYSTEM.folderWindowStates = SYSTEM.folderWindowStates || {};
+                SYSTEM.folderWindowStates[windowId] = winState;
+
+                let statsLoaded = 0;
+                const totalFiles = files.length;
+                const onStatsReady = () => {
+                    statsLoaded++;
+                    if (statsLoaded === totalFiles) {
+                        renderFolderContent(windowId);
+                    }
+                };
+
+                if (totalFiles === 0) {
+                    renderFolderContent(windowId);
+                } else {
+                    files.forEach(file => {
+                        const filePath = path + '/' + file;
+                        SYSTEM.fs.stat(filePath, (err, stats) => {
+                            if (!err) {
+                                const isDir = stats.isDirectory ? (typeof stats.isDirectory === 'function' ? stats.isDirectory() : stats.isDirectory) : false;
+                                winState.fileStats[file] = {
+                                    size: stats.size || 0,
+                                    mtime: stats.mtime || 0,
+                                    isDirectory: isDir
+                                };
+                            }
+                            onStatsReady();
+                        });
+                    });
+                }
+
+                createWindow({
+                    title: '桌面',
+                    iconHtml: icon('appExplorer', 'sm'),
+                    width: 920, height: 640,
+                    content: `
+                        <div class="content-area dark" id="folder-content-${windowId}" style="padding:0;overflow:hidden;position:relative;height:100%;display:flex;flex-direction:column">
+                            ${buildFolderToolbar(windowId)}
+                            <div style="display:flex;flex:1;overflow-y:hidden;overflow-x:auto;position:relative">
+                                <div class="folder-sidebar" id="folder-sidebar-${windowId}">
+                                    ${buildFolderSidebar(windowId)}
+                                </div>
+                                <div style="flex:1;display:flex;flex-direction:column;overflow-y:hidden;overflow-x:auto;position:relative">
+                                    <div class="folder-breadcrumb" id="folder-breadcrumb-${windowId}"></div>
+                                    <div class="folder-col-header" id="folder-col-header-${windowId}">
+                                        <div class="col-sort col-name-sort active" data-sort="name" onclick="folderSortBy('${windowId}','name')">
+                                            <span>名称</span>
+                                            <span class="sort-arrow">▲</span>
+                                        </div>
+                                        <div class="col-sort col-date-sort" data-sort="date" onclick="folderSortBy('${windowId}','date')">
+                                            <span>修改日期</span>
+                                            <span class="sort-arrow"></span>
+                                        </div>
+                                        <div class="col-sort col-type-sort" data-sort="type" onclick="folderSortBy('${windowId}','type')">
+                                            <span>类型</span>
+                                            <span class="sort-arrow"></span>
+                                        </div>
+                                        <div class="col-sort col-size-sort" data-sort="size" onclick="folderSortBy('${windowId}','size')">
+                                            <span>大小</span>
+                                            <span class="sort-arrow"></span>
+                                        </div>
+                                    </div>
+                                    <div id="folder-filelist-${windowId}" style="flex:1;overflow-y:auto;position:relative;padding:0 0 60px 0">
+                                        <div class="folder-selection-box" id="folder-selection-${windowId}"></div>
+                                        <div style="padding:40px;text-align:center;color:#888;font-size:13px">加载中...</div>
+                                    </div>
+                                    <div class="folder-statusbar" id="folder-statusbar-${windowId}">
+                                        <div class="status-left">
+                                            <span id="folder-status-count-${windowId}">0 个项目</span>
+                                        </div>
+                                        <div class="status-right">
+                                            <span id="folder-status-size-${windowId}"></span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `,
+                    onInit: (w, id) => {
+                        const cleanup = initFolderSelection(windowId);
+                        w.cleanup = cleanup;
+                        initFolderDropHighlight(windowId);
+                        updateFolderBreadcrumb(windowId);
+                        updateSidebarFolderList(windowId);
+                    }
+                });
+            });
+        }
+
         // 构建侧边栏 HTML（含本地挂载文件夹入口）
         function buildFolderSidebar(windowId) {
             let mountedItems = '';
@@ -4132,7 +4168,7 @@
                 const safeName = escapeAttr(info.name);
                 mountedItems += `
                     <div class="folder-sidebar-item" id="sidebar-mounted-${safeName}-${windowId}" onclick="sidebarNavigateToMounted('${windowId}', '${folderId}')">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M18 19a5 5 0 0 1-5-5v8"/><path d="M9 20H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H20a2 2 0 0 1 2 2v5"/><circle cx="13" cy="12" r="2"/><circle cx="20" cy="19" r="2"/></svg>
+                        ${icon('uiEject','sm')}
                         <span>${info.name}</span>
                     </div>
                 `;
@@ -4141,7 +4177,7 @@
                 <div class="folder-sidebar-section">
                     <div class="folder-sidebar-title">快速访问</div>
                     <div class="folder-sidebar-item active" id="sidebar-desktop-${windowId}" onclick="sidebarNavigateToDesktop('${windowId}')">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+                        <svg class="icon-svg sm" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
                         <span>桌面</span>
                     </div>
                 </div>
@@ -4247,7 +4283,7 @@
                             const isActive = state.currentPath === SYSTEM.desktopPath + '/' + file;
                             html += `
                                 <div class="folder-sidebar-item ${isActive ? 'active' : ''}" id="sidebar-folder-${safeName}-${windowId}" data-folder-path="${SYSTEM.desktopPath}/${safeName}" onclick="sidebarNavigateToPath('${windowId}', '${SYSTEM.desktopPath}/${safeName}', '${safeName}')">
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2v11z"/></svg>
+                                    ${icon('fileFolder','sm')}
                                     <span>${file}</span>
                                 </div>
                             `;
@@ -4327,27 +4363,27 @@
             return `
             <div class="folder-toolbar">
                 <button class="folder-toolbar-btn" title="返回上级" onclick="folderGoUp('${windowId}')">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
+                    ${icon('uiBack')}
                 </button>
                 <button class="folder-toolbar-btn" title="刷新" onclick="folderRefresh('${windowId}')">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 4v6h6"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+                    ${icon('uiRefresh')}
                 </button>
                 <div class="folder-toolbar-divider"></div>
                 <button class="folder-toolbar-btn active" id="folder-view-list-${windowId}" title="列表视图" onclick="folderSetView('${windowId}','list')">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-list"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
+                    ${icon('uiList')}
                 </button>
                 <button class="folder-toolbar-btn" id="folder-view-grid-${windowId}" title="网格视图" onclick="folderSetView('${windowId}','grid')">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+                    ${icon('uiGrid')}
                 </button>
                 <div class="folder-toolbar-divider"></div>
                 <button class="folder-toolbar-btn" title="新建文件夹" onclick="folderCreateNew('${windowId}','folder')">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2v11z"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/></svg>
+                    ${icon('uiNewFolder')}
                 </button>
                 <button class="folder-toolbar-btn" title="新建文本文档" onclick="folderCreateNew('${windowId}','file')">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                    ${icon('uiNewFile')}
                 </button>
                 <div class="folder-search-box">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                    ${icon('uiSearch')}
                     <input type="text" placeholder="搜索文件..." id="folder-search-${windowId}" oninput="folderSearch('${windowId}', this.value)">
                 </div>
             </div>
@@ -4376,17 +4412,112 @@
             return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
         }
 
-        // 获取文件图标 SVG path（与桌面图标完全一致）
+        /* === 集中式 SVG 图标库 ===
+           所有图标 path 在此定义一次，通过 iconBody()/icon()/fileIconName() 取用。
+           键名规范：fileXxx（文件类型）、appXxx（应用）、uiXxx（UI 操作）。
+           改某类文件图标只需改此处一处，桌面/文件夹窗口/窗口标题栏自动同步。 */
+        const _S = (body, vb = '0 0 24 24') => (cls = 'icon-svg') => `<svg class="${cls}" viewBox="${vb}">${body}</svg>`;
+        const ICONS = {
+            // --- 文件类型 ---
+            fileFolder: '<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2v11z"/>',
+            fileGeneric:'<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>',
+            fileText:   '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>',
+            fileImg:    '<rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>',
+            fileCsv:    '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z M9 2v20 M4 9h16 M4 15h16"/>',
+            fileZip:    '<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2v11z"/><path d="M12 10v4"/><path d="M12 14l2-2"/>',
+            fileHtml:   '<circle cx="12" cy="12" r="10"/><path d="M2 12h20"/>',
+            fileVideo:  '<rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"/><line x1="7" y1="2" x2="7" y2="22"/><line x1="17" y1="2" x2="17" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="2" y1="7" x2="7" y2="7"/><line x1="2" y1="17" x2="7" y2="17"/><line x1="17" y1="17" x2="22" y2="17"/><line x1="17" y1="7" x2="22" y2="7"/>',
+            fileAudio:  '<path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>',
+            fileDisk:   '<path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/>',
+            // --- 应用图标 ---
+            appBrowser: '<circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>',
+            appNotepad: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>',
+            appCalc:    '<rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/><line x1="8" y1="10" x2="8" y2="10.01"/><line x1="12" y1="10" x2="12" y2="10.01"/><line x1="16" y1="10" x2="16" y2="10.01"/><line x1="8" y1="14" x2="8" y2="14.01"/><line x1="12" y1="14" x2="12" y2="14.01"/><line x1="16" y1="14" x2="16" y2="14.01"/><line x1="8" y1="18" x2="8" y2="18.01"/><line x1="12" y1="18" x2="12" y2="18.01"/><line x1="16" y1="18" x2="16" y2="18.01"/>',
+            appPaint:   '<path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.586 7.586"/><circle cx="11" cy="11" r="2"/>',
+            appSettings:'<path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/>',
+            appVM:      '<rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/><path d="M6 8h2M6 12h2M10 8h8M10 12h8"/>',
+            appCode:    '<polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>',
+            appExplorer:'<path d="m6 14 1.5-2.9A2 2 0 0 1 9.24 10H20a2 2 0 0 1 1.94 2.5l-1.54 6a2 2 0 0 1-1.95 1.5H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H18a2 2 0 0 1 2 2v2"/>',
+            appDefault: '<rect x="3" y="3" width="18" height="18" rx="2"/>',
+            // --- UI 操作 ---
+            uiBack:       '<path d="M15 18l-6-6 6-6"/>',
+            uiRefresh:    '<path d="M1 4v6h6"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/>',
+            uiBrowserRefresh: '<path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/>',
+            uiMenuFolder: '<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2v11z"/>',
+            uiMenuFile:   '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>',
+            uiList:       '<line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>',
+            uiGrid:       '<rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>',
+            uiNewFolder:  '<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2v11z"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/>',
+            uiNewFile:    '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>',
+            uiSearch:     '<circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>',
+            uiFullscreen: '<path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/>',
+            uiMinimize:   '<line x1="5" y1="12" x2="19" y2="12"/>',
+            uiMaximize:   '<rect x="3" y="3" width="18" height="18" rx="2"/>',
+            uiClose:      '<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>',
+            uiSuccess:    '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>',
+            uiError:      '<circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>',
+            uiWarning:    '<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>',
+            uiInfo:       '<circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>',
+            // --- 新增 UI 图标（静态 HTML / 上下文菜单注入用） ---
+            uiStartMenu:  '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>',
+            uiChevronLeft:'<polyline points="15 18 9 12 15 6"/>',
+            uiChevronRight:'<polyline points="9 18 15 12 9 6"/>',
+            uiUpload:     '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>',
+            uiOpen:       '<path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>',
+            uiPaste:      '<path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/>',
+            uiCopy:       '<rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>',
+            uiCut:        '<circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="20" y1="4" x2="8.12" y2="15.88"/><line x1="14.47" y1="14.48" x2="20" y2="20"/><line x1="8.12" y1="8.12" x2="12" y2="12"/>',
+            uiDownload:   '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/>',
+            uiDelete:     '<path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>',
+            uiDeleteSimple: '<path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/>',
+            uiRename:     '<path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>',
+            uiExtract:    '<path d="M21 8v13H3V8"/><path d="M1 3h22v5H1z"/><path d="M10 12h4"/>',
+            uiExtractSimple: '<path d="M21 8v13H3V8"/>',
+            uiImage:      '<rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>',
+            uiWallpaper:  '<rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>',
+            uiWallpaperCtx: '<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>',
+            uiEject:      '<path d="M18 19a5 5 0 0 1-5-5v8"/><path d="M9 20H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H20a2 2 0 0 1 2 2v5"/><circle cx="13" cy="12" r="2"/><circle cx="20" cy="19" r="2"/>',
+            uiBrush:      '<path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/>',
+            uiEraser:     '<path d="m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21"/><path d="M22 21H7"/><path d="m5 11 9 9"/>',
+            uiSave:       '<path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/>',
+            uiBrowser:    '<circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>',
+            uiBrowserCtx: '<circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>',
+            uiCode:       '<polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>'
+        };
+        // 返回图标内部 path 片段（兼容 <svg class="icon-svg" viewBox="0 0 24 24">${iconBody(name)}</svg> 模式）
+        function iconBody(name){ return ICONS[name] || ICONS.fileGeneric; }
+        // 返回完整 <svg> 字符串；extra 为附加 class（如 sm/lg/xl 或 tb-notify-icon）
+        function icon(name, extra){
+            return _S(iconBody(name))(extra ? 'icon-svg ' + extra : 'icon-svg');
+        }
+
+        // 将静态 HTML 中带有 data-icon 的元素注入为集中式 SVG 图标
+        function injectStaticIcons() {
+            document.querySelectorAll('[data-icon]').forEach(el => {
+                const svg = el.querySelector('svg');
+                if (svg) svg.remove();
+                el.insertAdjacentHTML('afterbegin', icon(el.dataset.icon, el.dataset.iconSize || ''));
+            });
+        }
+        // 文件名/类型 → 图标名（单一真相源，桌面/文件夹窗口/标题栏共用）
+        function fileIconName(name, isDir){
+            if(isDir) return 'fileFolder';
+            const el = ((name||'').match(/\.([a-z0-9]+)$/i)||[])[1] || '';
+            const e = el.toLowerCase();
+            if(['jpg','png','gif','webp','jpeg','bmp','svg'].includes(e)) return 'fileImg';
+            if(e==='txt') return 'fileText';
+            if(e==='csv') return 'fileCsv';
+            if(['zip','7z','rar','tar','gz','bz2','xz','cab','tgz'].includes(e)) return 'fileZip';
+            if(e==='html'||e==='htm') return 'fileHtml';
+            if(['mp4','avi','mov','mkv','webm','flv','wmv'].includes(e)) return 'fileVideo';
+            if(['mp3','wav','flac','m4a','ogg','aac'].includes(e)) return 'fileAudio';
+            if(['iso','img'].includes(e)) return 'fileDisk';
+            return 'fileGeneric';
+        }
+
+        // 获取文件图标 SVG path（统一委托给集中图标库，避免分叉）
         function getFileIconPath(filename, isDir) {
-            if (isDir) return '<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2v11z"/>';
-            if (filename.match(/\.(jpg|png|gif|webp|jpeg|bmp|svg)$/i)) return '<rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>';
-            if (filename.match(/\.txt$/i)) return '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>';
-            if (filename.match(/\.csv$/i)) return '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z M9 2v20 M4 9h16 M4 15h16"/>';
-            if (filename.match(/\.(zip|7z|rar|tar|gz|bz2|xz|cab|tgz)$/i)) return '<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2v11z"/><path d="M12 10v4"/><path d="M12 14l2-2"/>';
-            if (filename.match(/\.html?$/i)) return '<circle cx="12" cy="12" r="10"/><path d="M2 12h20"/>';
-            if (filename.match(/\.(mp4|avi|mov|mkv|webm|flv|wmv)$/i)) return '<rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"/><line x1="7" y1="2" x2="7" y2="22"/><line x1="17" y1="2" x2="17" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="2" y1="7" x2="7" y2="7"/><line x1="2" y1="17" x2="7" y2="17"/><line x1="17" y1="17" x2="22" y2="17"/><line x1="17" y1="7" x2="22" y2="7"/>';
-            if (filename.match(/\.(mp3|wav|flac|m4a|ogg|aac)$/i)) return '<path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>';
-            return '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>';
+            return iconBody(fileIconName(filename, isDir));
         }
 
         // 渲染文件夹内容
@@ -4487,6 +4618,10 @@
 
                             const itemHtml = `
                                 <div class="folder-item" data-filename="${safeFile}" data-path="${safePath}" data-isdir="${isDir}"
+                                     draggable="true"
+                                     ondragstart="return handleFolderItemDragStart(event, this)"
+                                     ondragend="SYSTEM._folderNativeDrag=false;"
+                                     onmouseenter="preloadFolderItemForDrag(this)"
                                      ondblclick="handleFolderItemDblClick('${windowId}', '${safeFile}', '${safePath}', ${isDir})"
                                      onmousedown="handleFolderItemMouseDown(event, '${windowId}')"
                                      ontouchstart="handleFolderItemTouchStart(event, '${windowId}')"
@@ -4514,6 +4649,10 @@
 
                             const itemHtml = `
                                 <div class="folder-grid-item" data-filename="${safeFile}" data-path="${safePath}" data-isdir="${isDir}"
+                                     draggable="true"
+                                     ondragstart="return handleFolderItemDragStart(event, this)"
+                                     ondragend="SYSTEM._folderNativeDrag=false;"
+                                     onmouseenter="preloadFolderItemForDrag(this)"
                                      ondblclick="handleFolderItemDblClick('${windowId}', '${safeFile}', '${safePath}', ${isDir})"
                                      onmousedown="handleFolderItemMouseDown(event, '${windowId}')"
                                      ontouchstart="handleFolderItemTouchStart(event, '${windowId}')"
@@ -4857,6 +4996,10 @@
                                     
                                     ensureDir(parentDir).then(() => {
                                         SYSTEM.fs.writeFile(fullPath, buffer, () => {
+                                            // 保留拖入文件原始修改时间
+                                            if(file.lastModified && SYSTEM.fs.utimes) {
+                                                try { SYSTEM.fs.utimes(fullPath, file.lastModified, file.lastModified, () => {}); } catch(e) {}
+                                            }
                                             processCount++;
                                             if (processCount === totalItems) {
                                                 debouncedRefresh();
@@ -4924,9 +5067,7 @@
                         let content = files.length === 0
                             ? '<div style="padding:40px;text-align:center;color:#888">文件夹为空</div>'
                             : files.map(file => {
-                                let icon = '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>';
-                                if(file.match(/\.(jpg|png|gif|webp|jpeg|bmp|svg)$/i)) icon = '<rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>';
-                                if(isArchiveFile(file)) icon = '<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2v11z"/><path d="M12 10v4"/><path d="M12 14l2-2"/>';
+                                let icon = getFileIconPath(file, false);
 
                                 return `
                                     <div class="folder-item" data-filename="${file}" data-path="${path}/${file}"
@@ -5092,32 +5233,32 @@
                     const hasClipboardItems = Clipboard.hasItems();
                     const menuItems = `
                         <div class="context-item" onclick="folderRefresh('${windowId}'); closeCtx()">
-                            <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 4v6h6"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+                            ${icon('uiRefresh','sm stroke-2')}
                             <span>刷新</span>
                         </div>
                         ${hasClipboardItems ? `
                         <div class="context-divider"></div>
                         <div class="context-item" onclick="pasteToFolderWindow('${windowId}'); closeCtx()">
-                            <svg class="icon-svg" viewBox="0 0 24 24"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>
+                            ${icon('uiPaste','sm')}
                             <span>粘贴</span>
                         </div>
                         ` : ''}
                         <div class="context-divider"></div>
                         <div class="context-item" onclick="SYSTEM.uploadTargetPath=SYSTEM.folderWindowStates['${windowId}'].currentPath;SYSTEM.uploadTargetWindowId='${windowId}';document.getElementById('global-upload-file').click();closeCtx()">
-                            <svg class="icon-svg" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                            ${icon('uiUpload','sm')}
                             <span>上传文件</span>
                         </div>
                         <div class="context-item" onclick="SYSTEM.uploadTargetPath=SYSTEM.folderWindowStates['${windowId}'].currentPath;SYSTEM.uploadTargetWindowId='${windowId}';document.getElementById('global-upload-folder').click();closeCtx()">
-                            <svg class="icon-svg" viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2v11z"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/></svg>
+                            ${icon('uiNewFolder','sm')}
                             <span>上传文件夹</span>
                         </div>
                         <div class="context-divider"></div>
                         <div class="context-item" onclick="folderCreateNew('${windowId}','folder'); closeCtx()">
-                            <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2v11z"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/></svg>
+                            ${icon('uiNewFolder','sm stroke-2')}
                             <span>新建文件夹</span>
                         </div>
                         <div class="context-item" onclick="folderCreateNew('${windowId}','file'); closeCtx()">
-                            <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                            ${icon('uiNewFile','sm stroke-2')}
                             <span>新建文本文档</span>
                         </div>
                     `;
@@ -5155,32 +5296,32 @@
                 const hasClipboardItems = Clipboard.hasItems();
                 const menuItems = `
                     <div class="context-item" onclick="folderRefresh('${windowId}'); closeCtx()">
-                        <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 4v6h6"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+                        ${icon('uiRefresh','sm stroke-2')}
                         <span>刷新</span>
                     </div>
                     ${hasClipboardItems ? `
                     <div class="context-divider"></div>
                     <div class="context-item" onclick="pasteToFolderWindow('${windowId}'); closeCtx()">
-                        <svg class="icon-svg" viewBox="0 0 24 24"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>
+                        ${icon('uiPaste','sm')}
                         <span>粘贴</span>
                     </div>
                     ` : ''}
                     <div class="context-divider"></div>
                     <div class="context-item" onclick="SYSTEM.uploadTargetPath=SYSTEM.folderWindowStates['${windowId}'].currentPath;SYSTEM.uploadTargetWindowId='${windowId}';document.getElementById('global-upload-file').click();closeCtx()">
-                        <svg class="icon-svg" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                        ${icon('uiUpload','sm')}
                         <span>上传文件</span>
                     </div>
                     <div class="context-item" onclick="SYSTEM.uploadTargetPath=SYSTEM.folderWindowStates['${windowId}'].currentPath;SYSTEM.uploadTargetWindowId='${windowId}';document.getElementById('global-upload-folder').click();closeCtx()">
-                        <svg class="icon-svg" viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2v11z"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/></svg>
+                        ${icon('uiNewFolder','sm')}
                         <span>上传文件夹</span>
                     </div>
                     <div class="context-divider"></div>
                     <div class="context-item" onclick="folderCreateNew('${windowId}','folder'); closeCtx()">
-                        <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2v11z"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/></svg>
+                        ${icon('uiNewFolder','sm stroke-2')}
                         <span>新建文件夹</span>
                     </div>
                     <div class="context-item" onclick="folderCreateNew('${windowId}','file'); closeCtx()">
-                        <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                        ${icon('uiNewFile','sm stroke-2')}
                         <span>新建文本文档</span>
                     </div>
                 `;
@@ -5202,6 +5343,31 @@
                 document.removeEventListener('touchend', handleEnd);
                 stopAutoScroll();
             };
+        }
+
+        // === 文件夹项原生拖出（拖到真实桌面）===
+        // 长按 400ms 后启用原生 dragstart，把文件以 DownloadURL 形式交给浏览器，
+        // 从而可拖到浏览器外的真实桌面。未长按时 preventDefault，交由自定义 mousemove 拖拽。
+        SYSTEM._folderNativeDrag = false;
+        function preloadFolderItemForDrag(el) {
+            const p = el.dataset.path;
+            const n = el.dataset.filename;
+            if (p && n) preloadFileForDrag(p, n, () => {});
+        }
+        function handleFolderItemDragStart(e, el) {
+            if (!SYSTEM._folderNativeDrag) {
+                // 未长按：阻止原生拖拽，保留给自定义 mousemove 拖拽（窗口内/窗口间移动）
+                e.preventDefault();
+                return false;
+            }
+            // 长按已启用：执行原生拖出
+            if (!currentDragFile || !dragFileReady) {
+                // 兜底：预加载未完成则阻止（避免拖出空数据）
+                e.preventDefault();
+                return false;
+            }
+            handleNativeDragStart(e, el.dataset.filename);
+            return true;
         }
 
         function handleFolderItemMouseDown(e, windowId) {
@@ -5290,25 +5456,25 @@
                 // 改为"全部打开"，依次打开所有选中项。
                 html = `
                     <div class="context-item" onclick="openSelectedFolderItems('${windowId}'); closeCtx()">
-                        <svg class="icon-svg" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+                        ${icon('uiOpen','sm')}
                         <span>全部打开 (${count})</span>
                     </div>
                     <div class="context-divider"></div>
                     <div class="context-item" onclick="copySelectedFolderItems('${windowId}'); closeCtx()">
-                        <svg class="icon-svg" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                        ${icon('uiCopy','sm')}
                         <span>复制 (${count})</span>
                     </div>
                     <div class="context-item" onclick="cutSelectedFolderItems('${windowId}'); closeCtx()">
-                        <svg class="icon-svg" viewBox="0 0 24 24"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="20" y1="4" x2="8.12" y2="15.88"/><line x1="14.47" y1="14.48" x2="20" y2="20"/><line x1="8.12" y1="8.12" x2="12" y2="12"/></svg>
+                        ${icon('uiCut','sm')}
                         <span>剪切 (${count})</span>
                     </div>
                     <div class="context-divider"></div>
                     <div class="context-item" onclick="downloadSelectedFolderItems('${windowId}'); closeCtx()">
-                        <svg class="icon-svg" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>
+                        ${icon('uiDownload','sm')}
                         <span>下载选中 (${count})</span>
                     </div>
                     <div class="context-item" onclick="deleteFolderItems('${windowId}'); closeCtx()" style="color:var(--win-close-red)">
-                        <svg class="icon-svg" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+                        ${icon('uiDelete','sm')}
                         <span>删除选中 (${count})</span>
                     </div>
                 `;
@@ -5320,31 +5486,31 @@
                 const isDirItem = item.dataset.isdir === 'true';
                 html = `
                     <div class="context-item" onclick="openFileFromPath('${safeFullPath}', '${safeFilename}'); closeCtx()">
-                        <svg class="icon-svg" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+                        ${icon('uiOpen','sm')}
                         <span>打开</span>
                     </div>
                     ${(!isDirItem && canOpenWith(filename)) ? `<div class="context-divider"></div>${buildOpenWithMenu(safeFullPath, safeFilename, filename)}` : ''}
-                    ${isArchiveFile(filename) ? `<div class="context-item" onclick="extractZipFromPath('${safeFullPath}'); closeCtx()"><svg class="icon-svg" viewBox="0 0 24 24"><path d="M21 8v13H3V8"/></svg><span>解压</span></div>` : ''}
+                    ${isArchiveFile(filename) ? `<div class="context-item" onclick="extractZipFromPath('${safeFullPath}'); closeCtx()">${icon('uiExtractSimple','sm')}<span>解压</span></div>` : ''}
                     <div class="context-divider"></div>
                     <div class="context-item" onclick="copySelectedFolderItems('${windowId}'); closeCtx()">
-                        <svg class="icon-svg" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                        ${icon('uiCopy','sm')}
                         <span>复制</span>
                     </div>
                     <div class="context-item" onclick="cutSelectedFolderItems('${windowId}'); closeCtx()">
-                        <svg class="icon-svg" viewBox="0 0 24 24"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="20" y1="4" x2="8.12" y2="15.88"/><line x1="14.47" y1="14.48" x2="20" y2="20"/><line x1="8.12" y1="8.12" x2="12" y2="12"/></svg>
+                        ${icon('uiCut','sm')}
                         <span>剪切</span>
                     </div>
                     <div class="context-divider"></div>
                     <div class="context-item" onclick="downloadFolderItem('${windowId}', '${safeFilename}'); closeCtx()">
-                        <svg class="icon-svg" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>
+                        ${icon('uiDownload','sm')}
                         <span>下载</span>
                     </div>
                     <div class="context-item" onclick="renameFolderItem('${windowId}', '${safeFilename}'); closeCtx()">
-                        <svg class="icon-svg" viewBox="0 0 24 24"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+                        ${icon('uiRename','sm')}
                         <span>重命名</span>
                     </div>
                     <div class="context-item" onclick="deleteFolderItem('${windowId}', '${safeFilename}'); closeCtx()" style="color:var(--win-close-red)">
-                        <svg class="icon-svg" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/></svg>
+                        ${icon('uiDeleteSimple','sm')}
                         <span>删除</span>
                     </div>
                 `;
@@ -5729,6 +5895,8 @@
             let longPressTimer = null;
             let longPressTriggered = false;
             let touchMoveRegistered = false;
+            // 鼠标长按计时器：长按 400ms 后启用原生拖出（拖到真实桌面）
+            let nativeDragTimer = null;
 
             // 长按检测（仅触摸设备）
             if (e.type === 'touchstart' && touchItem) {
@@ -5749,6 +5917,18 @@
                 }, 500);
             }
 
+            // 鼠标长按检测：长按后启用原生拖出（参照桌面图标的长按机制）
+            if (e.type === 'mousedown') {
+                nativeDragTimer = setTimeout(() => {
+                    SYSTEM._folderNativeDrag = true;
+                    // 预加载主选中项以备原生拖出
+                    const primary = selectedItems[0];
+                    if (primary && primary.dataset.path && primary.dataset.filename) {
+                        preloadFileForDrag(primary.dataset.path, primary.dataset.filename, () => {});
+                    }
+                }, 400);
+            }
+
             const onMove = (moveEvent) => {
                 const pos = getPos(moveEvent);
                 const dx = pos.x - startX;
@@ -5760,10 +5940,20 @@
                     return;
                 }
 
-                // 移动超过阈值，取消长按
+                // 鼠标长按已启用原生拖出：交由浏览器 dragstart 处理，不启动自定义拖拽
+                if (SYSTEM._folderNativeDrag) {
+                    return;
+                }
+
+                // 移动超过阈值，取消长按（触摸 + 鼠标）
                 if (longPressTimer && (Math.abs(dx) > 5 || Math.abs(dy) > 5)) {
                     clearTimeout(longPressTimer);
                     longPressTimer = null;
+                }
+                if (nativeDragTimer && (Math.abs(dx) > 5 || Math.abs(dy) > 5)) {
+                    clearTimeout(nativeDragTimer);
+                    nativeDragTimer = null;
+                    SYSTEM._folderNativeDrag = false;
                 }
 
                 if(!isDragging && (Math.abs(dx) > 5 || Math.abs(dy) > 5)) {
@@ -5799,6 +5989,8 @@
 
             const cleanup = () => {
                 if(longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
+                if(nativeDragTimer) { clearTimeout(nativeDragTimer); nativeDragTimer = null; }
+                SYSTEM._folderNativeDrag = false;
                 document.removeEventListener('mousemove', onMove);
                 document.removeEventListener('mouseup', onUp);
                 document.removeEventListener('touchmove', onMove);
@@ -5808,6 +6000,8 @@
 
             const onUp = (upEvent) => {
                 if(longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
+                if(nativeDragTimer) { clearTimeout(nativeDragTimer); nativeDragTimer = null; }
+                SYSTEM._folderNativeDrag = false;
 
                 document.removeEventListener('mousemove', onMove);
                 document.removeEventListener('mouseup', onUp);
@@ -5934,31 +6128,40 @@
                                 return;
                             }
                             // 修复(#6)：rename 跨文件系统失败，回退到 复制+删除
-                            SYSTEM.fs.readFile(srcPath, (readErr, data) => {
-                                if(readErr) { errorCount++; console.error('移动文件失败(读取):', filename, readErr); callback(); return; }
-                                SYSTEM.fs.writeFile(destPath, data, (writeErr) => {
-                                    if(writeErr) { errorCount++; console.error('移动文件失败(写入):', filename, writeErr); callback(); return; }
-                                    SYSTEM.fs.unlink(srcPath, () => { processedCount++; callback(); });
+                            SYSTEM.fs.stat(srcPath, (sErr, sStats) => {
+                                const mtime = (!sErr && sStats.mtime) ? sStats.mtime : null;
+                                SYSTEM.fs.readFile(srcPath, (readErr, data) => {
+                                    if(readErr) { errorCount++; console.error('移动文件失败(读取):', filename, readErr); callback(); return; }
+                                    SYSTEM.fs.writeFile(destPath, data, (writeErr) => {
+                                        if(writeErr) { errorCount++; console.error('移动文件失败(写入):', filename, writeErr); callback(); return; }
+                                        if(mtime && SYSTEM.fs.utimes) { try { SYSTEM.fs.utimes(destPath, mtime, mtime, () => {}); } catch(e) {} }
+                                        SYSTEM.fs.unlink(srcPath, () => { processedCount++; callback(); });
+                                    });
                                 });
                             });
                         });
                     };
 
                     const copyFileOnly = () => {
-                        SYSTEM.fs.readFile(srcPath, (readErr, data) => {
-                            if(readErr) { errorCount++; console.error('读取文件失败:', filename, readErr); callback(); return; }
-                            SYSTEM.fs.writeFile(destPath, data, (writeErr) => {
-                                if(writeErr) {
-                                    errorCount++;
-                                    console.error('写入文件失败:', filename, writeErr);
-                                    callback();
-                                } else {
-                                    verifyFileIntegrity(destPath, filename, (isValid) => {
-                                        if(isValid) { processedCount++; }
-                                        else { errorCount++; console.error('复制成功但验证失败:', filename); }
+                        // 先取源文件修改时间，复制后回写以保留原始修改日期
+                        SYSTEM.fs.stat(srcPath, (sErr, sStats) => {
+                            const mtime = (!sErr && sStats.mtime) ? sStats.mtime : null;
+                            SYSTEM.fs.readFile(srcPath, (readErr, data) => {
+                                if(readErr) { errorCount++; console.error('读取文件失败:', filename, readErr); callback(); return; }
+                                SYSTEM.fs.writeFile(destPath, data, (writeErr) => {
+                                    if(writeErr) {
+                                        errorCount++;
+                                        console.error('写入文件失败:', filename, writeErr);
                                         callback();
-                                    });
-                                }
+                                    } else {
+                                        if(mtime && SYSTEM.fs.utimes) { try { SYSTEM.fs.utimes(destPath, mtime, mtime, () => {}); } catch(e) {} }
+                                        verifyFileIntegrity(destPath, filename, (isValid) => {
+                                            if(isValid) { processedCount++; }
+                                            else { errorCount++; console.error('复制成功但验证失败:', filename); }
+                                            callback();
+                                        });
+                                    }
+                                });
                             });
                         });
                     };
@@ -6119,40 +6322,40 @@
             const hasClipboardItems = Clipboard.hasItems();
             cm.innerHTML = `
                 <div class="context-item" onclick="refreshDesktop(); closeCtx()">
-                    <svg class="icon-svg" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+                    ${icon('uiBrowserRefresh','sm')}
                     <span>刷新桌面</span>
                 </div>
                 <div class="context-item" onclick="openWallpaperPanel(); closeCtx()">
-                    <svg class="icon-svg" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
+                    ${icon('uiWallpaperCtx','sm')}
                     <span>更换壁纸</span>
                 </div>
                 <div class="context-divider"></div>
                 ${hasClipboardItems ? `
                 <div class="context-item" onclick="pasteToDesktop(); closeCtx()">
-                    <svg class="icon-svg" viewBox="0 0 24 24"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>
+                    ${icon('uiPaste','sm')}
                     <span>粘贴</span>
                 </div>
                 <div class="context-divider"></div>
                 ` : ''}
                 <div class="context-item" onclick="SYSTEM.uploadTargetPath=SYSTEM.desktopPath;SYSTEM.uploadTargetWindowId=null;document.getElementById('global-upload-file').click();closeCtx()">
-                    <svg class="icon-svg" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                    ${icon('uiUpload','sm')}
                     <span>上传文件</span>
                 </div>
                 <div class="context-item" onclick="SYSTEM.uploadTargetPath=SYSTEM.desktopPath;SYSTEM.uploadTargetWindowId=null;document.getElementById('global-upload-folder').click();closeCtx()">
-                    <svg class="icon-svg" viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2v11z"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/></svg>
+                    ${icon('uiNewFolder','sm')}
                     <span>上传文件夹</span>
                 </div>
                 <div class="context-item" onclick="mountLocalFolder(); closeCtx()">
-                    <svg class="icon-svg" viewBox="0 0 24 24"><path d="M18 19a5 5 0 0 1-5-5v8"/><path d="M9 20H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H20a2 2 0 0 1 2 2v5"/><circle cx="13" cy="12" r="2"/><circle cx="20" cy="19" r="2"/></svg>
+                    ${icon('uiEject','sm')}
                     <span>挂载本地文件夹</span>
                 </div>
                 <div class="context-divider"></div>
                 <div class="context-item" onclick="createNewFolder(); closeCtx()">
-                    <svg class="icon-svg" viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2v11z"/></svg>
+                    ${icon('uiMenuFolder','sm')}
                     <span>新建文件夹</span>
                 </div>
                 <div class="context-item" onclick="openNotepad(); closeCtx()">
-                    <svg class="icon-svg" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                    ${icon('uiMenuFile','sm')}
                     <span>新建文本文档</span>
                 </div>
             `;
@@ -6255,7 +6458,13 @@
                     openFolderWindow(folderName, parentPath);
                     return;
                 }
-                
+
+                // 磁盘镜像（iso/img）：双击即用 V86 虚拟机打开
+                if(filename.match(/\.(iso|img)$/i)) {
+                    openV86(fullPath);
+                    return;
+                }
+
                 // 1. 处理 HTML 文件
                 if(filename.match(/\.html?$/i)) {
                 SYSTEM.fs.readFile(fullPath, 'utf8', (err, data) => {
@@ -6326,7 +6535,7 @@
                     
                     createWindow({
                         title: filename,
-                        iconHtml: '<svg class="icon-svg sm" viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"/><line x1="7" y1="2" x2="7" y2="22"/><line x1="17" y1="2" x2="17" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="2" y1="7" x2="7" y2="7"/><line x1="2" y1="17" x2="7" y2="17"/><line x1="17" y1="17" x2="22" y2="17"/><line x1="17" y1="7" x2="22" y2="7"/></svg>',
+                        iconHtml: icon('fileVideo','sm'),
                         width: 800, height: 600,
                         content: `<div class="content-area dark" style="display:flex;align-items:center;justify-content:center;overflow:hidden">
                             <video src="${dataUrl}" controls autoplay style="max-width:100%;max-height:100%"></video>
@@ -6345,7 +6554,7 @@
                     
                     createWindow({
                         title: filename,
-                        iconHtml: '<svg class="icon-svg sm" viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>',
+                        iconHtml: icon('fileAudio','sm'),
                         width: 500, height: 200,
                         content: `<div class="content-area dark" style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;overflow:hidden">
                             <div style="margin-bottom:20px;color:#8b949e;font-size:14px">${filename}</div>
@@ -6415,8 +6624,6 @@
             });
         }
 
-        // 判断文件是否适合提供「打开方式」子菜单（文本/网页/可在浏览器查看的类型）
-        // 目录与压缩包不提供此菜单
         // 仅这几类文件提供「打开方式」子菜单：HTML / CSS / JS / JSON / MD
         // 其他类型（图片、PDF、压缩包、音视频等）不显示，没有意义。
         function canOpenWith(filename) {
@@ -6428,15 +6635,15 @@
         function buildOpenWithMenu(safeFullPath, safeFilename, filename) {
             return `
                 <div class="context-item" onclick="openWithEditor('${safeFullPath}', '${safeFilename}'); closeCtx()">
-                    <svg class="icon-svg" viewBox="0 0 24 24"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+                    ${icon('uiCode','sm')}
                     <span>用代码编辑器打开</span>
                 </div>
                 <div class="context-item" onclick="openWithBrowser('${safeFullPath}', '${safeFilename}'); closeCtx()">
-                    <svg class="icon-svg" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+                    ${icon('uiBrowserCtx','sm')}
                     <span>用浏览器打开</span>
                 </div>
                 <div class="context-item" onclick="openWithNotepad('${safeFullPath}', '${safeFilename}'); closeCtx()">
-                    <svg class="icon-svg" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                    ${icon('uiNewFile','sm')}
                     <span>用记事本打开</span>
                 </div>`;
         }
@@ -6510,6 +6717,34 @@
             return 'unknown';
         }
 
+        // JSZip 把 ZIP 的 DOS 时间按 UTC 解析，而 ZIP 规范中 DOS 时间应为本地时间。
+        // 这里把 UTC 分量重新解释成本地时间，使解压后显示与压缩包内记录一致。
+        function fixZipReadDate(date) {
+            if (!date || !(date instanceof Date) || isNaN(date.getTime())) return date;
+            return new Date(
+                date.getUTCFullYear(),
+                date.getUTCMonth(),
+                date.getUTCDate(),
+                date.getUTCHours(),
+                date.getUTCMinutes(),
+                date.getUTCSeconds()
+            );
+        }
+
+        // 生成 ZIP 时做逆操作：把本地时间分量转成 UTC 分量传给 JSZip，
+        // 让外部工具（以及修复后的解压）看到的日期保持正确。
+        function prepareZipWriteDate(date) {
+            if (!date || !(date instanceof Date) || isNaN(date.getTime())) return date;
+            return new Date(Date.UTC(
+                date.getFullYear(),
+                date.getMonth(),
+                date.getDate(),
+                date.getHours(),
+                date.getMinutes(),
+                date.getSeconds()
+            ));
+        }
+
         async function extractArchive(filePath) {
             const filename = filePath.split('/').pop();
             const folderName = filename.replace(/\.(zip|7z|rar|tar|gz|bz2|xz|cab|tgz)$/i, '');
@@ -6557,11 +6792,12 @@
                     updateProgress(10);
                     
                     const zip = await JSZip.loadAsync(fileData);
-                    const files = Object.keys(zip.files).filter(name => !zip.files[name].dir);
-                    const total = files.length;
+                    const entries = Object.keys(zip.files);
+                    const fileEntries = entries.filter(name => !zip.files[name].dir);
+                    const total = fileEntries.length;
 
-                    for (let i = 0; i < files.length; i++) {
-                        const relativePath = files[i];
+                    for (let i = 0; i < fileEntries.length; i++) {
+                        const relativePath = fileEntries[i];
                         const zipEntry = zip.files[relativePath];
                         
                         updateStatus(relativePath);
@@ -6570,7 +6806,17 @@
                         const content = await zipEntry.async('arraybuffer');
                         extractedFiles.push({
                             path: relativePath,
-                            data: new Uint8Array(content)
+                            data: new Uint8Array(content),
+                            mtime: fixZipReadDate(zipEntry.date)
+                        });
+                    }
+
+                    // 收集目录条目（统一创建并设置原始修改时间）
+                    for (const dirPath of entries.filter(name => zip.files[name].dir)) {
+                        extractedFiles.push({
+                            path: dirPath.replace(/\/$/, ''),
+                            dir: true,
+                            mtime: fixZipReadDate(zip.files[dirPath].date)
                         });
                     }
                 } else if (archiveType === '7z') {
@@ -6596,6 +6842,19 @@
                     const file = extractedFiles[i];
                     const fullPath = targetDir + '/' + file.path;
                     
+                    // 目录条目：仅创建目录并设置原始修改时间
+                    if (file.dir) {
+                        await ensureDir(fullPath);
+                        if (file.mtime && SYSTEM.fs.utimes) {
+                            const mtimeMs = file.mtime instanceof Date ? file.mtime.getTime() : Number(file.mtime);
+                            if (!isNaN(mtimeMs) && mtimeMs > 0) {
+                                try { SYSTEM.fs.utimes(fullPath, mtimeMs, mtimeMs, () => {}); } catch(e) {}
+                            }
+                        }
+                        updateProgress(90 + (i / total) * 10);
+                        continue;
+                    }
+                    
                     const fileParentDir = fullPath.substring(0, fullPath.lastIndexOf('/'));
                     await ensureDir(fileParentDir);
                     
@@ -6604,6 +6863,14 @@
                     await new Promise(resolve => {
                         SYSTEM.fs.writeFile(fullPath, buffer, () => resolve());
                     });
+                    
+                    // 保留原始修改时间（zipEntry.date / 7z stat.mtime）
+                    if (file.mtime && SYSTEM.fs.utimes) {
+                        const mtimeMs = file.mtime instanceof Date ? file.mtime.getTime() : Number(file.mtime);
+                        if (!isNaN(mtimeMs) && mtimeMs > 0) {
+                            try { SYSTEM.fs.utimes(fullPath, mtimeMs, mtimeMs, () => {}); } catch(e) {}
+                        }
+                    }
                     
                     updateProgress(90 + (i / total) * 10);
                 }
@@ -6812,7 +7079,7 @@
             openFolderWindow(folderName, parentPath);
         }
 
-        // 获取文件扩展名
+        // 获取文件扩展名（原始实现：仅显示扩展名大写 + " 文件"）
         function getFileExtension(filename) {
             const idx = filename.lastIndexOf('.');
             if (idx <= 0) return '文件';
@@ -6910,7 +7177,7 @@
             const funcName = funcMap[type] || ('open' + type.charAt(0).toUpperCase() + type.slice(1));
             cm.innerHTML = `
                 <div class="context-item" onclick="${funcName}(); closeCtx()">
-                    <svg class="icon-svg" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+                    ${icon('uiOpen','sm')}
                     <span>打开</span>
                 </div>
             `;
@@ -6922,7 +7189,7 @@
             
             let menuItems = `
                 <div class="context-item" onclick="openFile('${filename}'); closeCtx()">
-                    <svg class="icon-svg" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+                    ${icon('uiOpen','sm')}
                     <span>打开</span>
                 </div>
             `;
@@ -6930,7 +7197,7 @@
             if (isArchiveFile(filename)) {
                 menuItems += `
                     <div class="context-item" onclick="extractZip('${filename}'); closeCtx()">
-                        <svg class="icon-svg" viewBox="0 0 24 24"><path d="M21 8v13H3V8"/><path d="M1 3h22v5H1z"/><path d="M10 12h4"/></svg>
+                        ${icon('uiExtract','sm')}
                         <span>解压到当前文件夹</span>
                     </div>
                 `;
@@ -6938,16 +7205,16 @@
 
             menuItems += `
                 <div class="context-item" onclick="downloadFile('${filename}'); closeCtx()">
-                    <svg class="icon-svg" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>
+                    ${icon('uiDownload','sm')}
                     <span>下载</span>
                 </div>
                 <div class="context-item" onclick="renameFile('${filename}'); closeCtx()">
-                    <svg class="icon-svg" viewBox="0 0 24 24"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+                    ${icon('uiRename','sm')}
                     <span>重命名</span>
                 </div>
                 <div class="context-divider"></div>
                 <div class="context-item" onclick="deleteFile('${filename}'); closeCtx()">
-                    <svg class="icon-svg" viewBox="0 0 24 24" style="color:var(--win-close-red)"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+                    ${icon('uiDelete','sm')}
                     <span style="color:var(--win-close-red)">删除</span>
                 </div>
             `;
@@ -6958,9 +7225,21 @@
 
         function showCtx(x, y) {
             const cm = document.getElementById('context-menu');
-            cm.style.left = Math.min(x, window.innerWidth - 240) + 'px';
-            cm.style.top = Math.min(y, window.innerHeight - 200) + 'px';
+            // 先显示并重置位置以测量真实尺寸（读取几何信息会强制同步布局）
+            cm.style.left = '0px';
+            cm.style.top = '0px';
             cm.classList.add('open');
+            const rect = cm.getBoundingClientRect();
+            const w = rect.width || 240;
+            const h = rect.height || 200;
+            // 水平：不超出右侧
+            let left = Math.max(8, Math.min(x, window.innerWidth - w - 8));
+            // 垂直：若超出底部则上移；若菜单比视口还高则贴顶并允许内部滚动
+            let top = y;
+            if (top + h > window.innerHeight - 8) top = window.innerHeight - h - 8;
+            if (top < 8) top = 8;
+            cm.style.left = left + 'px';
+            cm.style.top = top + 'px';
             SYSTEM.startOpen = false; document.getElementById('start-menu').classList.remove('open');
             SYSTEM.calendarOpen = false; document.getElementById('calendar-panel').classList.remove('open');
         }
@@ -7086,7 +7365,7 @@
                     } else {
                         SYSTEM.fs.readFile(filePath, (err, data) => {
                             if(!err) {
-                                zip.file(filename, data);
+                                zip.file(filename, data, { date: prepareZipWriteDate(new Date(stats.mtime || Date.now())) });
                             }
                             processedCount++;
                             if(processedCount === files.length) {
@@ -7145,7 +7424,7 @@
                     } else {
                         SYSTEM.fs.readFile(filePath, (err, data) => {
                             if(!err) {
-                                zip.file(filename, data);
+                                zip.file(filename, data, { date: prepareZipWriteDate(new Date(stats.mtime || Date.now())) });
                             }
                             processedCount++;
                             if(processedCount === files.length) {
@@ -7300,12 +7579,10 @@
                     </div>
                     <div class="window-controls">
                         <!-- 新增的全屏按钮，位于最小化之前 -->
-                        <div class="win-btn" onclick="toggleWinFullscreen(${id}, '${opts.winType || 'default'}')">
-                            <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
-                        </div>
-                        <div class="win-btn" onclick="minimizeWin(${id})"><svg class="icon-svg" viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
-                        <div class="win-btn" onclick="maximizeWin(${id})"><svg class="icon-svg" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/></svg></div>
-                        <div class="win-btn close" onclick="closeWin(${id})"><svg class="icon-svg" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></div>
+                        <div class="win-btn" onclick="toggleWinFullscreen(${id}, '${opts.winType || 'default'}')">${icon('uiFullscreen')}</div>
+                        <div class="win-btn" onclick="minimizeWin(${id})">${icon('uiMinimize')}</div>
+                        <div class="win-btn" onclick="maximizeWin(${id})">${icon('uiMaximize')}</div>
+                        <div class="win-btn close" onclick="closeWin(${id})">${icon('uiClose')}</div>
                     </div>
                 </div>
                 ${opts.winType === 'manga' ? `<div class="manga-exit-btn" onclick="toggleWinFullscreen(${id}, 'manga')">×</div>` : ''}
@@ -7318,7 +7595,7 @@
             
             document.getElementById('windows-container').appendChild(w);
             
-            const winObj = { id, element: w, title: opts.title, minimized: false, maximized: isMobile };
+            const winObj = { id, element: w, title: opts.title, minimized: false, maximized: isMobile, iconHtml: opts.iconHtml };
             SYSTEM.windows.push(winObj);
             
             makeDraggable(w, id);
@@ -7608,9 +7885,9 @@
                 width: 900, height: 600,
                 content: `
                     <div class="browser-nav">
-                        <button class="nav-btn" id="nav-back-${SYSTEM.idCounter+1}"><svg class="icon-svg" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg></button>
-                        <button class="nav-btn" id="nav-forward-${SYSTEM.idCounter+1}"><svg class="icon-svg" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></button>
-                        <button class="nav-btn" id="nav-refresh-${SYSTEM.idCounter+1}"><svg class="icon-svg" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg></button>
+                        <button class="nav-btn" id="nav-back-${SYSTEM.idCounter+1}">${icon('uiChevronLeft')}</button>
+                        <button class="nav-btn" id="nav-forward-${SYSTEM.idCounter+1}">${icon('uiChevronRight')}</button>
+                        <button class="nav-btn" id="nav-refresh-${SYSTEM.idCounter+1}">${icon('uiBrowserRefresh','sm')}</button>
                         <div class="address-bar">
                             <svg class="icon-svg" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
                             <input type="text" id="url-input-${SYSTEM.idCounter+1}" placeholder="输入网址..." value="${startUrl}">
@@ -7765,7 +8042,7 @@
             
             const id = createWindow({
                 title: 'CSV 表格 - ' + filename,
-                iconHtml: '<svg class="icon-svg sm" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z M9 2v20 M4 9h16 M4 15h16" /></svg>',
+                iconHtml: icon('fileCsv','sm'),
                 width: 800, height: 600,
                 content: `
                     <div class="csv-toolbar">
@@ -7839,7 +8116,7 @@
             const safeContent = escapeHtml(content);
             const id = createWindow({
                 title: '记事本 - ' + filename,
-                iconHtml: '<svg class="icon-svg sm" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg>',
+                iconHtml: icon('appNotepad','sm'),
                 width: 650, height: 480,
                 content: `
                     <div class="notepad-toolbar">
@@ -7900,7 +8177,7 @@
         function openCalculator() {
             const id = createWindow({
                 title: '计算器',
-                iconHtml: '<svg class="icon-svg sm" viewBox="0 0 24 24"><rect x="4" y="2" width="16" height="20" rx="2"/></svg>',
+                iconHtml: icon('appCalc','sm'),
                 width: 320, height: 450,
                 content: `
                     <div class="calculator" style="background:#1a1a24">
@@ -7977,10 +8254,10 @@
                         <div class="paint-toolbar">
                             <div class="paint-tool-group">
                                 <button class="paint-btn active" id="paint-brush-${SYSTEM.idCounter+1}" title="画笔">
-                                    <svg class="icon-svg" viewBox="0 0 24 24"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/></svg>
+                                    ${icon('uiBrush')}
                                 </button>
                                 <button class="paint-btn" id="paint-eraser-${SYSTEM.idCounter+1}" title="橡皮擦">
-                                    <svg class="icon-svg" viewBox="0 0 24 24"><path d="m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21"/><path d="M22 21H7"/><path d="m5 11 9 9"/></svg>
+                                    ${icon('uiEraser')}
                                 </button>
                             </div>
                             <div class="paint-tool-group">
@@ -7993,10 +8270,10 @@
                             </div>
                             <div class="paint-tool-group">
                                 <button class="paint-btn" id="paint-clear-${SYSTEM.idCounter+1}" title="清空">
-                                    <svg class="icon-svg" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+                                    ${icon('uiDelete','sm')}
                                 </button>
                                 <button class="paint-btn" id="paint-save-${SYSTEM.idCounter+1}" title="保存">
-                                    <svg class="icon-svg" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                                    ${icon('uiSave')}
                                 </button>
                             </div>
                         </div>
@@ -8265,7 +8542,7 @@
                 const winId = createWindow({
                     title: '漫画阅读器 - ' + targetFilename,
                     winType: 'manga',
-                    iconHtml: '<svg class="icon-svg sm" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>',
+                    iconHtml: icon('fileImg','sm'),
                     width: 800, height: 600,
                     content: `
                         <div class="content-area dark" style="position:relative; height:100%; overflow:hidden;">
@@ -8319,11 +8596,11 @@
         }
 
         // === V86 虚拟机应用 ===
-        function openV86() {
+        function openV86(diskPath) {
             const winId = createWindow({
                 title: 'V86 虚拟机',
                 winType: 'v86',
-                iconHtml: '<svg class="icon-svg sm" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>',
+                iconHtml: icon('appVM', 'sm'),
                 width: 800, height: 600,
                 content: `
                     <div class="v86-app">
@@ -8494,6 +8771,20 @@
                         reader.readAsArrayBuffer(file);
                     };
 
+                    // 从虚拟文件系统加载镜像（双击 iso/img 时传入 diskPath）
+                    if (diskPath) {
+                        const fname = diskPath.split('/').pop();
+                        updateStatus('正在从虚拟文件系统读取: ' + fname);
+                        SYSTEM.fs.readFile(diskPath, (err, data) => {
+                            if (err) { updateStatus('读取镜像失败: ' + err.message, true); return; }
+                            // BrowserFS 返回 Uint8Array/Buffer，转为 ArrayBuffer 供 V86 使用
+                            const ab = data.buffer
+                                ? data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength)
+                                : data;
+                            initV86(fname, ab);
+                        });
+                    }
+
                     resetBtn.onclick = () => {
                         if (emulator) {
                             emulator.restart();
@@ -8528,7 +8819,7 @@
             const winId = createWindow({
                 title: 'HTML编辑器',
                 winType: 'editor',
-                iconHtml: '<svg class="icon-svg sm" viewBox="0 0 24 24"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>',
+                iconHtml: icon('appCode','sm'),
                 width: 1000, height: 650,
                 content: `
                     <div class="editor-app" id="editor-app-${SYSTEM.idCounter+1}">
@@ -9086,21 +9377,21 @@
         function openSettings() {
             createWindow({
                 title: '系统设置',
-                iconHtml: '<svg class="icon-svg sm" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/></svg>',
+                iconHtml: icon('appSettings','sm'),
                 width: 550, height: 500,
                 content: `
                     <div class="content-area dark" style="overflow-y:auto">
                         <div class="settings-content">
                             <div class="about-card">
                                 <div class="logo">JISHENG OS</div>
-                                <p>Ultimate Web Operating System<br>Version 10.5.2 • Build 2026</p>
+                                <p>Ultimate Web Operating System<br>Version 10.5.3 • Build 2026</p>
                             </div>
                             
                             <div class="settings-section" style="margin-top:20px">
                                 <h4>个性化</h4>
                                 <div class="settings-item" onclick="openWallpaperPanel()" style="cursor:pointer">
                                     <label>更换壁纸</label>
-                                    <svg class="icon-svg" viewBox="0 0 24 24" style="color:var(--text-muted)"><polyline points="9 18 15 12 9 6"/></svg>
+                                    ${icon('uiChevronRight')}
                                 </div>
                             </div>
                             
@@ -9112,7 +9403,7 @@
                                 </div>
                                 <div class="settings-item" onclick="resetSystem()" style="cursor:pointer">
                                     <label style="color:var(--win-close-red)">重置系统</label>
-                                    <svg class="icon-svg" viewBox="0 0 24 24" style="color:var(--win-close-red)"><polyline points="9 18 15 12 9 6"/></svg>
+                                    ${icon('uiChevronRight')}
                                 </div>
                             </div>
                             
@@ -9120,7 +9411,7 @@
                                 <h4>关于</h4>
                                 <div class="settings-item">
                                     <label>系统版本</label>
-                                    <span>10.5.2</span>
+                                    <span>10.5.3</span>
                                 </div>
                                 <div class="settings-item">
                                     <label>内核</label>
@@ -9198,34 +9489,7 @@
             previewHideTimer: null,
         };
 
-        // === 窗口标题对应的图标SVG ===
-        function getWindowIconSVG(title) {
-            if (!title) return '<svg class="icon-svg" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>';
-            
-            if (title.includes('浏览器'))
-                return '<svg class="icon-svg" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>';
-            if (title.includes('记事本'))
-                return '<svg class="icon-svg" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>';
-            if (title.includes('计算器'))
-                return '<svg class="icon-svg" viewBox="0 0 24 24"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/></svg>';
-            if (title.includes('画板'))
-                return '<svg class="icon-svg" viewBox="0 0 24 24"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><circle cx="11" cy="11" r="2"/></svg>';
-            if (title.includes('设置'))
-                return '<svg class="icon-svg" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/></svg>';
-            if (title.includes('V86'))
-                return '<svg class="icon-svg" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>';
-            if (title.includes('编辑器') || title.includes('HTML'))
-                return '<svg class="icon-svg" viewBox="0 0 24 24"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>';
-            if (title.includes('CSV') || title.match(/\.csv$/i))
-                return '<svg class="icon-svg" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z M9 2v20 M4 9h16 M4 15h16" /></svg>';
-            if (title.match(/\.(mp3|wav|flac|m4a|ogg|aac)$/i))
-                return '<svg class="icon-svg" viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>';
-            if (title.match(/\.(jpg|png|gif|webp|jpeg)$/i))
-                return '<svg class="icon-svg" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>';
-            
-            return '<svg class="icon-svg" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>';
-        }
-
+        // =
         // ============================================
         // 1. 运行窗口任务栏条状图标管理
         // ============================================
@@ -9248,11 +9512,12 @@
                     item.id = 'taskbar-run-' + w.id;
                     item.dataset.winId = w.id;
                     
+                    const taskbarIcon = w.iconHtml || icon('appDefault');
                     item.innerHTML = `
-                        <div class="running-icon">${getWindowIconSVG(w.title)}</div>
+                        <div class="running-icon">${taskbarIcon}</div>
                         <div class="running-title">${w.title || '窗口'}</div>
                         <button class="running-close-btn" title="关闭窗口">
-                            <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                            ${icon('uiClose')}
                         </button>
                     `;
                     
@@ -9473,15 +9738,25 @@
                     const fullPath = path === '/' ? '/' + entry : path + '/' + entry;
                     try {
                         const stat = this.sevenZip.FS.stat(fullPath);
+                        const mtime = stat.mtime && stat.mtime.getTime ? stat.mtime.getTime() : (stat.mtime || null);
                         if (this.sevenZip.FS.isDir(stat.mode)) {
+                            // 保留目录条目及其原始修改时间
+                            files.push({
+                                path: fullPath.substring(1),
+                                name: entry,
+                                dir: true,
+                                mtime: mtime
+                            });
                             files.push(...this.collectFiles(fullPath));
                         } else if (this.sevenZip.FS.isFile(stat.mode)) {
                             if (!fullPath.match(/\.(7z|zip|rar|tar|gz|bz2|xz|cab)$/i)) {
+                                // 保留 7z 解压后文件的原始修改时间
                                 files.push({
                                     path: fullPath.substring(1),
                                     name: entry,
                                     data: this.sevenZip.FS.readFile(fullPath),
-                                    size: stat.size
+                                    size: stat.size,
+                                    mtime: mtime
                                 });
                             }
                         }
@@ -9494,8 +9769,14 @@
         cleanup() {
             if (!this.ready) return;
             const files = this.collectFiles('/');
+            // 先删除文件，再按路径深度从深到浅删除目录
             for (const f of files) {
+                if (f.dir) continue;
                 try { this.sevenZip.FS.unlink('/' + f.path); } catch(e) {}
+            }
+            const dirs = files.filter(f => f.dir).sort((a, b) => b.path.length - a.path.length);
+            for (const d of dirs) {
+                try { this.sevenZip.FS.rmdir('/' + d.path); } catch(e) {}
             }
         }
     }
