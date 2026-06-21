@@ -7711,6 +7711,18 @@
                 startLeft = el.offsetLeft; startTop = el.offsetTop;
                 
                 focusWin(id);
+                
+                // === 修复：创建全屏透明遮罩，防止iframe偷走鼠标事件导致拖拽卡顿 ===
+                // 参考 V1 版本的 #drag-cover 方案
+                // 当窗口内含 iframe（浏览器、HTML编辑器等）时，鼠标移入内容区域
+                // 会被 iframe 捕获事件，导致拖拽停止。全屏遮罩物理阻挡 iframe 接收事件。
+                let dragCover = document.getElementById('drag-cover');
+                if (!dragCover) {
+                    dragCover = document.createElement('div');
+                    dragCover.id = 'drag-cover';
+                    dragCover.style.cssText = 'position:fixed;inset:0;z-index:9999;pointer-events:auto;';
+                    document.body.appendChild(dragCover);
+                }
             };
             
             const move = (e) => {
@@ -7761,6 +7773,10 @@
                 
                 isDragging = false;
                 dragPointerId = null;
+                
+                // === 修复：移除全屏遮罩，恢复iframe正常交互 ===
+                const dragCover = document.getElementById('drag-cover');
+                if (dragCover) dragCover.remove();
             };
             
             // 绑定事件 (仅绑定在标题栏上，不影响内容区域的点击)
@@ -7816,6 +7832,14 @@
                     startL = el.offsetLeft; startT = el.offsetTop;
                     dir = h.className.split(' ')[1];
                     e.preventDefault();
+                    // === 修复：创建全屏透明遮罩，防止iframe偷走鼠标事件 ===
+                    let resizeCover = document.getElementById('resize-cover');
+                    if (!resizeCover) {
+                        resizeCover = document.createElement('div');
+                        resizeCover.id = 'resize-cover';
+                        resizeCover.style.cssText = 'position:fixed;inset:0;z-index:9999;pointer-events:auto;cursor:'+getComputedStyle(h).cursor;
+                        document.body.appendChild(resizeCover);
+                    }
                 };
                 document.addEventListener('mousemove', e => {
                     if(!isResizing) return;
@@ -7870,7 +7894,12 @@
                     if(dir.includes('w')) el.style.left = newL + 'px';
                     if(dir.includes('n')) el.style.top = newT + 'px';
                 });
-                document.addEventListener('mouseup', () => { isResizing = false; });
+                document.addEventListener('mouseup', () => {
+                    isResizing = false;
+                    // === 修复：移除全屏遮罩 ===
+                    const resizeCover = document.getElementById('resize-cover');
+                    if (resizeCover) resizeCover.remove();
+                });
             });
         }
 
