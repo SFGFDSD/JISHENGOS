@@ -4428,6 +4428,9 @@
             fileHtml:   '<circle cx="12" cy="12" r="10"/><path d="M2 12h20"/>',
             fileVideo:  '<rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"/><line x1="7" y1="2" x2="7" y2="22"/><line x1="17" y1="2" x2="17" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="2" y1="7" x2="7" y2="7"/><line x1="2" y1="17" x2="7" y2="17"/><line x1="17" y1="17" x2="22" y2="17"/><line x1="17" y1="7" x2="22" y2="7"/>',
             fileAudio:  '<path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>',
+            // fileIso: 光盘镜像（ISO / CD-ROM / DVD 等）
+            fileIso:    '<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/>',
+            // fileDisk: 软盘/磁盘镜像（IMG / Floppy / 硬盘镜像等）
             fileDisk:   '<path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/>',
             // --- 应用图标 ---
             appBrowser: '<circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>',
@@ -4511,7 +4514,9 @@
             if(e==='html'||e==='htm') return 'fileHtml';
             if(['mp4','avi','mov','mkv','webm','flv','wmv'].includes(e)) return 'fileVideo';
             if(['mp3','wav','flac','m4a','ogg','aac'].includes(e)) return 'fileAudio';
-            if(['iso','img'].includes(e)) return 'fileDisk';
+            // 镜像类型图标区分：iso → 光盘(CD/DVD)；img → 软盘/磁盘镜像
+            if(e==='iso') return 'fileIso';
+            if(e==='img') return 'fileDisk';
             return 'fileGeneric';
         }
 
