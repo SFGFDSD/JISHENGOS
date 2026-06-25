@@ -287,7 +287,14 @@
             display: flex; align-items: center; gap: 10px; 
             padding-left: 14px; flex: 1; height: 100%;
         }
-        .window-icon .icon-svg { width: 16px; height: 16px; color: var(--text-muted); }
+        /* 修复标题栏图标未对齐：原 .window-icon 为 block 容器，
+           内部 SVG 为 inline+vertical-align:baseline，导致图标被顶到行框顶部，
+           比标题文字高出约 2px。改为 flex 居中后图标与文字垂直中线对齐。 */
+        .window-icon {
+            display: flex; align-items: center; justify-content: center;
+            flex-shrink: 0;
+        }
+        .window-icon .icon-svg { display: block; width: 16px; height: 16px; color: var(--text-muted); }
         .window-title-text { font-size: 12px; font-weight: 500; color: var(--text-muted); }
 
         /* 窗口控制按钮 */
@@ -801,6 +808,7 @@
         .folder-toolbar-btn:hover { background: rgba(255,255,255,0.1); color: var(--text-main); }
         .folder-toolbar-btn:active { background: rgba(255,255,255,0.15); transform: scale(0.95); }
         .folder-toolbar-btn.active { background: rgba(0, 120, 212, 0.25); color: #fff; }
+        .folder-toolbar-btn.disabled { opacity: 0.35; cursor: not-allowed; pointer-events: none; }
         .folder-toolbar-btn svg { width: 16px; height: 16px; }
         .folder-toolbar-divider {
             width: 1px; height: 18px;
@@ -4382,6 +4390,22 @@
                 <button class="folder-toolbar-btn" title="新建文本文档" onclick="folderCreateNew('${windowId}','file')">
                     ${icon('uiNewFile')}
                 </button>
+                <div class="folder-toolbar-divider"></div>
+                <button class="folder-toolbar-btn" title="剪切" onclick="cutSelectedFolderItems('${windowId}')">
+                    ${icon('uiCut')}
+                </button>
+                <button class="folder-toolbar-btn" title="复制" onclick="copySelectedFolderItems('${windowId}')">
+                    ${icon('uiCopy')}
+                </button>
+                <button class="folder-toolbar-btn" id="folder-paste-${windowId}" title="粘贴" onclick="pasteToFolderWindow('${windowId}')">
+                    ${icon('uiPaste')}
+                </button>
+                <button class="folder-toolbar-btn" title="重命名" onclick="renameSelectedFolderItem('${windowId}')">
+                    ${icon('uiRename')}
+                </button>
+                <button class="folder-toolbar-btn" title="删除" onclick="deleteFolderItems('${windowId}')">
+                    ${icon('uiDeleteSimple')}
+                </button>
                 <div class="folder-search-box">
                     ${icon('uiSearch')}
                     <input type="text" placeholder="搜索文件..." id="folder-search-${windowId}" oninput="folderSearch('${windowId}', this.value)">
@@ -4423,8 +4447,8 @@
             fileGeneric:'<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>',
             fileText:   '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>',
             fileImg:    '<rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>',
-            fileCsv:    '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z M9 2v20 M4 9h16 M4 15h16"/>',
-            fileZip:    '<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2v11z"/><path d="M12 10v4"/><path d="M12 14l2-2"/>',
+            fileCsv:    '<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18M3 9h18M3 15h18"/>',
+            fileZip:    '<path d="M21 8v13H3V8"/><path d="M1 3h22v5H1z"/><path d="M10 12h4"/>',
             fileHtml:   '<circle cx="12" cy="12" r="10"/><path d="M2 12h20"/>',
             fileVideo:  '<rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"/><line x1="7" y1="2" x2="7" y2="22"/><line x1="17" y1="2" x2="17" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="2" y1="7" x2="7" y2="7"/><line x1="2" y1="17" x2="7" y2="17"/><line x1="17" y1="17" x2="22" y2="17"/><line x1="17" y1="7" x2="22" y2="7"/>',
             fileAudio:  '<path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>',
@@ -4472,10 +4496,10 @@
             uiCut:        '<circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="20" y1="4" x2="8.12" y2="15.88"/><line x1="14.47" y1="14.48" x2="20" y2="20"/><line x1="8.12" y1="8.12" x2="12" y2="12"/>',
             uiDownload:   '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/>',
             uiDelete:     '<path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>',
-            uiDeleteSimple: '<path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/>',
+            uiDeleteSimple: '<path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>',
             uiRename:     '<path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>',
             uiExtract:    '<path d="M21 8v13H3V8"/><path d="M1 3h22v5H1z"/><path d="M10 12h4"/>',
-            uiExtractSimple: '<path d="M21 8v13H3V8"/>',
+            uiExtractSimple: '<path d="M1 3h22v5H1z"/><path d="M21 8v13H3V8"/><path d="m9 15 3-3 3 3"/><path d="M12 12v9"/>',
             uiImage:      '<rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>',
             uiWallpaper:  '<rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>',
             uiWallpaperCtx: '<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>',
@@ -4701,6 +4725,9 @@
 
                     // 更新侧边栏文件夹列表
                     updateSidebarFolderList(windowId);
+
+                    // 更新粘贴按钮状态（剪贴板为空时禁用）
+                    updatePasteButtonState(windowId);
                 };
 
                 if (files.length === 0) {
@@ -5678,7 +5705,43 @@
             });
         }
 
+        // 工具栏：重命名当前选中的第一个项目
+        function renameSelectedFolderItem(windowId) {
+            const contentArea = document.getElementById('folder-content-' + windowId);
+            if(!contentArea) return;
+            const selectedItems = Array.from(contentArea.querySelectorAll('.folder-item.selected, .folder-grid-item.selected'));
+            if(selectedItems.length === 0) {
+                Notify.info('未选择文件');
+                return;
+            }
+            if(selectedItems.length > 1) {
+                Notify.info('请只选择一个文件进行重命名');
+                return;
+            }
+            const filename = selectedItems[0].dataset.filename;
+            if(filename) renameFolderItem(windowId, filename);
+        }
+
         // === 文件夹窗口的复制/剪切/粘贴功能 ===
+
+        // 更新所有已打开文件夹窗口的粘贴按钮状态（剪贴板为空时禁用变灰）
+        function updatePasteButtonState(windowId) {
+            const updateOne = (wid) => {
+                const btn = document.getElementById('folder-paste-' + wid);
+                if(!btn) return;
+                if(Clipboard.hasItems()) {
+                    btn.classList.remove('disabled');
+                } else {
+                    btn.classList.add('disabled');
+                }
+            };
+            if(windowId) {
+                updateOne(windowId);
+            } else {
+                // 更新所有打开的文件夹窗口
+                Object.keys(SYSTEM.folderWindowStates || {}).forEach(updateOne);
+            }
+        }
 
         // 复制选中的文件夹项目
         function copySelectedFolderItems(windowId) {
@@ -5707,6 +5770,7 @@
             });
             
             Notify.success('已复制', `已复制 ${Clipboard.getItems().length} 个项目到剪贴板`);
+            updatePasteButtonState();
         }
 
         // 剪切选中的文件夹项目
@@ -5738,6 +5802,7 @@
             });
             
             Notify.success('已剪切', `已剪切 ${Clipboard.getItems().length} 个项目`);
+            updatePasteButtonState();
         }
 
         // 粘贴到文件夹窗口（顺序处理，避免竞态条件）
@@ -5770,6 +5835,7 @@
                         document.querySelectorAll('.desktop-icon').forEach(el => el.style.opacity = '');
                     }
                     refreshAllAffectedWindows(destPath, srcPaths, isCut);
+                    updatePasteButtonState();
                     if(errorCount > 0) {
                         Notify.error('部分失败', `成功 ${processedCount} 个，失败 ${errorCount} 个`);
                     } else {
@@ -6433,7 +6499,8 @@
                 height: appConfig.height,
                 content: `
                     <div class="content-area" style="position:relative;flex:1;">
-                        <iframe src="${url}" sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-downloads" style="width:100%;height:100%;border:none;"></iframe>
+                        <!-- 注意：故意不设 sandbox 限制以保证最佳性能和兼容性，请勿添加 -->
+                        <iframe src="${url}" style="width:100%;height:100%;border:none;"></iframe>
                     </div>
                 `
             });
@@ -6526,6 +6593,7 @@
                         iconHtml: '<svg class="icon-svg sm" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/><text x="8" y="18" font-size="4" fill="currentColor">PDF</text></svg>',
                         width: 800, height: 600,
                         content: `<div class="content-area dark" style="overflow:hidden">
+                            <!-- 注意：故意不设 sandbox 限制以保证最佳性能和兼容性，请勿添加 -->
                             <iframe src="${dataUrl}" style="width:100%;height:100%;border:none"></iframe>
                         </div>`
                     });
@@ -7930,7 +7998,8 @@
                     </div>
                     <div class="content-area" style="position:relative;">
                         <div class="loading-overlay" id="loading-${SYSTEM.idCounter+1}"><div class="spinner"></div><span>加载中...</span></div>
-                        <iframe id="browser-frame-${SYSTEM.idCounter+1}" src="${startUrl}" sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-downloads"></iframe>
+                        <!-- 注意：故意不设 sandbox 限制以保证最佳性能和兼容性，请勿添加 -->
+                        <iframe id="browser-frame-${SYSTEM.idCounter+1}" src="${startUrl}"></iframe>
                     </div>
                 `,
                 onInit: (w, winId) => {
@@ -8978,7 +9047,8 @@
                             <div class="editor-preview-section" id="editor-preview-section-${SYSTEM.idCounter+1}">
                                 <div class="editor-preview-loading" id="editor-preview-loading-${SYSTEM.idCounter+1}"></div>
                                 <div class="editor-preview-frame-wrapper">
-                                    <iframe id="editor-preview-frame-${SYSTEM.idCounter+1}" sandbox="allow-scripts allow-modals allow-forms allow-same-origin allow-popups allow-top-navigation allow-popups-to-escape-sandbox"></iframe>
+                                    <!-- 注意：故意不设 sandbox 限制以保证最佳性能和兼容性，请勿添加 -->
+                                    <iframe id="editor-preview-frame-${SYSTEM.idCounter+1}"></iframe>
                                 </div>
                             </div>
                         </div>
@@ -9007,6 +9077,8 @@
             // 当前文件保存目录：来源目录优先，否则桌面
             const editorSaveDir = saveDir || SYSTEM.desktopPath;
             const sState = { query: '', currentIndex: -1, matches: [], markers: [], caseSensitive: false, wholeWord: false, regex: false };
+            let _previewBlobUrl = null;
+            let _previewLoadingTimer = null;
             
             const textarea = document.getElementById(`editor-textarea-${winId}`);
             const previewFrame = document.getElementById(`editor-preview-frame-${winId}`);
@@ -9072,14 +9144,23 @@
                 previewLoading.classList.add('active');
                 const htmlContent = code || '<html><body style="margin:0;background:#0d1117;"></body></html>';
                 try {
+                    // 释放旧的 blob URL
+                    if (_previewBlobUrl) { URL.revokeObjectURL(_previewBlobUrl); _previewBlobUrl = null; }
                     const doc = previewFrame.contentDocument || previewFrame.contentWindow.document;
                     doc.open();
                     doc.write(htmlContent);
                     doc.close();
                 } catch (e) {
-                    previewFrame.src = URL.createObjectURL(new Blob([htmlContent], { type: 'text/html' }));
+                    // 释放旧的 blob URL 后再创建新的
+                    if (_previewBlobUrl) { URL.revokeObjectURL(_previewBlobUrl); }
+                    _previewBlobUrl = URL.createObjectURL(new Blob([htmlContent], { type: 'text/html' }));
+                    previewFrame.src = _previewBlobUrl;
                 }
-                setTimeout(() => previewLoading.classList.remove('active'), 500);
+                if (_previewLoadingTimer) clearTimeout(_previewLoadingTimer);
+                _previewLoadingTimer = setTimeout(() => {
+                    previewLoading.classList.remove('active');
+                    _previewLoadingTimer = null;
+                }, 500);
             }
             
             // 格式化代码
@@ -9403,6 +9484,9 @@
             const winEl = document.getElementById(`win-${winId}`);
             if (winEl) {
                 winEl.onDestroy = () => {
+                    if (_previewLoadingTimer) clearTimeout(_previewLoadingTimer);
+                    if (_previewBlobUrl) { URL.revokeObjectURL(_previewBlobUrl); _previewBlobUrl = null; }
+                    previewFrame.src = 'about:blank';
                     if (editor) editor.toTextArea();
                 };
             }
@@ -9418,7 +9502,7 @@
                         <div class="settings-content">
                             <div class="about-card">
                                 <div class="logo">JISHENG OS</div>
-                                <p>Ultimate Web Operating System<br>Version 10.5.3 • Build 2026</p>
+                                <p>Ultimate Web Operating System<br>Version 10.5.4 • Build 2026</p>
                             </div>
                             
                             <div class="settings-section" style="margin-top:20px">
@@ -9445,7 +9529,7 @@
                                 <h4>关于</h4>
                                 <div class="settings-item">
                                     <label>系统版本</label>
-                                    <span>10.5.3</span>
+                                    <span>10.5.4</span>
                                 </div>
                                 <div class="settings-item">
                                     <label>内核</label>
