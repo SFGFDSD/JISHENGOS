@@ -8122,7 +8122,7 @@
             const id = createWindow({
                 title: '浏览器',
                 winType: 'browser',
-                iconHtml: '<svg class="icon-svg sm" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/></svg>',
+                iconHtml: icon('appBrowser','sm'),
                 width: 900, height: 600,
                 content: `
                     <div class="browser-nav">
@@ -8489,7 +8489,7 @@
             const paintSaveDir = saveDir || SYSTEM.desktopPath;
             const id = createWindow({
                 title: '画板',
-                iconHtml: '<svg class="icon-svg sm" viewBox="0 0 24 24"><path d="M12 19l7-7 3 3-7 7-3-3z"/></svg>',
+                iconHtml: icon('appPaint','sm'),
                 width: 800, height: 550,
                 content: `
                     <div class="paint-app">
