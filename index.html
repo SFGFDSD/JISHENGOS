@@ -392,13 +392,34 @@
         .notepad-toolbar {
             padding: 8px 12px; background: rgba(0,0,0,0.2); 
             border-bottom: 1px solid var(--glass-border); display: flex; gap: 8px;
+            flex-wrap: wrap; align-items: center;
         }
         .notepad-btn {
             background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border);
             color: var(--text-main); padding: 4px 12px; border-radius: 4px; font-size: 12px; cursor: pointer;
-            transition: 0.2s;
+            transition: 0.2s; line-height: 1.4;
         }
         .notepad-btn:hover { background: rgba(255,255,255,0.15); }
+        .notepad-btn:disabled { opacity: 0.35; cursor: default; }
+        .notepad-btn:disabled:hover { background: rgba(255,255,255,0.05); }
+        .notepad-btn svg { width: 14px; height: 14px; vertical-align: -2px; }
+        .notepad-sep { width: 1px; height: 18px; background: var(--glass-border); margin: 0 2px; }
+        .notepad-fontsize {
+            min-width: 34px; text-align: center; font-size: 12px; color: var(--text-main);
+            font-variant-numeric: tabular-nums; user-select: none;
+        }
+        .notepad-status {
+            margin-left: auto; font-size: 11px; color: var(--text-muted); white-space: nowrap;
+        }
+        .notepad-status.dirty { color: #f59e0b; }
+        .notepad-status.saved { color: #22c55e; }
+        .notepad-group { display: flex; gap: 6px; align-items: center; }
+        @media (max-width: 768px) {
+            .notepad-toolbar { padding: 6px 8px; gap: 6px; }
+            .notepad-btn { padding: 6px 9px; }
+            .notepad-sep { display: none; }
+            .notepad-status { flex-basis: 100%; margin-left: 0; text-align: left; overflow: hidden; text-overflow: ellipsis; }
+        }
         .notepad-area {
             flex: 1; background: #1e1e1e; border: none; color: #e0e0e0;
             padding: 16px; font-family: 'Consolas', monospace; font-size: 14px; resize: none;
@@ -8351,28 +8372,106 @@
         }
 
         // 修复(Bug B / #1 / #16)：新增 saveDir 参数。
-        // 从子文件夹打开文件时传入该文件所在目录，保存/另存为/新建都默认写回当前工作目录，
+        // 从子文件夹打开文件时传入该文件所在目录，保存/另存为都默认写回当前工作目录，
         // 而不是硬编码到桌面。未提供时回退到桌面（保持任务栏新建记事本的旧行为）。
+        //
+        // 记事本增强：
+        //  - 移除无用的「新建」按钮（要新建直接从任务栏/开始菜单再开一个记事本即可）
+        //  - 自动暂存草稿（参考「炸字移动端文字编辑」）：输入后 ~400ms 自动写入 localStorage，
+        //    关窗、刷新、断电都不会丢；下次打开同一文件时自动恢复未保存的内容
+        //  - 字号调节（A- / A+，Ctrl + 滚轮，Ctrl + - / =），全局记忆
+        //  - 撤销 / 恢复按钮（自维护历史栈，最多 200 步；Ctrl+Z / Ctrl+Y / Ctrl+Shift+Z）
+        //  - Ctrl+S 保存；标题栏用 ● 标记未保存
+        const NP_DRAFT_PREFIX = 'JSOS_NP_DRAFT::';
+        const NP_FONT_KEY = 'JSOS_NP_FONTSIZE';
+        const NP_FONT_MIN = 10, NP_FONT_MAX = 40, NP_FONT_DEFAULT = 14;
+        function npGetFontSize() {
+            const v = parseInt(localStorage.getItem(NP_FONT_KEY) || '', 10);
+            return (v >= NP_FONT_MIN && v <= NP_FONT_MAX) ? v : NP_FONT_DEFAULT;
+        }
+        function npReadDraft(key) {
+            try {
+                const raw = localStorage.getItem(NP_DRAFT_PREFIX + key);
+                if (!raw) return null;
+                const d = JSON.parse(raw);
+                return (d && typeof d.content === 'string') ? d : null;
+            } catch (e) { return null; }
+        }
+        function npWriteDraft(key, content) {
+            try {
+                localStorage.setItem(NP_DRAFT_PREFIX + key, JSON.stringify({ content, time: Date.now() }));
+                return true;
+            } catch (e) {
+                // 存储已满等情况：静默失败，但通知一次
+                if (!npWriteDraft._warned) { npWriteDraft._warned = true; Notify.warning('草稿暂存失败', '浏览器本地存储已满，请及时手动保存'); }
+                return false;
+            }
+        }
+        function npClearDraft(key) { try { localStorage.removeItem(NP_DRAFT_PREFIX + key); } catch (e) {} }
+        function npFmtTime(ts) {
+            const d = new Date(ts); const p = n => String(n).padStart(2, '0');
+            return `${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+        }
+
         function openNotepad(content = '', filename = '未命名.txt', saveDir = null) {
             // 修复：textarea 内容需转义，避免文件内容含 </textarea> 等破坏 DOM。
             const safeContent = escapeHtml(content);
+            const svgUndo = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 1 1 0 12h-3"/></svg>';
+            const svgRedo = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 14l5-5-5-5"/><path d="M20 9H10a6 6 0 1 0 0 12h3"/></svg>';
+            const nid = SYSTEM.idCounter + 1;
             const id = createWindow({
                 title: '记事本 - ' + filename,
                 iconHtml: icon('appNotepad','sm'),
                 width: 650, height: 480,
                 content: `
                     <div class="notepad-toolbar">
-                        <button class="notepad-btn" id="np-new-${SYSTEM.idCounter+1}">新建</button>
-                        <button class="notepad-btn" id="np-save-${SYSTEM.idCounter+1}">保存</button>
-                        <button class="notepad-btn" id="np-saveas-${SYSTEM.idCounter+1}">另存为</button>
+                        <span class="notepad-group">
+                            <button class="notepad-btn" id="np-save-${nid}" title="保存 (Ctrl+S)">保存</button>
+                            <button class="notepad-btn" id="np-saveas-${nid}" title="另存为">另存为</button>
+                        </span>
+                        <span class="notepad-sep"></span>
+                        <span class="notepad-group">
+                            <button class="notepad-btn" id="np-undo-${nid}" title="撤销 (Ctrl+Z)" disabled>${svgUndo} 撤销</button>
+                            <button class="notepad-btn" id="np-redo-${nid}" title="恢复 (Ctrl+Y)" disabled>${svgRedo} 恢复</button>
+                        </span>
+                        <span class="notepad-sep"></span>
+                        <span class="notepad-group">
+                            <button class="notepad-btn" id="np-fdec-${nid}" title="缩小字号 (Ctrl + -)">A-</button>
+                            <span class="notepad-fontsize" id="np-fsize-${nid}" title="双击恢复默认字号">14</span>
+                            <button class="notepad-btn" id="np-finc-${nid}" title="放大字号 (Ctrl + =)">A+</button>
+                        </span>
+                        <span class="notepad-status" id="np-status-${nid}"></span>
                     </div>
-                    <textarea class="notepad-area" id="np-area-${SYSTEM.idCounter+1}" placeholder="开始输入...">${safeContent}</textarea>
+                    <textarea class="notepad-area" id="np-area-${nid}" placeholder="开始输入..." spellcheck="false">${safeContent}</textarea>
                 `,
                 onInit: (w, winId) => {
                     let currentFile = filename;
                     // 当前工作目录：优先使用传入的 saveDir（来源文件所在目录），否则桌面。
                     let currentDir = saveDir || SYSTEM.desktopPath;
                     const area = document.getElementById('np-area-' + winId);
+                    const titleEl = w.querySelector('.window-title-text');
+                    const btnSave = document.getElementById('np-save-' + winId);
+                    const btnSaveAs = document.getElementById('np-saveas-' + winId);
+                    const btnUndo = document.getElementById('np-undo-' + winId);
+                    const btnRedo = document.getElementById('np-redo-' + winId);
+                    const btnFDec = document.getElementById('np-fdec-' + winId);
+                    const btnFInc = document.getElementById('np-finc-' + winId);
+                    const fsizeEl = document.getElementById('np-fsize-' + winId);
+                    const statusEl = document.getElementById('np-status-' + winId);
+
+                    // ---------- 状态 ----------
+                    let savedContent = content;          // 磁盘（虚拟FS）上的内容
+                    let draftKey = currentDir + '/' + currentFile;
+                    let draftTimer = 0;
+                    let histTimer = 0;
+                    let composing = false;
+                    let hist = [content];                // 撤销历史栈
+                    let histI = 0;
+                    const HIST_MAX = 200;
+
+                    const isDirty = () => area.value !== savedContent;
+                    const setTitle = () => { titleEl.innerText = (isDirty() ? '● ' : '') + '记事本 - ' + currentFile; };
+                    const setStatus = (text, cls) => { statusEl.textContent = text; statusEl.className = 'notepad-status' + (cls ? ' ' + cls : ''); };
 
                     const refreshAfterSave = () => {
                         // 刷新桌面 + 该目录已打开的文件夹窗口，使保存立即可见。
@@ -8382,38 +8481,146 @@
                             if (st && st.currentPath === currentDir) { st.fileStats = {}; renderFolderContent(wId); }
                         });
                     };
-                    
-                    document.getElementById('np-new-' + winId).onclick = () => {
-                        area.value = '';
-                        currentFile = '未命名.txt';
-                        // 修复(#16)：保留当前工作目录，新建文件默认仍保存到当前目录。
-                        w.querySelector('.window-title-text').innerText = '记事本 - ' + currentFile;
+
+                    // ---------- 自动暂存草稿 ----------
+                    const flushDraft = () => {
+                        clearTimeout(draftTimer); draftTimer = 0;
+                        if (isDirty()) {
+                            if (npWriteDraft(draftKey, area.value)) setStatus('已自动暂存 ' + npFmtTime(Date.now()) + ' · 未保存到文件', 'dirty');
+                        } else {
+                            npClearDraft(draftKey);
+                            setStatus('与文件一致', 'saved');
+                        }
+                        setTitle();
                     };
-                    
-                    document.getElementById('np-save-' + winId).onclick = () => {
+                    const scheduleDraft = () => {
+                        setStatus('暂存中…', 'dirty');
+                        setTitle();
+                        clearTimeout(draftTimer);
+                        draftTimer = setTimeout(flushDraft, 400);
+                    };
+
+                    // ---------- 撤销 / 恢复 ----------
+                    const updateHistBtns = () => { btnUndo.disabled = histI <= 0; btnRedo.disabled = histI >= hist.length - 1; };
+                    const pushHist = () => {
+                        clearTimeout(histTimer); histTimer = 0;
+                        const v = area.value;
+                        if (hist[histI] === v) return;
+                        hist = hist.slice(0, histI + 1);
+                        hist.push(v);
+                        if (hist.length > HIST_MAX) hist.shift();
+                        histI = hist.length - 1;
+                        updateHistBtns();
+                    };
+                    const scheduleHist = () => { clearTimeout(histTimer); histTimer = setTimeout(pushHist, 300); };
+                    const applyHist = (i) => {
+                        const keepScroll = area.scrollTop;
+                        area.value = hist[i];
+                        histI = i;
+                        area.scrollTop = keepScroll;
+                        try { area.setSelectionRange(area.value.length, area.value.length); } catch (e) {}
+                        area.focus({ preventScroll: true });
+                        updateHistBtns();
+                        scheduleDraft();
+                    };
+                    const undo = () => { pushHist(); if (histI > 0) applyHist(histI - 1); };
+                    const redo = () => { if (histI < hist.length - 1) applyHist(histI + 1); };
+                    btnUndo.onclick = undo;
+                    btnRedo.onclick = redo;
+
+                    // ---------- 字号 ----------
+                    let fontSize = npGetFontSize();
+                    const applyFont = () => {
+                        area.style.fontSize = fontSize + 'px';
+                        fsizeEl.textContent = fontSize;
+                        btnFDec.disabled = fontSize <= NP_FONT_MIN;
+                        btnFInc.disabled = fontSize >= NP_FONT_MAX;
+                        try { localStorage.setItem(NP_FONT_KEY, String(fontSize)); } catch (e) {}
+                    };
+                    const changeFont = (delta) => { fontSize = Math.max(NP_FONT_MIN, Math.min(NP_FONT_MAX, fontSize + delta)); applyFont(); };
+                    btnFDec.onclick = () => changeFont(-1);
+                    btnFInc.onclick = () => changeFont(1);
+                    fsizeEl.ondblclick = () => { fontSize = NP_FONT_DEFAULT; applyFont(); };
+                    area.addEventListener('wheel', (e) => {
+                        if (!e.ctrlKey) return;
+                        e.preventDefault();
+                        changeFont(e.deltaY < 0 ? 1 : -1);
+                    }, { passive: false });
+                    applyFont();
+
+                    // ---------- 保存 / 另存为 ----------
+                    const writeFile = (cb) => {
                         const path = currentDir + '/' + currentFile;
-                        SYSTEM.fs.writeFile(path, area.value, 'utf8', err => {
-                            if(err) Notify.error('保存失败', err.message);
-                            else { refreshAfterSave(); Notify.success('保存成功', `文件已保存为 "${currentFile}"`); }
+                        const val = area.value;
+                        SYSTEM.fs.writeFile(path, val, 'utf8', err => {
+                            if (err) { Notify.error('保存失败', err.message); return; }
+                            savedContent = val;
+                            npClearDraft(draftKey);
+                            setStatus('已保存 ' + npFmtTime(Date.now()), 'saved');
+                            setTitle();
+                            refreshAfterSave();
+                            Notify.success('保存成功', `文件已保存为 "${currentFile}"`);
+                            if (cb) cb();
                         });
                     };
-                    
-                    document.getElementById('np-saveas-' + winId).onclick = () => {
+                    btnSave.onclick = () => writeFile();
+                    btnSaveAs.onclick = () => {
                         const name = prompt('请输入文件名:', currentFile);
-                        if(!name) return;
-                        currentFile = name.match(/\.(txt|md|csv)$/i) ? name : name + '.txt';
-                        const path = currentDir + '/' + currentFile;
-                        SYSTEM.fs.writeFile(path, area.value, 'utf8', err => {
-                            if(err) Notify.error('保存失败', err.message);
-                            else {
-                                w.querySelector('.window-title-text').innerText = '记事本 - ' + currentFile;
-                                refreshAfterSave();
-                                Notify.success('保存成功', `文件已保存为 "${currentFile}"`);
-                            }
-                        });
+                        if (!name) return;
+                        const oldKey = draftKey;
+                        currentFile = name.match(/\.(txt|md|csv|log|json|js|html|css)$/i) ? name : name + '.txt';
+                        draftKey = currentDir + '/' + currentFile;
+                        writeFile(() => { if (oldKey !== draftKey) npClearDraft(oldKey); });
                     };
+
+                    // ---------- 输入事件 ----------
+                    area.addEventListener('compositionstart', () => { composing = true; });
+                    area.addEventListener('compositionend', () => { composing = false; scheduleHist(); scheduleDraft(); });
+                    area.addEventListener('input', () => {
+                        if (composing) return;
+                        scheduleHist(); scheduleDraft();
+                    });
+                    area.addEventListener('blur', () => { pushHist(); if (draftTimer) flushDraft(); });
+                    area.addEventListener('keydown', (e) => {
+                        const mod = e.ctrlKey || e.metaKey;
+                        if (!mod) return;
+                        const k = e.key.toLowerCase();
+                        if (k === 'z' && !e.shiftKey) { e.preventDefault(); undo(); }
+                        else if (k === 'y' || (k === 'z' && e.shiftKey)) { e.preventDefault(); redo(); }
+                        else if (k === 's') { e.preventDefault(); writeFile(); }
+                        else if (k === '=' || k === '+') { e.preventDefault(); changeFont(1); }
+                        else if (k === '-') { e.preventDefault(); changeFont(-1); }
+                        else if (k === '0') { e.preventDefault(); fontSize = NP_FONT_DEFAULT; applyFont(); }
+                    });
+
+                    // 窗口关闭 / 页面刷新时立刻落盘草稿，确保不丢
+                    const onUnload = () => { if (draftTimer) flushDraft(); };
+                    window.addEventListener('beforeunload', onUnload);
+                    document.addEventListener('visibilitychange', onUnload);
+                    w.cleanup = () => {
+                        onUnload();
+                        window.removeEventListener('beforeunload', onUnload);
+                        document.removeEventListener('visibilitychange', onUnload);
+                    };
+
+                    // ---------- 打开时恢复草稿 ----------
+                    const draft = npReadDraft(draftKey);
+                    if (draft && draft.content !== content) {
+                        area.value = draft.content;
+                        hist = [content, draft.content]; histI = 1;   // 按一次「撤销」即可回到文件原内容
+                        updateHistBtns();
+                        setStatus('已恢复 ' + npFmtTime(draft.time) + ' 的未保存草稿', 'dirty');
+                        setTitle();
+                        Notify.info('已恢复未保存的内容', `找到 "${currentFile}" 上次(${npFmtTime(draft.time)})未保存的草稿并已恢复；点「保存」写入文件，或按「撤销」回到文件原内容`);
+                    } else {
+                        if (draft) npClearDraft(draftKey);
+                        setStatus(content ? '与文件一致' : '草稿会自动暂存，刷新也不会丢', content ? 'saved' : '');
+                    }
+                    updateHistBtns();
+                    setTimeout(() => { try { area.focus({ preventScroll: true }); } catch (e) {} }, 50);
                 }
             });
+            return id;
         }
 
         function openCalculator() {
