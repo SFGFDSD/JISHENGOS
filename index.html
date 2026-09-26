@@ -1570,9 +1570,9 @@
         .editor-cm-search-current { background: rgba(210, 153, 34, .8) !important; outline: 1px solid #d29922; }
         
         /* CodeMirror 主题覆盖 */
+        /* 背景/文字色不再强制覆盖，使用 material-darker 主题默认配色 */
         .editor-app .CodeMirror {
-            height: 100% !important; background: #0d1117 !important;
-            color: #e6edf3 !important;
+            height: 100% !important;
             font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'SF Mono', 'Consolas', 'Monaco', monospace !important;
             font-size: 14px !important; line-height: 1.6 !important;
         }
@@ -1601,38 +1601,10 @@
             -webkit-user-select: none !important;
             -webkit-touch-callout: none !important;
         }
-        .editor-app .cm-s-material-darker .cm-keyword { color: #ff7b72 !important; }
-        .editor-app .cm-s-material-darker .cm-atom { color: #79c0ff !important; }
-        .editor-app .cm-s-material-darker .cm-number { color: #79c0ff !important; }
-        .editor-app .cm-s-material-darker .cm-def { color: #d2a8ff !important; }
-        .editor-app .cm-s-material-darker .cm-variable { color: #e6edf3 !important; }
-        .editor-app .cm-s-material-darker .cm-variable-2 { color: #ffa657 !important; }
-        .editor-app .cm-s-material-darker .cm-variable-3, .editor-app .cm-s-material-darker .cm-type { color: #79c0ff !important; }
-        .editor-app .cm-s-material-darker .cm-property { color: #79c0ff !important; }
-        .editor-app .cm-s-material-darker .cm-operator { color: #ff7b72 !important; }
-        .editor-app .cm-s-material-darker .cm-comment { color: #8b949e !important; font-style: italic; }
-        .editor-app .cm-s-material-darker .cm-string { color: #a5d6ff !important; }
-        .editor-app .cm-s-material-darker .cm-string-2 { color: #a5d6ff !important; }
-        .editor-app .cm-s-material-darker .cm-meta { color: #79c0ff !important; }
-        .editor-app .cm-s-material-darker .cm-qualifier { color: #d2a8ff !important; }
-        .editor-app .cm-s-material-darker .cm-builtin { color: #ffa657 !important; }
-        .editor-app .cm-s-material-darker .cm-bracket { color: #8b949e !important; }
-        .editor-app .cm-s-material-darker .cm-tag { color: #7ee787 !important; }
-        .editor-app .cm-s-material-darker .cm-attribute { color: #79c0ff !important; }
-        .editor-app .cm-s-material-darker .cm-header { color: #79c0ff !important; font-weight: bold; }
-        .editor-app .cm-s-material-darker .cm-link { color: #a5d6ff !important; }
-        .editor-app .cm-s-material-darker .cm-error { color: #f85149 !important; }
-        .editor-app .cm-s-material-darker .CodeMirror-gutters { background: #0d1117 !important; border-right: 1px solid #30363d !important; }
-        .editor-app .cm-s-material-darker .CodeMirror-linenumber { color: #484f58 !important; padding: 0 12px 0 8px !important; }
-        .editor-app .cm-s-material-darker .CodeMirror-activeline-background { background: #161b22 !important; }
-        .editor-app .cm-s-material-darker .CodeMirror-selected { background: #264f78 !important; }
-        .editor-app .cm-s-material-darker .CodeMirror-focused .CodeMirror-selected { background: #264f78 !important; }
-        .editor-app .cm-s-material-darker .CodeMirror-cursor { border-left: 2px solid #58a6ff !important; }
-        .editor-app .cm-s-material-darker .CodeMirror-matchingbracket { color: #e6edf3 !important; background: #3fb95030 !important; outline: 1px solid #3fb95060; }
-        .editor-app .cm-s-material-darker .CodeMirror-nonmatchingbracket { color: #f85149 !important; background: #f8514930 !important; }
-        .editor-app .cm-s-material-darker .CodeMirror-foldgutter-open, .editor-app .cm-s-material-darker .CodeMirror-foldgutter-folded { color: #484f58 !important; }
-        .editor-app .cm-s-material-darker .CodeMirror-foldgutter-open:hover, .editor-app .cm-s-material-darker .CodeMirror-foldgutter-folded:hover { color: #e6edf3 !important; }
-        .editor-app .cm-s-material-darker .cm-searching { background: rgba(210, 153, 34, .4) !important; color: #fff !important; }
+        /* 移除 GitHub Dark 语法染色覆盖，语法高亮/选中色/光标/括号匹配/错误高亮等
+           全部使用 CodeMirror material-darker 主题默认配色。
+           原覆盖曾导致 .cm-error 红字叠粉底文字不可见的 bug。 */
+        .editor-app .cm-s-material-darker .CodeMirror-linenumber { padding: 0 12px 0 8px !important; }
         .editor-app .CodeMirror-dialog {
             background: #161b22 !important; border-bottom: 1px solid #30363d !important;
             color: #e6edf3 !important; padding: 6px 12px !important;
