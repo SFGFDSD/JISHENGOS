@@ -1575,16 +1575,31 @@
             color: #e6edf3 !important;
             font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'SF Mono', 'Consolas', 'Monaco', monospace !important;
             font-size: 14px !important; line-height: 1.6 !important;
-            user-select: text !important;
-            -webkit-user-select: text !important;
         }
-        .editor-app .CodeMirror,
-        .editor-app .CodeMirror *,
+        /* 修复：只允许"代码文本"可选中，不能用 .CodeMirror * 通配。
+           移动端 CodeMirror 是 contenteditable 模式，行号 .CodeMirror-gutter-wrapper
+           嵌在可编辑区内部；若行号也可选中，"全选"时选区锚点会落进行号节点，
+           触发 CodeMirror 内部的 Android gutter 回退逻辑 (blur+focus / 重置选区)，
+           导致系统复制菜单被立即关闭。 */
+        .editor-app .CodeMirror .CodeMirror-lines,
+        .editor-app .CodeMirror pre.CodeMirror-line,
+        .editor-app .CodeMirror pre.CodeMirror-line-like,
+        .editor-app .CodeMirror pre.CodeMirror-line *,
         .editor-app .CodeMirror input,
         .editor-app .CodeMirror textarea {
             user-select: text !important;
             -webkit-user-select: text !important;
             -webkit-touch-callout: default !important;
+        }
+        /* 行号 / 折叠槽等非编辑元素必须保持不可选中（与 CodeMirror 默认行为一致） */
+        .editor-app .CodeMirror .CodeMirror-gutters,
+        .editor-app .CodeMirror .CodeMirror-gutters *,
+        .editor-app .CodeMirror .CodeMirror-gutter-wrapper,
+        .editor-app .CodeMirror .CodeMirror-gutter-wrapper *,
+        .editor-app .CodeMirror .CodeMirror-linenumber {
+            user-select: none !important;
+            -webkit-user-select: none !important;
+            -webkit-touch-callout: none !important;
         }
         .editor-app .cm-s-material-darker .cm-keyword { color: #ff7b72 !important; }
         .editor-app .cm-s-material-darker .cm-atom { color: #79c0ff !important; }
