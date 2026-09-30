@@ -9251,6 +9251,75 @@
 
         // ========== 代码编辑器 ==========
         // 新增：saveDir 参数，使从文件夹/桌面用代码编辑器打开的文件，保存时写回源目录
+        /* ============================================================================
+           移动端“全选”修复（CodeMirror 5，手机上为 inputStyle: contenteditable）
+           症状 1：全选后只选中“屏幕里这一段”。
+                  原因：CM5 只把可见区 ±viewportMargin(默认 10) 行渲染进 DOM，系统菜单的“全选”
+                  是 DOM 级全选，DOM 里没有的行选不到。
+           症状 2：(Android Chrome) 全选后选区瞬间消失、系统复制菜单被关闭。
+                  原因：选区锚点落进行号节点，命中 CM5 pollSelection 里的 Android gutter 回退分支
+                  （模拟 Backspace + blur + focus）。行号 user-select:none 即可避免（CSS 已有，这里再兜底）。
+           方案：监听 selectionchange，当 DOM 选区覆盖了整个“已渲染区”、而文档还有未渲染的行时，
+                  提升为 cm.execCommand('selectAll')。CM 复制/剪切时用的是自己的选区
+                  (cm.getSelections())，因此复制到的是全文；滚动后新渲染的行也处于选中态。
+           桌面端 (inputStyle: textarea) Ctrl+A 本来就是全文，函数直接返回不做处理。
+           返回值：解除监听的函数。
+           ============================================================================ */
+        function fixMobileSelectAll(cm, rootSelector) {
+            if (!cm || !cm.options || cm.options.inputStyle !== 'contenteditable') return function () {};
+            var scope = rootSelector || '.CodeMirror';
+            if (!document.getElementById('cm-mobile-selectall-css')) {
+                var st = document.createElement('style');
+                st.id = 'cm-mobile-selectall-css';
+                st.textContent =
+                    scope + ' .CodeMirror-gutters, ' + scope + ' .CodeMirror-gutters *, ' +
+                    scope + ' .CodeMirror-gutter-wrapper, ' + scope + ' .CodeMirror-gutter-wrapper *, ' +
+                    scope + ' .CodeMirror-linenumber{user-select:none!important;-webkit-user-select:none!important;-webkit-touch-callout:none!important}' +
+                    scope + ' .CodeMirror-lines, ' + scope + ' pre.CodeMirror-line, ' + scope + ' pre.CodeMirror-line *' +
+                    '{user-select:text!important;-webkit-user-select:text!important;-webkit-touch-callout:default!important}';
+                document.head.appendChild(st);
+            }
+            var host = cm.display.lineDiv;      // .CodeMirror-code：只包含“已渲染”的行
+            var busy = false, removed = false;
+            function isWholeDocSelected() {
+                var r = cm.listSelections()[0];
+                if (!r) return false;
+                var from = r.from(), to = r.to(), last = cm.lastLine();
+                return from.line === cm.firstLine() && from.ch === 0 &&
+                       to.line === last && to.ch === cm.getLine(last).length;
+            }
+            function off() {
+                if (removed) return;
+                removed = true;
+                document.removeEventListener('selectionchange', onSel);
+            }
+            function onSel() {
+                if (busy) return;
+                if (!document.body.contains(cm.getWrapperElement())) { off(); return; }   // 编辑器已销毁，自动解除
+                if (!cm.state.focused && document.activeElement !== cm.getInputField()) return;
+                var s = document.getSelection();
+                if (!s || !s.rangeCount || s.isCollapsed) return;
+                if (!host.contains(s.anchorNode) || !host.contains(s.focusNode)) return;
+                var first = host.firstElementChild, last = host.lastElementChild;
+                if (!first || !last) return;
+                var r = s.getRangeAt(0);
+                if (!(r.intersectsNode(first) && r.intersectsNode(last))) return;       // 没盖住整个渲染区 → 普通选择，不管
+                var vp = cm.getViewport();
+                if (vp.from <= cm.firstLine() && vp.to >= cm.lineCount()) return;      // 全文都已渲染 → DOM 全选本来就是真全选
+                if (isWholeDocSelected()) return;                                      // 已是整文档选区（CM 回写 DOM 时会再触发一次）
+                var domChars = s.toString().replace(/\s+/g, '').length;
+                var hostChars = host.textContent.replace(/\s+/g, '').length;
+                if (domChars < hostChars * 0.9) return;                                // 只是碰巧首尾相交的局部选区
+                busy = true;
+                setTimeout(function () {
+                    try { cm.operation(function () { cm.execCommand('selectAll'); }); }
+                    finally { busy = false; }
+                }, 0);
+            }
+            document.addEventListener('selectionchange', onSel);
+            return off;
+        }
+
         function openCodeEditor(initialContent = '', filename = '未命名.html', saveDir = null) {
             const winId = createWindow({
                 title: 'HTML编辑器',
@@ -9262,12 +9331,6 @@
                         <input type="file" id="editor-file-input-${SYSTEM.idCounter+1}" style="display:none">
                         <div class="editor-toolbar">
                             <div class="editor-toolbar-left">
-                                <div class="editor-toolbar-group">
-                                    <button class="editor-tb-btn accent" id="editor-run-${SYSTEM.idCounter+1}" title="运行 (Ctrl+Enter)">
-                                        <svg viewBox="0 0 16 16" fill="currentColor"><path d="M4 2l10 6-10 6V2z"/></svg><span>运行</span>
-                                    </button>
-                                </div>
-                                <div class="editor-toolbar-divider"></div>
                                 <div class="editor-toolbar-group">
                                     <button class="editor-tb-btn" id="editor-format-${SYSTEM.idCounter+1}" title="格式化 (Ctrl+Shift+F)">
                                         <svg viewBox="0 0 16 16" fill="currentColor"><path d="M2 3h7v1H2V3zm0 4h12v1H2V7zm0 4h9v1H2v-1zm10-8l3 2.5L12 8V3z"/></svg><span>格式化</span>
@@ -9296,12 +9359,23 @@
                                 </div>
                                 <div class="editor-toolbar-divider"></div>
                                 <div class="editor-toolbar-group">
+                                    <button class="editor-tb-btn" id="editor-copyall-${SYSTEM.idCounter+1}" title="复制全部内容到剪贴板">
+                                        ${icon('uiCopy', 'stroke-2')}<span>复制全部</span>
+                                    </button>
+                                </div>
+                                <div class="editor-toolbar-divider"></div>
+                                <div class="editor-toolbar-group">
                                     <select class="editor-lang-select" id="editor-lang-${SYSTEM.idCounter+1}" title="语言模式">
                                         <option value="htmlmixed">HTML</option>
                                         <option value="css">CSS</option>
                                         <option value="javascript">JavaScript</option>
                                         <option value="markdown">Markdown</option>
                                         <option value="application/json">JSON</option>
+                                    </select>
+                                    <select class="editor-lang-select" id="editor-inputmode-${SYSTEM.idCounter+1}" title="CodeMirror 输入模式（只影响本编辑器，不改变系统其它部分）&#10;自动：跟随浏览器 UA（手机浏览器=手机模式，电脑/“电脑版网站”=电脑模式）&#10;电脑 (textarea)：系统菜单可全选/复制全文，但触屏不能拖拽选字&#10;手机 (contenteditable)：可长按拖拽选字；系统全选只能选到已渲染部分（工具栏“复制全部”不受影响）">
+                                        <option value="auto">模式: 自动</option>
+                                        <option value="textarea">模式: 电脑</option>
+                                        <option value="contenteditable">模式: 手机</option>
                                     </select>
                                 </div>
                                 <div class="editor-toolbar-divider"></div>
@@ -9321,10 +9395,6 @@
                                 </div>
                             </div>
                             <div class="editor-toolbar-right">
-                                <div class="editor-preview-title">
-                                    <svg viewBox="0 0 16 16" fill="currentColor"><path d="M0 2.75C0 1.784.784 1 1.75 1h12.5c.966 0 1.75.784 1.75 1.75v10.5A1.75 1.75 0 0114.25 15H1.75A1.75 1.75 0 010 13.25V2.75zm1.75-.25a.25.25 0 00-.25.25v10.5c0 .138.112.25.25.25h12.5a.25.25 0 00.25-.25V2.75a.25.25 0 00-.25-.25H1.75z"/><path d="M4 6.5a.5.5 0 01.5-.5h7a.5.5 0 010 1h-7a.5.5 0 01-.5-.5zm.5 2.5a.5.5 0 000 1h4a.5.5 0 000-1h-4z"/></svg>
-                                    实时预览
-                                </div>
                                 <div class="editor-preview-actions">
                                     <button class="editor-preview-btn" id="editor-refresh-preview-${SYSTEM.idCounter+1}" title="刷新预览">
                                         <svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 3a5 5 0 104.546 2.914.5.5 0 01.908-.418A6 6 0 118 2v1z"/><path d="M8 4.466V.534a.25.25 0 01.41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 018 4.466z"/></svg>
@@ -9394,6 +9464,7 @@
                                 <div class="editor-status-item" id="editor-status-lines-${SYSTEM.idCounter+1}">0 行</div>
                                 <div class="editor-status-item" id="editor-status-chars-${SYSTEM.idCounter+1}">0 字符</div>
                                 <div class="editor-status-item" id="editor-status-lang-${SYSTEM.idCounter+1}">HTML</div>
+                                <div class="editor-status-item" id="editor-status-input-${SYSTEM.idCounter+1}" title="CodeMirror 输入模式"></div>
                                 <div class="editor-status-item">UTF-8</div>
                             </div>
                         </div>
@@ -9423,30 +9494,111 @@
             const langSelect = document.getElementById(`editor-lang-${winId}`);
             const fileInput = document.getElementById(`editor-file-input-${winId}`);
             
+            // ===== CodeMirror 输入模式（只影响本编辑器，navigator.userAgent 与系统其它部分一律不动）=====
+            // CodeMirror 5 只在一处“看 UA”：codemirror.js 第 7793 行
+            //     option("inputStyle", mobile ? "contenteditable" : "textarea")   // mobile 来自 /Android/.test(userAgent) 等
+            // 这就是“手机模式全选只能选一段 / 切成电脑版网站就正常”的全部原因。这里把这个选择权交给用户：
+            //     auto            = 跟随浏览器 UA（CodeMirror 默认行为）
+            //     textarea        = 让 CodeMirror 按“电脑浏览器”工作：系统菜单可全选/复制全文，但触屏不能拖拽选字
+            //     contenteditable = 让 CodeMirror 按“手机浏览器”工作：可长按拖拽选字，系统全选只到已渲染部分
+            // 选择保存在 localStorage，新开的编辑器窗口沿用；工具栏“复制全部”两种模式下都可用。
+            const EDITOR_INPUT_MODE_KEY = 'JISHENG_OS_EDITOR_INPUT_MODE';
+            const INPUT_MODE_NAMES = { textarea: '电脑模式 (textarea)', contenteditable: '手机模式 (contenteditable)' };
+            function readInputModePref() {
+                try {
+                    const v = localStorage.getItem(EDITOR_INPUT_MODE_KEY);
+                    if (v === 'textarea' || v === 'contenteditable') return v;
+                } catch (e) {}
+                return 'auto';
+            }
+            function resolveInputStyle(pref) { return pref === 'auto' ? CodeMirror.defaults.inputStyle : pref; }
+            let inputModePref = readInputModePref();
+            let offMobileSelectAll = () => {};
+            const inputModeSelect = document.getElementById(`editor-inputmode-${winId}`);
+            if (inputModeSelect) inputModeSelect.value = inputModePref;
+
+            function createEditorInstance(inputStyle) {
+                const cm = CodeMirror.fromTextArea(textarea, {
+                    mode: 'htmlmixed',
+                    theme: 'material-darker',
+                    inputStyle: inputStyle,
+                    lineNumbers: true,
+                    lineWrapping: true,
+                    foldGutter: true,
+                    gutters: ['CodeMirror-linenumbers', 'CodeMirror-foldgutter'],
+                    matchBrackets: true,
+                    autoCloseBrackets: true,
+                    matchTags: { bothTags: true },
+                    autoCloseTags: true,
+                    styleActiveLine: true,
+                    showTrailingSpace: true,
+                    extraKeys: {
+                        'Ctrl-F': () => toggleEditorSearchBar(true),
+                        'Ctrl-H': () => { toggleEditorSearchBar(true); setTimeout(() => replaceInput.focus(), 50); },
+                        'Ctrl-Enter': updateEditorPreview,
+                        'Ctrl-S': (e) => { e.preventDefault(); saveEditorToFile(); },
+                        'Ctrl-Shift-F': formatEditorCode,
+                        'F3': (e) => { e.preventDefault(); editorSearchNext(); }
+                    }
+                });
+                // 编辑器事件
+                cm.on('cursorActivity', updateEditorStatusBar);
+                cm.on('change', () => {
+                    updateEditorStatusBar();
+                    updateEditorPreview();
+                });
+                // 手机模式(contenteditable)下修复系统“全选”只能选到已渲染一段的问题；电脑模式(textarea)下该函数为空操作
+                offMobileSelectAll = fixMobileSelectAll(cm, '.editor-app');
+                return cm;
+            }
+
+            function updateInputModeStatus() {
+                const el = document.getElementById(`editor-status-input-${winId}`);
+                if (!el || !editor) return;
+                const style = editor.options.inputStyle;
+                el.textContent = (INPUT_MODE_NAMES[style] || style) + (inputModePref === 'auto' ? ' · 自动' : '');
+                el.title = 'CodeMirror 输入模式：' + (inputModePref === 'auto' ? '自动（跟随浏览器 UA）' : '手动指定') + '\n当前 UA：' + navigator.userAgent;
+            }
+
+            // 切换输入模式。CodeMirror 不允许在运行中修改 inputStyle（源码第 7794 行直接 throw），
+            // 因此在原位重建实例，并保留内容、光标/选区、滚动位置、撤销历史、语言模式与折叠。
+            function switchEditorInputMode(pref) {
+                const target = resolveInputStyle(pref);
+                inputModePref = pref;
+                try {
+                    if (pref === 'auto') localStorage.removeItem(EDITOR_INPUT_MODE_KEY);
+                    else localStorage.setItem(EDITOR_INPUT_MODE_KEY, pref);
+                } catch (e) {}
+                const label = `输入模式：${INPUT_MODE_NAMES[target] || target}${pref === 'auto' ? '（自动）' : ''}`;
+                if (editor.options.inputStyle === target) { updateInputModeStatus(); Notify.info(label); return; }
+
+                const value = editor.getValue();
+                const selections = editor.listSelections();
+                const scroll = editor.getScrollInfo();
+                const topLine = editor.lineAtHeight(scroll.top, 'local');   // 按“首行”而不是像素恢复滚动位置，两种模型行高测量略有差异
+                const history = editor.getHistory();
+                const mode = editor.getOption('mode');
+                const folds = editor.getAllMarks().filter(m => m.__isFold).map(m => m.find()).filter(Boolean).map(r => r.from);
+                clearEditorHighlights();
+                try { offMobileSelectAll(); } catch (e) {}
+                editor.toTextArea();                                   // 还原 textarea（内容已写回）
+                editor = createEditorInstance(target);
+                if (editor.getValue() !== value) editor.setValue(value);
+                editor.setOption('mode', mode);
+                try { editor.setHistory(history); } catch (e) {}
+                folds.forEach(pos => { try { editor.foldCode(pos, null, 'fold'); } catch (e) {} });
+                try { editor.setSelections(selections, null, { scroll: false }); } catch (e) { editor.setCursor({ line: 0, ch: 0 }); }
+                editor.refresh();
+                editor.scrollTo(scroll.left, editor.heightAtLine(topLine, 'local'));
+                updateEditorStatusBar();
+                updateInputModeStatus();
+                if (sState.query) performEditorSearch();
+                Notify.info(label);
+            }
+
             // 初始化 CodeMirror
-            editor = CodeMirror.fromTextArea(textarea, {
-                mode: 'htmlmixed',
-                theme: 'material-darker',
-                lineNumbers: true,
-                lineWrapping: true,
-                foldGutter: true,
-                gutters: ['CodeMirror-linenumbers', 'CodeMirror-foldgutter'],
-                matchBrackets: true,
-                autoCloseBrackets: true,
-                matchTags: { bothTags: true },
-                autoCloseTags: true,
-                styleActiveLine: true,
-                showTrailingSpace: true,
-                extraKeys: {
-                    'Ctrl-F': () => toggleEditorSearchBar(true),
-                    'Ctrl-H': () => { toggleEditorSearchBar(true); setTimeout(() => replaceInput.focus(), 50); },
-                    'Ctrl-Enter': updateEditorPreview,
-                    'Ctrl-S': (e) => { e.preventDefault(); saveEditorToFile(); },
-                    'Ctrl-Shift-F': formatEditorCode,
-                    'F3': (e) => { e.preventDefault(); editorSearchNext(); }
-                }
-            });
-            
+            editor = createEditorInstance(resolveInputStyle(inputModePref));
+
             if (initialContent) {
                 editor.setValue(initialContent);
             } else {
@@ -9496,6 +9648,33 @@
                 }, 500);
             }
             
+            // 复制全部（不依赖系统选区；HTTPS 下走 Clipboard API，否则退回 execCommand('copy')）
+            async function copyAllEditorText() {
+                const text = editor.getValue();
+                if (!text) { Notify.info('没有可复制的内容'); return; }
+                let ok = false;
+                try {
+                    if (navigator.clipboard && window.isSecureContext) { await navigator.clipboard.writeText(text); ok = true; }
+                } catch (e) { ok = false; }
+                if (!ok) {
+                    try {
+                        const ta = document.createElement('textarea');
+                        ta.value = text;
+                        ta.setAttribute('readonly', '');
+                        ta.style.cssText = 'position:fixed;top:0;left:0;width:2px;height:2px;opacity:0;';
+                        document.body.appendChild(ta);
+                        ta.focus();
+                        ta.select();
+                        ta.setSelectionRange(0, text.length);
+                        ok = document.execCommand('copy');
+                        document.body.removeChild(ta);
+                        editor.focus();
+                    } catch (e) { ok = false; }
+                }
+                if (ok) Notify.success(`已复制全部 ${text.length.toLocaleString()} 字符`);
+                else Notify.error('复制失败，请长按编辑区用系统菜单复制');
+            }
+
             // 格式化代码
             function formatEditorCode() {
                 const code = editor.getValue();
@@ -9743,13 +9922,13 @@
             }
             
             // 绑定事件
-            document.getElementById(`editor-run-${winId}`).onclick = () => { updateEditorPreview(); Notify.success('预览已刷新'); };
             document.getElementById(`editor-format-${winId}`).onclick = formatEditorCode;
             document.getElementById(`editor-fold-${winId}`).onclick = () => { for (let i = 0; i < editor.lineCount(); i++) editor.foldCode(CodeMirror.Pos(i, 0)); Notify.info('已折叠'); };
             document.getElementById(`editor-unfold-${winId}`).onclick = () => { for (let i = 0; i < editor.lineCount(); i++) editor.foldCode(CodeMirror.Pos(i, 0), null, 'unfold'); Notify.info('已展开'); };
             document.getElementById(`editor-undo-${winId}`).onclick = () => editor.execCommand('undo');
             document.getElementById(`editor-redo-${winId}`).onclick = () => editor.execCommand('redo');
             document.getElementById(`editor-search-${winId}`).onclick = () => toggleEditorSearchBar(true);
+            document.getElementById(`editor-copyall-${winId}`).onclick = copyAllEditorText;
             document.getElementById(`editor-clear-${winId}`).onclick = () => { if (editor.getValue()) { editor.setValue(''); Notify.info('已清空'); } };
             document.getElementById(`editor-import-${winId}`).onclick = importEditorFile;
             document.getElementById(`editor-export-${winId}`).onclick = exportEditorFile;
@@ -9780,6 +9959,9 @@
                 if (sState.query) performEditorSearch();
             };
             
+            // 输入模式切换（自动 / 电脑 / 手机）
+            if (inputModeSelect) inputModeSelect.onchange = function() { switchEditorInputMode(this.value); };
+
             // 语言切换
             langSelect.onchange = function() {
                 editor.setOption('mode', this.value);
@@ -9801,16 +9983,12 @@
                 else if (e.key === 'Escape') toggleEditorSearchBar(false);
             });
             
-            // 编辑器事件
-            editor.on('cursorActivity', updateEditorStatusBar);
-            editor.on('change', () => {
-                updateEditorStatusBar();
-                updateEditorPreview();
-            });
-            
+            // （编辑器事件 cursorActivity / change 已在 createEditorInstance 内绑定，切换输入模式重建实例时会自动重新绑定）
+
             // 初始化
             initEditorResizer();
             updateEditorStatusBar();
+            updateInputModeStatus();
             updateEditorPreview();
             
             // 窗口销毁时清理
@@ -9821,6 +9999,14 @@
                     if (_previewBlobUrl) { URL.revokeObjectURL(_previewBlobUrl); _previewBlobUrl = null; }
                     previewFrame.src = 'about:blank';
                     if (editor) editor.toTextArea();
+                };
+                // closeWin() 实际调用的是 element.cleanup()（onDestroy 挂在 element 上不会被调用），
+                // 在这里解除全选修复的 document 监听，并顺带执行上面的清理。
+                const prevCleanup = winEl.cleanup;
+                winEl.cleanup = () => {
+                    try { if (typeof prevCleanup === 'function') prevCleanup(); } catch (e) {}
+                    try { offMobileSelectAll(); } catch (e) {}
+                    try { winEl.onDestroy(); } catch (e) {}
                 };
             }
         }
