@@ -37,7 +37,6 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/material-darker.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/dialog/dialog.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/fold/foldgutter.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/hint/show-hint.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/search/matchesonscrollbar.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
@@ -51,12 +50,8 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/matchbrackets.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/matchtags.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/trailingspace.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/fold/foldcode.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/fold/foldgutter.min.js"></script>
+    <!-- 代码折叠功能已移除：不再加载 addon/fold 下的 foldcode、foldgutter（含其 CSS）、brace-fold、comment-fold、indent-fold。xml-fold 保留——它提供 CodeMirror.findMatchingTag / scanForClosingTag，是 matchtags（标签配对高亮）与 closetag 的依赖，与折叠 UI 无关 -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/fold/xml-fold.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/fold/brace-fold.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/fold/comment-fold.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/fold/indent-fold.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/search/search.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/search/searchcursor.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/search/jump-to-line.min.js"></script>
@@ -175,6 +170,91 @@
             border: 1px solid var(--glass-border);
             border-radius: 8px;
             box-shadow: 0 20px 50px -12px rgba(0, 0, 0, 0.6);
+        }
+
+        /* === 系统对话框（v7：替代浏览器原生 prompt / confirm / alert，与系统玻璃风格一致）=== */
+        .sys-dialog-overlay {
+            position: fixed; inset: 0; z-index: 60000;
+            display: flex; align-items: center; justify-content: center; padding: 16px;
+            background: rgba(0, 0, 0, 0.42);
+            backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+            opacity: 0; transition: opacity 0.16s ease;
+        }
+        .sys-dialog-overlay.open { opacity: 1; }
+        .sys-dialog {
+            width: min(440px, 100%); max-height: calc(100vh - 32px); overflow: auto;
+            background: var(--glass-surface-light);
+            border: 1px solid var(--glass-border); border-radius: 12px;
+            padding: 20px 20px 16px;
+            box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.04), 0 30px 80px rgba(0, 0, 0, 0.65);
+            transform: translateY(10px) scale(0.97);
+            transition: transform 0.18s cubic-bezier(0.2, 0.8, 0.2, 1);
+            user-select: text; -webkit-user-select: text;
+        }
+        .sys-dialog-overlay.open .sys-dialog { transform: none; }
+        .sys-dialog.shake { animation: sysDialogShake 0.3s; }
+        @keyframes sysDialogShake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } }
+        .sys-dialog-head { display: flex; gap: 14px; align-items: flex-start; }
+        .sys-dialog-icon {
+            flex-shrink: 0; width: 40px; height: 40px; border-radius: 10px;
+            display: flex; align-items: center; justify-content: center;
+            background: rgba(0, 120, 212, 0.18); color: #6cc3ff;
+        }
+        .sys-dialog-icon .icon-svg { width: 22px; height: 22px; stroke-width: 1.8; }
+        .sys-dialog-icon.danger { background: rgba(232, 17, 35, 0.16); color: #ff6b7a; }
+        .sys-dialog-titles { min-width: 0; flex: 1; padding-top: 2px; }
+        .sys-dialog-title { font-size: 15px; font-weight: 600; color: var(--text-main); line-height: 1.4; }
+        .sys-dialog-msg { margin-top: 4px; font-size: 13px; color: var(--text-muted); line-height: 1.55; word-break: break-word; white-space: pre-line; }
+        .sys-dialog-body { margin-top: 16px; display: flex; flex-direction: column; gap: 14px; }
+        .sys-dialog-field[hidden] { display: none; }
+        .sys-dialog-label { display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 6px; }
+        .sys-dialog-input {
+            width: 100%; height: 40px; padding: 0 12px; font-size: 14px; font-family: inherit;
+            color: var(--text-main); background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 8px;
+            transition: border-color 0.15s, box-shadow 0.15s; color-scheme: dark;
+        }
+        .sys-dialog-input:focus { border-color: var(--accent-blue); box-shadow: 0 0 0 3px rgba(0, 120, 212, 0.25); }
+        select.sys-dialog-input option { background: #1e1e28; color: var(--text-main); }
+        .sys-dialog-radios { display: flex; flex-direction: column; gap: 8px; }
+        .sys-dialog-radio {
+            position: relative; display: flex; align-items: flex-start; gap: 12px; padding: 10px 12px;
+            border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.08); background: rgba(255, 255, 255, 0.03);
+            cursor: pointer; transition: background 0.12s, border-color 0.12s;
+        }
+        .sys-dialog-radio input { position: absolute; opacity: 0; pointer-events: none; }
+        .sys-dialog-radio:hover { background: rgba(255, 255, 255, 0.06); }
+        .sys-dialog-radio.checked { border-color: rgba(0, 120, 212, 0.7); background: rgba(0, 120, 212, 0.12); }
+        .sys-dialog-radio-dot { flex-shrink: 0; width: 16px; height: 16px; margin-top: 1px; border-radius: 50%; border: 2px solid rgba(255, 255, 255, 0.35); position: relative; }
+        .sys-dialog-radio.checked .sys-dialog-radio-dot { border-color: var(--accent-cyan); }
+        .sys-dialog-radio.checked .sys-dialog-radio-dot::after { content: ''; position: absolute; inset: 3px; border-radius: 50%; background: var(--accent-cyan); }
+        .sys-dialog-radio-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+        .sys-dialog-radio-title { font-size: 13px; color: var(--text-main); display: flex; align-items: center; gap: 8px; }
+        .sys-dialog-radio-title .icon-svg { width: 15px; height: 15px; color: var(--text-muted); stroke-width: 2; flex-shrink: 0; }
+        .sys-dialog-radio.checked .sys-dialog-radio-title .icon-svg { color: var(--accent-cyan); }
+        .sys-dialog-radio-desc { font-size: 12px; color: var(--text-muted); word-break: break-all; }
+        .sys-dialog-empty { font-size: 12px; color: var(--text-muted); padding: 8px 2px; }
+        .sys-dialog-error { margin-top: 10px; font-size: 12px; color: #ff8a94; }
+        .sys-dialog-error[hidden] { display: none; }
+        .sys-dialog-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px; }
+        .sys-dialog-btn {
+            min-width: 84px; height: 36px; padding: 0 16px; font-size: 13px; font-family: inherit;
+            border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.12);
+            background: rgba(255, 255, 255, 0.06); color: var(--text-main); cursor: pointer;
+            transition: background 0.12s, transform 0.08s;
+        }
+        .sys-dialog-btn:hover { background: rgba(255, 255, 255, 0.11); }
+        .sys-dialog-btn:active { transform: scale(0.97); }
+        .sys-dialog-btn:focus-visible { box-shadow: 0 0 0 3px rgba(0, 120, 212, 0.35); }
+        .sys-dialog-btn.primary { background: linear-gradient(135deg, #1a86e0, #0f6cc0); border-color: rgba(0, 120, 212, 0.6); }
+        .sys-dialog-btn.primary:hover { background: linear-gradient(135deg, #2a93ea, #1478cc); }
+        .sys-dialog-btn.primary.danger { background: linear-gradient(135deg, #e0344a, #c01a2e); border-color: rgba(232, 17, 35, 0.6); }
+        .sys-dialog-btn.primary.danger:hover { background: linear-gradient(135deg, #ea4358, #cc2438); }
+        @media (max-width: 768px) {
+            /* 手机上靠上显示，避免被软键盘挡住输入框和按钮 */
+            .sys-dialog-overlay { align-items: flex-start; padding: 10vh 12px 12px; }
+            .sys-dialog { padding: 18px 16px 14px; }
+            .sys-dialog-actions .sys-dialog-btn { flex: 1; height: 42px; }
         }
 
         /* === 桌面 === */
@@ -2101,6 +2181,165 @@
             info(title, message) { return this.show({ title, message, type: 'info' }); }
         };
 
+        // === 系统对话框（v7）：替代浏览器原生 prompt / confirm / alert（原生弹窗与系统风格不符）===
+        // 全部返回 Promise，调用处需要 await：
+        //   SysDialog.prompt({ title, message, label, value, placeholder, okText, icon, validate })  -> 字符串 / null(取消)
+        //   SysDialog.confirm({ title, message, okText, cancelText, danger, icon })                 -> true / false
+        //   SysDialog.alert({ title, message, okText, icon })                                        -> undefined
+        //   SysDialog.form({ title, message, icon, okText, fields, validate })                        -> { 字段名: 值 } / null(取消)
+        //     fields: [{ type: 'text'|'radio'|'select', name, label, value, placeholder, options:[{value,label,desc,icon}], showIf(values), emptyText }]
+        // 图标一律取自集中式图标库 icon(name)。
+        const SysDialog = (() => {
+            let queue = Promise.resolve();   // 同一时刻只显示一个对话框，其余排队
+            const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+            function fieldHtml(f, i) {
+                const id = `sys-dialog-field-${i}`;
+                const label = f.label ? `<label class="sys-dialog-label" for="${id}">${esc(f.label)}</label>` : '';
+                if (f.type === 'radio') {
+                    return `<div class="sys-dialog-field" data-name="${esc(f.name)}">${label}<div class="sys-dialog-radios">${(f.options || []).map(o => `
+                        <label class="sys-dialog-radio${o.value === f.value ? ' checked' : ''}">
+                            <input type="radio" name="${esc(f.name)}" value="${esc(o.value)}"${o.value === f.value ? ' checked' : ''}>
+                            <span class="sys-dialog-radio-dot"></span>
+                            <span class="sys-dialog-radio-text">
+                                <span class="sys-dialog-radio-title">${o.icon ? icon(o.icon) : ''}<span>${esc(o.label)}</span></span>
+                                ${o.desc ? `<span class="sys-dialog-radio-desc">${esc(o.desc)}</span>` : ''}
+                            </span>
+                        </label>`).join('')}</div></div>`;
+                }
+                if (f.type === 'select') {
+                    const opts = f.options || [];
+                    return `<div class="sys-dialog-field" data-name="${esc(f.name)}">${label}${opts.length
+                        ? `<select class="sys-dialog-input" id="${id}" name="${esc(f.name)}">${opts.map(o => `<option value="${esc(o.value)}"${o.value === f.value ? ' selected' : ''}>${esc(o.label)}</option>`).join('')}</select>`
+                        : `<div class="sys-dialog-empty">${esc(f.emptyText || '没有可选项')}</div>`}</div>`;
+                }
+                return `<div class="sys-dialog-field" data-name="${esc(f.name)}">${label}<input class="sys-dialog-input" id="${id}" name="${esc(f.name)}" type="text" value="${esc(f.value)}" placeholder="${esc(f.placeholder || '')}" autocomplete="off" autocapitalize="off" spellcheck="false"></div>`;
+            }
+
+            function open(opts) {
+                return new Promise(resolve => {
+                    const fields = opts.fields || [];
+                    const overlay = document.createElement('div');
+                    overlay.className = 'sys-dialog-overlay';
+                    overlay.innerHTML = `
+                        <div class="sys-dialog" role="dialog" aria-modal="true">
+                            <div class="sys-dialog-head">
+                                ${opts.icon ? `<div class="sys-dialog-icon${opts.danger ? ' danger' : ''}">${icon(opts.icon)}</div>` : ''}
+                                <div class="sys-dialog-titles">
+                                    <div class="sys-dialog-title">${esc(opts.title || '提示')}</div>
+                                    ${opts.message ? `<div class="sys-dialog-msg">${esc(opts.message)}</div>` : ''}
+                                </div>
+                            </div>
+                            ${fields.length ? `<div class="sys-dialog-body">${fields.map(fieldHtml).join('')}</div>` : ''}
+                            <div class="sys-dialog-error" hidden></div>
+                            <div class="sys-dialog-actions">
+                                ${opts.cancelText === null ? '' : `<button type="button" class="sys-dialog-btn" data-act="cancel">${esc(opts.cancelText || '取消')}</button>`}
+                                <button type="button" class="sys-dialog-btn primary${opts.danger ? ' danger' : ''}" data-act="ok">${esc(opts.okText || '确定')}</button>
+                            </div>
+                        </div>`;
+                    document.body.appendChild(overlay);
+                    const box = overlay.querySelector('.sys-dialog');
+                    const errEl = overlay.querySelector('.sys-dialog-error');
+                    const prevFocus = document.activeElement;
+                    let closed = false;
+
+                    const values = () => {
+                        const v = {};
+                        fields.forEach(f => {
+                            if (f.type === 'radio') { const c = overlay.querySelector(`input[name="${f.name}"]:checked`); v[f.name] = c ? c.value : null; }
+                            else { const el = overlay.querySelector(`[name="${f.name}"]`); v[f.name] = el ? (f.type === 'text' ? el.value.trim() : el.value) : null; }
+                        });
+                        return v;
+                    };
+                    const applyVisibility = () => {
+                        const v = values();
+                        fields.forEach(f => {
+                            if (typeof f.showIf !== 'function') return;
+                            const el = overlay.querySelector(`.sys-dialog-field[data-name="${f.name}"]`);
+                            if (el) el.hidden = !f.showIf(v);
+                        });
+                    };
+                    const close = result => {
+                        if (closed) return;
+                        closed = true;
+                        document.removeEventListener('keydown', onKey, true);
+                        overlay.classList.remove('open');
+                        setTimeout(() => overlay.remove(), 170);
+                        if (prevFocus && typeof prevFocus.focus === 'function') { try { prevFocus.focus({ preventScroll: true }); } catch (e) {} }
+                        resolve(result);
+                    };
+                    const ok = () => {
+                        const v = values();
+                        if (typeof opts.validate === 'function') {
+                            const msg = opts.validate(v);
+                            if (msg) {
+                                errEl.textContent = msg;
+                                errEl.hidden = false;
+                                box.classList.remove('shake'); void box.offsetWidth; box.classList.add('shake');
+                                const bad = overlay.querySelector('.sys-dialog-field:not([hidden]) input[type="text"]');
+                                if (bad) bad.focus();
+                                return;
+                            }
+                        }
+                        close(v);
+                    };
+                    const onKey = e => {
+                        if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); close(null); }
+                        else if (e.key === 'Enter' && !(e.target && e.target.tagName === 'TEXTAREA')) { e.preventDefault(); e.stopPropagation(); ok(); }
+                    };
+                    overlay.addEventListener('mousedown', e => { if (e.target === overlay) close(null); });
+                    overlay.querySelectorAll('[data-act]').forEach(b => b.addEventListener('click', () => b.dataset.act === 'ok' ? ok() : close(null)));
+                    overlay.querySelectorAll('input[type="radio"]').forEach(r => r.addEventListener('change', () => {
+                        overlay.querySelectorAll('.sys-dialog-radio').forEach(l => l.classList.toggle('checked', l.querySelector('input').checked));
+                        errEl.hidden = true;
+                        applyVisibility();
+                    }));
+                    overlay.querySelectorAll('.sys-dialog-input').forEach(i => i.addEventListener('input', () => { errEl.hidden = true; }));
+                    document.addEventListener('keydown', onKey, true);
+                    applyVisibility();
+
+                    requestAnimationFrame(() => {
+                        overlay.classList.add('open');
+                        const first = overlay.querySelector('.sys-dialog-field:not([hidden]) input[type="text"], .sys-dialog-field:not([hidden]) select');
+                        if (first) {
+                            first.focus();
+                            if (first.tagName === 'INPUT') {
+                                // 文件名默认只选中主名、不选扩展名（与桌面系统的重命名习惯一致）
+                                const f = fields.find(x => x.name === first.name);
+                                const dot = first.value.lastIndexOf('.');
+                                if (f && f.selectStem !== false && dot > 0) first.setSelectionRange(0, dot); else first.select();
+                            }
+                        } else {
+                            const okBtn = overlay.querySelector('[data-act="ok"]');
+                            if (okBtn) okBtn.focus();
+                        }
+                    });
+                });
+            }
+
+            const enqueue = opts => { const p = queue.then(() => open(opts)); queue = p.catch(() => {}); return p; };
+            return {
+                form: opts => enqueue(opts),
+                prompt: opts => enqueue({
+                    ...opts,
+                    fields: [{ type: 'text', name: 'value', label: opts.label || '', value: opts.value || '', placeholder: opts.placeholder || '', selectStem: opts.selectStem }],
+                    validate: v => typeof opts.validate === 'function' ? opts.validate(v.value) : null
+                }).then(r => r ? r.value : null),
+                confirm: opts => enqueue({ ...opts, fields: [] }).then(r => r !== null),
+                alert: opts => enqueue({ ...opts, fields: [], cancelText: null }).then(() => undefined),
+                // 文件 / 文件夹名称校验：返回错误文案，合法时返回 null
+                nameValidator: (label = '名称') => v => {
+                    const t = (v || '').trim();
+                    if (!t) return `${label}不能为空`;
+                    if (t === '.' || t === '..') return `${label}无效`;
+                    if (/[\\/]/.test(t)) return `${label}不能包含 / 或 \\`;
+                    if (/[\u0000-\u001f]/.test(t)) return `${label}含有非法控制字符`;
+                    return null;
+                }
+            };
+        })();
+        window.SysDialog = SysDialog;
+
         function addFolderToZipSync(zip, folderPath, callback) {
             SYSTEM.fs.readdir(folderPath, (err, files) => {
                 if (err || files.length === 0) {
@@ -3286,10 +3525,10 @@
                     return;
                 }
 
-                SYSTEM.fs.stat(destPath, (err) => {
+                SYSTEM.fs.stat(destPath, async (err) => {
                     if (!err) {
                         // 目标已存在同名文件
-                        if (!confirm(`文件 "${filename}" 已存在于目标文件夹，是否覆盖？`)) {
+                        if (!(await SysDialog.confirm({ title: '文件已存在', icon: 'uiWarning', danger: true, okText: '覆盖', message: `文件 "${filename}" 已存在于目标文件夹，是否覆盖？` }))) {
                             processedCount++;
                             processNext(index + 1);
                             return;
@@ -3651,8 +3890,9 @@
             showCtx(x, y);
         }
 
-        function deleteSelected() {
-            if(!confirm('确定删除选中项吗？')) return;
+        async function deleteSelected() {
+            const selectedCount = SYSTEM.selectedIcons.filter(id => id.startsWith('file-')).length;
+            if (!(await SysDialog.confirm({ title: '删除', icon: 'uiDelete', danger: true, okText: '删除', message: `确定删除选中的 ${selectedCount} 项吗？` }))) return;
             const files = SYSTEM.selectedIcons.filter(id => id.startsWith('file-'))
                           .map(id => document.getElementById(id).dataset.filename);
             
@@ -5008,20 +5248,20 @@
         }
 
         // 新建文件/文件夹
-        function folderCreateNew(windowId, type) {
+        async function folderCreateNew(windowId, type) {
             const state = SYSTEM.folderWindowStates[windowId];
             if (!state) return;
 
             // 统一使用 BrowserFS API（本地挂载目录已通过 FSA 后端支持标准 fs 操作）
             if (type === 'folder') {
-                const name = prompt('请输入文件夹名称:', '新建文件夹');
+                const name = await SysDialog.prompt({ title: '新建文件夹', icon: 'uiNewFolder', label: '文件夹名称', value: '新建文件夹', okText: '创建', validate: SysDialog.nameValidator('文件夹名称') });
                 if (!name) return;
                 SYSTEM.fs.mkdir(state.currentPath + '/' + name, (err) => {
                     if (err) Notify.error('创建失败', err.message);
                     else { renderFolderContent(windowId); refreshDesktop(); Notify.success('成功', '文件夹已创建'); }
                 });
             } else {
-                const name = prompt('请输入文件名称:', '新建文本文档.txt');
+                const name = await SysDialog.prompt({ title: '新建文件', icon: 'uiNewFile', label: '文件名称', value: '新建文本文档.txt', okText: '创建', validate: SysDialog.nameValidator('文件名称') });
                 if (!name) return;
                 SYSTEM.fs.writeFile(state.currentPath + '/' + name, '', (err) => {
                     if (err) Notify.error('创建失败', err.message);
@@ -5711,8 +5951,8 @@
             });
         }
 
-        function deleteFolderItems(windowId) {
-            if(!confirm('确定删除选中项吗？')) return;
+        async function deleteFolderItems(windowId) {
+            if (!(await SysDialog.confirm({ title: '删除', icon: 'uiDelete', danger: true, okText: '删除', message: '确定删除选中项吗？' }))) return;
             
             const contentArea = document.getElementById('folder-content-' + windowId);
             if(!contentArea) return;
@@ -5781,8 +6021,8 @@
             });
         }
 
-        function deleteFolderItem(windowId, filename) {
-            if(!confirm(`确定删除 "${filename}" 吗？`)) return;
+        async function deleteFolderItem(windowId, filename) {
+            if (!(await SysDialog.confirm({ title: '删除', icon: 'uiDelete', danger: true, okText: '删除', message: `确定删除 "${filename}" 吗？` }))) return;
             
             const contentArea = document.getElementById('folder-content-' + windowId);
             if(!contentArea) return;
@@ -5827,8 +6067,8 @@
             });
         }
 
-        function renameFolderItem(windowId, oldName) {
-            const newName = prompt('请输入新名称:', oldName);
+        async function renameFolderItem(windowId, oldName) {
+            const newName = await SysDialog.prompt({ title: '重命名', icon: 'uiRename', label: '新名称', value: oldName, okText: '重命名', validate: SysDialog.nameValidator('名称') });
             if(!newName || newName === oldName) return;
             
             const contentArea = document.getElementById('folder-content-' + windowId);
@@ -6401,9 +6641,9 @@
                     };
 
                     // 检查目标是否已存在，存在则确认覆盖（移动/复制统一处理）
-                    SYSTEM.fs.stat(destPath, (err) => {
+                    SYSTEM.fs.stat(destPath, async (err) => {
                         if(!err) {
-                            if(!confirm(`"${filename}" 已存在于目标文件夹，是否覆盖？`)) {
+                            if (!(await SysDialog.confirm({ title: '文件已存在', icon: 'uiWarning', danger: true, okText: '覆盖', message: `"${filename}" 已存在于目标文件夹，是否覆盖？` }))) {
                                 processedCount++;
                                 callback();
                                 return;
@@ -6581,8 +6821,8 @@
         };
 
         // 补上新建文件夹功能的具体实现
-        function createNewFolder() {
-            const name = prompt("请输入文件夹名称:", "新建文件夹");
+        async function createNewFolder() {
+            const name = await SysDialog.prompt({ title: '新建文件夹', icon: 'uiNewFolder', label: '文件夹名称', value: '新建文件夹', okText: '创建', validate: SysDialog.nameValidator('文件夹名称') });
             if (!name) return;
             const path = SYSTEM.desktopPath + '/' + name;
             SYSTEM.fs.mkdir(path, (err) => {
@@ -6868,8 +7108,8 @@
                 </div>`;
         }
 
-        function deleteFile(filename) {
-            if(!confirm(`确定删除 "${filename}" 吗？`)) return;
+        async function deleteFile(filename) {
+            if (!(await SysDialog.confirm({ title: '删除', icon: 'uiDelete', danger: true, okText: '删除', message: `确定删除 "${filename}" 吗？` }))) return;
             const path = SYSTEM.desktopPath + '/' + filename;
             
             SYSTEM.fs.stat(path, (err, stats) => {
@@ -7464,8 +7704,8 @@
             SYSTEM.calendarOpen = false; document.getElementById('calendar-panel').classList.remove('open');
         }
 
-        function renameFile(oldName) {
-            const newName = prompt('请输入新名称:', oldName);
+        async function renameFile(oldName) {
+            const newName = await SysDialog.prompt({ title: '重命名', icon: 'uiRename', label: '新名称', value: oldName, okText: '重命名', validate: SysDialog.nameValidator('名称') });
             if(!newName || newName === oldName) return;
             const oldPath = SYSTEM.desktopPath + '/' + oldName;
             const newPath = SYSTEM.desktopPath + '/' + newName;
@@ -7476,8 +7716,8 @@
             });
         }
 
-        function renameDesktopFile(oldName) {
-            const newName = prompt('请输入新名称:', oldName);
+        async function renameDesktopFile(oldName) {
+            const newName = await SysDialog.prompt({ title: '重命名', icon: 'uiRename', label: '新名称', value: oldName, okText: '重命名', validate: SysDialog.nameValidator('名称') });
             if(!newName || newName === oldName) return;
             const oldPath = SYSTEM.desktopPath + '/' + oldName;
             const newPath = SYSTEM.desktopPath + '/' + newName;
@@ -8551,8 +8791,8 @@
                         });
                     };
                     btnSave.onclick = () => writeFile();
-                    btnSaveAs.onclick = () => {
-                        const name = prompt('请输入文件名:', currentFile);
+                    btnSaveAs.onclick = async () => {
+                        const name = await SysDialog.prompt({ title: '另存为', icon: 'uiSave', label: '文件名', value: currentFile, okText: '保存', validate: SysDialog.nameValidator('文件名') });
                         if (!name) return;
                         const oldKey = draftKey;
                         currentFile = name.match(/\.(txt|md|csv|log|json|js|html|css)$/i) ? name : name + '.txt';
@@ -8903,16 +9143,16 @@
                     };
                     
                     // 清空画布
-                    document.getElementById('paint-clear-' + winId).onclick = () => {
-                        if(!confirm("确定清空画布吗？")) return;
+                    document.getElementById('paint-clear-' + winId).onclick = async () => {
+                        if (!(await SysDialog.confirm({ title: '清空画布', icon: 'uiEraser', danger: true, okText: '清空', message: '确定清空画布吗？当前内容将无法恢复。' }))) return;
                         vCtx.fillStyle = '#ffffff';
                         vCtx.fillRect(0, 0, vCanvas.width, vCanvas.height);
                         syncCanvas();
                     };
                     
                     // 保存图片
-                    document.getElementById('paint-save-' + winId).onclick = () => {
-                        const name = prompt('请输入文件名:', '画作.png');
+                    document.getElementById('paint-save-' + winId).onclick = async () => {
+                        const name = await SysDialog.prompt({ title: '保存图片', icon: 'uiImage', label: '文件名', value: '画作.png', okText: '保存', validate: SysDialog.nameValidator('文件名') });
                         if(!name) return;
                         
                         const saveCanvas = document.createElement('canvas');
@@ -9335,12 +9575,6 @@
                                     <button class="editor-tb-btn" id="editor-format-${SYSTEM.idCounter+1}" title="格式化 (Ctrl+Shift+F)">
                                         <svg viewBox="0 0 16 16" fill="currentColor"><path d="M2 3h7v1H2V3zm0 4h12v1H2V7zm0 4h9v1H2v-1zm10-8l3 2.5L12 8V3z"/></svg><span>格式化</span>
                                     </button>
-                                    <button class="editor-tb-btn" id="editor-fold-${SYSTEM.idCounter+1}" title="折叠全部">
-                                        <svg viewBox="0 0 16 16" fill="currentColor"><path d="M4 4h8v1H4V4zm2 3h4v1H6V7zm-2 3h8v1H4v-1z"/></svg><span>折叠</span>
-                                    </button>
-                                    <button class="editor-tb-btn" id="editor-unfold-${SYSTEM.idCounter+1}" title="展开全部">
-                                        <svg viewBox="0 0 16 16" fill="currentColor"><path d="M2 3h12v1H2V3zm0 3h12v1H2V6zm0 3h12v1H2V9zm0 3h12v1H2v-1z"/></svg><span>展开</span>
-                                    </button>
                                 </div>
                                 <div class="editor-toolbar-divider"></div>
                                 <div class="editor-toolbar-group">
@@ -9479,7 +9713,10 @@
         function initCodeEditorWindow(winId, initialContent, filename, saveDir) {
             let editor = null;
             // 当前文件保存目录：来源目录优先，否则桌面
-            const editorSaveDir = saveDir || SYSTEM.desktopPath;
+            let editorSaveDir = saveDir || SYSTEM.desktopPath;
+            // 当前对应的虚拟文件路径：从虚拟桌面打开 / 导入 / 导出 / Ctrl+S 后有值；空白新建或从现实设备导入时为 null
+            let editorFsPath = saveDir ? editorSaveDir + '/' + filename : null;
+            if (editorFsPath) setEditorTitle();
             const sState = { query: '', currentIndex: -1, matches: [], markers: [], caseSensitive: false, wholeWord: false, regex: false };
             let _previewBlobUrl = null;
             let _previewLoadingTimer = null;
@@ -9524,8 +9761,7 @@
                     inputStyle: inputStyle,
                     lineNumbers: true,
                     lineWrapping: true,
-                    foldGutter: true,
-                    gutters: ['CodeMirror-linenumbers', 'CodeMirror-foldgutter'],
+                    gutters: ['CodeMirror-linenumbers'],
                     matchBrackets: true,
                     autoCloseBrackets: true,
                     matchTags: { bothTags: true },
@@ -9578,7 +9814,6 @@
                 const topLine = editor.lineAtHeight(scroll.top, 'local');   // 按“首行”而不是像素恢复滚动位置，两种模型行高测量略有差异
                 const history = editor.getHistory();
                 const mode = editor.getOption('mode');
-                const folds = editor.getAllMarks().filter(m => m.__isFold).map(m => m.find()).filter(Boolean).map(r => r.from);
                 clearEditorHighlights();
                 try { offMobileSelectAll(); } catch (e) {}
                 editor.toTextArea();                                   // 还原 textarea（内容已写回）
@@ -9586,7 +9821,6 @@
                 if (editor.getValue() !== value) editor.setValue(value);
                 editor.setOption('mode', mode);
                 try { editor.setHistory(history); } catch (e) {}
-                folds.forEach(pos => { try { editor.foldCode(pos, null, 'fold'); } catch (e) {} });
                 try { editor.setSelections(selections, null, { scroll: false }); } catch (e) { editor.setCursor({ line: 0, ch: 0 }); }
                 editor.refresh();
                 editor.scrollTo(scroll.left, editor.heightAtLine(topLine, 'local'));
@@ -9811,7 +10045,57 @@
                 document.getElementById(`editor-status-selection-${winId}`).textContent = sel ? `已选 ${sel.length} 字符` : '';
             }
             
-            // 保存到文件
+            // ===== 保存 / 导入 / 导出（v7：导入、导出都可在「虚拟桌面」与「现实设备」之间选择，文件名可自定义，弹窗为系统风格）=====
+            const EXPORT_TARGET_KEY = 'JISHENG_OS_EDITOR_EXPORT_TARGET';
+            const IMPORT_SOURCE_KEY = 'JISHENG_OS_EDITOR_IMPORT_SOURCE';
+            const TEXT_EXT_RE = /\.(html?|css|js|mjs|json|md|markdown|txt|xml|svg|csv|log|ts|jsx|tsx|vue|yml|yaml|ini|conf|sh|py)$/i;
+            const langByExt = { 'html': 'htmlmixed', 'htm': 'htmlmixed', 'css': 'css', 'js': 'javascript', 'json': 'application/json', 'md': 'markdown', 'xml': 'xml', 'txt': 'htmlmixed' };
+            const langNames = { 'htmlmixed': 'HTML', 'css': 'CSS', 'javascript': 'JavaScript', 'markdown': 'Markdown', 'application/json': 'JSON' };
+            const extByLang = { 'htmlmixed': '.html', 'css': '.css', 'javascript': '.js', 'markdown': '.md', 'application/json': '.json' };
+
+            // 窗口标题跟随当前虚拟文件名
+            function setEditorTitle() {
+                const t = document.querySelector(`#win-${winId} .window-title-text`);
+                if (t) t.textContent = editorFsPath ? `HTML编辑器 - ${filename}` : 'HTML编辑器';
+            }
+            // 刷新桌面 + 所有正打开该目录的文件夹窗口
+            function refreshDirViews(dir) {
+                refreshDesktop();
+                Object.keys(SYSTEM.folderWindowStates || {}).forEach(wId => {
+                    const st = SYSTEM.folderWindowStates[wId];
+                    if (st && st.currentPath === dir) { st.fileStats = {}; renderFolderContent(wId); }
+                });
+            }
+            // 把文本载入编辑器，并按扩展名切换语言
+            function loadTextIntoEditor(text, name) {
+                const ext = (name.split('.').pop() || '').toLowerCase();
+                const lang = langByExt[ext] || 'htmlmixed';
+                editor.setValue(text);
+                editor.setOption('mode', lang);
+                langSelect.value = lang;
+                const langStatus = document.getElementById(`editor-status-lang-${winId}`);
+                if (langStatus) langStatus.textContent = langNames[lang] || lang;
+            }
+            const fsStat = path => new Promise(res => SYSTEM.fs.stat(path, (err, st) => res(err ? null : st)));
+            const dirLabel = dir => dir === SYSTEM.desktopPath ? '虚拟桌面' : dir;
+            // 列出某个虚拟目录下可编辑的文本文件
+            function listVirtualTextFiles(dir) {
+                return new Promise(res => {
+                    if (!SYSTEM.mounted) return res([]);
+                    SYSTEM.fs.readdir(dir, async (err, files) => {
+                        if (err || !files) return res([]);
+                        const out = [];
+                        for (const f of files) {
+                            if (!TEXT_EXT_RE.test(f)) continue;
+                            const st = await fsStat(dir + '/' + f);
+                            if (st && st.isFile()) out.push(f);
+                        }
+                        res(out.sort((x, y) => x.localeCompare(y, 'zh-Hans-CN')));
+                    });
+                });
+            }
+
+            // 保存到当前虚拟文件（Ctrl+S）
             function saveEditorToFile() {
                 if (!SYSTEM.mounted) {
                     Notify.error('文件系统未就绪');
@@ -9822,50 +10106,122 @@
                 SYSTEM.fs.writeFile(path, editor.getValue(), 'utf8', err => {
                     if (err) Notify.error('保存失败', err.message);
                     else {
-                        refreshDesktop();
-                        Object.keys(SYSTEM.folderWindowStates || {}).forEach(wId => {
-                            const st = SYSTEM.folderWindowStates[wId];
-                            if (st && st.currentPath === editorSaveDir) { st.fileStats = {}; renderFolderContent(wId); }
-                        });
+                        editorFsPath = path;
+                        setEditorTitle();
+                        refreshDirViews(editorSaveDir);
                         Notify.success('保存成功', `文件已保存为 "${filename}"`);
                     }
                 });
             }
             
-            // 导入文件
-            function importEditorFile() {
-                fileInput.onchange = function() {
-                    const f = this.files[0];
-                    if (!f) return;
-                    const r = new FileReader();
-                    r.onload = function(e) {
-                        const ext = f.name.split('.').pop().toLowerCase();
-                        const map = { 'html': 'htmlmixed', 'htm': 'htmlmixed', 'css': 'css', 'js': 'javascript', 'json': 'application/json', 'md': 'markdown', 'xml': 'xml', 'txt': 'htmlmixed' };
-                        const lang = map[ext] || 'htmlmixed';
-                        editor.setValue(e.target.result);
-                        editor.setOption('mode', lang);
-                        langSelect.value = lang;
-                        const names = { 'htmlmixed': 'HTML', 'css': 'CSS', 'javascript': 'JavaScript', 'markdown': 'Markdown', 'application/json': 'JSON' };
-                        document.getElementById(`editor-status-lang-${winId}`).textContent = names[lang] || lang;
-                        Notify.success(`已导入: ${f.name}`);
+            // 导入文件：现实设备（系统文件选择器） / 虚拟桌面（JISHENG OS 内的文件）
+            async function importEditorFile() {
+                const desktopFiles = await listVirtualTextFiles(SYSTEM.desktopPath);
+                const lastSource = localStorage.getItem(IMPORT_SOURCE_KEY) || 'virtual';
+                const r = await SysDialog.form({
+                    title: '导入文件',
+                    icon: 'uiUpload',
+                    okText: '导入',
+                    message: '选择导入来源；导入后会替换编辑器中的当前内容。',
+                    fields: [
+                        { type: 'radio', name: 'source', label: '导入来源', value: lastSource, options: [
+                            { value: 'virtual', icon: 'uiMenuFolder', label: '虚拟桌面', desc: desktopFiles.length ? `JISHENG OS 桌面上有 ${desktopFiles.length} 个可编辑的文本文件` : 'JISHENG OS 桌面上暂时没有可编辑的文本文件' },
+                            { value: 'device', icon: 'uiUpload', label: '现实设备', desc: '从手机 / 电脑的存储中选择文件' }
+                        ] },
+                        { type: 'select', name: 'file', label: '选择文件', value: desktopFiles[0] || '', options: desktopFiles.map(n => ({ value: n, label: n })), emptyText: '虚拟桌面上没有 html / css / js / json / md / txt 等文本文件', showIf: v => v.source === 'virtual' }
+                    ],
+                    validate: v => (v.source === 'virtual' && !v.file) ? '虚拟桌面上没有可导入的文件，请改选「现实设备」' : null
+                });
+                if (!r) return;
+                localStorage.setItem(IMPORT_SOURCE_KEY, r.source);
+
+                if (r.source === 'device') {
+                    fileInput.onchange = function() {
+                        const f = this.files[0];
+                        if (!f) return;
+                        const reader = new FileReader();
+                        reader.onload = e => {
+                            loadTextIntoEditor(e.target.result, f.name);
+                            filename = f.name;
+                            editorFsPath = null;       // 来自现实设备，尚未对应任何虚拟文件
+                            setEditorTitle();
+                            Notify.success('已从现实设备导入', f.name);
+                        };
+                        reader.readAsText(f);
+                        this.value = '';
                     };
-                    r.readAsText(f);
-                    this.value = '';
-                };
-                fileInput.click();
+                    fileInput.click();
+                    return;
+                }
+
+                const path = SYSTEM.desktopPath + '/' + r.file;
+                SYSTEM.fs.readFile(path, 'utf8', (err, data) => {
+                    if (err) { Notify.error('导入失败', err.message); return; }
+                    loadTextIntoEditor(data, r.file);
+                    filename = r.file;
+                    editorSaveDir = SYSTEM.desktopPath;
+                    editorFsPath = path;               // 之后 Ctrl+S / 导出 默认就写回这个文件
+                    setEditorTitle();
+                    Notify.success('已从虚拟桌面导入', r.file);
+                });
             }
             
-            // 导出文件
-            function exportEditorFile() {
+            // 导出文件：文件名可自定义；目标可选 虚拟桌面 / 原目录（从子目录打开时）/ 现实设备
+            async function exportEditorFile() {
                 const code = editor.getValue();
-                const extMap = { 'htmlmixed': '.html', 'css': '.css', 'javascript': '.js', 'markdown': '.md', 'application/json': '.json' };
-                const lang = langSelect.value;
-                const name = 'code' + (extMap[lang] || '.txt');
-                const a = document.createElement('a');
-                a.href = URL.createObjectURL(new Blob([code], { type: 'text/plain;charset=utf-8' }));
-                a.download = name;
-                a.click();
-                Notify.success(`已导出: ${name}`);
+                const defaultName = (filename && filename !== '未命名.html') ? filename : ('未命名' + (extByLang[langSelect.value] || '.txt'));
+                const targets = [
+                    { value: 'desktop', icon: 'uiMenuFolder', label: '虚拟桌面', desc: `写入 JISHENG OS 桌面（${SYSTEM.desktopPath}），桌面图标和文件管理器里都能看到` }
+                ];
+                if (editorSaveDir && editorSaveDir !== SYSTEM.desktopPath) {
+                    targets.push({ value: 'source', icon: 'uiMenuFolder', label: '原目录', desc: `写回文件所在目录 ${editorSaveDir}` });
+                }
+                targets.push({ value: 'device', icon: 'uiDownload', label: '现实设备', desc: '通过浏览器下载到手机 / 电脑' });
+                let lastTarget = localStorage.getItem(EXPORT_TARGET_KEY) || 'desktop';
+                if (!targets.some(t => t.value === lastTarget)) lastTarget = 'desktop';
+
+                const r = await SysDialog.form({
+                    title: '导出文件',
+                    icon: 'uiDownload',
+                    okText: '导出',
+                    fields: [
+                        { type: 'text', name: 'name', label: '文件名', value: defaultName, placeholder: '例如 index.html' },
+                        { type: 'radio', name: 'target', label: '导出到', value: lastTarget, options: targets }
+                    ],
+                    validate: v => SysDialog.nameValidator('文件名')(v.name)
+                });
+                if (!r) return;
+                const name = r.name;
+                localStorage.setItem(EXPORT_TARGET_KEY, r.target);
+
+                if (r.target === 'device') {
+                    const a = document.createElement('a');
+                    a.href = URL.createObjectURL(new Blob([code], { type: 'text/plain;charset=utf-8' }));
+                    a.download = name;
+                    a.click();
+                    setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+                    Notify.success('已导出到现实设备', name);
+                    return;
+                }
+
+                if (!SYSTEM.mounted) { Notify.error('文件系统未就绪'); return; }
+                const dir = r.target === 'source' ? editorSaveDir : SYSTEM.desktopPath;
+                const path = dir + '/' + name;
+                const existing = await fsStat(path);
+                if (existing && existing.isDirectory()) { Notify.error('导出失败', `"${name}" 是一个文件夹`); return; }
+                if (existing && path !== editorFsPath) {
+                    const overwrite = await SysDialog.confirm({ title: '文件已存在', icon: 'uiWarning', danger: true, okText: '覆盖', message: `${dirLabel(dir)}上已有 "${name}"，是否覆盖？` });
+                    if (!overwrite) return;
+                }
+                SYSTEM.fs.writeFile(path, code, 'utf8', err => {
+                    if (err) { Notify.error('导出失败', err.message); return; }
+                    filename = name;
+                    editorSaveDir = dir;
+                    editorFsPath = path;               // 导出后它就是当前文件：之后 Ctrl+S 直接写回
+                    setEditorTitle();
+                    refreshDirViews(dir);
+                    Notify.success('已导出到' + dirLabel(dir), name);
+                });
             }
             
             // 在新窗口打开
@@ -9923,8 +10279,6 @@
             
             // 绑定事件
             document.getElementById(`editor-format-${winId}`).onclick = formatEditorCode;
-            document.getElementById(`editor-fold-${winId}`).onclick = () => { for (let i = 0; i < editor.lineCount(); i++) editor.foldCode(CodeMirror.Pos(i, 0)); Notify.info('已折叠'); };
-            document.getElementById(`editor-unfold-${winId}`).onclick = () => { for (let i = 0; i < editor.lineCount(); i++) editor.foldCode(CodeMirror.Pos(i, 0), null, 'unfold'); Notify.info('已展开'); };
             document.getElementById(`editor-undo-${winId}`).onclick = () => editor.execCommand('undo');
             document.getElementById(`editor-redo-${winId}`).onclick = () => editor.execCommand('redo');
             document.getElementById(`editor-search-${winId}`).onclick = () => toggleEditorSearchBar(true);
@@ -10106,8 +10460,8 @@
 
 
 
-        function resetSystem() {
-            if(confirm("警告：这会清空所有保存的文件和设置。确定重置吗？")) {
+        async function resetSystem() {
+            if (await SysDialog.confirm({ title: '重置系统', icon: 'uiWarning', danger: true, okText: '重置', message: '警告：这会清空所有保存的文件和设置，且无法恢复。确定重置吗？' })) {
                 const req = indexedDB.deleteDatabase('JISHENG_OS_V3');
                 req.onsuccess = () => location.reload();
             }
