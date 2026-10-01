@@ -861,7 +861,6 @@
             flex-shrink: 0;
             padding-right: 8px;
         }
-        .folder-item .file-size .dir-size-pending { color:#777; }
         .folder-item .file-size {
             font-size: 11px;
             color: var(--text-muted);
@@ -2499,6 +2498,21 @@
                     SYSTEM.setMtimeCache(path, mtime);
                     return originalUtimes(path, atime, mtime, callback);
                 };
+
+                // 包装写入类操作：文件系统一旦变化就清空"文件夹大小"缓存，
+                // 保证列表里的文件夹大小在复制/删除/保存后立即刷新（而不是等缓存过期）
+                ['writeFile', 'writeFileSync', 'appendFile', 'appendFileSync',
+                 'unlink', 'unlinkSync', 'rmdir', 'rmdirSync',
+                 'mkdir', 'mkdirSync', 'rename', 'renameSync',
+                 'truncate', 'truncateSync'].forEach(fnName => {
+                    if (typeof SYSTEM.fs[fnName] === 'function') {
+                        const orig = SYSTEM.fs[fnName].bind(SYSTEM.fs);
+                        SYSTEM.fs[fnName] = function() {
+                            try { if (typeof invalidateAllDirSizes === 'function') invalidateAllDirSizes(); } catch (e) {}
+                            return orig.apply(null, arguments);
+                        };
+                    }
+                });
                 
                 // 包装 fs.stat：如果路径在缓存中有修改时间，则优先返回缓存值
                 const originalStat = SYSTEM.fs.stat.bind(SYSTEM.fs);
@@ -4240,24 +4254,22 @@
                 
                 const windowId = 'folder-' + Date.now();
                 
-                // 存储窗口状态
+                // 存储窗口状态（排序方式从 localStorage 恢复，记住用户上次的选择）
+                const sortPref = loadFolderSortPref();
                 const winState = {
                     windowId: windowId,
                     folderName: folderName,
                     currentPath: path,
                     parentPath: basePath,
                     viewMode: 'list', // 'list' or 'grid'
-                    sortBy: loadSortPref().sortBy,  // 'name', 'size', 'date', 'type'（记住上次选择）
-                    sortAsc: loadSortPref().sortAsc,
+                    sortBy: sortPref.sortBy,  // 'name', 'size', 'date', 'type'
+                    sortAsc: sortPref.sortAsc,
                     searchQuery: '',
                     fileStats: {},
                     colWidths: { name: 240, date: 138, type: 98, size: 70 }
                 };
                 SYSTEM.folderWindowStates = SYSTEM.folderWindowStates || {};
                 SYSTEM.folderWindowStates[windowId] = winState;
-
-                // 注意：统计信息统一由 renderFolderContent 在窗口创建后获取，
-                // 避免空文件夹时在 DOM 尚未创建前渲染，导致一直显示"加载中..."
 
                 const winId = createWindow({
                     title: folderName,
@@ -4319,7 +4331,7 @@
                         updateFolderBreadcrumb(windowId);
                         // 更新侧边栏文件夹列表
                         updateSidebarFolderList(windowId);
-                        // 窗口 DOM 就绪后再渲染内容（修复空文件夹卡在"加载中..."）
+                        // 首次渲染必须放在窗口 DOM 创建之后，否则空文件夹会永远停在"加载中..."
                         renderFolderContent(windowId);
                     }
                 });
@@ -4331,23 +4343,21 @@
             SYSTEM.fs.readdir(path, (err, files) => {
                 if(err) { Notify.error('错误', err.message); return; }
                 const windowId = 'folder-' + Date.now();
+                const sortPref = loadFolderSortPref();
                 const winState = {
                     windowId: windowId,
                     folderName: '桌面',
                     currentPath: path,
                     parentPath: path,
                     viewMode: 'list',
-                    sortBy: loadSortPref().sortBy,
-                    sortAsc: loadSortPref().sortAsc,
+                    sortBy: sortPref.sortBy,
+                    sortAsc: sortPref.sortAsc,
                     searchQuery: '',
                     fileStats: {},
                     colWidths: { name: 240, date: 138, type: 98, size: 70 }
                 };
                 SYSTEM.folderWindowStates = SYSTEM.folderWindowStates || {};
                 SYSTEM.folderWindowStates[windowId] = winState;
-
-                // 注意：统计信息统一由 renderFolderContent 在窗口创建后获取，
-                // 避免空文件夹时在 DOM 尚未创建前渲染，导致一直显示"加载中..."
 
                 createWindow({
                     title: '桌面',
@@ -4403,6 +4413,7 @@
                         initFolderColumnResize(windowId);
                         updateFolderBreadcrumb(windowId);
                         updateSidebarFolderList(windowId);
+                        // 首次渲染必须放在窗口 DOM 创建之后，否则空文件夹会永远停在"加载中..."
                         renderFolderContent(windowId);
                     }
                 });
@@ -4669,317 +4680,6 @@
         }
 
         // 格式化文件大小
-        // ===== 轻量 Markdown 渲染器（无外部依赖，供编辑器实时预览使用）=====
-        function mdEscapeHtml(s) {
-            return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-        }
-        function mdInline(text) {
-            let s = mdEscapeHtml(text);
-            const codes = [];
-            // 行内代码先占位，避免内部内容被二次解析
-            s = s.replace(/(`+)([\s\S]*?)\1/g, (m, tick, code) => {
-                codes.push(code.replace(/^ | $/g, ''));
-                return '\u0000CODE' + (codes.length - 1) + '\u0000';
-            });
-            // 图片 / 链接
-            s = s.replace(/!\[([^\]]*)\]\(([^)\s]+)(?:\s+"([^"]*)")?\)/g,
-                (m, alt, src, title) => `<img src="${src}" alt="${alt}"${title ? ` title="${title}"` : ''}>`);
-            s = s.replace(/\[([^\]]+)\]\(([^)\s]+)(?:\s+"([^"]*)")?\)/g,
-                (m, txt, href, title) => `<a href="${href}" target="_blank" rel="noopener"${title ? ` title="${title}"` : ''}>${txt}</a>`);
-            // 自动链接
-            s = s.replace(/(^|[\s(])((?:https?:\/\/|www\.)[^\s<)]+)/g,
-                (m, pre, url) => `${pre}<a href="${url.startsWith('http') ? url : 'http://' + url}" target="_blank" rel="noopener">${url}</a>`);
-            // 强调
-            s = s.replace(/\*\*\*([^*]+)\*\*\*/g, '<strong><em>$1</em></strong>');
-            s = s.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
-            s = s.replace(/__([^_]+)__/g, '<strong>$1</strong>');
-            s = s.replace(/(^|[^*])\*([^*\n]+)\*/g, '$1<em>$2</em>');
-            s = s.replace(/(^|[^\w])_([^_\n]+)_/g, '$1<em>$2</em>');
-            s = s.replace(/~~([^~]+)~~/g, '<del>$1</del>');
-            s = s.replace(/ {2,}$/, '<br>');
-            s = s.replace(/\u0000CODE(\d+)\u0000/g, (m, i) => `<code>${codes[+i]}</code>`);
-            return s;
-        }
-        function mdSlug(t) {
-            return String(t).trim().toLowerCase().replace(/[^\w\u4e00-\u9fa5]+/g, '-').replace(/^-+|-+$/g, '');
-        }
-        function markdownToHtml(src) {
-            const lines = String(src).replace(/\r\n?/g, '\n').split('\n');
-            let out = '';
-            let i = 0;
-            const listStack = []; // { type:'ul'|'ol', indent:number }
-            function closeLists(toIndent) {
-                while (listStack.length && (toIndent === null || listStack[listStack.length - 1].indent >= toIndent)) {
-                    out += `</li></${listStack.pop().type}>`;
-                }
-            }
-            while (i < lines.length) {
-                let line = lines[i];
-
-                // 代码块 ```lang
-                const fence = line.match(/^\s*(```|~~~)\s*([\w+-]*)\s*$/);
-                if (fence) {
-                    closeLists(null);
-                    const mark = fence[1];
-                    const lang = fence[2] || '';
-                    const buf = [];
-                    i++;
-                    while (i < lines.length && !new RegExp('^\\s*' + mark + '\\s*$').test(lines[i])) { buf.push(lines[i]); i++; }
-                    i++;
-                    out += `<pre class="md-code"${lang ? ` data-lang="${mdEscapeHtml(lang)}"` : ''}><code>${mdEscapeHtml(buf.join('\n'))}</code></pre>`;
-                    continue;
-                }
-
-                // 表格
-                if (/\|/.test(line) && i + 1 < lines.length && /^\s*\|?[\s:|-]+\|[\s:|-]*$/.test(lines[i + 1]) && /-/.test(lines[i + 1])) {
-                    closeLists(null);
-                    const splitRow = r => r.replace(/^\s*\|/, '').replace(/\|\s*$/, '').split('|').map(c => c.trim());
-                    const head = splitRow(line);
-                    const aligns = splitRow(lines[i + 1]).map(c => {
-                        if (/^:.*:$/.test(c)) return 'center';
-                        if (/:$/.test(c)) return 'right';
-                        if (/^:/.test(c)) return 'left';
-                        return '';
-                    });
-                    i += 2;
-                    let body = '';
-                    while (i < lines.length && /\S/.test(lines[i]) && /\|/.test(lines[i])) {
-                        const cells = splitRow(lines[i]);
-                        body += '<tr>' + head.map((_, k) =>
-                            `<td${aligns[k] ? ` style="text-align:${aligns[k]}"` : ''}>${mdInline(cells[k] || '')}</td>`).join('') + '</tr>';
-                        i++;
-                    }
-                    out += `<table class="md-table"><thead><tr>${head.map((h, k) =>
-                        `<th${aligns[k] ? ` style="text-align:${aligns[k]}"` : ''}>${mdInline(h)}</th>`).join('')}</tr></thead><tbody>${body}</tbody></table>`;
-                    continue;
-                }
-
-                // 空行
-                if (!line.trim()) { closeLists(null); i++; continue; }
-
-                // 分隔线
-                if (/^\s*([-*_])\s*(\1\s*){2,}$/.test(line)) { closeLists(null); out += '<hr>'; i++; continue; }
-
-                // 标题
-                let m = line.match(/^(#{1,6})\s+(.*?)\s*#*\s*$/);
-                if (m) {
-                    closeLists(null);
-                    const lv = m[1].length;
-                    out += `<h${lv} id="${mdSlug(m[2])}">${mdInline(m[2])}</h${lv}>`;
-                    i++; continue;
-                }
-                // Setext 标题
-                if (i + 1 < lines.length && /\S/.test(line) && /^\s*(=+|-{2,})\s*$/.test(lines[i + 1]) && !/^\s*[-*+]\s/.test(line)) {
-                    closeLists(null);
-                    const lv = lines[i + 1].trim()[0] === '=' ? 1 : 2;
-                    out += `<h${lv} id="${mdSlug(line)}">${mdInline(line.trim())}</h${lv}>`;
-                    i += 2; continue;
-                }
-
-                // 引用块（可含多行，递归渲染）
-                if (/^\s*>/.test(line)) {
-                    closeLists(null);
-                    const buf = [];
-                    while (i < lines.length && (/^\s*>/.test(lines[i]) || (buf.length && /\S/.test(lines[i])))) {
-                        buf.push(lines[i].replace(/^\s*>\s?/, ''));
-                        i++;
-                    }
-                    out += `<blockquote>${markdownToHtml(buf.join('\n'))}</blockquote>`;
-                    continue;
-                }
-
-                // 列表（支持嵌套与任务列表）
-                m = line.match(/^(\s*)([-*+]|\d+[.)])\s+(.*)$/);
-                if (m) {
-                    const indent = m[1].replace(/\t/g, '    ').length;
-                    const type = /^\d/.test(m[2]) ? 'ol' : 'ul';
-                    let content = m[3];
-                    while (listStack.length && listStack[listStack.length - 1].indent > indent) {
-                        out += `</li></${listStack.pop().type}>`;
-                    }
-                    const top = listStack[listStack.length - 1];
-                    if (!top || top.indent < indent) {
-                        const start = type === 'ol' ? parseInt(m[2], 10) : 1;
-                        out += `<${type}${type === 'ol' && start !== 1 ? ` start="${start}"` : ''}><li>`;
-                        listStack.push({ type: type, indent: indent });
-                    } else if (top.type !== type) {
-                        out += `</li></${top.type}>`;
-                        listStack.pop();
-                        out += `<${type}><li>`;
-                        listStack.push({ type: type, indent: indent });
-                    } else {
-                        out += '</li><li>';
-                    }
-                    const task = content.match(/^\[([ xX])\]\s+(.*)$/);
-                    if (task) {
-                        out = out.replace(/<li>$/, '<li class="md-task">');
-                        out += `<input type="checkbox" disabled${/[xX]/.test(task[1]) ? ' checked' : ''}> ` + mdInline(task[2]);
-                    } else {
-                        out += mdInline(content);
-                    }
-                    i++; continue;
-                }
-
-                // 原生 HTML 块原样输出
-                if (/^\s*<([a-zA-Z][\w-]*)(\s|>|\/)/.test(line)) {
-                    closeLists(null);
-                    out += line;
-                    i++; continue;
-                }
-
-                // 普通段落（合并后续连续行）
-                closeLists(null);
-                const para = [line.trim()];
-                i++;
-                while (i < lines.length && lines[i].trim() &&
-                       !/^\s*(#{1,6}\s|>|```|~~~|([-*+]|\d+[.)])\s)/.test(lines[i]) &&
-                       !/^\s*([-*_])\s*(\1\s*){2,}$/.test(lines[i])) {
-                    para.push(lines[i].trim());
-                    i++;
-                }
-                out += `<p>${mdInline(para.join('\n')).replace(/\n/g, '<br>')}</p>`;
-            }
-            closeLists(null);
-            return out;
-        }
-        // 生成可直接写入 iframe 的完整 Markdown 预览文档（深色主题，自带样式）
-        function buildMarkdownPreviewDoc(mdText) {
-            return `<!DOCTYPE html><html><head><meta charset="utf-8">
-<style>
-  :root{color-scheme:dark}
-  body{margin:0;padding:28px 34px 60px;background:#0d1117;color:#c9d1d9;
-       font:15px/1.75 -apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft YaHei",sans-serif;
-       word-wrap:break-word}
-  h1,h2,h3,h4,h5,h6{margin:26px 0 14px;font-weight:650;line-height:1.3;color:#e6edf3}
-  h1{font-size:2em;padding-bottom:.3em;border-bottom:1px solid #30363d}
-  h2{font-size:1.5em;padding-bottom:.3em;border-bottom:1px solid #30363d}
-  h3{font-size:1.25em} h4{font-size:1em} h5{font-size:.9em} h6{font-size:.85em;color:#8b949e}
-  p{margin:0 0 14px}
-  a{color:#58a6ff;text-decoration:none} a:hover{text-decoration:underline}
-  code{background:#161b22;border:1px solid #30363d;border-radius:5px;padding:.15em .4em;
-       font-family:"Cascadia Code",Consolas,Monaco,monospace;font-size:.88em;color:#79c0ff}
-  pre.md-code{position:relative;background:#161b22;border:1px solid #30363d;border-radius:8px;
-       padding:14px 16px;overflow:auto;margin:0 0 16px}
-  pre.md-code code{background:none;border:0;padding:0;color:#c9d1d9;font-size:.86em;line-height:1.6}
-  pre.md-code[data-lang]::after{content:attr(data-lang);position:absolute;top:6px;right:10px;
-       font-size:11px;color:#6e7681;text-transform:uppercase;letter-spacing:.5px}
-  blockquote{margin:0 0 16px;padding:2px 16px;border-left:4px solid #3b434b;color:#8b949e;background:#11161d;border-radius:0 6px 6px 0}
-  blockquote > :last-child{margin-bottom:0}
-  ul,ol{margin:0 0 14px;padding-left:1.9em}
-  li{margin:4px 0} li.md-task{list-style:none;margin-left:-1.4em}
-  li.md-task input{margin-right:7px;vertical-align:middle}
-  hr{height:1px;border:0;background:#30363d;margin:26px 0}
-  table.md-table{border-collapse:collapse;margin:0 0 18px;display:block;overflow:auto;max-width:100%}
-  table.md-table th,table.md-table td{border:1px solid #30363d;padding:7px 14px}
-  table.md-table th{background:#161b22;font-weight:650;color:#e6edf3}
-  table.md-table tr:nth-child(2n) td{background:#11161d}
-  img{max-width:100%;border-radius:6px}
-  del{color:#8b949e}
-  ::-webkit-scrollbar{width:10px;height:10px}
-  ::-webkit-scrollbar-thumb{background:#30363d;border-radius:5px}
-  ::-webkit-scrollbar-thumb:hover{background:#484f58}
-</style></head><body>${markdownToHtml(mdText || '')}</body></html>`;
-        }
-
-        // ===== 排序偏好持久化（名称/修改日期/类型/大小 + 升降序）=====
-        const SORT_PREF_KEY = 'JISHENG_OS_SORT_PREF';
-        function loadSortPref() {
-            try {
-                const raw = localStorage.getItem(SORT_PREF_KEY);
-                if (raw) {
-                    const p = JSON.parse(raw);
-                    const allow = ['name', 'date', 'type', 'size'];
-                    return {
-                        sortBy: allow.includes(p.sortBy) ? p.sortBy : 'name',
-                        sortAsc: p.sortAsc !== false
-                    };
-                }
-            } catch (e) {}
-            return { sortBy: 'name', sortAsc: true };
-        }
-        function saveSortPref(sortBy, sortAsc) {
-            try { localStorage.setItem(SORT_PREF_KEY, JSON.stringify({ sortBy: sortBy, sortAsc: !!sortAsc })); } catch (e) {}
-        }
-
-        // ===== 文件夹真实大小计算（异步、带缓存、限流，不阻塞 UI）=====
-        const FolderSize = {
-            cache: new Map(),        // path -> { size, time }
-            pending: new Map(),      // path -> [callbacks]
-            TTL: 30000,              // 缓存 30 秒，避免重复递归扫描
-            running: 0,
-            MAX_CONCURRENT: 2,
-            queue: [],
-            get(path) {
-                const c = this.cache.get(path);
-                if (c && (Date.now() - c.time) < this.TTL) return c.size;
-                return null;
-            },
-            invalidate(path) {
-                if (!path) { this.cache.clear(); return; }
-                for (const key of Array.from(this.cache.keys())) {
-                    if (key === path || key.indexOf(path + '/') === 0 || path.indexOf(key + '/') === 0) {
-                        this.cache.delete(key);
-                    }
-                }
-            },
-            request(path, cb) {
-                const cached = this.get(path);
-                if (cached !== null) { cb(cached); return; }
-                if (this.pending.has(path)) { this.pending.get(path).push(cb); return; }
-                this.pending.set(path, [cb]);
-                this.queue.push(path);
-                this._pump();
-            },
-            _pump() {
-                while (this.running < this.MAX_CONCURRENT && this.queue.length) {
-                    const path = this.queue.shift();
-                    this.running++;
-                    this._walk(path, 0, (size) => {
-                        this.running--;
-                        this.cache.set(path, { size: size, time: Date.now() });
-                        const cbs = this.pending.get(path) || [];
-                        this.pending.delete(path);
-                        cbs.forEach(fn => { try { fn(size); } catch (e) {} });
-                        // 让出主线程，避免连续递归造成卡顿
-                        setTimeout(() => this._pump(), 0);
-                    });
-                }
-            },
-            // 递归统计，带深度与条目上限保护
-            _walk(dir, depth, done) {
-                if (depth > 12) { done(0); return; }
-                SYSTEM.fs.readdir(dir, (err, files) => {
-                    if (err || !files || files.length === 0) { done(0); return; }
-                    let total = 0;
-                    let i = 0;
-                    const next = () => {
-                        // 每处理 60 个条目让出一次主线程
-                        let budget = 60;
-                        const step = () => {
-                            if (i >= files.length) { done(total); return; }
-                            if (budget-- <= 0) { setTimeout(next, 0); return; }
-                            const name = files[i++];
-                            const p = dir + '/' + name;
-                            SYSTEM.fs.stat(p, (e2, st) => {
-                                if (!e2 && st) {
-                                    const isDir = st.isDirectory ? (typeof st.isDirectory === 'function' ? st.isDirectory() : st.isDirectory) : false;
-                                    if (isDir) {
-                                        this._walk(p, depth + 1, (s) => { total += s; step(); });
-                                        return;
-                                    }
-                                    total += (st.size || 0);
-                                }
-                                step();
-                            });
-                        };
-                        step();
-                    };
-                    next();
-                });
-            }
-        };
-        window.FolderSize = FolderSize;
-
         function formatFileSize(bytes) {
             if (bytes === 0 || bytes == null) return '--';
             if (bytes < 1024) return bytes + ' B';
@@ -5111,9 +4811,94 @@
         }
 
         // 渲染文件夹内容
+        // ======== 排序偏好持久化：记住用户点击的排序列和升降序 ========
+        const FOLDER_SORT_PREF_KEY = 'JISHENG_OS_FOLDER_SORT';
+        function loadFolderSortPref() {
+            try {
+                const raw = localStorage.getItem(FOLDER_SORT_PREF_KEY);
+                if (raw) {
+                    const p = JSON.parse(raw);
+                    if (p && ['name', 'size', 'date', 'type'].indexOf(p.sortBy) !== -1) {
+                        return { sortBy: p.sortBy, sortAsc: !!p.sortAsc };
+                    }
+                }
+            } catch (e) {}
+            return { sortBy: 'name', sortAsc: true };
+        }
+        function saveFolderSortPref(sortBy, sortAsc) {
+            try { localStorage.setItem(FOLDER_SORT_PREF_KEY, JSON.stringify({ sortBy: sortBy, sortAsc: sortAsc })); } catch (e) {}
+        }
+
+        // ======== 文件夹大小：异步递归计算 + 短时缓存，不阻塞 UI ========
+        const DIR_SIZE_CACHE = {};          // path -> { size, time }
+        const DIR_SIZE_PENDING = {};        // path -> [callbacks]（合并并发请求，同一文件夹只算一次）
+        const DIR_SIZE_TTL = 10000;         // 缓存 10 秒，重复渲染/排序时直接命中，不重复遍历
+        const DIR_SIZE_MAX_ENTRIES = 20000; // 安全上限：超大目录停止深入，返回已累计大小，避免卡顿
+
+        function getCachedDirSize(path) {
+            const c = DIR_SIZE_CACHE[path];
+            if (c && (Date.now() - c.time) < DIR_SIZE_TTL) return c.size;
+            return null;
+        }
+
+        // 文件系统发生写入时调用：清空全部文件夹大小缓存（见 fs 写入操作的包装）
+        function invalidateAllDirSizes() {
+            for (const k in DIR_SIZE_CACHE) delete DIR_SIZE_CACHE[k];
+        }
+
+        function computeDirSize(path, cb) {
+            const cached = getCachedDirSize(path);
+            if (cached !== null) { cb(cached); return; }
+            if (DIR_SIZE_PENDING[path]) { DIR_SIZE_PENDING[path].push(cb); return; }
+            DIR_SIZE_PENDING[path] = [cb];
+
+            let total = 0;
+            let pendingDirs = 1;   // 正在遍历中的目录数（含根）
+            let entryCount = 0;
+            let capped = false;
+
+            const finish = () => {
+                DIR_SIZE_CACHE[path] = { size: total, time: Date.now() };
+                const cbs = DIR_SIZE_PENDING[path] || [];
+                delete DIR_SIZE_PENDING[path];
+                cbs.forEach(fn => { try { fn(total); } catch (e) {} });
+            };
+
+            const walk = (dir) => {
+                SYSTEM.fs.readdir(dir, (err, files) => {
+                    if (err || !files || files.length === 0 || capped) {
+                        if (--pendingDirs === 0) finish();
+                        return;
+                    }
+                    entryCount += files.length;
+                    if (entryCount > DIR_SIZE_MAX_ENTRIES) capped = true;
+                    let filePending = files.length;
+                    files.forEach(f => {
+                        SYSTEM.fs.stat(dir + '/' + f, (e2, st) => {
+                            if (!e2 && st) {
+                                const isDir = st.isDirectory ? (typeof st.isDirectory === 'function' ? st.isDirectory() : st.isDirectory) : false;
+                                if (isDir) {
+                                    if (!capped) { pendingDirs++; walk(dir + '/' + f); }
+                                } else {
+                                    total += st.size || 0;
+                                }
+                            }
+                            if (--filePending === 0) {
+                                if (--pendingDirs === 0) finish();
+                            }
+                        });
+                    });
+                });
+            };
+            walk(path);
+        }
+
         function renderFolderContent(windowId) {
             const state = SYSTEM.folderWindowStates[windowId];
             if (!state) return;
+            // 渲染令牌：防止旧的异步回调覆盖新渲染的内容
+            state._renderToken = (state._renderToken || 0) + 1;
+            const renderToken = state._renderToken;
 
             const filelistEl = document.getElementById('folder-filelist-' + windowId);
             const colHeaderEl = document.getElementById('folder-col-header-' + windowId);
@@ -5123,6 +4908,7 @@
 
             // 获取文件列表
             SYSTEM.fs.readdir(state.currentPath, (err, files) => {
+                if (state._renderToken !== renderToken) return; // 已有更新的渲染，放弃本次
                 if (err) {
                     filelistEl.innerHTML = '<div style="padding:40px;text-align:center;color:#e81123;font-size:13px">无法读取文件夹</div>';
                     return;
@@ -5133,6 +4919,7 @@
                 const allStats = {};
                 
                 const afterStats = () => {
+                    if (state._renderToken !== renderToken) return; // 已有更新的渲染，放弃本次
                     // 过滤搜索
                     let filtered = files;
                     if (state.searchQuery) {
@@ -5151,8 +4938,9 @@
                         if (state.sortBy === 'name') {
                             cmp = a.localeCompare(b, 'zh-CN');
                         } else if (state.sortBy === 'size') {
-                            const aSize = aDir ? (FolderSize.get(state.currentPath + '/' + a) ?? -1) : (allStats[a]?.size || 0);
-                            const bSize = bDir ? (FolderSize.get(state.currentPath + '/' + b) ?? -1) : (allStats[b]?.size || 0);
+                            // 文件夹使用缓存的实际大小参与排序（尚未算出时按 0 处理，算出后会自动重排）
+                            const aSize = aDir ? (getCachedDirSize(state.currentPath + '/' + a) || 0) : (allStats[a]?.size || 0);
+                            const bSize = bDir ? (getCachedDirSize(state.currentPath + '/' + b) || 0) : (allStats[b]?.size || 0);
                             cmp = aSize - bSize;
                         } else if (state.sortBy === 'date') {
                             const aTime = allStats[a]?.mtime || 0;
@@ -5199,10 +4987,8 @@
                             const stats = allStats[file] || {};
                             const isDir = stats.isDirectory;
                             const iconPath = getFileIconPath(file, isDir);
-                            const cachedDirSize = isDir ? FolderSize.get(fullPathForSize(state.currentPath, file)) : null;
-                            const sizeStr = isDir
-                                ? (cachedDirSize !== null ? (cachedDirSize === 0 ? '0 B' : formatFileSize(cachedDirSize)) : '<span class="dir-size-pending">…</span>')
-                                : formatFileSize(stats.size);
+                            const cachedDirSize = isDir ? getCachedDirSize(state.currentPath + '/' + file) : null;
+                            const sizeStr = isDir ? (cachedDirSize !== null ? formatFileSize(cachedDirSize) : '…') : formatFileSize(stats.size);
                             const dateStr = formatDate(stats.mtime);
                             const typeStr = isDir ? '文件夹' : getFileExtension(file);
                             const fullPath = state.currentPath + '/' + file;
@@ -5259,11 +5045,6 @@
                         filelistEl.appendChild(gridContainer);
                     }
 
-                    // 异步填充文件夹真实大小（仅列表视图 + 仅当前可见行，限流执行，不阻塞 UI）
-                    if (state.viewMode === 'list') {
-                        scheduleFolderSizes(windowId, filelistEl);
-                    }
-
                     // 更新状态栏
                     const dirCount = filtered.filter(f => {
                         const d = allStats[f]?.isDirectory;
@@ -5283,14 +5064,48 @@
                     }
                     if (statusCountEl) statusCountEl.textContent = statusText;
 
-                    // 计算总大小
-                    let totalSize = 0;
-                    filtered.forEach(f => {
-                        if (!allStats[f]?.isDirectory) {
-                            totalSize += (allStats[f]?.size || 0);
-                        }
-                    });
+                    // 计算总大小（文件夹使用已缓存的实际大小，未算出的稍后异步补上）
+                    const computeTotalSize = () => {
+                        let t = 0;
+                        filtered.forEach(f => {
+                            if (allStats[f]?.isDirectory) {
+                                t += (getCachedDirSize(state.currentPath + '/' + f) || 0);
+                            } else {
+                                t += (allStats[f]?.size || 0);
+                            }
+                        });
+                        return t;
+                    };
+                    const totalSize = computeTotalSize();
                     if (statusSizeEl) statusSizeEl.textContent = totalSize > 0 ? '总计: ' + formatFileSize(totalSize) : '';
+
+                    // 异步计算各文件夹的实际大小（带缓存 + 请求合并，不阻塞 UI），算完回填单元格
+                    if (state.viewMode === 'list') {
+                        const itemEls = filelistEl.querySelectorAll('.folder-item');
+                        const dirJobs = [];
+                        filtered.forEach((file, i) => {
+                            if (allStats[file]?.isDirectory) dirJobs.push({ file: file, index: i });
+                        });
+                        let dirPending = dirJobs.length;
+                        let sizeChanged = false;
+                        dirJobs.forEach(job => {
+                            const fullPath = state.currentPath + '/' + job.file;
+                            const usedSize = getCachedDirSize(fullPath); // 渲染时用的值（可能为 null）
+                            computeDirSize(fullPath, (size) => {
+                                if (state._renderToken !== renderToken) return; // 窗口已重新渲染/导航，放弃回填
+                                const cell = itemEls[job.index] && itemEls[job.index].querySelector('.file-size');
+                                if (cell) cell.textContent = formatFileSize(size);
+                                if (usedSize !== size) sizeChanged = true;
+                                if (--dirPending === 0) {
+                                    // 全部算完：更新状态栏总计
+                                    const t = computeTotalSize();
+                                    if (statusSizeEl) statusSizeEl.textContent = t > 0 ? '总计: ' + formatFileSize(t) : '';
+                                    // 若按大小排序且数值有变化，重排一次（此时全部命中缓存，不会重复计算）
+                                    if (sizeChanged && state.sortBy === 'size') renderFolderContent(windowId);
+                                }
+                            });
+                        });
+                    }
 
                     // 更新侧边栏文件夹列表
                     updateSidebarFolderList(windowId);
@@ -5319,45 +5134,6 @@
                     });
                 }
             });
-        }
-
-        function fullPathForSize(dir, name) { return dir + '/' + name; }
-
-        // 仅为"进入视口"的文件夹行计算真实大小，滚动时按需补算，避免一次性递归全部目录
-        function scheduleFolderSizes(windowId, filelistEl) {
-            const state = SYSTEM.folderWindowStates[windowId];
-            if (!state || !filelistEl) return;
-
-            // 清理旧的观察器
-            if (state._sizeObserver) { try { state._sizeObserver.disconnect(); } catch (e) {} }
-
-            const fill = (row) => {
-                if (row.dataset.sizeDone === '1') return;
-                row.dataset.sizeDone = '1';
-                const path = row.dataset.path;
-                const pathAtRequest = state.currentPath;
-                FolderSize.request(path, (size) => {
-                    // 目录可能已切换/重绘，校验后再写入
-                    if (!document.body.contains(row) || state.currentPath !== pathAtRequest) return;
-                    const el = row.querySelector('.file-size');
-                    if (el) el.textContent = size === 0 ? '0 B' : formatFileSize(size);
-                });
-            };
-
-            const rows = Array.from(filelistEl.querySelectorAll('.folder-item[data-isdir="true"]'));
-            if (!rows.length) return;
-
-            if (typeof IntersectionObserver === 'function') {
-                const io = new IntersectionObserver((entries) => {
-                    entries.forEach(en => {
-                        if (en.isIntersecting) { fill(en.target); io.unobserve(en.target); }
-                    });
-                }, { root: filelistEl, rootMargin: '200px' });
-                rows.forEach(r => io.observe(r));
-                state._sizeObserver = io;
-            } else {
-                rows.slice(0, 50).forEach(fill);
-            }
         }
 
         // 文件夹项双击处理
@@ -5401,7 +5177,8 @@
                 state.sortBy = sortBy;
                 state.sortAsc = true;
             }
-            saveSortPref(state.sortBy, state.sortAsc);
+            // 保存排序偏好，下次打开窗口沿用
+            saveFolderSortPref(state.sortBy, state.sortAsc);
             renderFolderContent(windowId);
         }
 
@@ -5554,7 +5331,6 @@
             const state = SYSTEM.folderWindowStates[windowId];
             if (!state) return;
             state.fileStats = {};
-            FolderSize.invalidate(state.currentPath);
             renderFolderContent(windowId);
             refreshDesktop();
             Notify.success('已刷新', '文件夹内容已更新');
@@ -9873,6 +9649,171 @@
             return off;
         }
 
+        // ======== Markdown 预览渲染：内置轻量解析器（零依赖、离线可用） ========
+        function mdEscapeHtml(s) {
+            return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        }
+
+        function mdRenderInline(text) {
+            let s = mdEscapeHtml(text);
+            // 行内代码先占位，内部不再解析其它语法
+            const codeSpans = [];
+            s = s.replace(/`([^`]+)`/g, (m, c) => { codeSpans.push('<code>' + c + '</code>'); return '\u0000' + (codeSpans.length - 1) + '\u0000'; });
+            // 图片 / 链接 / 自动链接
+            s = s.replace(/!\[([^\]]*)\]\(([^)\s]+)(?:\s+&quot;[^)]*&quot;)?\)/g, '<img alt="$1" src="$2">');
+            s = s.replace(/\[([^\]]+)\]\(([^)\s]+)(?:\s+&quot;[^)]*&quot;)?\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+            s = s.replace(/(^|\s)(https?:\/\/[^\s<]+)/g, '$1<a href="$2" target="_blank" rel="noopener">$2</a>');
+            // 粗体 / 斜体 / 删除线
+            s = s.replace(/\*\*\*([^*]+)\*\*\*/g, '<strong><em>$1</em></strong>');
+            s = s.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+            s = s.replace(/__([^_]+)__/g, '<strong>$1</strong>');
+            s = s.replace(/\*([^*\n]+)\*/g, '<em>$1</em>');
+            s = s.replace(/(^|[\s(])_([^_\n]+)_(?=$|[\s).,;:!?])/g, '$1<em>$2</em>');
+            s = s.replace(/~~([^~]+)~~/g, '<del>$1</del>');
+            // 还原行内代码
+            s = s.replace(/\u0000(\d+)\u0000/g, (m, i) => codeSpans[+i]);
+            return s;
+        }
+
+        function mdRenderBlocks(md) {
+            const lines = String(md).replace(/\r\n?/g, '\n').split('\n');
+            const n = lines.length;
+            const isBlank = (l) => /^\s*$/.test(l);
+            const isTableSep = (l) => /^\s*\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)*\|?\s*$/.test(l);
+            const splitRow = (l) => {
+                let t = l.trim();
+                if (t.startsWith('|')) t = t.slice(1);
+                if (t.endsWith('|')) t = t.slice(0, -1);
+                return t.split('|').map(c => c.trim());
+            };
+            let html = '';
+            let i = 0;
+            while (i < n) {
+                const line = lines[i];
+                if (isBlank(line)) { i++; continue; }
+                // 围栏代码块 ``` / ~~~
+                const fence = line.match(/^\s*(```+|~~~+)\s*([^\s`]*)/);
+                if (fence) {
+                    const closeRe = fence[1][0] === '`' ? /^\s*```/ : /^\s*~~~/;
+                    const lang = fence[2] || '';
+                    i++;
+                    const buf = [];
+                    while (i < n && !closeRe.test(lines[i])) { buf.push(lines[i]); i++; }
+                    i++; // 跳过结束围栏
+                    html += '<pre><code' + (lang ? ' class="lang-' + mdEscapeHtml(lang) + '"' : '') + '>' + mdEscapeHtml(buf.join('\n')) + '</code></pre>';
+                    continue;
+                }
+                // 标题
+                const h = line.match(/^(#{1,6})\s+(.*?)\s*#*\s*$/);
+                if (h) { const lv = h[1].length; html += '<h' + lv + '>' + mdRenderInline(h[2]) + '</h' + lv + '>'; i++; continue; }
+                // 分隔线
+                if (/^\s{0,3}([-*_])(\s*\1){2,}\s*$/.test(line)) { html += '<hr>'; i++; continue; }
+                // 引用块（可嵌套，递归解析）
+                if (/^\s*>/.test(line)) {
+                    const buf = [];
+                    while (i < n && /^\s*>/.test(lines[i])) { buf.push(lines[i].replace(/^\s*>\s?/, '')); i++; }
+                    html += '<blockquote>' + mdRenderBlocks(buf.join('\n')) + '</blockquote>';
+                    continue;
+                }
+                // 表格（GFM）
+                if (line.indexOf('|') !== -1 && i + 1 < n && isTableSep(lines[i + 1])) {
+                    const headers = splitRow(line);
+                    const aligns = splitRow(lines[i + 1]).map(c => {
+                        const L = c.startsWith(':'), R = c.endsWith(':');
+                        return L && R ? 'center' : R ? 'right' : L ? 'left' : '';
+                    });
+                    i += 2;
+                    const thead = '<tr>' + headers.map((c, k) => '<th' + (aligns[k] ? ' style="text-align:' + aligns[k] + '"' : '') + '>' + mdRenderInline(c) + '</th>').join('') + '</tr>';
+                    let tbody = '';
+                    while (i < n && lines[i].indexOf('|') !== -1 && !isBlank(lines[i])) {
+                        tbody += '<tr>' + splitRow(lines[i]).map((c, k) => '<td' + (aligns[k] ? ' style="text-align:' + aligns[k] + '"' : '') + '>' + mdRenderInline(c) + '</td>').join('') + '</tr>';
+                        i++;
+                    }
+                    html += '<table><thead>' + thead + '</thead><tbody>' + tbody + '</tbody></table>';
+                    continue;
+                }
+                // 列表（有序/无序，按缩进嵌套，支持任务清单）
+                if (/^(\s*)([-*+]|\d+[.)])\s+/.test(line)) {
+                    const items = [];
+                    while (i < n) {
+                        const m = lines[i].match(/^(\s*)([-*+]|\d+[.)])\s+(.*)$/);
+                        if (m) {
+                            items.push({ indent: m[1].replace(/\t/g, '    ').length, ordered: /\d/.test(m[2]), text: m[3] });
+                            i++;
+                        } else if (isBlank(lines[i])) {
+                            if (i + 1 < n && /^(\s*)([-*+]|\d+[.)])\s+/.test(lines[i + 1])) { i++; } else break;
+                        } else if (/^\s{2,}\S/.test(lines[i]) && items.length) {
+                            items[items.length - 1].text += '\n' + lines[i].trim();
+                            i++;
+                        } else break;
+                    }
+                    let out = '';
+                    const stack = [];
+                    items.forEach(it => {
+                        let txt = it.text, task = '';
+                        const tm = txt.match(/^\[([ xX])\]\s+([\s\S]*)$/);
+                        if (tm) { task = '<input type="checkbox" disabled' + (tm[1] !== ' ' ? ' checked' : '') + '> '; txt = tm[2]; }
+                        while (stack.length && it.indent < stack[stack.length - 1].indent) {
+                            out += stack.pop().ordered ? '</li></ol>' : '</li></ul>';
+                        }
+                        // 同级但列表类型变化（无序 ↔ 有序）：关闭当前列表另起新列表
+                        if (stack.length && it.indent === stack[stack.length - 1].indent && it.ordered !== stack[stack.length - 1].ordered) {
+                            out += stack.pop().ordered ? '</li></ol>' : '</li></ul>';
+                        }
+                        if (!stack.length || it.indent > stack[stack.length - 1].indent) {
+                            stack.push({ indent: it.indent, ordered: it.ordered });
+                            out += it.ordered ? '<ol>' : '<ul>';
+                        } else {
+                            out += '</li>';
+                        }
+                        out += '<li>' + task + mdRenderInline(txt).replace(/\n/g, '<br>');
+                    });
+                    while (stack.length) { out += stack.pop().ordered ? '</li></ol>' : '</li></ul>'; }
+                    html += out;
+                    continue;
+                }
+                // 普通段落：收集到空行或下一个块级元素为止
+                const buf = [line];
+                i++;
+                while (i < n && !isBlank(lines[i]) && !/^\s*(#{1,6}\s|>|```|~~~)/.test(lines[i]) && !/^(\s*)([-*+]|\d+[.)])\s+/.test(lines[i])) {
+                    buf.push(lines[i]);
+                    i++;
+                }
+                html += '<p>' + buf.map(mdRenderInline).join('<br>') + '</p>';
+            }
+            return html;
+        }
+
+        function renderMarkdownToHtml(md) {
+            return mdRenderBlocks(md);
+        }
+
+        // 把渲染结果包装成带 GitHub 暗色样式的完整 HTML 文档（用于编辑器预览 iframe / 新窗口打开）
+        function buildMarkdownPreviewDoc(md) {
+            const body = (md && md.trim()) ? renderMarkdownToHtml(md) : '<p style="color:#8b949e">（空 Markdown 文档）</p>';
+            return '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>'
+                + 'body{margin:0;padding:24px 28px;background:#0d1117;color:#e6edf3;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans","PingFang SC","Microsoft YaHei",Helvetica,Arial,sans-serif;font-size:15px;line-height:1.65;word-wrap:break-word}'
+                + 'h1,h2,h3,h4,h5,h6{margin:1.2em 0 .5em;font-weight:600;line-height:1.3}'
+                + 'h1{font-size:1.9em;padding-bottom:.3em;border-bottom:1px solid #30363d}'
+                + 'h2{font-size:1.5em;padding-bottom:.3em;border-bottom:1px solid #30363d}'
+                + 'h3{font-size:1.25em}h4{font-size:1.1em}h5{font-size:1em}h6{font-size:.9em;color:#8b949e}'
+                + 'p{margin:.6em 0}a{color:#58a6ff;text-decoration:none}a:hover{text-decoration:underline}'
+                + 'code{background:rgba(110,118,129,.35);padding:.15em .4em;border-radius:5px;font-family:ui-monospace,SFMono-Regular,"SF Mono",Consolas,"Liberation Mono",Menlo,monospace;font-size:.88em}'
+                + 'pre{background:#161b22;border:1px solid #30363d;border-radius:8px;padding:14px 16px;overflow:auto;margin:.8em 0}'
+                + 'pre code{background:none;padding:0;font-size:.86em;line-height:1.55;display:block}'
+                + 'blockquote{margin:.8em 0;padding:.2em 1em;border-left:4px solid #30363d;color:#8b949e}'
+                + 'blockquote>:first-child{margin-top:0}blockquote>:last-child{margin-bottom:0}'
+                + 'ul,ol{margin:.5em 0;padding-left:2em}li{margin:.25em 0}'
+                + 'li input[type=checkbox]{margin-right:.4em;vertical-align:middle}'
+                + 'table{border-collapse:collapse;margin:.8em 0;display:block;max-width:100%;overflow:auto}'
+                + 'th,td{border:1px solid #30363d;padding:6px 13px}th{font-weight:600;background:#161b22}'
+                + 'tbody tr:nth-child(2n){background:#161b22}'
+                + 'img{max-width:100%;border-radius:6px}'
+                + 'hr{height:1px;border:none;background:#30363d;margin:1.5em 0}'
+                + 'del{color:#8b949e}'
+                + '</style></head><body class="markdown-body">' + body + '</body></html>';
+        }
+
         function openCodeEditor(initialContent = '', filename = '未命名.html', saveDir = null) {
             const winId = createWindow({
                 title: 'HTML编辑器',
@@ -10170,13 +10111,12 @@
                 }
             })();
             
-            // 更新预览（Markdown 模式渲染为真实排版，而不是直接把源码当 HTML 显示）
+            // 更新预览（Markdown 模式下渲染为真正的 HTML 预览，而不是把原文当 HTML 塞进去）
             function updateEditorPreview() {
                 const code = editor.getValue();
                 previewLoading.classList.add('active');
-                const isMd = (langSelect && langSelect.value === 'markdown') ||
-                             (editor.getOption('mode') === 'markdown');
-                const htmlContent = isMd
+                const isMarkdownMode = langSelect && langSelect.value === 'markdown';
+                const htmlContent = isMarkdownMode
                     ? buildMarkdownPreviewDoc(code)
                     : (code || '<html><body style="margin:0;background:#0d1117;"></body></html>');
                 try {
@@ -10543,7 +10483,9 @@
             
             // 在新窗口打开
             function openEditorInNewWindow() {
-                const url = URL.createObjectURL(new Blob([editor.getValue()], { type: 'text/html' }));
+                const isMarkdownMode = langSelect && langSelect.value === 'markdown';
+                const content = isMarkdownMode ? buildMarkdownPreviewDoc(editor.getValue()) : editor.getValue();
+                const url = URL.createObjectURL(new Blob([content], { type: 'text/html' }));
                 window.open(url, '_blank');
                 setTimeout(() => URL.revokeObjectURL(url), 10000);
             }
@@ -10639,6 +10581,7 @@
                 const names = { 'htmlmixed': 'HTML', 'css': 'CSS', 'javascript': 'JavaScript', 'markdown': 'Markdown', 'application/json': 'JSON' };
                 document.getElementById(`editor-status-lang-${winId}`).textContent = names[this.value] || this.value;
                 Notify.info(`语言: ${names[this.value] || this.value}`);
+                // 切换语言后立即刷新预览（如切到/切出 Markdown 渲染模式）
                 updateEditorPreview();
             };
             
