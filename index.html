@@ -3112,7 +3112,7 @@
                                                 if(appConfig.icon && appConfig.icon.includes('<svg')) {
                                                     displayIcon = appConfig.icon.replace(/<\/?svg[^>]*>/g, '');
                                                 } else {
-                                                    displayIcon = '<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 9h6v6H9z"/>';
+                                                    displayIcon = iconBody('appUnknown');
                                                 }
                                             }
                                         }
@@ -4728,6 +4728,8 @@
             appCode:    '<polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>',
             appExplorer:'<path d="m6 14 1.5-2.9A2 2 0 0 1 9.24 10H20a2 2 0 0 1 1.94 2.5l-1.54 6a2 2 0 0 1-1.95 1.5H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H18a2 2 0 0 1 2 2v2"/>',
             appDefault: '<rect x="3" y="3" width="18" height="18" rx="2"/>',
+            // appUnknown: 未知/无图标应用的回退图标。
+            appUnknown: '<g style="stroke-width:2"><path d="M6.76 6.6A5.4 5.4 0 0 1 17.26 8.4C17.26 12 11.86 13.8 11.86 13.8"/><path d="M12 21h.01"/></g>',
             // --- UI 操作 ---
             uiBack:       '<path d="M15 18l-6-6 6-6"/>',
             uiRefresh:    '<path d="M1 4v6h6"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/>',
@@ -6964,8 +6966,8 @@
             const blob = new Blob([htmlContent], { type: 'text/html' });
             const url = URL.createObjectURL(blob);
 
-            // 根据icon配置生成图标HTML
-            let iconHtml = '<svg class="icon-svg sm" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 9h6v6H9z"/></svg>';
+            // 根据icon配置生成图标HTML（无自定义图标时，回退到集中式图标库的 appUnknown 问号图标）
+            let iconHtml = icon('appUnknown', 'sm');
             // 如果icon是SVG代码，直接使用
             if (appConfig.icon && appConfig.icon.includes('<svg')) {
                 iconHtml = appConfig.icon;
