@@ -330,10 +330,33 @@
             position: absolute; inset: 0; pointer-events: none; z-index: 0; 
         } 
 
-        .drag-preview { 
-            position: fixed; pointer-events: none; z-index: 10000; opacity: 0.8; 
-            background: rgba(24, 24, 32, 0.8); border-radius: 8px; padding: 10px; 
-            display: flex; flex-direction: column; align-items: center; 
+        /* === 拖拽幽灵（跟随指针的图标，替代原来的"已选中 N 个文件"面板） === */
+        .drag-ghost {
+            position: fixed; left: 0; top: 0;
+            z-index: 99990; pointer-events: none;
+            opacity: 0.88;
+            transform: translate(-50%, -60%) scale(1.06);
+            filter: drop-shadow(0 12px 18px rgba(0,0,0,0.5));
+            will-change: left, top;
+        }
+        .drag-ghost .icon-svg {
+            display: block; width: 56px; height: 56px;
+            color: rgba(255,255,255,0.95);
+        }
+        .drag-ghost .drag-ghost-badge {
+            position: absolute; right: -8px; top: -6px;
+            min-width: 18px; height: 18px; padding: 0 5px;
+            border-radius: 9px; box-sizing: border-box;
+            background: var(--accent-blue, #0078d4); color: #fff;
+            font-size: 11px; font-weight: 600; line-height: 18px; text-align: center;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.45);
+        }
+
+        /* 拖拽经过的投放目标高亮（桌面图标 / 侧边栏等通用） */
+        .drop-hover {
+            outline: 2px dashed var(--accent-blue, #0078d4) !important;
+            outline-offset: 2px;
+            background: rgba(0, 120, 212, 0.28) !important;
         }
 
         /* === 窗口系统 === */
@@ -2421,6 +2444,8 @@
 
         function handleNativeDragStart(e, filename) {
             if (!dragFileReady || !currentDragFile) {
+                SYSTEM._internalNativeDrag = true;
+                try { e.dataTransfer.setData('application/x-jisheng', '1'); } catch(_) {}
                 e.dataTransfer.setData('text/plain', filename);
                 return;
             }
@@ -2431,6 +2456,9 @@
                 lastModified: currentDragFile.mtime || Date.now()
             });
             e.dataTransfer.effectAllowed = 'copyMove';
+            // 标记：这是本系统发起的"拖出到真实桌面"，如果又被放回系统内部应当什么都不做
+            SYSTEM._internalNativeDrag = true;
+            try { e.dataTransfer.setData('application/x-jisheng', '1'); } catch(_) {}
             if (e.dataTransfer.items && e.dataTransfer.items.add) {
                 e.dataTransfer.items.add(file);
             }
@@ -2446,8 +2474,20 @@
 
         function handleNativeDragEnd(e) {
             e.target.style.opacity = '1';
+            SYSTEM._internalNativeDrag = false;
             dragFileReady = false;
             currentDragFile = null;
+        }
+
+        // 是否是"本系统自己发起的原生拖出"。
+        // 这种拖拽的唯一目的地是浏览器外的真实桌面；放回系统内部时应当什么都不发生，
+        // 而不是把文件当成外部文件重新导入一遍（会误报"导入完成"）。
+        function isInternalNativeDrag(e) {
+            try {
+                const types = e && e.dataTransfer && e.dataTransfer.types;
+                if (types && Array.prototype.indexOf.call(types, 'application/x-jisheng') !== -1) return true;
+            } catch(_) {}
+            return !!SYSTEM._internalNativeDrag;
         }
 
         // === 初始化内核 (BrowserFS) ===
@@ -3370,7 +3410,14 @@
 
         function onIconDragMove(e) {
             if(!dragState) return;
-            
+
+            // 鼠标在浏览器窗口外松开后又移回页面：按键已松，直接收尾，
+            // 否则图标会一直粘在指针上。
+            if(e.type === 'mousemove' && e.buttons === 0) {
+                onIconDragEnd(e);
+                return;
+            }
+
             if(e.type === 'touchmove') e.preventDefault();
 
             const pos = getClientXY(e);
@@ -3403,11 +3450,14 @@
                         i.el.style.top = (i.screenStartTop + dy) + 'px';
                     });
                 });
+                // 实时高亮将要落入的目标（文件夹图标 / 文件夹窗口）
+                updateDropHighlight(pos.x, pos.y, dragState.icons.map(i => i.el));
             }
         }
 
         function onIconDragEnd(e) {
             nativeDragHelper.style.display = 'none';
+            endDropHighlight();
             
             document.removeEventListener('mousemove', onIconDragMove);
             document.removeEventListener('mouseup', onIconDragEnd);
@@ -3653,9 +3703,16 @@
             document.addEventListener('mouseup', handleEnd);
             document.addEventListener('touchend', handleEnd);
             
-            desktop.ondragover = e => e.preventDefault();
+            desktop.ondragover = e => {
+                e.preventDefault();
+                // 自己拖出去的东西又拖回系统内：不接收，光标显示"不可放置"
+                if (isInternalNativeDrag(e)) { try { e.dataTransfer.dropEffect = 'none'; } catch(_) {} }
+            };
             desktop.ondrop = async (e) => {
                 e.preventDefault();
+
+                // 拖出到真实桌面的过程中又放回系统内部 —— 什么都不做
+                if (isInternalNativeDrag(e)) return;
 
                 // === 定义防抖刷新函数 (核心修复) ===
                 // 只有当文件停止写入 200ms 后，才执行一次刷新
@@ -5004,7 +5061,7 @@
                                 <div class="folder-item" data-filename="${safeFile}" data-path="${safePath}" data-isdir="${isDir}"
                                      draggable="true"
                                      ondragstart="return handleFolderItemDragStart(event, this)"
-                                     ondragend="SYSTEM._folderNativeDrag=false; this.style.outline='none';"
+                                     ondragend="SYSTEM._folderNativeDrag=false; SYSTEM._internalNativeDrag=false; this.style.outline='none';"
                                      onmouseenter="preloadFolderItemForDrag(this)"
                                      ondblclick="handleFolderItemDblClick('${windowId}', '${safeFile}', '${safePath}', ${isDir})"
                                      onmousedown="handleFolderItemMouseDown(event, '${windowId}')"
@@ -5035,7 +5092,7 @@
                                 <div class="folder-grid-item" data-filename="${safeFile}" data-path="${safePath}" data-isdir="${isDir}"
                                      draggable="true"
                                      ondragstart="return handleFolderItemDragStart(event, this)"
-                                     ondragend="SYSTEM._folderNativeDrag=false; this.style.outline='none';"
+                                     ondragend="SYSTEM._folderNativeDrag=false; SYSTEM._internalNativeDrag=false; this.style.outline='none';"
                                      onmouseenter="preloadFolderItemForDrag(this)"
                                      ondblclick="handleFolderItemDblClick('${windowId}', '${safeFile}', '${safePath}', ${isDir})"
                                      onmousedown="handleFolderItemMouseDown(event, '${windowId}')"
@@ -5424,6 +5481,8 @@
             let dragCounter = 0;
             contentArea.addEventListener('dragenter', (e) => {
                 e.preventDefault();
+                // 自己拖出去的东西拖回来：不给任何"可以放这里"的暗示
+                if (isInternalNativeDrag(e)) return;
                 dragCounter++;
                 contentArea.classList.add('folder-content-drop-active');
             });
@@ -5437,11 +5496,15 @@
             });
             contentArea.addEventListener('dragover', (e) => {
                 e.preventDefault();
+                if (isInternalNativeDrag(e)) { try { e.dataTransfer.dropEffect = 'none'; } catch(_) {} }
             });
             contentArea.addEventListener('drop', async (e) => {
                 e.preventDefault();
                 dragCounter = 0;
                 contentArea.classList.remove('folder-content-drop-active');
+
+                // 拖出到真实桌面的过程中又放回系统内部 —— 什么都不做
+                if (isInternalNativeDrag(e)) return;
                 
                 const state = SYSTEM.folderWindowStates?.[windowId];
                 if(!state) return;
@@ -5879,6 +5942,11 @@
                 e.preventDefault();
                 return false;
             }
+            // 原生拖拽已接管：立刻拆掉自定义拖拽的 mousemove/mouseup 监听。
+            // 否则拖到真实桌面再回到页面时不会收到 mouseup，残留监听会让
+            // 拖拽幽灵一直跟着指针跑（即此前"回来后还挂着已选中文件"的问题）。
+            if (SYSTEM._folderDragTeardown) SYSTEM._folderDragTeardown();
+            el.style.outline = '2px solid rgba(0, 120, 212, 0.5)';
             handleNativeDragStart(e, el.dataset.filename);
             return true;
         }
@@ -6484,6 +6552,13 @@
             }
 
             const onMove = (moveEvent) => {
+                // 鼠标在浏览器窗口外松开（收不到 mouseup）后又移回页面：
+                // buttons === 0 说明键已经松了，直接结束，别让幽灵继续粘着指针。
+                if (moveEvent.type === 'mousemove' && moveEvent.buttons === 0) {
+                    cleanup();
+                    return;
+                }
+
                 const pos = getPos(moveEvent);
                 const dx = pos.x - startX;
                 const dy = pos.y - startY;
@@ -6511,15 +6586,17 @@
                 }
 
                 if(!isDragging && (Math.abs(dx) > 5 || Math.abs(dy) > 5)) {
-                    // 判断是水平拖拽还是垂直滚动
-                    // 水平拖拽（dx > dy）才启动拖拽，否则让浏览器处理滚动
-                    if (Math.abs(dx) > Math.abs(dy) * 1.2) {
+                    // 触摸时才需要区分"横向拖拽 / 纵向滚动"；鼠标没有滚动冲突，
+                    // 任意方向都应立刻起拖（否则往下拖到桌面会拖不动，很顿）。
+                    const isTouch = (moveEvent.type === 'touchmove');
+                    if (!isTouch || Math.abs(dx) > Math.abs(dy) * 1.2) {
                         isDragging = true;
-                        document.body.style.cursor = 'move';
+                        document.body.style.cursor = 'grabbing';
 
                         const filesData = selectedItems.map(item => ({
                             filename: item.dataset.filename,
-                            path: item.dataset.path
+                            path: item.dataset.path,
+                            isdir: item.dataset.isdir === 'true'
                         }));
 
                         dragPreview = createDragPreview(filesData, pos.x, pos.y);
@@ -6536,8 +6613,8 @@
 
                 if(isDragging && dragPreview) {
                     if(moveEvent.type === 'touchmove') moveEvent.preventDefault();
-                    dragPreview.style.left = (pos.x + 10) + 'px';
-                    dragPreview.style.top = (pos.y + 10) + 'px';
+                    moveDragPreview(dragPreview, pos.x, pos.y);
+                    updateDropHighlight(pos.x, pos.y, selectedItems);
                 }
             };
 
@@ -6551,12 +6628,19 @@
                 document.removeEventListener('touchmove', onMove);
                 document.removeEventListener('touchend', onUp);
                 document.body.style.cursor = '';
+                if(dragPreview) { dragPreview.remove(); dragPreview = null; }
+                endDropHighlight();
+                SYSTEM._folderDragTeardown = null;
             };
+            // 供原生拖出（dragstart）调用：原生拖拽接管后立刻拆掉自定义拖拽，
+            // 否则从真实桌面回来时 mouseup 已丢失，残留的 mousemove 会让幽灵一直粘在指针上。
+            SYSTEM._folderDragTeardown = () => cleanup();
 
             const onUp = (upEvent) => {
                 if(longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
                 if(nativeDragTimer) { clearTimeout(nativeDragTimer); nativeDragTimer = null; }
                 SYSTEM._folderNativeDrag = false;
+                SYSTEM._folderDragTeardown = null;
                 selectedItems.forEach(it => it.style.outline = 'none');
 
                 document.removeEventListener('mousemove', onMove);
@@ -6569,6 +6653,7 @@
                     dragPreview.remove();
                     dragPreview = null;
                 }
+                endDropHighlight();
 
                 if(!isDragging) return;
 
@@ -6816,43 +6901,88 @@
             document.addEventListener('touchend', onUp);
         }
 
+        // === 拖拽幽灵：跟随指针的文件图标（多选时右上角带数量角标）===
         function createDragPreview(filesData, x, y) {
-            const preview = document.createElement('div');
-            preview.className = 'drag-preview';
-            preview.style.position = 'fixed';
-            preview.style.left = (x + 10) + 'px';
-            preview.style.top = (y + 10) + 'px';
-            preview.style.zIndex = '10000';
-            preview.style.opacity = '0.9';
-            preview.style.pointerEvents = 'none';
-            preview.style.background = 'rgba(24, 24, 32, 0.95)';
-            preview.style.border = '1px solid rgba(0, 120, 212, 0.5)';
-            preview.style.borderRadius = '8px';
-            preview.style.padding = '12px 16px';
-            preview.style.boxShadow = '0 8px 32px rgba(0, 0, 0, 0.5)';
-            preview.style.maxWidth = '200px';
-            
             const count = filesData.length;
-            const displayCount = count > 5 ? 5 : count;
-            
-            let html = `<div style="font-size: 12px; color: #8a8a9a; margin-bottom: 8px; font-weight: 500;">已选中 ${count} 个文件</div>`;
-            html += '<div style="display: flex; flex-direction: column; gap: 6px;">';
-            
-            for(let i = 0; i < displayCount; i++) {
-                const file = filesData[i];
-                html += `<div style="font-size: 13px; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${file.filename}</div>`;
-            }
-            
-            if(count > 5) {
-                html += `<div style="font-size: 12px; color: #8a8a9a;">...还有 ${count - 5} 个文件</div>`;
-            }
-            
-            html += '</div>';
-            preview.innerHTML = html;
-            
-            document.body.appendChild(preview);
-            return preview;
+            const first = filesData[0] || {};
+            const g = document.createElement('div');
+            g.className = 'drag-ghost';
+            g.innerHTML = `<svg class="icon-svg" viewBox="0 0 24 24">${getFileIconPath(first.filename || '', !!first.isdir)}</svg>`
+                + (count > 1 ? `<span class="drag-ghost-badge">${count}</span>` : '');
+            document.body.appendChild(g);
+            moveDragPreview(g, x, y);
+            return g;
         }
+
+        function moveDragPreview(ghost, x, y) {
+            if (!ghost) return;
+            ghost.style.left = x + 'px';
+            ghost.style.top = y + 'px';
+        }
+
+        // === 投放目标高亮：拖到哪里、会落到哪里，实时可见 ===
+        // 返回当前指针下的投放目标元素（文件夹项 / 桌面文件夹图标 / 文件夹窗口内容区）
+        function findDropTargetEl(x, y, excludeEls) {
+            const el = document.elementFromPoint(x, y);
+            if (!el) return null;
+            const skip = (t) => excludeEls && excludeEls.some(s => s === t || s.contains(t));
+
+            const item = el.closest('.folder-item[data-isdir="true"], .folder-grid-item[data-isdir="true"]');
+            if (item && !skip(item)) return item;
+
+            const icon = el.closest('.desktop-icon[data-isdir="true"]');
+            if (icon && !skip(icon)) return icon;
+
+            const win = el.closest('.window');
+            if (win) {
+                const ca = win.querySelector('.content-area[id^="folder-content-"]');
+                // 源窗口自身不算投放目标，避免拖动过程中整窗闪高亮
+                if (ca && excludeEls && excludeEls.some(sel => ca.contains(sel))) return null;
+                return ca;
+            }
+
+            return null;
+        }
+
+        function clearDropHighlight() {
+            document.querySelectorAll('.drop-hover').forEach(el => el.classList.remove('drop-hover'));
+            document.querySelectorAll('.folder-item.drag-over, .folder-grid-item.drag-over')
+                .forEach(el => el.classList.remove('drag-over'));
+            document.querySelectorAll('.folder-content-drop-active')
+                .forEach(el => el.classList.remove('folder-content-drop-active'));
+        }
+
+        function updateDropHighlight(x, y, excludeEls) {
+            const target = findDropTargetEl(x, y, excludeEls);
+            // 目标没变就不重复操作 DOM，保证拖拽过程顺滑
+            if (SYSTEM._lastDropTarget === target) return target;
+            clearDropHighlight();
+            SYSTEM._lastDropTarget = target || null;
+            if (!target) return null;
+            if (target.classList.contains('folder-item') || target.classList.contains('folder-grid-item')) {
+                target.classList.add('drag-over');
+            } else if (target.classList.contains('desktop-icon')) {
+                target.classList.add('drop-hover');
+            } else {
+                target.classList.add('folder-content-drop-active');
+            }
+            return target;
+        }
+
+        function endDropHighlight() {
+            SYSTEM._lastDropTarget = null;
+            clearDropHighlight();
+        }
+
+        // 兜底：任何原生拖拽结束/落下后，清掉可能残留的拖拽幽灵与投放高亮
+        function purgeDragVisuals() {
+            document.querySelectorAll('.drag-ghost').forEach(g => g.remove());
+            endDropHighlight();
+        }
+        document.addEventListener('dragend', purgeDragVisuals, true);
+        document.addEventListener('drop', purgeDragVisuals, true);
+        // 兜底：原生拖拽一结束就清掉"内部拖出"标记（drop 阶段不能清，drop 处理器还要用）
+        document.addEventListener('dragend', () => { SYSTEM._internalNativeDrag = false; }, true);
 
         function clearFolderSelection(windowId) {
             const contentArea = document.getElementById('folder-content-' + windowId);
