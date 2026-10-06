@@ -402,6 +402,11 @@
             pointer-events: none;
         }
         #windows-container > .window { pointer-events: auto; }
+        /* 最小化的窗口只是 opacity:0，元素还铺在原位。
+           .window.minimized 的 pointer-events:none 特指度(0,2,0) 压不过上面那条
+           带 id 的规则(1,1,0)，会让"看不见的窗口"继续吃掉点击 ——
+           表现为最小化之后点桌面上任何地方，窗口都会被重新唤出来。 */
+        #windows-container > .window.minimized { pointer-events: none; }
 
         /* === Aero Snap 贴边 === */
         .window.snap-left, .window.snap-right {
