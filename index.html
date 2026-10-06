@@ -376,11 +376,57 @@
                 0 30px 70px rgba(0,0,0,0.6);
         }
         .window.minimized { transform: scale(0.9) translateY(30px); opacity: 0; pointer-events: none; }
+        /* 小屏/横屏手机上 400x300 的最小尺寸几乎等于整屏，缩放手柄形同虚设 —— 放宽 */
+        @media (max-width: 900px), (max-height: 560px) {
+            .window { min-width: 260px; min-height: 180px; }
+        }
         .window.maximized { 
             top: 0 !important; left: 0 !important; 
             width: 100% !important; height: calc(100% - var(--taskbar-height)) !important; 
             border-radius: 0 !important; 
         }
+
+        /* === 窗口容器：固定铺满视口并裁剪 ===
+           以前 #windows-container 没有任何样式（static 块级，高度 0），
+           窗口是绝对定位挂在初始包含块上的，往右拖会把页面内容撑出去，
+           移动端浏览器就表现为"页面一直往右延伸"。固定 + overflow:hidden 后，
+           窗口无论拖到哪都只会被视口裁掉，不会撑大文档。 */
+        /* 必须用 absolute 而不是 fixed：position:fixed 会无条件创建层叠上下文，
+           窗口里的 z-index(10/100/9999) 就全被关进 z-index:0 的盒子里，
+           结果整层窗口被 .desktop(z-index:5) 盖住 —— 看不见也点不到。
+           absolute + z-index:auto 不产生层叠上下文，窗口的层级行为和改之前完全一致，
+           同时因为容器是定位元素，overflow:hidden 才能真正裁剪绝对定位的窗口。 */
+        #windows-container {
+            position: absolute; inset: 0;
+            overflow: hidden;
+            pointer-events: none;
+        }
+        #windows-container > .window { pointer-events: auto; }
+
+        /* === Aero Snap 贴边 === */
+        .window.snap-left, .window.snap-right {
+            top: 0 !important;
+            width: 50% !important;
+            height: calc(100% - var(--taskbar-height)) !important;
+            border-radius: 0 !important;
+        }
+        .window.snap-left  { left: 0 !important; }
+        .window.snap-right { left: 50% !important; }
+
+        /* 最大化时不允许拉伸；贴边（半屏）状态保留手柄，可以直接拉 */
+        .window.maximized .resize-handle { display: none !important; }
+
+        /* 贴边/还原时的位移动画（仅在吸附瞬间开启，拖拽过程中不带动画以免拖影） */
+        .window.snapping {
+            transition: left 0.2s cubic-bezier(.2,.9,.2,1), top 0.2s cubic-bezier(.2,.9,.2,1),
+                        width 0.2s cubic-bezier(.2,.9,.2,1), height 0.2s cubic-bezier(.2,.9,.2,1),
+                        opacity 0.2s, box-shadow 0.2s;
+        }
+
+        /* Aero Snap 落点预览 */
+        /* 吸附预览的可见态（#snap-preview 基础样式见下方既有定义，
+           该元素原本就在 DOM 里但一直没被用起来，这里把它接上 Aero Snap） */
+        #snap-preview.show { opacity: 1; }
 
         /* 标题栏 */
         .title-bar {
@@ -438,7 +484,9 @@
             transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
             opacity: 0;
             pointer-events: none;
-            z-index: 9998;
+            /* 在桌面(z-index:5)之上、窗口(z-index:10+)之下，
+               让被拖的窗口浮在预览上方，和 Windows 的 Aero Snap 一致 */
+            z-index: 6;
             backdrop-filter: blur(10px);
         }
 
@@ -1452,7 +1500,7 @@
         }
         .overlay.active { opacity: 1; pointer-events: auto; }
 
-        .resize-handle { position: absolute; z-index: 30; }
+        .resize-handle { position: absolute; z-index: 30; touch-action: none; }
         .resize-handle.n { top: 0; height: 6px; left:0; right:0; cursor: n-resize; }
         .resize-handle.s { bottom: 0; height: 6px; left:0; right:0; cursor: s-resize; }
         .resize-handle.e { right: 0; width: 6px; top:0; bottom:0; cursor: e-resize; }
@@ -1461,6 +1509,15 @@
         .resize-handle.nw { top: 0; left: 0; width: 12px; height: 12px; cursor: nw-resize; }
         .resize-handle.sw { bottom: 0; left: 0; width: 12px; height: 12px; cursor: sw-resize; }
         .resize-handle.se { bottom: 0; right: 0; width: 16px; height: 16px; cursor: se-resize; }
+
+        /* 触摸设备：手指没有像素级精度，加大缩放手柄的命中区域。
+           注意刻意不加大顶部区域 —— 标题栏要留给拖拽，右上角要留给关闭按钮。 */
+        @media (pointer: coarse) {
+            .resize-handle.n { height: 8px; left: 16px; right: 16px; }
+            .resize-handle.s { height: 16px; left: 16px; right: 16px; }
+            .resize-handle.e, .resize-handle.w { width: 16px; top: 44px; bottom: 16px; }
+            .resize-handle.sw, .resize-handle.se { width: 28px; height: 28px; }
+        }
 
         /* === 滚动条 === */
         ::-webkit-scrollbar { width: 8px; }
@@ -8254,9 +8311,18 @@
             // 如果是手机，自动添加 maximized 类
             w.className = `window ultra-glass focused ${isMobile ? 'maximized' : ''}`;
             
-            // 只有电脑端才设置初始位置，手机端由CSS强制全屏
-            if (!isMobile) {
-                w.style.cssText = `width:${opts.width||700}px;height:${opts.height||500}px;top:${50+SYSTEM.windows.length*25}px;left:${100+SYSTEM.windows.length*25}px;`;
+            // 始终写明几何尺寸（含手机端）。
+            // 以前手机端不写 style，一旦取消最大化窗口就没有 width/height/left/top，
+            // 变成"自动宽度"的绝对定位元素，往右拖就会被重新布局成不断延伸的样子。
+            {
+                const areaW = window.innerWidth;
+                const areaH = window.innerHeight - 48; // 任务栏
+                const W = Math.max(280, Math.min(opts.width || 700, areaW - 20));
+                const H = Math.max(200, Math.min(opts.height || 500, areaH - 20));
+                const step = SYSTEM.windows.length * 25;
+                const L = Math.max(0, Math.min(100 + step, areaW - W - 10));
+                const T = Math.max(0, Math.min(50 + step, areaH - H - 10));
+                w.style.cssText = `width:${W}px;height:${H}px;top:${T}px;left:${L}px;`;
             }
             
             w.innerHTML = `
@@ -8331,16 +8397,13 @@
         window.maximizeWin = function(id) {
             const win = SYSTEM.windows.find(w => w.id === id);
             if(!win) return;
-            // 手机端禁止取消最大化
-            if (window.innerWidth <= 768) return;
-            
-            win.maximized = !win.maximized;
-            win.element.classList.toggle('maximized', win.maximized);
-            
-            if(!win.maximized && win.savedPos) {
-                win.element.style.cssText = win.savedPos;
-            } else if(win.maximized) {
-                win.savedPos = win.element.style.cssText;
+            // 手机竖屏（窗口由 CSS 强制全屏）禁止取消最大化；阈值与拖拽/缩放保持一致
+            if (window.innerWidth <= 600) return;
+
+            if (win.maximized || win.snapped) {
+                restoreWindowGeometry(win);
+            } else {
+                applySnapToWindow(win, 'max');
             }
         };
 
@@ -8358,11 +8421,109 @@
             setTimeout(updateTaskbarRunningItems, 30);
         };
 
+        // =====================================================================
+        // Aero Snap：拖到屏幕左/右边缘贴半屏，拖到顶部最大化
+        // =====================================================================
+        const SNAP_EDGE = 16;   // 左右边缘触发宽度
+        const SNAP_TOP  = 10;   // 顶部触发高度
+        const TASKBAR_H = 48;
+
+        function snapZoneAt(x, y) {
+            if (window.innerWidth <= 600) return null;       // 手机竖屏窗口本来就是全屏
+            if (y <= SNAP_TOP) return 'max';
+            if (x <= SNAP_EDGE) return 'left';
+            if (x >= window.innerWidth - SNAP_EDGE) return 'right';
+            return null;
+        }
+
+        function getSnapPreviewEl() {
+            let el = document.getElementById('snap-preview');
+            if (!el) {
+                el = document.createElement('div');
+                el.id = 'snap-preview';
+                document.body.appendChild(el);
+            }
+            return el;
+        }
+
+        function showSnapPreview(kind) {
+            const el = getSnapPreviewEl();
+            if (!kind) { el.classList.remove('show'); return; }
+            const W = window.innerWidth, H = window.innerHeight - TASKBAR_H;
+            const box = kind === 'left'  ? [0, 0, W / 2, H]
+                      : kind === 'right' ? [W / 2, 0, W / 2, H]
+                      :                    [0, 0, W, H];
+            el.style.left   = (box[0] + 6) + 'px';
+            el.style.top    = (box[1] + 6) + 'px';
+            el.style.width  = (box[2] - 12) + 'px';
+            el.style.height = (box[3] - 12) + 'px';
+            el.classList.add('show');
+        }
+
+        function isWinSnapped(win) {
+            return !!(win && (win.maximized || win.snapped));
+        }
+
+        // 贴边 / 最大化
+        function applySnapToWindow(win, kind) {
+            if (!win) return;
+            const el = win.element;
+            // 第一次离开自由状态时记住原来的几何，便于还原
+            if (!isWinSnapped(win)) win.savedPos = el.style.cssText;
+
+            el.classList.add('snapping');
+            el.classList.remove('maximized', 'snap-left', 'snap-right');
+            if (kind === 'max') {
+                el.classList.add('maximized');
+                win.maximized = true; win.snapped = null;
+            } else {
+                el.classList.add(kind === 'left' ? 'snap-left' : 'snap-right');
+                win.snapped = kind; win.maximized = false;
+            }
+            setTimeout(() => el.classList.remove('snapping'), 260);
+        }
+
+        // 还原到贴边之前的大小/位置
+        function restoreWindowGeometry(win, animate = true) {
+            if (!win) return;
+            const el = win.element;
+            const z = el.style.zIndex;
+            if (animate) el.classList.add('snapping');
+            el.classList.remove('maximized', 'snap-left', 'snap-right');
+            win.maximized = false;
+            win.snapped = null;
+            if (win.savedPos) el.style.cssText = win.savedPos;
+            el.style.zIndex = z;
+            // 兜底：没有记录过几何（例如手机端创建时就是最大化）时给一套合理默认值
+            if (!el.style.width)  el.style.width  = Math.max(280, Math.min(760, window.innerWidth - 40)) + 'px';
+            if (!el.style.height) el.style.height = Math.max(200, Math.min(520, window.innerHeight - TASKBAR_H - 40)) + 'px';
+            if (!el.style.left)   el.style.left   = '40px';
+            if (!el.style.top)    el.style.top    = '40px';
+            if (animate) setTimeout(() => el.classList.remove('snapping'), 260);
+        }
+
+        // 视口变化（旋转屏幕 / 改窗口大小）后把窗口收回可视范围，避免留在屏幕外
+        window.addEventListener('resize', () => {
+            const maxW = window.innerWidth;
+            const maxH = window.innerHeight - TASKBAR_H;
+            SYSTEM.windows.forEach(win => {
+                const el = win.element;
+                if (!el || isWinSnapped(win) || el.classList.contains('truly-fullscreen')) return;
+                const w = Math.max(260, Math.min(el.offsetWidth, maxW - 10));
+                const h = Math.max(180, Math.min(el.offsetHeight, maxH - 10));
+                el.style.width  = w + 'px';
+                el.style.height = h + 'px';
+                el.style.left = Math.max(-w + 100, Math.min(el.offsetLeft, maxW - 100)) + 'px';
+                el.style.top  = Math.max(0, Math.min(el.offsetTop, maxH - 30)) + 'px';
+            });
+        });
+
         // === 修复后的拖拽逻辑 (完美支持手机/平板) ===
         function makeDraggable(el, id) {
             const titleBar = el.querySelector('.title-bar');
             let isDragging = false, startX, startY, startLeft, startTop;
             let dragPointerId = null;
+            let hasMoved = false, snapZone = null;
             
             // 获取触摸或鼠标坐标
             const getCoords = (e) => {
@@ -8375,13 +8536,11 @@
             const start = (e) => {
                 // 如果点的是按钮，直接返回，不触发拖拽
                 if(e.target.closest('.win-btn')) return;
-                
-                // 获取当前窗口对象
-                const win = SYSTEM.windows.find(w => w.id === id);
-                
-                // 如果是手机模式(强制全屏) 或 窗口已最大化，则禁止拖动
-                // 注意：这里阈值改为 600，与 CSS 保持一致，平板(>600)允许拖动
-                if((win && win.maximized) || window.innerWidth <= 600) return;
+
+                // 手机竖屏：窗口由 CSS 强制全屏，不允许拖动
+                // 注意：阈值 600 与 CSS 媒体查询保持一致，平板/横屏(>600)允许拖动
+                if(window.innerWidth <= 600) return;
+                // 已最大化/贴边的窗口允许拖动——拖动即"拽下来还原"（Aero Snap 标准行为）
                 
                 // 处理 Pointer Events
                 if (e.pointerId !== undefined) {
@@ -8394,10 +8553,12 @@
                 }
                 
                 isDragging = true;
+                hasMoved = false;
+                snapZone = null;
                 const p = getCoords(e);
                 startX = p.x; startY = p.y;
                 startLeft = el.offsetLeft; startTop = el.offsetTop;
-                
+
                 focusWin(id);
                 
                 // === 修复：创建全屏透明遮罩，防止iframe偷走鼠标事件导致拖拽卡顿 ===
@@ -8425,19 +8586,38 @@
                 if(e.cancelable) e.preventDefault();
                 
                 const p = getCoords(e);
-                const dx = p.x - startX; 
-                const dy = p.y - startY;
-                
+                let dx = p.x - startX;
+                let dy = p.y - startY;
+
+                if (!hasMoved) {
+                    if (Math.abs(dx) < 4 && Math.abs(dy) < 4) return;
+                    hasMoved = true;
+
+                    // Aero Snap：把最大化/贴边的窗口"拽下来"还原，
+                    // 并让它按抓取比例挂在指针下面，手感和 Windows 一致。
+                    const win = SYSTEM.windows.find(w => w.id === id);
+                    if (isWinSnapped(win)) {
+                        const r = el.getBoundingClientRect();
+                        const ratio = (startX - r.left) / Math.max(1, r.width);
+                        restoreWindowGeometry(win, false);
+                        const w2 = el.offsetWidth;
+                        startLeft = Math.round(p.x - w2 * ratio);
+                        startTop = Math.max(0, Math.round(p.y - 18));
+                        startX = p.x; startY = p.y;
+                        dx = 0; dy = 0;
+                    }
+                }
+
                 let newLeft = startLeft + dx;
                 let newTop = startTop + dy;
-                
+
                 // 屏幕边界限制：防止窗口被拖出屏幕
                 const screenW = window.innerWidth;
                 const screenH = window.innerHeight;
-                const taskbarH = 48;
+                const taskbarH = TASKBAR_H;
                 const winW = el.offsetWidth;
                 const winH = el.offsetHeight;
-                
+
                 // 上边界
                 newTop = Math.max(0, newTop);
                 // 左边界（允许窗口大部分出去，但保留一部分可抓取）
@@ -8446,9 +8626,13 @@
                 newLeft = Math.min(screenW - 100, newLeft);
                 // 下边界（不超过任务栏）
                 newTop = Math.min(screenH - taskbarH - 30, newTop);
-                
+
                 el.style.left = newLeft + 'px';
                 el.style.top = newTop + 'px';
+
+                // Aero Snap：贴边落点预览
+                snapZone = snapZoneAt(p.x, p.y);
+                showSnapPreview(snapZone);
             };
             
             const end = (e) => {
@@ -8461,7 +8645,15 @@
                 
                 isDragging = false;
                 dragPointerId = null;
-                
+
+                // === Aero Snap：松手时吸附 ===
+                showSnapPreview(null);
+                if (snapZone) {
+                    applySnapToWindow(SYSTEM.windows.find(w => w.id === id), snapZone);
+                    snapZone = null;
+                }
+                hasMoved = false;
+
                 // === 修复：移除全屏遮罩，恢复iframe正常交互 ===
                 const dragCover = document.getElementById('drag-cover');
                 if (dragCover) dragCover.remove();
@@ -8506,34 +8698,79 @@
         }
 
         function makeResizable(el) {
-            // 手机端禁用调整大小
-            if(window.innerWidth <= 768) return;
-
-            const MIN_W = 400, MIN_H = 300;
+            // 手机竖屏（窗口由 CSS 强制全屏）不需要缩放；阈值与拖拽保持一致。
+            // 以前这里是 <=768 且只监听鼠标事件，所以平板/横屏手机"能拖标题栏但没法改大小"。
+            if(window.innerWidth <= 600) return;
 
             const handles = el.querySelectorAll('.resize-handle');
             handles.forEach(h => {
-                let isResizing = false, startX, startY, startW, startH, startL, startT, dir;
-                h.onmousedown = e => {
-                    isResizing = true; startX = e.clientX; startY = e.clientY;
+                let resizing = false, pid = null;
+                let startX, startY, startW, startH, startL, startT, dir;
+
+                const getCoords = (e) => {
+                    if (e.touches && e.touches.length > 0) return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+                    if (e.changedTouches && e.changedTouches.length > 0) return { x: e.changedTouches[0].clientX, y: e.changedTouches[0].clientY };
+                    return { x: e.clientX, y: e.clientY };
+                };
+
+                const onDown = (e) => {
+                    if (e.button !== undefined && e.button > 0) return;
+                    const win = SYSTEM.windows.find(w => w.element === el);
+                    // 最大化状态不允许拉伸
+                    if (win && win.maximized) return;
+                    // 贴边（半屏）状态允许拉伸：先把 CSS 里 !important 的半屏尺寸
+                    // 固化成行内样式并脱离贴边态，之后按普通窗口处理
+                    if (win && win.snapped) {
+                        const r0 = el.getBoundingClientRect();
+                        el.classList.remove('snap-left', 'snap-right', 'snapping');
+                        win.snapped = null;
+                        el.style.left   = Math.round(r0.left) + 'px';
+                        el.style.top    = Math.round(r0.top) + 'px';
+                        el.style.width  = Math.round(r0.width) + 'px';
+                        el.style.height = Math.round(r0.height) + 'px';
+                    }
+
+                    const p = getCoords(e);
+                    resizing = true;
+                    startX = p.x; startY = p.y;
                     startW = el.offsetWidth; startH = el.offsetHeight;
-                    startL = el.offsetLeft; startT = el.offsetTop;
+                    startL = el.offsetLeft;  startT = el.offsetTop;
                     dir = h.className.split(' ')[1];
-                    e.preventDefault();
-                    // === 修复：创建全屏透明遮罩，防止iframe偷走鼠标事件 ===
+
+                    if (e.pointerId !== undefined) {
+                        pid = e.pointerId;
+                        try { h.setPointerCapture(e.pointerId); } catch(_) {}
+                    }
+                    if (e.cancelable) e.preventDefault();
+                    e.stopPropagation();
+
+                    const winObj = SYSTEM.windows.find(w => w.element === el);
+                    if (winObj) focusWin(winObj.id);
+
+                    // 全屏透明遮罩：防止 iframe 偷走事件导致拉伸中断
                     let resizeCover = document.getElementById('resize-cover');
                     if (!resizeCover) {
                         resizeCover = document.createElement('div');
                         resizeCover.id = 'resize-cover';
-                        resizeCover.style.cssText = 'position:fixed;inset:0;z-index:9999;pointer-events:auto;cursor:'+getComputedStyle(h).cursor;
+                        resizeCover.style.cssText = 'position:fixed;inset:0;z-index:9999;pointer-events:auto;touch-action:none;cursor:' + getComputedStyle(h).cursor;
                         document.body.appendChild(resizeCover);
                     }
                 };
-                document.addEventListener('mousemove', e => {
-                    if(!isResizing) return;
-                    const dx = e.clientX - startX, dy = e.clientY - startY;
 
-                    // 计算期望的新尺寸
+                const onMove = (e) => {
+                    if(!resizing) return;
+                    if (e.pointerId !== undefined && pid !== null && e.pointerId !== pid) return;
+                    if (e.cancelable) e.preventDefault();
+
+                    const p = getCoords(e);
+                    const dx = p.x - startX, dy = p.y - startY;
+
+                    const screenW = window.innerWidth;
+                    const screenH = window.innerHeight;
+                    // 小屏幕上 400x300 的下限会让窗口根本缩不动，按视口收紧
+                    const MIN_W = Math.min(400, Math.max(240, screenW - 40));
+                    const MIN_H = Math.min(300, Math.max(180, screenH - TASKBAR_H - 40));
+
                     let newW = startW, newH = startH, newL = startL, newT = startT;
 
                     if(dir.includes('e')) newW = startW + dx;
@@ -8551,29 +8788,21 @@
                         newH = MIN_H;
                     }
 
-                    // 屏幕边界限制：防止窗口被拖出屏幕
-                    const screenW = window.innerWidth;
-                    const screenH = window.innerHeight;
-                    // 上边界：窗口顶部不能超出屏幕顶部
+                    // 屏幕边界限制
                     if(newT < 0) {
-                        if(dir.includes('n')) newH = startH + startT; // 保持底部不动，收缩高度
+                        if(dir.includes('n')) newH = startH + startT;
                         newT = 0;
                     }
-                    // 左边界：窗口左边不能超出屏幕左边
                     if(newL < 0) {
-                        if(dir.includes('w')) newW = startW + startL; // 保持右边不动，收缩宽度
+                        if(dir.includes('w')) newW = startW + startL;
                         newL = 0;
                     }
-                    // 下边界：窗口底部不能超出屏幕底部（留出任务栏空间）
-                    const taskbarH = 48;
-                    if(newT + newH > screenH - taskbarH) {
-                        if(dir.includes('s')) newH = screenH - taskbarH - newT;
+                    if(newT + newH > screenH - TASKBAR_H) {
+                        if(dir.includes('s')) newH = screenH - TASKBAR_H - newT;
                     }
-                    // 右边界：窗口右边不能超出屏幕右边
                     if(newL + newW > screenW) {
                         if(dir.includes('e')) newW = screenW - newL;
                     }
-                    // 再次确保最小尺寸（边界限制后可能被破坏）
                     if(newW < MIN_W) newW = MIN_W;
                     if(newH < MIN_H) newH = MIN_H;
 
@@ -8581,13 +8810,32 @@
                     el.style.height = newH + 'px';
                     if(dir.includes('w')) el.style.left = newL + 'px';
                     if(dir.includes('n')) el.style.top = newT + 'px';
-                });
-                document.addEventListener('mouseup', () => {
-                    isResizing = false;
-                    // === 修复：移除全屏遮罩 ===
+                };
+
+                const onUp = (e) => {
+                    if(!resizing) return;
+                    if (e && e.pointerId !== undefined && pid !== null && e.pointerId !== pid) return;
+                    resizing = false;
+                    if (pid !== null) { try { h.releasePointerCapture(pid); } catch(_) {} pid = null; }
                     const resizeCover = document.getElementById('resize-cover');
                     if (resizeCover) resizeCover.remove();
-                });
+                };
+
+                if (window.PointerEvent) {
+                    // 指针事件统一覆盖鼠标 / 触摸 / 触控笔 —— 移动端也能改窗口大小
+                    h.addEventListener('pointerdown', onDown, { passive: false });
+                    h.addEventListener('pointermove', onMove, { passive: false });
+                    h.addEventListener('pointerup', onUp);
+                    h.addEventListener('pointercancel', onUp);
+                } else {
+                    h.addEventListener('mousedown', onDown);
+                    document.addEventListener('mousemove', onMove);
+                    document.addEventListener('mouseup', onUp);
+                    h.addEventListener('touchstart', onDown, { passive: false });
+                    document.addEventListener('touchmove', onMove, { passive: false });
+                    document.addEventListener('touchend', onUp);
+                    document.addEventListener('touchcancel', onUp);
+                }
             });
         }
 
@@ -10113,9 +10361,11 @@
             const sState = { query: '', currentIndex: -1, matches: [], markers: [], caseSensitive: false, wholeWord: false, regex: false };
             let _previewBlobUrl = null;
             let _previewLoadingTimer = null;
+            let _previewDebounceTimer = null;
             
             const textarea = document.getElementById(`editor-textarea-${winId}`);
-            const previewFrame = document.getElementById(`editor-preview-frame-${winId}`);
+            // 注意：刷新预览时会整个换掉这个 iframe，所以必须是 let
+            let previewFrame = document.getElementById(`editor-preview-frame-${winId}`);
             const previewLoading = document.getElementById(`editor-preview-loading-${winId}`);
             const searchBar = document.getElementById(`editor-search-bar-${winId}`);
             const searchInput = document.getElementById(`editor-search-input-${winId}`);
@@ -10174,7 +10424,7 @@
                 cm.on('cursorActivity', updateEditorStatusBar);
                 cm.on('change', () => {
                     updateEditorStatusBar();
-                    updateEditorPreview();
+                    scheduleEditorPreview();
                 });
                 // 手机模式(contenteditable)下修复系统“全选”只能选到已渲染一段的问题；电脑模式(textarea)下该函数为空操作
                 offMobileSelectAll = fixMobileSelectAll(cm, '.editor-app');
@@ -10251,23 +10501,41 @@
             })();
             
             // 更新预览（Markdown 模式下渲染为真正的 HTML 预览，而不是把原文当 HTML 塞进去）
+            //
+            // 【关键】每次刷新都换一个全新的 iframe，而不是往同一个 iframe 里反复 document.write。
+            // document.open() 只会清空"文档"，不会重置 iframe 的 window（全局对象）：
+            // 上一次预览声明过的顶层 const / let / class、注册过的自定义元素、计时器、
+            // 监听器全都还在。于是复杂页面（比如 JISHENG OS 自己）第二次刷新时第一行就抛
+            // "Identifier 'SYSTEM' has already been declared"，整个脚本中断 —— 表现就是
+            // 刷新一次变黑屏，而且之后怎么刷都还是黑的。
+            // cloneNode 换掉 iframe 可以拿到一个全新的浏览上下文，全局作用域彻底干净。
             function updateEditorPreview() {
+                if (_previewDebounceTimer) { clearTimeout(_previewDebounceTimer); _previewDebounceTimer = null; }
                 const code = editor.getValue();
                 previewLoading.classList.add('active');
                 const isMarkdownMode = langSelect && langSelect.value === 'markdown';
                 const htmlContent = isMarkdownMode
                     ? buildMarkdownPreviewDoc(code)
                     : (code || '<html><body style="margin:0;background:#0d1117;"></body></html>');
+
+                // 用一个干净的 iframe 顶掉旧的（同时也就卸载了旧页面的脚本/定时器/监听器）
+                const fresh = previewFrame.cloneNode(false);
+                fresh.removeAttribute('src');
+                fresh.removeAttribute('srcdoc');
+                previewFrame.replaceWith(fresh);
+                previewFrame = fresh;
+
+                // 旧的 blob URL 这时才可以安全释放
+                if (_previewBlobUrl) { URL.revokeObjectURL(_previewBlobUrl); _previewBlobUrl = null; }
+
                 try {
-                    // 释放旧的 blob URL
-                    if (_previewBlobUrl) { URL.revokeObjectURL(_previewBlobUrl); _previewBlobUrl = null; }
-                    const doc = previewFrame.contentDocument || previewFrame.contentWindow.document;
+                    const doc = previewFrame.contentDocument || (previewFrame.contentWindow && previewFrame.contentWindow.document);
+                    if (!doc) throw new Error('no doc');
                     doc.open();
                     doc.write(htmlContent);
                     doc.close();
                 } catch (e) {
-                    // 释放旧的 blob URL 后再创建新的
-                    if (_previewBlobUrl) { URL.revokeObjectURL(_previewBlobUrl); }
+                    // 兜底：某些环境（跨源策略等）拿不到 contentDocument，改用 blob URL
                     _previewBlobUrl = URL.createObjectURL(new Blob([htmlContent], { type: 'text/html' }));
                     previewFrame.src = _previewBlobUrl;
                 }
@@ -10276,6 +10544,16 @@
                     previewLoading.classList.remove('active');
                     _previewLoadingTimer = null;
                 }, 500);
+            }
+
+            // 输入时的自动预览：防抖 450ms。
+            // 每敲一个字就重建一次 iframe + 重跑整个页面脚本是扛不住的（手动点刷新 / Ctrl+Enter 仍然立即生效）。
+            function scheduleEditorPreview() {
+                if (_previewDebounceTimer) clearTimeout(_previewDebounceTimer);
+                _previewDebounceTimer = setTimeout(() => {
+                    _previewDebounceTimer = null;
+                    updateEditorPreview();
+                }, 450);
             }
             
             // 复制全部（不依赖系统选区；HTTPS 下走 Clipboard API，否则退回 execCommand('copy')）
@@ -10443,8 +10721,6 @@
             
             // ===== 保存 / 导入 / 导出（v7：导入、导出都可在「虚拟桌面」与「现实设备」之间选择，文件名可自定义，弹窗为系统风格）=====
             const EXPORT_TARGET_KEY = 'JISHENG_OS_EDITOR_EXPORT_TARGET';
-            const IMPORT_SOURCE_KEY = 'JISHENG_OS_EDITOR_IMPORT_SOURCE';
-            const TEXT_EXT_RE = /\.(html?|css|js|mjs|json|md|markdown|txt|xml|svg|csv|log|ts|jsx|tsx|vue|yml|yaml|ini|conf|sh|py)$/i;
             const langByExt = { 'html': 'htmlmixed', 'htm': 'htmlmixed', 'css': 'css', 'js': 'javascript', 'json': 'application/json', 'md': 'markdown', 'xml': 'xml', 'txt': 'htmlmixed' };
             const langNames = { 'htmlmixed': 'HTML', 'css': 'CSS', 'javascript': 'JavaScript', 'markdown': 'Markdown', 'application/json': 'JSON' };
             const extByLang = { 'htmlmixed': '.html', 'css': '.css', 'javascript': '.js', 'markdown': '.md', 'application/json': '.json' };
@@ -10474,23 +10750,6 @@
             }
             const fsStat = path => new Promise(res => SYSTEM.fs.stat(path, (err, st) => res(err ? null : st)));
             const dirLabel = dir => dir === SYSTEM.desktopPath ? '虚拟桌面' : dir;
-            // 列出某个虚拟目录下可编辑的文本文件
-            function listVirtualTextFiles(dir) {
-                return new Promise(res => {
-                    if (!SYSTEM.mounted) return res([]);
-                    SYSTEM.fs.readdir(dir, async (err, files) => {
-                        if (err || !files) return res([]);
-                        const out = [];
-                        for (const f of files) {
-                            if (!TEXT_EXT_RE.test(f)) continue;
-                            const st = await fsStat(dir + '/' + f);
-                            if (st && st.isFile()) out.push(f);
-                        }
-                        res(out.sort((x, y) => x.localeCompare(y, 'zh-Hans-CN')));
-                    });
-                });
-            }
-
             // 保存到当前虚拟文件（Ctrl+S）
             function saveEditorToFile() {
                 if (!SYSTEM.mounted) {
@@ -10510,58 +10769,27 @@
                 });
             }
             
-            // 导入文件：现实设备（系统文件选择器） / 虚拟桌面（JISHENG OS 内的文件）
-            async function importEditorFile() {
-                const desktopFiles = await listVirtualTextFiles(SYSTEM.desktopPath);
-                const lastSource = localStorage.getItem(IMPORT_SOURCE_KEY) || 'virtual';
-                const r = await SysDialog.form({
-                    title: '导入文件',
-                    icon: 'uiUpload',
-                    okText: '导入',
-                    message: '选择导入来源；导入后会替换编辑器中的当前内容。',
-                    fields: [
-                        { type: 'radio', name: 'source', label: '导入来源', value: lastSource, options: [
-                            { value: 'virtual', icon: 'uiMenuFolder', label: '虚拟桌面', desc: desktopFiles.length ? `JISHENG OS 桌面上有 ${desktopFiles.length} 个可编辑的文本文件` : 'JISHENG OS 桌面上暂时没有可编辑的文本文件' },
-                            { value: 'device', icon: 'uiUpload', label: '现实设备', desc: '从手机 / 电脑的存储中选择文件' }
-                        ] },
-                        { type: 'select', name: 'file', label: '选择文件', value: desktopFiles[0] || '', options: desktopFiles.map(n => ({ value: n, label: n })), emptyText: '虚拟桌面上没有 html / css / js / json / md / txt 等文本文件', showIf: v => v.source === 'virtual' }
-                    ],
-                    validate: v => (v.source === 'virtual' && !v.file) ? '虚拟桌面上没有可导入的文件，请改选「现实设备」' : null
-                });
-                if (!r) return;
-                localStorage.setItem(IMPORT_SOURCE_KEY, r.source);
-
-                if (r.source === 'device') {
-                    fileInput.onchange = function() {
-                        const f = this.files[0];
-                        if (!f) return;
-                        const reader = new FileReader();
-                        reader.onload = e => {
-                            loadTextIntoEditor(e.target.result, f.name);
-                            filename = f.name;
-                            editorFsPath = null;       // 来自现实设备，尚未对应任何虚拟文件
-                            setEditorTitle();
-                            Notify.success('已从现实设备导入', f.name);
-                        };
-                        reader.readAsText(f);
-                        this.value = '';
+            // 导入文件：直接打开系统文件选择器，从手机 / 电脑的存储中选文件。
+            // （不再弹"虚拟桌面 / 现实设备"选择框 —— 虚拟桌面上的文件双击就能用编辑器打开，
+            //   这里的"导入"只负责从真实设备拿文件。）
+            function importEditorFile() {
+                fileInput.onchange = function() {
+                    const f = this.files[0];
+                    if (!f) return;
+                    const reader = new FileReader();
+                    reader.onload = e => {
+                        loadTextIntoEditor(e.target.result, f.name);
+                        filename = f.name;
+                        editorFsPath = null;       // 来自现实设备，尚未对应任何虚拟文件
+                        setEditorTitle();
+                        Notify.success('已导入', f.name);
                     };
-                    fileInput.click();
-                    return;
-                }
-
-                const path = SYSTEM.desktopPath + '/' + r.file;
-                SYSTEM.fs.readFile(path, 'utf8', (err, data) => {
-                    if (err) { Notify.error('导入失败', err.message); return; }
-                    loadTextIntoEditor(data, r.file);
-                    filename = r.file;
-                    editorSaveDir = SYSTEM.desktopPath;
-                    editorFsPath = path;               // 之后 Ctrl+S / 导出 默认就写回这个文件
-                    setEditorTitle();
-                    Notify.success('已从虚拟桌面导入', r.file);
-                });
+                    reader.readAsText(f);
+                    this.value = '';
+                };
+                fileInput.click();
             }
-            
+
             // 导出文件：文件名可自定义；目标可选 虚拟桌面 / 原目录（从子目录打开时）/ 现实设备
             async function exportEditorFile() {
                 const code = editor.getValue();
@@ -10750,6 +10978,7 @@
             if (winEl) {
                 winEl.onDestroy = () => {
                     if (_previewLoadingTimer) clearTimeout(_previewLoadingTimer);
+                    if (_previewDebounceTimer) { clearTimeout(_previewDebounceTimer); _previewDebounceTimer = null; }
                     if (_previewBlobUrl) { URL.revokeObjectURL(_previewBlobUrl); _previewBlobUrl = null; }
                     previewFrame.src = 'about:blank';
                     if (editor) editor.toTextArea();
@@ -10775,7 +11004,7 @@
                         <div class="settings-content">
                             <div class="about-card">
                                 <div class="logo">JISHENG OS</div>
-                                <p>Ultimate Web Operating System<br>Version 10.5.5 • Build 2026</p>
+                                <p>Ultimate Web Operating System<br>Version 10.5.6 • Build 2026</p>
                             </div>
                             
                             <div class="settings-section" style="margin-top:20px">
@@ -10802,7 +11031,7 @@
                                 <h4>关于</h4>
                                 <div class="settings-item">
                                     <label>系统版本</label>
-                                    <span>10.5.5</span>
+                                    <span>10.5.6</span>
                                 </div>
                                 <div class="settings-item">
                                     <label>内核</label>
