@@ -5004,7 +5004,7 @@
                                 <div class="folder-item" data-filename="${safeFile}" data-path="${safePath}" data-isdir="${isDir}"
                                      draggable="true"
                                      ondragstart="return handleFolderItemDragStart(event, this)"
-                                     ondragend="SYSTEM._folderNativeDrag=false;"
+                                     ondragend="SYSTEM._folderNativeDrag=false; this.style.outline='none';"
                                      onmouseenter="preloadFolderItemForDrag(this)"
                                      ondblclick="handleFolderItemDblClick('${windowId}', '${safeFile}', '${safePath}', ${isDir})"
                                      onmousedown="handleFolderItemMouseDown(event, '${windowId}')"
@@ -5035,7 +5035,7 @@
                                 <div class="folder-grid-item" data-filename="${safeFile}" data-path="${safePath}" data-isdir="${isDir}"
                                      draggable="true"
                                      ondragstart="return handleFolderItemDragStart(event, this)"
-                                     ondragend="SYSTEM._folderNativeDrag=false;"
+                                     ondragend="SYSTEM._folderNativeDrag=false; this.style.outline='none';"
                                      onmouseenter="preloadFolderItemForDrag(this)"
                                      ondblclick="handleFolderItemDblClick('${windowId}', '${safeFile}', '${safePath}', ${isDir})"
                                      onmousedown="handleFolderItemMouseDown(event, '${windowId}')"
@@ -6478,6 +6478,8 @@
                     if (primary && primary.dataset.path && primary.dataset.filename) {
                         preloadFileForDrag(primary.dataset.path, primary.dataset.filename, () => {});
                     }
+                    // 与桌面图标长按一致的视觉提示
+                    selectedItems.forEach(it => it.style.outline = '2px solid rgba(0, 120, 212, 0.5)');
                 }, 400);
             }
 
@@ -6543,6 +6545,7 @@
                 if(longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
                 if(nativeDragTimer) { clearTimeout(nativeDragTimer); nativeDragTimer = null; }
                 SYSTEM._folderNativeDrag = false;
+                selectedItems.forEach(it => it.style.outline = 'none');
                 document.removeEventListener('mousemove', onMove);
                 document.removeEventListener('mouseup', onUp);
                 document.removeEventListener('touchmove', onMove);
@@ -6554,6 +6557,7 @@
                 if(longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
                 if(nativeDragTimer) { clearTimeout(nativeDragTimer); nativeDragTimer = null; }
                 SYSTEM._folderNativeDrag = false;
+                selectedItems.forEach(it => it.style.outline = 'none');
 
                 document.removeEventListener('mousemove', onMove);
                 document.removeEventListener('mouseup', onUp);
