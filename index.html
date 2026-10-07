@@ -131,6 +131,7 @@
         .icon-svg.sm { width: 16px; height: 16px; }
         .icon-svg.lg { width: 32px; height: 32px; }
         .icon-svg.xl { width: 40px; height: 40px; }
+        .icon-svg.github { width: 18px; height: 18px; fill: currentColor; stroke: none; color: var(--text-muted); }
 
         /* 恢复原始内联 SVG 的 stroke-width="2" 视觉效果 */
         .tb-notify-icon .icon-svg,
@@ -2040,7 +2041,7 @@
         </div>
         <div id="taskbar-notify-area"></div>
         <div class="system-tray">
-            <div class="tray-icon">
+            <div class="tray-icon" id="tray-wifi" data-icon="uiWifi" title="网络">
                 <svg class="icon-svg" viewBox="0 0 24 24">
                     <path d="M5 12.55a11 11 0 0 1 14.08 0"/>
                     <path d="M1.42 9a16 16 0 0 1 21.16 0"/>
@@ -4602,7 +4603,7 @@
                 <div class="folder-sidebar-section">
                     <div class="folder-sidebar-title">快速访问</div>
                     <div class="folder-sidebar-item active" id="sidebar-desktop-${windowId}" onclick="sidebarNavigateToDesktop('${windowId}')">
-                        <svg class="icon-svg sm" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+                        ${icon('uiMonitor','sm')}
                         <span>桌面</span>
                     </div>
                 </div>
@@ -4938,7 +4939,14 @@
             uiSave:       '<path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/>',
             uiBrowser:    '<circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>',
             uiBrowserCtx: '<circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>',
-            uiCode:       '<polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>'
+            uiCode:       '<polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>',
+            uiMonitor:    '<rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>',
+            uiLock:       '<rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',
+            uiArrowRight: '<line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>',
+            uiUndo:       '<path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 1 1 0 12h-3"/>',
+            uiRedo:       '<path d="M15 14l5-5-5-5"/><path d="M20 9H10a6 6 0 1 0 0 12h3"/>',
+            uiGithub:     '<g fill="currentColor" stroke="none"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></g>',
+            uiWifi:       '<path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><circle cx="12" cy="20" r="1"/>'
         };
         // 返回图标内部 path 片段（兼容 <svg class="icon-svg" viewBox="0 0 24 24">${iconBody(name)}</svg> 模式）
         function iconBody(name){ return ICONS[name] || ICONS.fileGeneric; }
@@ -8922,10 +8930,10 @@
                         <button class="nav-btn" id="nav-forward-${SYSTEM.idCounter+1}">${icon('uiChevronRight')}</button>
                         <button class="nav-btn" id="nav-refresh-${SYSTEM.idCounter+1}">${icon('uiBrowserRefresh','sm')}</button>
                         <div class="address-bar">
-                            <svg class="icon-svg" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                            ${icon('uiLock')}
                             <input type="text" id="url-input-${SYSTEM.idCounter+1}" placeholder="输入网址..." value="${startUrl}">
                         </div>
-                        <button class="nav-btn" id="nav-go-${SYSTEM.idCounter+1}"><svg class="icon-svg" viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></button>
+                        <button class="nav-btn" id="nav-go-${SYSTEM.idCounter+1}">${icon('uiArrowRight')}</button>
                     </div>
                     <div class="content-area" style="position:relative;">
                         <div class="loading-overlay active" id="loading-${SYSTEM.idCounter+1}"><div class="spinner"></div></div>
@@ -9187,8 +9195,8 @@
         function openNotepad(content = '', filename = '未命名.txt', saveDir = null) {
             // 修复：textarea 内容需转义，避免文件内容含 </textarea> 等破坏 DOM。
             const safeContent = escapeHtml(content);
-            const svgUndo = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 1 1 0 12h-3"/></svg>';
-            const svgRedo = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 14l5-5-5-5"/><path d="M20 9H10a6 6 0 1 0 0 12h3"/></svg>';
+            const svgUndo = icon('uiUndo','stroke-2');
+            const svgRedo = icon('uiRedo','stroke-2');
             const nid = SYSTEM.idCounter + 1;
             const id = createWindow({
                 title: '记事本 - ' + filename,
@@ -9827,11 +9835,11 @@
                         <div class="v86-toolbar">
                             <input type="file" id="v86-file-${SYSTEM.idCounter+1}" accept=".img,.iso,.bin" style="display:none">
                             <button class="notepad-btn" onclick="document.getElementById('v86-file-${SYSTEM.idCounter+1}').click()">
-                                <svg class="icon-svg sm" viewBox="0 0 24 24" style="display:inline;vertical-align:middle;margin-right:4px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                                ${icon('uiUpload','sm').replace('class="icon-svg sm"','class="icon-svg sm" style="display:inline;vertical-align:middle;margin-right:4px"')}
                                 加载镜像
                             </button>
                             <button class="notepad-btn" id="v86-reset-${SYSTEM.idCounter+1}">
-                                <svg class="icon-svg sm" viewBox="0 0 24 24" style="display:inline;vertical-align:middle;margin-right:4px"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+                                ${icon('uiBrowserRefresh','sm').replace('class="icon-svg sm"','class="icon-svg sm" style="display:inline;vertical-align:middle;margin-right:4px"')}
                                 重置
                             </button>
                             <button class="notepad-btn" id="v86-pause-${SYSTEM.idCounter+1}">
@@ -9843,7 +9851,7 @@
                             <div style="white-space: pre; font: 14px monospace; line-height: 14px; display: none;"></div>
                             <canvas style="display:none"></canvas>
                             <div id="v86-placeholder-${SYSTEM.idCounter+1}" style="color:#666;text-align:center;padding:40px">
-                                <svg class="icon-svg xl" viewBox="0 0 24 24" style="color:#444;margin-bottom:16px"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+                                ${icon('uiMonitor','xl').replace('class="icon-svg xl"','class="icon-svg xl" style="color:#444;margin-bottom:16px"')}
                                 <p>点击"加载镜像"选择 .img 或 .iso 文件启动虚拟机</p>
                                 <p style="font-size:12px;color:#555;margin-top:8px">支持: 软盘镜像、CD-ROM 镜像</p>
                             </div>
@@ -11112,7 +11120,7 @@
                                 <div class="settings-item" onclick="window.open('https://github.com/SFGFDSD/JISHENGOS','_blank')" style="cursor:pointer">
                                     <label>仓库</label>
                                     <div style="display:flex;align-items:center;gap:8px;">
-                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style="color:var(--text-muted)"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+                                        ${icon('uiGithub','github')}
                                         <span style="color:var(--text-muted)">GitHub</span>
                                     </div>
                                 </div>
