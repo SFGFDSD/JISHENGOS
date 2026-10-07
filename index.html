@@ -537,24 +537,17 @@
         .loading-overlay {
             position: absolute; inset: 0;
             background: #0a0a0f;
-            color: #c7d2e0;
-            display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 14px;
+            display: flex; align-items: center; justify-content: center;
             z-index: 5; opacity: 1; pointer-events: auto;
             transition: opacity 0.24s ease;
-            font-size: 13px; letter-spacing: 0.04em;
         }
         .loading-overlay:not(.active) { opacity: 0; pointer-events: none; }
         .spinner {
-            width: 36px; height: 36px;
-            border: 2px solid rgba(255,255,255,0.12);
-            border-top-color: var(--accent-cyan);
-            border-right-color: rgba(0,120,212,0.65);
-            border-radius: 50%; animation: spin 0.85s linear infinite;
-            box-shadow: 0 0 18px rgba(0,212,255,0.12);
-        }
-        @media (prefers-reduced-motion: reduce) {
-            .loading-overlay { transition: none; }
-            .spinner { animation-duration: 2.5s; }
+            width: 28px; height: 28px;
+            border: 2px solid rgba(255, 255, 255, 0.10);
+            border-top-color: var(--accent-blue);
+            border-radius: 50%;
+            animation: spin 0.75s linear infinite;
         }
         @keyframes spin { to { transform: rotate(360deg); } }
 
@@ -7228,7 +7221,7 @@
                 height: appConfig.height,
                 content: `
                     <div class="content-area dark" style="position:relative;flex:1;">
-                        <div class="loading-overlay active"><div class="spinner"></div><span>正在启动 ${filename}...</span></div>
+                        <div class="loading-overlay active"><div class="spinner"></div></div>
                         <!-- 注意：故意不设 sandbox 限制以保证最佳性能和兼容性，请勿添加 -->
                         <iframe src="${url}" style="width:100%;height:100%;border:none;" onload="this.previousElementSibling.classList.remove('active')"></iframe>
                     </div>
@@ -8935,7 +8928,7 @@
                         <button class="nav-btn" id="nav-go-${SYSTEM.idCounter+1}"><svg class="icon-svg" viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></button>
                     </div>
                     <div class="content-area" style="position:relative;">
-                        <div class="loading-overlay active" id="loading-${SYSTEM.idCounter+1}"><div class="spinner"></div><span>加载中...</span></div>
+                        <div class="loading-overlay active" id="loading-${SYSTEM.idCounter+1}"><div class="spinner"></div></div>
                         <!-- 注意：故意不设 sandbox 限制以保证最佳性能和兼容性，请勿添加 -->
                         <iframe id="browser-frame-${SYSTEM.idCounter+1}" src="${startUrl}"></iframe>
                     </div>
