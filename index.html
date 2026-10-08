@@ -10266,27 +10266,27 @@
 
         // 把渲染结果包装成带 GitHub 暗色样式的完整 HTML 文档（用于编辑器预览 iframe / 新窗口打开）
         function buildMarkdownPreviewDoc(md) {
-            const body = (md && md.trim()) ? renderMarkdownToHtml(md) : '<p style="color:var(--text-muted)">（空 Markdown 文档）</p>';
+            const body = (md && md.trim()) ? renderMarkdownToHtml(md) : '<p style="color:#8b949e">（空 Markdown 文档）</p>';
             return '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>'
-                + 'body{margin:0;padding:24px 28px;background:var(--glass-surface);color:var(--text-main);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans","PingFang SC","Microsoft YaHei",Helvetica,Arial,sans-serif;font-size:15px;line-height:1.65;word-wrap:break-word}'
+                + 'body{margin:0;padding:24px 28px;background:#0d1117;color:#e6edf3;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans","PingFang SC","Microsoft YaHei",Helvetica,Arial,sans-serif;font-size:15px;line-height:1.65;word-wrap:break-word}'
                 + 'h1,h2,h3,h4,h5,h6{margin:1.2em 0 .5em;font-weight:600;line-height:1.3}'
-                + 'h1{font-size:1.9em;padding-bottom:.3em;border-bottom:1px solid var(--glass-border)}'
-                + 'h2{font-size:1.5em;padding-bottom:.3em;border-bottom:1px solid var(--glass-border)}'
-                + 'h3{font-size:1.25em}h4{font-size:1.1em}h5{font-size:1em}h6{font-size:.9em;color:var(--text-muted)}'
-                + 'p{margin:.6em 0}a{color:var(--accent-blue);text-decoration:none}a:hover{text-decoration:underline}'
+                + 'h1{font-size:1.9em;padding-bottom:.3em;border-bottom:1px solid #30363d}'
+                + 'h2{font-size:1.5em;padding-bottom:.3em;border-bottom:1px solid #30363d}'
+                + 'h3{font-size:1.25em}h4{font-size:1.1em}h5{font-size:1em}h6{font-size:.9em;color:#8b949e}'
+                + 'p{margin:.6em 0}a{color:#58a6ff;text-decoration:none}a:hover{text-decoration:underline}'
                 + 'code{background:rgba(110,118,129,.35);padding:.15em .4em;border-radius:5px;font-family:ui-monospace,SFMono-Regular,"SF Mono",Consolas,"Liberation Mono",Menlo,monospace;font-size:.88em}'
-                + 'pre{background:rgba(0,0,0,0.20);border:1px solid var(--glass-border);border-radius:8px;padding:14px 16px;overflow:auto;margin:.8em 0}'
+                + 'pre{background:#161b22;border:1px solid #30363d;border-radius:8px;padding:14px 16px;overflow:auto;margin:.8em 0}'
                 + 'pre code{background:none;padding:0;font-size:.86em;line-height:1.55;display:block}'
-                + 'blockquote{margin:.8em 0;padding:.2em 1em;border-left:4px solid var(--glass-border);color:var(--text-muted)}'
+                + 'blockquote{margin:.8em 0;padding:.2em 1em;border-left:4px solid #30363d;color:#8b949e}'
                 + 'blockquote>:first-child{margin-top:0}blockquote>:last-child{margin-bottom:0}'
                 + 'ul,ol{margin:.5em 0;padding-left:2em}li{margin:.25em 0}'
                 + 'li input[type=checkbox]{margin-right:.4em;vertical-align:middle}'
                 + 'table{border-collapse:collapse;margin:.8em 0;display:block;max-width:100%;overflow:auto}'
-                + 'th,td{border:1px solid var(--glass-border);padding:6px 13px}th{font-weight:600;background:rgba(0,0,0,0.20)}'
-                + 'tbody tr:nth-child(2n){background:rgba(0,0,0,0.20)}'
+                + 'th,td{border:1px solid #30363d;padding:6px 13px}th{font-weight:600;background:#161b22}'
+                + 'tbody tr:nth-child(2n){background:#161b22}'
                 + 'img{max-width:100%;border-radius:6px}'
-                + 'hr{height:1px;border:none;background:var(--glass-border);margin:1.5em 0}'
-                + 'del{color:var(--text-muted)}'
+                + 'hr{height:1px;border:none;background:#30363d;margin:1.5em 0}'
+                + 'del{color:#8b949e}'
                 + '</style></head><body class="markdown-body">' + body + '</body></html>';
         }
 
@@ -10605,7 +10605,7 @@
                 const isMarkdownMode = langSelect && langSelect.value === 'markdown';
                 const htmlContent = isMarkdownMode
                     ? buildMarkdownPreviewDoc(code)
-                    : (code || '<html><body style="margin:0;background:var(--glass-surface);"></body></html>');
+                    : (code || '<html><body style="margin:0;background:#0d1117;"></body></html>');
 
                 // 用一个干净的 iframe 顶掉旧的（同时也就卸载了旧页面的脚本/定时器/监听器）
                 const fresh = previewFrame.cloneNode(false);
