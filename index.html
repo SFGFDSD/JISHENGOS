@@ -1628,21 +1628,21 @@
         .window.truly-fullscreen.manga-full .manga-exit-btn { display: flex; }
 
         /* === 代码编辑器样式 === */
-        .editor-app { display: flex; flex-direction: column; height: 100%; background: #0d1117; overflow: hidden; }
+        .editor-app { display: flex; flex-direction: column; height: 100%; background: var(--glass-surface); backdrop-filter: blur(20px); overflow: hidden; }
         .editor-toolbar {
-            display: flex; align-items: center; background: #161b22;
-            border-bottom: 1px solid #30363d; padding: 0 8px; height: 40px;
+            display: flex; align-items: center; background: rgba(0,0,0,0.20);
+            border-bottom: 1px solid var(--glass-border); padding: 0 8px; height: 40px;
             flex-shrink: 0; gap: 2px; overflow-x: auto; overflow-y: hidden;
         }
         .editor-toolbar-group { display: flex; align-items: center; gap: 1px; }
-        .editor-toolbar-divider { width: 1px; height: 20px; background: #30363d; margin: 0 6px; flex-shrink: 0; }
+        .editor-toolbar-divider { width: 1px; height: 20px; background: var(--glass-border); margin: 0 6px; flex-shrink: 0; }
         .editor-tb-btn {
             display: flex; align-items: center; justify-content: center; gap: 5px;
             padding: 4px 8px; height: 30px; border: none; background: transparent;
-            color: #8b949e; border-radius: 6px; cursor: pointer;
+            color: var(--text-muted); border-radius: 6px; cursor: pointer;
             font-size: 12px; white-space: nowrap; transition: all .15s; flex-shrink: 0;
         }
-        .editor-tb-btn:hover { background: #30363d; color: #e6edf3; }
+        .editor-tb-btn:hover { background: var(--glass-border); color: var(--text-main); }
         .editor-tb-btn:active { transform: scale(.95); }
         .editor-tb-btn svg { width: 15px; height: 15px; flex-shrink: 0; }
         .editor-tb-btn.accent { color: #3fb950; }
@@ -1651,104 +1651,109 @@
         .editor-tb-btn.danger:hover { background: #f8514920; }
         .editor-lang-select {
             background: #21262d; color: #e6edf3;
-            border: 1px solid #30363d; border-radius: 6px;
+            border: 1px solid var(--glass-border); border-radius: 6px;
             padding: 3px 8px; font-size: 12px; height: 28px; cursor: pointer; outline: none;
+            color-scheme: dark;
         }
-        .editor-lang-select:focus { border-color: #58a6ff; }
+        .editor-lang-select option {
+            background: #21262d; color: #e6edf3;
+        }
+        .editor-lang-select:hover { border-color: rgba(255,255,255,0.15); }
+        .editor-lang-select:focus { border-color: var(--accent-blue); }
         .editor-search-bar {
             display: none; align-items: center; gap: 6px;
-            background: #161b22; border-bottom: 1px solid #30363d;
+            background: rgba(0,0,0,0.20); border-bottom: 1px solid var(--glass-border);
             padding: 4px 12px; height: 36px; flex-shrink: 0;
         }
         .editor-search-bar.open { display: flex; }
         .editor-search-seg { display: flex; align-items: center; gap: 4px; }
-        .editor-search-seg-label { font-size: 11px; color: #484f58; flex-shrink: 0; }
+        .editor-search-seg-label { font-size: 11px; color: var(--text-muted); flex-shrink: 0; }
         .editor-search-input-wrap { position: relative; display: flex; align-items: center; }
         .editor-search-input {
-            width: 180px; background: #21262d; color: #e6edf3;
-            border: 1px solid #30363d; border-radius: 5px;
+            width: 180px; background: rgba(255,255,255,0.06); color: var(--text-main);
+            border: 1px solid var(--glass-border); border-radius: 5px;
             padding: 3px 40px 3px 8px; font-size: 12px; outline: none; font-family: inherit; height: 26px;
         }
-        .editor-search-input:focus { border-color: #58a6ff; }
-        .editor-search-input::placeholder { color: #484f58; }
+        .editor-search-input:focus { border-color: var(--accent-blue); }
+        .editor-search-input::placeholder { color: var(--text-muted); }
         .editor-search-count {
             position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
-            font-size: 10px; color: #484f58; pointer-events: none; white-space: nowrap;
+            font-size: 10px; color: var(--text-muted); pointer-events: none; white-space: nowrap;
         }
         .editor-replace-input {
-            width: 160px; background: #21262d; color: #e6edf3;
-            border: 1px solid #30363d; border-radius: 5px;
+            width: 160px; background: rgba(255,255,255,0.06); color: var(--text-main);
+            border: 1px solid var(--glass-border); border-radius: 5px;
             padding: 3px 8px; font-size: 12px; outline: none; font-family: inherit; height: 26px;
         }
-        .editor-replace-input:focus { border-color: #58a6ff; }
-        .editor-replace-input::placeholder { color: #484f58; }
+        .editor-replace-input:focus { border-color: var(--accent-blue); }
+        .editor-replace-input::placeholder { color: var(--text-muted); }
         .editor-s-btn {
             display: flex; align-items: center; justify-content: center;
             width: 24px; height: 24px; border: none; background: transparent;
-            color: #8b949e; border-radius: 4px; cursor: pointer;
+            color: var(--text-muted); border-radius: 4px; cursor: pointer;
             transition: all .15s; flex-shrink: 0;
         }
-        .editor-s-btn:hover { background: #30363d; color: #e6edf3; }
+        .editor-s-btn:hover { background: var(--glass-border); color: var(--text-main); }
         .editor-s-btn svg { width: 12px; height: 12px; }
         .editor-s-toggle {
             display: flex; align-items: center; justify-content: center;
-            padding: 1px 5px; height: 22px; border: 1px solid #30363d;
-            background: transparent; color: #8b949e;
+            padding: 1px 5px; height: 22px; border: 1px solid var(--glass-border);
+            background: transparent; color: var(--text-muted);
             border-radius: 3px; cursor: pointer; font-size: 10px;
             transition: all .15s; flex-shrink: 0; font-weight: 600;
         }
-        .editor-s-toggle:hover { border-color: #8b949e; color: #e6edf3; }
-        .editor-s-toggle.active { border-color: #58a6ff; color: #58a6ff; background: #1f6feb22; }
-        .editor-search-sep { width: 1px; height: 18px; background: #30363d; flex-shrink: 0; }
+        .editor-s-toggle:hover { border-color: var(--text-muted); color: var(--text-main); }
+        .editor-s-toggle.active { border-color: var(--accent-blue); color: var(--accent-blue); background: rgba(0,120,212,0.12); }
+        .editor-search-sep { width: 1px; height: 18px; background: var(--glass-border); flex-shrink: 0; }
         .editor-main-container { display: flex; flex: 1; overflow: hidden; }
         .editor-sidebar {
-            width: 44px; background: #161b22; border-right: 1px solid #30363d;
+            width: 44px; background: rgba(0,0,0,0.20); border-right: 1px solid var(--glass-border);
             display: flex; flex-direction: column; align-items: center; padding: 8px 0; gap: 4px; flex-shrink: 0;
         }
         .editor-side-btn {
             width: 34px; height: 34px; border: none; background: transparent;
-            color: #8b949e; border-radius: 8px; cursor: pointer;
+            color: var(--text-muted); border-radius: 8px; cursor: pointer;
             display: flex; align-items: center; justify-content: center;
             transition: all .15s; position: relative;
         }
-        .editor-side-btn:hover { background: #30363d; color: #e6edf3; }
-        .editor-side-btn.active { color: #58a6ff; background: #1f6feb22; }
+        .editor-side-btn:hover { background: var(--glass-border); color: var(--text-main); }
+        .editor-side-btn.active { color: var(--accent-blue); background: rgba(0,120,212,0.12); }
         .editor-side-btn.active::before {
             content: ''; position: absolute; left: -1px; top: 6px; bottom: 6px;
-            width: 2px; background: #58a6ff; border-radius: 1px;
+            width: 2px; background: var(--accent-blue); border-radius: 1px;
         }
         .editor-side-btn svg { width: 18px; height: 18px; }
         .editor-sidebar-spacer { flex: 1; }
         .editor-section { flex: 1; display: flex; flex-direction: column; min-width: 0; }
         .editor-wrapper { flex: 1; position: relative; overflow: hidden; }
         .editor-resizer {
-            width: 5px; cursor: col-resize; background: #30363d;
+            width: 5px; cursor: col-resize; background: var(--glass-border);
             transition: background .15s; flex-shrink: 0; position: relative;
         }
-        .editor-resizer:hover, .editor-resizer.dragging { background: #58a6ff; }
+        .editor-resizer:hover, .editor-resizer.dragging { background: var(--accent-blue); }
         .editor-resizer::before {
             content: ''; position: absolute; top: 0; bottom: 0; left: -4px; right: -4px; z-index: 10;
         }
         .editor-preview-section {
-            display: flex; flex-direction: column; width: 45%; min-width: 120px; background: #0d1117;
+            display: flex; flex-direction: column; width: 45%; min-width: 120px; background: var(--glass-surface);
         }
         .editor-preview-header {
             display: none;
         }
-        .editor-preview-title { font-size: 12px; color: #8b949e; display: flex; align-items: center; gap: 6px; }
+        .editor-preview-title { font-size: 12px; color: var(--text-muted); display: flex; align-items: center; gap: 6px; }
         .editor-preview-title svg { width: 14px; height: 14px; }
         .editor-preview-actions { display: flex; gap: 2px; }
         .editor-preview-btn {
             width: 28px; height: 28px; border: none; background: transparent;
-            color: #8b949e; border-radius: 6px; cursor: pointer;
+            color: var(--text-muted); border-radius: 6px; cursor: pointer;
             display: flex; align-items: center; justify-content: center; transition: all .15s;
         }
-        .editor-preview-btn:hover { background: #30363d; color: #e6edf3; }
+        .editor-preview-btn:hover { background: var(--glass-border); color: var(--text-main); }
         .editor-preview-btn svg { width: 14px; height: 14px; }
         /* 预览标题栏移到主工具栏 */
         .editor-toolbar {
-            display: flex; align-items: center; background: #161b22;
-            border-bottom: 1px solid #30363d; padding: 0 8px; height: 40px;
+            display: flex; align-items: center; background: rgba(0,0,0,0.20);
+            border-bottom: 1px solid var(--glass-border); padding: 0 8px; height: 40px;
             flex-shrink: 0; gap: 2px; overflow-x: auto; overflow-y: hidden;
         }
         .editor-toolbar-left {
@@ -1756,23 +1761,23 @@
         }
         .editor-toolbar-right {
             display: flex; align-items: center; gap: 8px;
-            padding-left: 12px; border-left: 1px solid #30363d;
+            padding-left: 12px; border-left: 1px solid var(--glass-border);
         }
-        .editor-preview-frame-wrapper { flex: 1; position: relative; background: #0d1117; }
-        .editor-preview-frame-wrapper iframe { width: 100%; height: 100%; border: none; background: #0d1117; }
+        .editor-preview-frame-wrapper { flex: 1; position: relative; background: var(--glass-surface); }
+        .editor-preview-frame-wrapper iframe { width: 100%; height: 100%; border: none; background: var(--glass-surface); }
         .editor-preview-loading {
             position: absolute; top: 0; left: 0; right: 0; height: 2px;
             background: transparent; z-index: 10; overflow: hidden;
         }
         .editor-preview-loading.active::after {
             content: ''; position: absolute; top: 0; left: -50%; width: 50%; height: 100%;
-            background: #58a6ff; animation: editor-loading-bar 1s ease-in-out infinite;
+            background: var(--accent-blue); animation: editor-loading-bar 1s ease-in-out infinite;
         }
         @keyframes editor-loading-bar { 0% { left: -50% } 100% { left: 100% } }
         .editor-status-bar {
             display: flex; align-items: center; justify-content: space-between;
-            height: 24px; background: #161b22; border-top: 1px solid #30363d;
-            padding: 0 12px; font-size: 11px; color: #8b949e; flex-shrink: 0;
+            height: 24px; background: rgba(0,0,0,0.20); border-top: 1px solid var(--glass-border);
+            padding: 0 12px; font-size: 11px; color: var(--text-muted); flex-shrink: 0;
         }
         .editor-status-left, .editor-status-right { display: flex; align-items: center; gap: 14px; }
         .editor-status-item { display: flex; align-items: center; gap: 4px; }
@@ -1817,23 +1822,23 @@
            原覆盖曾导致 .cm-error 红字叠粉底文字不可见的 bug。 */
         .editor-app .cm-s-material-darker .CodeMirror-linenumber { padding: 0 12px 0 8px !important; }
         .editor-app .CodeMirror-dialog {
-            background: #161b22 !important; border-bottom: 1px solid #30363d !important;
-            color: #e6edf3 !important; padding: 6px 12px !important;
+            background: rgba(0,0,0,0.20) !important; border-bottom: 1px solid var(--glass-border) !important;
+            color: var(--text-main) !important; padding: 6px 12px !important;
         }
         .editor-app .CodeMirror-dialog input {
-            background: #21262d !important; color: #e6edf3 !important;
-            border: 1px solid #30363d !important; border-radius: 4px !important;
+            background: rgba(255,255,255,0.06) !important; color: var(--text-main) !important;
+            border: 1px solid var(--glass-border) !important; border-radius: 4px !important;
             padding: 3px 8px !important; outline: none !important;
         }
-        .editor-app .CodeMirror-dialog input:focus { border-color: #58a6ff !important; }
+        .editor-app .CodeMirror-dialog input:focus { border-color: var(--accent-blue) !important; }
         .editor-app .CodeMirror-hints {
-            background: #161b22 !important; border: 1px solid #30363d !important;
+            background: rgba(0,0,0,0.20) !important; border: 1px solid var(--glass-border) !important;
             border-radius: 6px !important; box-shadow: 0 8px 24px rgba(0,0,0,.4) !important;
             font-family: 'JetBrains Mono', monospace !important; font-size: 13px !important;
             z-index: 99999 !important; overflow: hidden;
         }
-        .editor-app .CodeMirror-hint { color: #e6edf3 !important; padding: 4px 10px !important; }
-        .editor-app li.CodeMirror-hint-active { background: #58a6ff !important; color: #fff !important; }
+        .editor-app .CodeMirror-hint { color: var(--text-main) !important; padding: 4px 10px !important; }
+        .editor-app li.CodeMirror-hint-active { background: var(--accent-blue) !important; color: #fff !important; }
         
         /* 拖拽防选中 - 修复iframe拦截拖拽问题 */
         .no-select { user-select: none !important; -webkit-user-select: none !important; }
@@ -7369,7 +7374,7 @@
                         iconHtml: icon('fileAudio','sm'),
                         width: 500, height: 200,
                         content: `<div class="content-area dark" style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;overflow:hidden">
-                            <div style="margin-bottom:20px;color:#8b949e;font-size:14px">${filename}</div>
+                            <div style="margin-bottom:20px;color:var(--text-muted);font-size:14px">${filename}</div>
                             <audio src="${dataUrl}" controls autoplay style="width:100%"></audio>
                         </div>`
                     });
@@ -10261,27 +10266,27 @@
 
         // 把渲染结果包装成带 GitHub 暗色样式的完整 HTML 文档（用于编辑器预览 iframe / 新窗口打开）
         function buildMarkdownPreviewDoc(md) {
-            const body = (md && md.trim()) ? renderMarkdownToHtml(md) : '<p style="color:#8b949e">（空 Markdown 文档）</p>';
+            const body = (md && md.trim()) ? renderMarkdownToHtml(md) : '<p style="color:var(--text-muted)">（空 Markdown 文档）</p>';
             return '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>'
-                + 'body{margin:0;padding:24px 28px;background:#0d1117;color:#e6edf3;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans","PingFang SC","Microsoft YaHei",Helvetica,Arial,sans-serif;font-size:15px;line-height:1.65;word-wrap:break-word}'
+                + 'body{margin:0;padding:24px 28px;background:var(--glass-surface);color:var(--text-main);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans","PingFang SC","Microsoft YaHei",Helvetica,Arial,sans-serif;font-size:15px;line-height:1.65;word-wrap:break-word}'
                 + 'h1,h2,h3,h4,h5,h6{margin:1.2em 0 .5em;font-weight:600;line-height:1.3}'
-                + 'h1{font-size:1.9em;padding-bottom:.3em;border-bottom:1px solid #30363d}'
-                + 'h2{font-size:1.5em;padding-bottom:.3em;border-bottom:1px solid #30363d}'
-                + 'h3{font-size:1.25em}h4{font-size:1.1em}h5{font-size:1em}h6{font-size:.9em;color:#8b949e}'
-                + 'p{margin:.6em 0}a{color:#58a6ff;text-decoration:none}a:hover{text-decoration:underline}'
+                + 'h1{font-size:1.9em;padding-bottom:.3em;border-bottom:1px solid var(--glass-border)}'
+                + 'h2{font-size:1.5em;padding-bottom:.3em;border-bottom:1px solid var(--glass-border)}'
+                + 'h3{font-size:1.25em}h4{font-size:1.1em}h5{font-size:1em}h6{font-size:.9em;color:var(--text-muted)}'
+                + 'p{margin:.6em 0}a{color:var(--accent-blue);text-decoration:none}a:hover{text-decoration:underline}'
                 + 'code{background:rgba(110,118,129,.35);padding:.15em .4em;border-radius:5px;font-family:ui-monospace,SFMono-Regular,"SF Mono",Consolas,"Liberation Mono",Menlo,monospace;font-size:.88em}'
-                + 'pre{background:#161b22;border:1px solid #30363d;border-radius:8px;padding:14px 16px;overflow:auto;margin:.8em 0}'
+                + 'pre{background:rgba(0,0,0,0.20);border:1px solid var(--glass-border);border-radius:8px;padding:14px 16px;overflow:auto;margin:.8em 0}'
                 + 'pre code{background:none;padding:0;font-size:.86em;line-height:1.55;display:block}'
-                + 'blockquote{margin:.8em 0;padding:.2em 1em;border-left:4px solid #30363d;color:#8b949e}'
+                + 'blockquote{margin:.8em 0;padding:.2em 1em;border-left:4px solid var(--glass-border);color:var(--text-muted)}'
                 + 'blockquote>:first-child{margin-top:0}blockquote>:last-child{margin-bottom:0}'
                 + 'ul,ol{margin:.5em 0;padding-left:2em}li{margin:.25em 0}'
                 + 'li input[type=checkbox]{margin-right:.4em;vertical-align:middle}'
                 + 'table{border-collapse:collapse;margin:.8em 0;display:block;max-width:100%;overflow:auto}'
-                + 'th,td{border:1px solid #30363d;padding:6px 13px}th{font-weight:600;background:#161b22}'
-                + 'tbody tr:nth-child(2n){background:#161b22}'
+                + 'th,td{border:1px solid var(--glass-border);padding:6px 13px}th{font-weight:600;background:rgba(0,0,0,0.20)}'
+                + 'tbody tr:nth-child(2n){background:rgba(0,0,0,0.20)}'
                 + 'img{max-width:100%;border-radius:6px}'
-                + 'hr{height:1px;border:none;background:#30363d;margin:1.5em 0}'
-                + 'del{color:#8b949e}'
+                + 'hr{height:1px;border:none;background:var(--glass-border);margin:1.5em 0}'
+                + 'del{color:var(--text-muted)}'
                 + '</style></head><body class="markdown-body">' + body + '</body></html>';
         }
 
@@ -10346,10 +10351,10 @@
                                 <div class="editor-toolbar-divider"></div>
                                 <div class="editor-toolbar-group">
                                     <button class="editor-tb-btn" id="editor-import-${SYSTEM.idCounter+1}" title="导入文件">
-                                        ${icon('uiUpload')}<span>导入</span>
+                                        ${icon('uiDownload')}<span>导入</span>
                                     </button>
                                     <button class="editor-tb-btn" id="editor-export-${SYSTEM.idCounter+1}" title="导出文件">
-                                        ${icon('uiDownload')}<span>导出</span>
+                                        ${icon('uiUpload')}<span>导出</span>
                                     </button>
                                 </div>
                             </div>
@@ -10600,7 +10605,7 @@
                 const isMarkdownMode = langSelect && langSelect.value === 'markdown';
                 const htmlContent = isMarkdownMode
                     ? buildMarkdownPreviewDoc(code)
-                    : (code || '<html><body style="margin:0;background:#0d1117;"></body></html>');
+                    : (code || '<html><body style="margin:0;background:var(--glass-surface);"></body></html>');
 
                 // 用一个干净的 iframe 顶掉旧的（同时也就卸载了旧页面的脚本/定时器/监听器）
                 const fresh = previewFrame.cloneNode(false);
