@@ -3682,6 +3682,14 @@
                 const icons = dragState.icons;
                 const movedToBody = dragState._movedToBody;
 
+                // 修复：必须在图标"移回桌面容器、去掉 .dragging（pointer-events:none）"之前判定投放目标，
+                // 否则 elementFromPoint 会命中被拖拽的图标自身，导致拖到桌面文件夹图标上判定失败。
+                // 判定规则与拖动过程中的高亮（findDropTargetEl）完全一致：看到哪里亮，就放进哪里。
+                const pos = getClientXY(e);
+                const dropTarget = (pos.x != null && pos.y != null)
+                    ? resolveDesktopDropTarget(pos.x, pos.y, icons.map(i => i.el))
+                    : null;
+
                 // === 先将图标移回桌面容器，恢复 absolute 定位 ===
                 const container = document.getElementById('desktop-icons');
                 if (movedToBody) {
@@ -3698,37 +3706,13 @@
                     });
                 }
 
-                // === 检测是否拖拽到了文件夹窗口或桌面文件夹图标上 ===
-                const pos = getClientXY(e);
-                const targetEl = (pos.x != null && pos.y != null) ? document.elementFromPoint(pos.x, pos.y) : null;
-
-                const folderWindow = targetEl?.closest('.window');
-                const desktopIcon = targetEl?.closest('.desktop-icon');
+                // === 拖到了文件夹（窗口内容区 / 窗口里的子文件夹 / 桌面文件夹图标 / 挂载文件夹图标）===
                 let movedToFolder = false;
-
-                // 检查是否拖到了文件夹窗口上（排除来源窗口）
-                if (folderWindow) {
-                    const titleText = folderWindow.querySelector('.window-title-text')?.innerText;
-                    if (titleText) {
-                        const targetPath = SYSTEM.desktopPath + '/' + titleText;
-                        const fileIcons = icons.filter(i => i.el.dataset.filename);
-                        if (fileIcons.length > 0) {
-                            moveDesktopFilesToFolder(fileIcons, targetPath, titleText);
-                            movedToFolder = true;
-                        }
-                    }
-                }
-                // 检查是否拖到了桌面文件夹图标上
-                else if (desktopIcon && desktopIcon.dataset.filename) {
-                    const isSelf = icons.some(i => i.el === desktopIcon);
-                    if (!isSelf) {
-                        const targetFolderName = desktopIcon.dataset.filename;
-                        const targetPath = SYSTEM.desktopPath + '/' + targetFolderName;
-                        const fileIcons = icons.filter(i => i.el.dataset.filename);
-                        if (fileIcons.length > 0) {
-                            moveDesktopFilesToFolder(fileIcons, targetPath, targetFolderName);
-                            movedToFolder = true;
-                        }
+                if (dropTarget) {
+                    const fileIcons = icons.filter(i => i.el.dataset.filename);
+                    if (fileIcons.length > 0) {
+                        moveDesktopFilesToFolder(fileIcons, dropTarget.path, dropTarget.name);
+                        movedToFolder = true;
                     }
                 }
 
@@ -3766,82 +3750,191 @@
             dragState = null;
         }
 
-        // 将桌面文件移动到指定文件夹
+        // 解析"桌面图标拖拽松手"时的投放目标，返回 { path, name } 或 null。
+        // 与拖动中的高亮保持一致：
+        //   1) 文件夹窗口里的子文件夹项 → 该子文件夹
+        //   2) 桌面上的文件夹图标        → 桌面/该文件夹
+        //   3) 桌面上的挂载本地文件夹图标 → 其挂载路径
+        //   4) 文件夹窗口内容区          → 该窗口当前所在目录（currentPath，支持已进入子目录）
+        // 普通文件图标、非文件夹窗口（记事本等）都不是有效目标。
+        function resolveDesktopDropTarget(x, y, excludeEls) {
+            const t = findDropTargetEl(x, y, excludeEls);
+            if (!t) return null;
+
+            if (t.classList.contains('folder-item') || t.classList.contains('folder-grid-item')) {
+                const p = t.dataset.path;
+                if (!p || t.dataset.isdir !== 'true') return null;
+                return { path: p, name: t.dataset.filename || p.split('/').pop() };
+            }
+
+            if (t.classList.contains('desktop-icon')) {
+                if (t.dataset.localFolder) {
+                    const info = SYSTEM.mountedFolders && SYSTEM.mountedFolders[t.dataset.localFolder];
+                    if (!info || info.disconnected) return null;
+                    return { path: info.mountPath || ('/mnt/local/' + info.name), name: info.name };
+                }
+                if (t.dataset.filename && t.dataset.isdir === 'true') {
+                    return { path: SYSTEM.desktopPath + '/' + t.dataset.filename, name: t.dataset.filename };
+                }
+                return null;
+            }
+
+            if (t.id && t.id.indexOf('folder-content-') === 0) {
+                const st = SYSTEM.folderWindowStates && SYSTEM.folderWindowStates[t.id.replace('folder-content-', '')];
+                if (st && st.currentPath) {
+                    return { path: st.currentPath, name: st.currentPath.split('/').pop() || st.folderName || '文件夹' };
+                }
+            }
+            return null;
+        }
+
+        // 校验：src 下的每一个条目在 dest 中都存在（用于"复制后删除源"之前的安全检查，防止丢数据）
+        function verifyTreeCopied(src, dest, cb) {
+            SYSTEM.fs.readdir(src, (err, names) => {
+                if (err) { cb(false); return; }
+                if (!names.length) { cb(true); return; }
+                let pending = names.length, ok = true;
+                const done = (good) => { if (!good) ok = false; if (--pending === 0) cb(ok); };
+                names.forEach(n => {
+                    SYSTEM.fs.stat(src + '/' + n, (sErr, sSt) => {
+                        if (sErr || !sSt) { done(false); return; }
+                        SYSTEM.fs.stat(dest + '/' + n, (dErr, dSt) => {
+                            if (dErr || !dSt) { done(false); return; }
+                            const sDir = typeof sSt.isDirectory === 'function' ? sSt.isDirectory() : !!sSt.isDirectory;
+                            if (sDir) verifyTreeCopied(src + '/' + n, dest + '/' + n, done);
+                            else done(true);
+                        });
+                    });
+                });
+            });
+        }
+
+        // 将桌面上的文件 / 文件夹移动到指定文件夹
+        // 修复：
+        //  - 原实现只做 readFile → writeFile → unlink：文件的修改日期被刷成"现在"，文件夹直接 EISDIR 失败；
+        //  - 现在优先用 fs.rename（内核已包装：会把修改日期缓存连同整棵子树迁移到新路径），
+        //    rename 失败（如跨挂载点）时回退：文件 = 读 → 写 → 回写原 mtime → 删源；
+        //    文件夹 = copyFolderRecursive（逐级保留 mtime）→ 校验完整 → 删源；
+        //  - 防止把文件夹移进它自己或其子文件夹；同名冲突时文件可覆盖、文件夹可合并、类型不同则拒绝。
         function moveDesktopFilesToFolder(fileIcons, targetPath, targetFolderName) {
-            let processedCount = 0;
-            let errorCount = 0;
+            const normTarget = String(targetPath).replace(/\/+$/, '') || '/';
+            const desktopNorm = String(SYSTEM.desktopPath).replace(/\/+$/, '');
+            const isDirStat = (st) => !!st && (typeof st.isDirectory === 'function' ? st.isDirectory() : !!st.isDirectory);
             const total = fileIcons.length;
+            let movedCount = 0, skippedCount = 0, errorCount = 0;
+            const errorMsgs = [];
+
+            const finish = () => {
+                const srcPaths = fileIcons.map(icon => SYSTEM.desktopPath + '/' + icon.el.dataset.filename);
+                refreshAllAffectedWindows(normTarget, srcPaths, true);
+                if (errorCount > 0) {
+                    Notify.warning('部分失败', `成功 ${movedCount} 个，失败 ${errorCount} 个` + (errorMsgs.length ? `：${errorMsgs.slice(0, 2).join('；')}` : ''));
+                } else if (movedCount > 0) {
+                    Notify.success('移动成功', `已将 ${movedCount} 个项目移动到 "${targetFolderName}"`);
+                }
+            };
 
             const processNext = (index) => {
-                if (index >= total) {
-                    // 收集源路径用于刷新
-                    const srcPaths = fileIcons.map(icon => SYSTEM.desktopPath + '/' + icon.el.dataset.filename);
-                    
-                    // 刷新所有受影响的窗口
-                    refreshAllAffectedWindows(targetPath, srcPaths, true);
-                    
-                    if (errorCount === 0) {
-                        Notify.success('移动成功', `已将 ${processedCount} 个文件移动到 "${targetFolderName}"`);
-                    } else {
-                        Notify.warning('部分失败', `成功 ${processedCount} 个，失败 ${errorCount} 个`);
-                    }
-                    return;
-                }
+                if (index >= total) { finish(); return; }
 
                 const icon = fileIcons[index];
                 const filename = icon.el.dataset.filename;
                 const srcPath = SYSTEM.desktopPath + '/' + filename;
-                const destPath = targetPath + '/' + filename;
+                const destPath = normTarget + '/' + filename;
+                const next = () => processNext(index + 1);
+                const fail = (msg, err) => {
+                    errorCount++;
+                    errorMsgs.push(`"${filename}" ${msg}`);
+                    console.error('移动到文件夹失败:', filename, msg, err || '');
+                    next();
+                };
+                const onMoved = () => {
+                    movedCount++;
+                    icon.el.remove();
+                    delete SYSTEM.iconPositions[icon.id];
+                    saveIconPositions();
+                    next();
+                };
 
-                // 检查源路径是否已经在目标文件夹内
-                if (srcPath === destPath || srcPath.startsWith(targetPath + '/')) {
-                    processedCount++;
-                    processNext(index + 1);
+                // 目标就是桌面本身（例如打开的文件夹窗口正停在桌面目录）：原地不动
+                if (normTarget === desktopNorm || srcPath === destPath) { skippedCount++; next(); return; }
+                // 不能把文件夹移动到它自身或它的子文件夹里（否则复制回退会无限递归）
+                if (normTarget === srcPath || normTarget.indexOf(srcPath + '/') === 0) {
+                    skippedCount++;
+                    Notify.warning('无法移动', `不能将 "${filename}" 移动到它自身或其子文件夹中`);
+                    next();
                     return;
                 }
 
-                SYSTEM.fs.stat(destPath, async (err) => {
-                    if (!err) {
-                        // 目标已存在同名文件
-                        if (!(await SysDialog.confirm({ title: '文件已存在', icon: 'uiWarning', danger: true, okText: '覆盖', message: `文件 "${filename}" 已存在于目标文件夹，是否覆盖？` }))) {
-                            processedCount++;
-                            processNext(index + 1);
-                            return;
-                        }
-                    }
+                SYSTEM.fs.stat(srcPath, (sErr, sStats) => {
+                    if (sErr || !sStats) { fail('无法访问', sErr); return; }
+                    const srcIsDir = isDirStat(sStats);
+                    // 源的修改时间（经内核包装的 stat，已包含缓存中的原始日期）
+                    const srcMtime = sStats.mtime || null;
 
-                    // 读取源文件
-                    SYSTEM.fs.readFile(srcPath, (readErr, data) => {
-                        if (readErr) {
-                            errorCount++;
-                            processedCount++;
-                            processNext(index + 1);
-                            return;
-                        }
-
-                        // 写入目标
-                        SYSTEM.fs.writeFile(destPath, data, (writeErr) => {
-                            if (writeErr) {
-                                errorCount++;
-                                processedCount++;
-                                processNext(index + 1);
-                                return;
-                            }
-
-                            // 删除源文件
-                            SYSTEM.fs.unlink(srcPath, (unlinkErr) => {
-                                if (unlinkErr) {
-                                    errorCount++;
-                                } else {
-                                    // 从桌面移除图标
-                                    icon.el.remove();
-                                    delete SYSTEM.iconPositions[icon.id];
-                                    saveIconPositions();
-                                }
-                                processedCount++;
-                                processNext(index + 1);
+                    // —— 文件：rename，失败则 读→写→回写 mtime→删源 ——
+                    const moveFile = () => {
+                        SYSTEM.fs.rename(srcPath, destPath, (renameErr) => {
+                            if (!renameErr) { onMoved(); return; }
+                            SYSTEM.fs.readFile(srcPath, (readErr, data) => {
+                                if (readErr) { fail('读取失败', readErr); return; }
+                                SYSTEM.fs.writeFile(destPath, data, (writeErr) => {
+                                    if (writeErr) { fail('写入失败', writeErr); return; }
+                                    if (srcMtime && SYSTEM.fs.utimes) {
+                                        try { SYSTEM.fs.utimes(destPath, srcMtime, srcMtime, () => {}); } catch (_) {}
+                                    }
+                                    SYSTEM.fs.unlink(srcPath, (unlinkErr) => {
+                                        if (unlinkErr) { fail('已复制到目标，但删除桌面原文件失败', unlinkErr); return; }
+                                        onMoved();
+                                    });
+                                });
                             });
                         });
+                    };
+
+                    // —— 文件夹：复制（保留 mtime）→ 校验 → 删源 ——
+                    const copyThenDeleteDir = () => {
+                        copyFolderRecursive(srcPath, destPath, (copyErr) => {
+                            if (copyErr) { fail('复制失败', copyErr); return; }
+                            verifyTreeCopied(srcPath, destPath, (ok) => {
+                                if (!ok) { fail('复制不完整，已保留桌面上的原文件夹'); return; }
+                                // 合并到已存在的目标文件夹时，copyFolderRecursive 会把目标文件夹日期改成源的日期——
+                                // 这正是"移动"的语义（被移动的那个文件夹日期保持不变）
+                                deleteFolderRecursive(srcPath, (delErr) => {
+                                    if (delErr) console.error('移动文件夹：删除源失败', filename, delErr);
+                                    onMoved();
+                                });
+                            });
+                        });
+                    };
+
+                    const moveDir = (destExists) => {
+                        if (destExists) { copyThenDeleteDir(); return; }   // 合并：rename 不能覆盖目录
+                        SYSTEM.fs.rename(srcPath, destPath, (renameErr) => {
+                            if (!renameErr) { onMoved(); return; }
+                            copyThenDeleteDir();                          // 跨挂载点等情况
+                        });
+                    };
+
+                    SYSTEM.fs.stat(destPath, async (dErr, dStats) => {
+                        const destExists = !dErr && !!dStats;
+                        if (destExists) {
+                            const destIsDir = isDirStat(dStats);
+                            if (destIsDir !== srcIsDir) {
+                                fail(`目标位置已存在同名${destIsDir ? '文件夹' : '文件'}，无法覆盖`);
+                                return;
+                            }
+                            const ok = await SysDialog.confirm({
+                                title: srcIsDir ? '文件夹已存在' : '文件已存在',
+                                icon: 'uiWarning', danger: true,
+                                okText: srcIsDir ? '合并' : '覆盖',
+                                message: srcIsDir
+                                    ? `文件夹 "${filename}" 已存在于 "${targetFolderName}"，是否合并？（同名文件将被覆盖）`
+                                    : `文件 "${filename}" 已存在于 "${targetFolderName}"，是否覆盖？`
+                            });
+                            if (!ok) { skippedCount++; next(); return; }
+                        }
+                        if (srcIsDir) moveDir(destExists); else moveFile();
                     });
                 });
             };
