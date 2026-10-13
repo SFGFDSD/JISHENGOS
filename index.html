@@ -2955,12 +2955,22 @@
             }
 
             rename(oldPath, newPath, cb) {
-                // 跨文件系统不支持直接 rename，使用读-写方式
-                this.readFile(oldPath, null, null, (err, data) => {
-                    if (err) { cb(err); return; }
-                    this.writeFile(newPath, data, null, null, null, (err2) => {
-                        if (err2) { cb(err2); return; }
-                        this.unlink(oldPath, cb);
+                // 保留 mtime 的跨文件系统 rename
+                this.stat(oldPath, false, (sErr, sStats) => {
+                    const mtime = (!sErr && sStats && sStats.mtime) ? sStats.mtime : null;
+                    this.readFile(oldPath, null, null, (err, data) => {
+                        if (err) { cb(err); return; }
+                        this.writeFile(newPath, data, null, null, null, (err2) => {
+                            if (err2) { cb(err2); return; }
+                            const afterWrite = () => {
+                                if (mtime && typeof SYSTEM !== 'undefined' && SYSTEM.setMtimeCache) {
+                                    try { SYSTEM.setMtimeCache(newPath, mtime); } catch(e){}
+                                    if (SYSTEM.fs && SYSTEM.fs.utimes) { try { SYSTEM.fs.utimes(newPath, mtime, mtime, ()=>{}); } catch(e){} }
+                                }
+                                this.unlink(oldPath, cb);
+                            };
+                            afterWrite();
+                        });
                     });
                 });
             }
@@ -3720,36 +3730,68 @@
                         }
                     }
 
-                    // 读取源文件
-                    SYSTEM.fs.readFile(srcPath, (readErr, data) => {
-                        if (readErr) {
-                            errorCount++;
-                            processedCount++;
-                            processNext(index + 1);
+                    SYSTEM.fs.stat(srcPath, (sErr, sStats) => {
+                        const mtime = (!sErr && sStats && sStats.mtime) ? sStats.mtime : null;
+                        const isDir = (!sErr && sStats && sStats.isDirectory) ? (typeof sStats.isDirectory === 'function' ? sStats.isDirectory() : sStats.isDirectory) : false;
+                        if (isDir) {
+                            copyFolderRecursive(srcPath, destPath, (copyErr) => {
+                                if (copyErr) {
+                                    console.error('复制文件夹失败:', copyErr);
+                                    errorCount++;
+                                    processedCount++;
+                                    processNext(index + 1);
+                                    return;
+                                }
+                                // 保留文件夹原始 mtime 已由 copyFolderRecursive 内部处理
+                                SYSTEM.fs.stat(destPath, (dErr, dStats) => {
+                                    // 确保目标文件夹时间与源一致（兜底）
+                                    if (mtime && SYSTEM.fs.utimes) { try { SYSTEM.fs.utimes(destPath, mtime, mtime, ()=>{}); } catch(e){} }
+                                    deleteFolderRecursive(srcPath, (delErr) => {
+                                        if (delErr) {
+                                            console.error('删除源文件夹失败:', delErr);
+                                            errorCount++;
+                                        } else {
+                                            icon.el.remove();
+                                            delete SYSTEM.iconPositions[icon.id];
+                                            saveIconPositions();
+                                        }
+                                        processedCount++;
+                                        processNext(index + 1);
+                                    });
+                                });
+                            });
                             return;
                         }
-
-                        // 写入目标
-                        SYSTEM.fs.writeFile(destPath, data, (writeErr) => {
-                            if (writeErr) {
+                        // 读取源文件
+                        SYSTEM.fs.readFile(srcPath, (readErr, data) => {
+                            if (readErr) {
                                 errorCount++;
                                 processedCount++;
                                 processNext(index + 1);
                                 return;
                             }
-
-                            // 删除源文件
-                            SYSTEM.fs.unlink(srcPath, (unlinkErr) => {
-                                if (unlinkErr) {
+                            // 写入目标
+                            SYSTEM.fs.writeFile(destPath, data, (writeErr) => {
+                                if (writeErr) {
                                     errorCount++;
-                                } else {
-                                    // 从桌面移除图标
-                                    icon.el.remove();
-                                    delete SYSTEM.iconPositions[icon.id];
-                                    saveIconPositions();
+                                    processedCount++;
+                                    processNext(index + 1);
+                                    return;
                                 }
-                                processedCount++;
-                                processNext(index + 1);
+                                if (mtime && SYSTEM.fs.utimes) { try { SYSTEM.fs.utimes(destPath, mtime, mtime, ()=>{}); } catch(e){} }
+                                // 删除源文件
+                                SYSTEM.fs.unlink(srcPath, (unlinkErr) => {
+                                    if (unlinkErr) {
+                                        errorCount++;
+                                    } else {
+                                        // 从桌面移除图标
+                                        icon.el.remove();
+                                        delete SYSTEM.iconPositions[icon.id];
+                                        saveIconPositions();
+                                    }
+                                    processedCount++;
+                                    processNext(index + 1);
+                                });
                             });
                         });
                     });
@@ -3874,6 +3916,7 @@
                                         if (err) { Notify.error('移动失败', err.message); return; }
                                         SYSTEM.fs.writeFile(destPath, data, (wErr) => {
                                             if (wErr) { Notify.error('移动失败', wErr.message); return; }
+                                            if (stats.mtime && SYSTEM.fs.utimes) { try { SYSTEM.fs.utimes(destPath, stats.mtime, stats.mtime, ()=>{}); } catch(e){} }
                                             afterDone();
                                         });
                                     });
@@ -3901,7 +3944,8 @@
                                     const parentDir = fullPath.substring(0, fullPath.lastIndexOf('/'));
                                     
                                     ensureDir(parentDir).then(() => {
-                                        SYSTEM.fs.writeFile(fullPath, buffer, () => {
+                                        SYSTEM.fs.writeFile(fullPath, buffer, (wErr) => {
+                                            if (!wErr && file.lastModified && SYSTEM.fs.utimes) { try { SYSTEM.fs.utimes(fullPath, file.lastModified, file.lastModified, ()=>{}); } catch(e){} }
                                             processCount++;
                                             // 如果是根目录文件，记录位置
                                             if(!path) {
@@ -4297,14 +4341,18 @@
             
             function performPaste(srcPath, destPath, isCut, done) {
                 if (isCut) {
-                    SYSTEM.fs.rename(srcPath, destPath, (err) => {
-                        if (err) {
-                            console.error('剪切失败:', err);
-                            errorCount++;
-                        } else {
-                            processedCount++;
-                        }
-                        done();
+                    SYSTEM.fs.stat(srcPath, (sErr, sStats) => {
+                        const mtime = (!sErr && sStats && sStats.mtime) ? sStats.mtime : null;
+                        SYSTEM.fs.rename(srcPath, destPath, (err) => {
+                            if (err) {
+                                console.error('剪切失败:', err);
+                                errorCount++;
+                            } else {
+                                if (mtime && SYSTEM.fs.utimes) { try { SYSTEM.fs.utimes(destPath, mtime, mtime, ()=>{}); } catch(e){} }
+                                processedCount++;
+                            }
+                            done();
+                        });
                     });
                 } else {
                     SYSTEM.fs.stat(srcPath, (err, stats) => {
@@ -4335,6 +4383,7 @@
                                         console.error('写入文件失败:', err);
                                         errorCount++;
                                     } else {
+                                        if (stats.mtime && SYSTEM.fs.utimes) { try { SYSTEM.fs.utimes(destPath, stats.mtime, stats.mtime, ()=>{}); } catch(e){} }
                                         processedCount++;
                                     }
                                     done();
@@ -5679,17 +5728,26 @@
                     }, 200);
                 };
                 
-                // 1. 处理系统内部文件拖拽（从桌面或其他文件夹拖入）
+                // 1. 处理系统内部文件拖拽（从桌面或其他文件夹拖入）- 保留原始 mtime
                 const dragData = e.dataTransfer.getData('text/plain');
                 if (dragData) {
                     try {
                         const { srcPath, filename } = JSON.parse(dragData);
                         if (srcPath && filename) {
-                            SYSTEM.fs.readFile(srcPath, (err, data) => {
-                                if (!err) {
-                                    const destPath = targetPath + '/' + filename;
-                                    SYSTEM.fs.writeFile(destPath, data, () => {
-                                        debouncedRefresh();
+                            SYSTEM.fs.stat(srcPath, (sErr, sStats) => {
+                                const mtime = (!sErr && sStats && sStats.mtime) ? sStats.mtime : null;
+                                const isDir = (!sErr && sStats && sStats.isDirectory) ? (typeof sStats.isDirectory === 'function' ? sStats.isDirectory() : sStats.isDirectory) : false;
+                                const destPath = targetPath + '/' + filename;
+                                if (isDir) {
+                                    copyFolderRecursive(srcPath, destPath, () => { debouncedRefresh(); });
+                                } else {
+                                    SYSTEM.fs.readFile(srcPath, (err, data) => {
+                                        if (!err) {
+                                            SYSTEM.fs.writeFile(destPath, data, (wErr) => {
+                                                if (!wErr && mtime && SYSTEM.fs.utimes) { try { SYSTEM.fs.utimes(destPath, mtime, mtime, ()=>{}); } catch(e){} }
+                                                debouncedRefresh();
+                                            });
+                                        } else { debouncedRefresh(); }
                                     });
                                 }
                             });
@@ -6599,14 +6657,18 @@
             
             function performFolderPaste(srcPath, destPath, isCut, done) {
                 if(isCut) {
-                    SYSTEM.fs.rename(srcPath, destPath, (err) => {
-                        if(err) {
-                            console.error('剪切失败:', err);
-                            errorCount++;
-                        } else {
-                            processedCount++;
-                        }
-                        done();
+                    SYSTEM.fs.stat(srcPath, (sErr, sStats) => {
+                        const mtime = (!sErr && sStats && sStats.mtime) ? sStats.mtime : null;
+                        SYSTEM.fs.rename(srcPath, destPath, (err) => {
+                            if(err) {
+                                console.error('剪切失败:', err);
+                                errorCount++;
+                            } else {
+                                if (mtime && SYSTEM.fs.utimes) { try { SYSTEM.fs.utimes(destPath, mtime, mtime, ()=>{}); } catch(e){} }
+                                processedCount++;
+                            }
+                            done();
+                        });
                     });
                 } else {
                     SYSTEM.fs.stat(srcPath, (err, stats) => {
@@ -6637,6 +6699,7 @@
                                         console.error('写入文件失败:', err);
                                         errorCount++;
                                     } else {
+                                        if (stats.mtime && SYSTEM.fs.utimes) { try { SYSTEM.fs.utimes(destPath, stats.mtime, stats.mtime, ()=>{}); } catch(e){} }
                                         processedCount++;
                                     }
                                     done();
@@ -6891,12 +6954,15 @@
 
                     // 移动目录时：先尝试 rename，失败（如跨文件系统）则回退到 复制+删除。
                     const moveDirectory = () => {
-                        SYSTEM.fs.rename(srcPath, destPath, (renameErr) => {
-                            if(!renameErr) {
-                                processedCount++;
-                                callback();
-                                return;
-                            }
+                        SYSTEM.fs.stat(srcPath, (sErr, sStats) => {
+                            const mtime = (!sErr && sStats && sStats.mtime) ? sStats.mtime : null;
+                            SYSTEM.fs.rename(srcPath, destPath, (renameErr) => {
+                                if(!renameErr) {
+                                    if (mtime && SYSTEM.fs.utimes) { try { SYSTEM.fs.utimes(destPath, mtime, mtime, ()=>{}); } catch(e){} }
+                                    processedCount++;
+                                    callback();
+                                    return;
+                                }
                             // 修复(#6)：rename 跨挂载点失败，回退到递归复制后删除源
                             copyFolderRecursive(srcPath, destPath, (copyErr) => {
                                 if(copyErr) {
@@ -6911,22 +6977,24 @@
                                     callback();
                                 });
                             });
+                            });
                         });
                     };
 
                     const moveFile = () => {
-                        SYSTEM.fs.rename(srcPath, destPath, (renameErr) => {
-                            if(!renameErr) {
-                                verifyFileIntegrity(destPath, filename, (isValid) => {
-                                    if(isValid) { processedCount++; }
-                                    else { errorCount++; console.error('移动成功但验证失败:', filename); }
-                                    callback();
-                                });
-                                return;
-                            }
-                            // 修复(#6)：rename 跨文件系统失败，回退到 复制+删除
-                            SYSTEM.fs.stat(srcPath, (sErr, sStats) => {
-                                const mtime = (!sErr && sStats.mtime) ? sStats.mtime : null;
+                        SYSTEM.fs.stat(srcPath, (sErr, sStats) => {
+                            const mtime = (!sErr && sStats && sStats.mtime) ? sStats.mtime : null;
+                            SYSTEM.fs.rename(srcPath, destPath, (renameErr) => {
+                                if(!renameErr) {
+                                    if (mtime && SYSTEM.fs.utimes) { try { SYSTEM.fs.utimes(destPath, mtime, mtime, ()=>{}); } catch(e){} }
+                                    verifyFileIntegrity(destPath, filename, (isValid) => {
+                                        if(isValid) { processedCount++; }
+                                        else { errorCount++; console.error('移动成功但验证失败:', filename); }
+                                        callback();
+                                    });
+                                    return;
+                                }
+                                // 修复(#6)：rename 跨文件系统失败，回退到 复制+删除
                                 SYSTEM.fs.readFile(srcPath, (readErr, data) => {
                                     if(readErr) { errorCount++; console.error('移动文件失败(读取):', filename, readErr); callback(); return; }
                                     SYSTEM.fs.writeFile(destPath, data, (writeErr) => {
