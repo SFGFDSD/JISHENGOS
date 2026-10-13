@@ -4348,9 +4348,12 @@
             processNext(0);
         }
 
-        // 递归复制文件夹（改进错误处理）
+        // 递归复制文件夹（改进错误处理，保留目录原始修改时间）
         function copyFolderRecursive(srcPath, destPath, callback) {
-            SYSTEM.fs.mkdir(destPath, (mkdirErr) => {
+            SYSTEM.fs.stat(srcPath, (statErr, srcStats) => {
+                let _srcDirMtime = null;
+                if (!statErr && srcStats && srcStats.mtime) _srcDirMtime = srcStats.mtime;
+                SYSTEM.fs.mkdir(destPath, (mkdirErr) => {
                 // mkdir 失败时检查是否因为目录已存在（EEXIST），其他错误则中止
                 if (mkdirErr) {
                     SYSTEM.fs.stat(destPath, (statErr, stats) => {
@@ -4368,11 +4371,18 @@
                 function copyFolderContents() {
                     SYSTEM.fs.readdir(srcPath, (err, files) => {
                         if (err) {
+                            // 即使读取失败，也尝试回写目录时间
+                            if (_srcDirMtime && SYSTEM.fs.utimes) {
+                                try { SYSTEM.fs.utimes(destPath, _srcDirMtime, _srcDirMtime, () => {}); } catch(e) {}
+                            }
                             callback(err);
                             return;
                         }
                         
                         if (files.length === 0) {
+                            if (_srcDirMtime && SYSTEM.fs.utimes) {
+                                try { SYSTEM.fs.utimes(destPath, _srcDirMtime, _srcDirMtime, () => {}); } catch(e) {}
+                            }
                             callback(null);
                             return;
                         }
@@ -4392,7 +4402,12 @@
                                 
                                 if (stats.isDirectory()) {
                                     copyFolderRecursive(srcFilePath, destFilePath, () => {
-                                        if (--pending === 0) callback(null);
+                                        if (--pending === 0) {
+                                            if (_srcDirMtime && SYSTEM.fs.utimes) {
+                                                try { SYSTEM.fs.utimes(destPath, _srcDirMtime, _srcDirMtime, () => {}); } catch(e) {}
+                                            }
+                                            callback(null);
+                                        }
                                     });
                                 } else {
                                     SYSTEM.fs.readFile(srcFilePath, (err, data) => {
@@ -4410,7 +4425,12 @@
                                                 // 复制时保留原始修改时间
                                                 try { SYSTEM.fs.utimes(destFilePath, stats.mtime, stats.mtime, () => {}); } catch(e) {}
                                             }
-                                            if (--pending === 0) callback(null);
+                                            if (--pending === 0) {
+                                                if (_srcDirMtime && SYSTEM.fs.utimes) {
+                                                    try { SYSTEM.fs.utimes(destPath, _srcDirMtime, _srcDirMtime, () => {}); } catch(e) {}
+                                                }
+                                                callback(null);
+                                            }
                                         });
                                     });
                                 }
@@ -4418,6 +4438,7 @@
                         });
                     });
                 }
+                });
             });
         }
 
@@ -7676,6 +7697,25 @@
                     throw new Error('不支持的压缩格式');
                 }
 
+                // 修复：避免双层嵌套（Project.zip 内含 Project/ 时解压到 /desktop/Project 会得到 /desktop/Project/Project）
+                // 若所有条目均位于单一顶层目录且该目录名与压缩包名一致，则剥离前缀，直接将内容解压到 targetDir
+                let _topDirMtimeForTarget = null;
+                if (folderName && extractedFiles.length > 0) {
+                    const allInPrefix = extractedFiles.every(f => f.path === folderName || f.path.startsWith(folderName + '/'));
+                    if (allInPrefix) {
+                        const topEntry = extractedFiles.find(f => f.path === folderName && f.dir);
+                        if (topEntry && topEntry.mtime) {
+                            const ms = topEntry.mtime instanceof Date ? topEntry.mtime.getTime() : Number(topEntry.mtime);
+                            if (!isNaN(ms) && ms > 0) _topDirMtimeForTarget = ms;
+                        }
+                        extractedFiles.forEach(f => {
+                            if (f.path === folderName) f.path = '';
+                            else if (f.path.startsWith(folderName + '/')) f.path = f.path.slice(folderName.length + 1);
+                        });
+                        extractedFiles = extractedFiles.filter(f => f.path !== '');
+                    }
+                }
+
                 updateStatus('写入文件...');
                 // 修复：文件夹修改时间应保留原始时间，而非全部变为解压时刻（当前时间）
                 // 1) 收集显式目录的原始 mtime；2) 隐式父目录用内部文件的最大 mtime 兜底；3) 先写所有文件，最后按深度从深到浅回写目录 mtime
@@ -7705,12 +7745,18 @@
                     }
                 }
                 let targetDirMtime = null;
-                try {
-                    const s = await new Promise(res => SYSTEM.fs.stat(filePath, (e, st) => res(st)));
-                    if (s && s.mtime) targetDirMtime = s.mtime instanceof Date ? s.mtime.getTime() : Number(s.mtime);
-                } catch(e) {}
-                if (targetDirMtime && !isNaN(targetDirMtime) && targetDirMtime > 0 && !dirMtimeMap.has(targetDir)) {
+                if (_topDirMtimeForTarget && !isNaN(_topDirMtimeForTarget) && _topDirMtimeForTarget > 0) {
+                    targetDirMtime = _topDirMtimeForTarget;
+                    // 剥离前缀时，targetDir 即为原顶层文件夹，其时间应直接使用包内顶层目录的时间
                     dirMtimeMap.set(targetDir, targetDirMtime);
+                } else {
+                    try {
+                        const s = await new Promise(res => SYSTEM.fs.stat(filePath, (e, st) => res(st)));
+                        if (s && s.mtime) targetDirMtime = s.mtime instanceof Date ? s.mtime.getTime() : Number(s.mtime);
+                    } catch(e) {}
+                    if (targetDirMtime && !isNaN(targetDirMtime) && targetDirMtime > 0 && !dirMtimeMap.has(targetDir)) {
+                        dirMtimeMap.set(targetDir, targetDirMtime);
+                    }
                 }
 
                 const total = extractedFiles.length;
