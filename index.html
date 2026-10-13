@@ -8504,8 +8504,25 @@
 
         // 这里的函数必须定义在全局，否则 HTML onclick 找不到
         window.closeWin = function(id) {
+            // 修复：Aero Peek 高亮/虚化/透明态使用 !important 会覆盖关闭动画的 opacity，导致卡在 0.9 收缩状态
+            // 点掉蓝色框窗口时若仍在 Peek 态，需先彻底清除再开始动画
+            try { clearAeroPeekEffects(); } catch(e) {}
+            // 兼容桌面预览的透明态与 pending 定时器
+            SYSTEM.windows.forEach(win => {
+                if (win.element) win.element.classList.remove('aero-peek-transparent');
+            });
+            if (AeroPeek.previewTimer) { clearTimeout(AeroPeek.previewTimer); AeroPeek.previewTimer = null; }
+            if (AeroPeek.previewHideTimer) { clearTimeout(AeroPeek.previewHideTimer); AeroPeek.previewHideTimer = null; }
+            AeroPeek.isDesktopPeeking = false;
+            AeroPeek.currentPreviewWinId = null;
+            if (AeroPeek.savedWindowStates && AeroPeek.savedWindowStates.length) {
+                AeroPeek.savedWindowStates = AeroPeek.savedWindowStates.filter(s => s.id !== id);
+            }
             const w = document.getElementById('win-' + id);
             if(w) {
+                // 确保该窗口本身的 Peek 类已移除，并强制重排使样式生效后再开启动画（不移除 minimized，避免已最小化窗口闪烁）
+                w.classList.remove('aero-peek-dim','aero-peek-highlight','aero-peek-transparent');
+                void w.offsetWidth;
                 // 调用清理函数（如果存在）
                 if(w.cleanup) {
                     w.cleanup();
@@ -8527,8 +8544,13 @@
         };
 
         window.minimizeWin = function(id) {
+            try { clearAeroPeekEffects(); } catch(e) {}
+            if (AeroPeek.previewTimer) { clearTimeout(AeroPeek.previewTimer); AeroPeek.previewTimer = null; }
+            AeroPeek.isDesktopPeeking = false;
             const win = SYSTEM.windows.find(w => w.id === id);
             if(win) {
+                // 先移除 Peek 态再最小化，避免 opacity 被 !important 锁死
+                if (win.element) win.element.classList.remove('aero-peek-dim','aero-peek-highlight','aero-peek-transparent');
                 win.minimized = true;
                 win.element.classList.add('minimized');
             }
@@ -8549,9 +8571,16 @@
         };
 
         window.focusWin = function(id) {
+            try { clearAeroPeekEffects(); } catch(e) {}
+            if (AeroPeek.previewTimer) { clearTimeout(AeroPeek.previewTimer); AeroPeek.previewTimer = null; }
+            AeroPeek.isDesktopPeeking = false;
+            SYSTEM.windows.forEach(w => {
+                if (w.element) w.element.classList.remove('aero-peek-transparent');
+            });
             SYSTEM.windows.forEach(w => w.element.classList.remove('focused'));
             const win = SYSTEM.windows.find(w => w.id === id);
             if(win) {
+                if (win.element) win.element.classList.remove('aero-peek-dim','aero-peek-highlight','aero-peek-transparent');
                 win.element.classList.add('focused');
                 win.element.style.zIndex = ++SYSTEM.idCounter + 100;
                 if(win.minimized) {
@@ -11286,7 +11315,7 @@
                     item.addEventListener('click', function(e) {
                         // 如果点击的是关闭按钮，不执行聚焦/最小化
                         if (e.target.closest('.running-close-btn')) return;
-                        
+                        try { clearAeroPeekEffects(); } catch(err) {}
                         const winId = parseInt(this.dataset.winId);
                         const win = SYSTEM.windows.find(ww => ww.id === winId);
                         if (!win) return;
@@ -11304,6 +11333,8 @@
                     if (closeBtn) {
                         closeBtn.addEventListener('click', function(e) {
                             e.stopPropagation();
+                            // 修复：点掉蓝色框窗口时先清 Peek，否则关闭动画被 !important 卡住
+                            try { clearAeroPeekEffects(); } catch(err) {}
                             const winId = parseInt(item.dataset.winId);
                             closeWin(winId);
                             setTimeout(updateTaskbarRunningItems, 30);
@@ -11372,9 +11403,22 @@
 
         function clearAeroPeekEffects() {
             SYSTEM.windows.forEach(w => {
+                if (!w.element) return;
                 w.element.classList.remove('aero-peek-dim');
                 w.element.classList.remove('aero-peek-highlight');
+                w.element.classList.remove('aero-peek-transparent');
             });
+            // 额外兜底：若桌面预览处于悬停态，一并清理标记与延时器，避免关闭动画被透明态覆盖
+            if (AeroPeek.previewTimer) {
+                clearTimeout(AeroPeek.previewTimer);
+                AeroPeek.previewTimer = null;
+            }
+            if (AeroPeek.previewHideTimer) {
+                clearTimeout(AeroPeek.previewHideTimer);
+                AeroPeek.previewHideTimer = null;
+            }
+            AeroPeek.isDesktopPeeking = false;
+            AeroPeek.currentPreviewWinId = null;
         }
 
         // ============================================
