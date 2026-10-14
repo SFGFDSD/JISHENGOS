@@ -812,6 +812,28 @@
         .settings-item:last-child { border: none; }
         .settings-item label { font-size: 13px; color: var(--text-main); }
         .settings-item span { font-size: 12px; color: var(--text-muted); }
+        .settings-item--stacked { gap: 16px; }
+        .settings-item-copy { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+        .settings-hint, .settings-item .settings-hint { color: var(--text-muted); font-size: 11px; line-height: 1.5; }
+        .settings-select {
+            min-width: 132px; padding: 8px 10px; border: 1px solid rgba(255,255,255,0.14);
+            border-radius: 7px; background: rgba(12,12,18,0.9); color: var(--text-main);
+            font: inherit; font-size: 12px; cursor: pointer;
+        }
+        .settings-select:focus { border-color: var(--accent-blue); }
+        .settings-toggle-list { margin-top: 8px; }
+        .settings-toggle-row {
+            display: flex; align-items: center; justify-content: space-between; gap: 14px;
+            padding: 11px 2px; border-bottom: 1px solid rgba(255,255,255,0.06);
+            color: var(--text-main); cursor: pointer;
+        }
+        .settings-toggle-row:last-child { border-bottom: 0; }
+        .settings-toggle-app { display: flex; align-items: center; gap: 10px; font-size: 13px; }
+        .settings-toggle-app .icon-svg { width: 18px; height: 18px; color: var(--text-muted); }
+        .settings-toggle-control { display: flex; align-items: center; gap: 9px; color: var(--text-muted); font-size: 11px; }
+        .settings-toggle-control input { width: 16px; height: 16px; accent-color: var(--accent-blue); cursor: pointer; }
+        .settings-note { margin-top: 10px; color: var(--text-muted); font-size: 11px; line-height: 1.55; }
+        .system-app-hidden { display: none !important; }
 
         .about-card {
             background: linear-gradient(135deg, rgba(0, 120, 212, 0.15), rgba(0, 212, 255, 0.08));
@@ -2033,27 +2055,20 @@
         <div class="start-btn" data-icon="uiStartMenu" onclick="toggleStartMenu()"></div>
         <div class="taskbar-apps" id="taskbar-apps">
             <!-- 固定快捷方式（只负责打开应用） -->
-            <div class="taskbar-icon pinned" onclick="openBrowser()" title="浏览器" data-icon="appBrowser"></div>
-            <div class="taskbar-icon pinned" onclick="openFileExplorer()" title="文件资源管理器" data-icon="appExplorer"></div>
-            <div class="taskbar-icon pinned" onclick="openNotepad()" title="记事本" data-icon="appNotepad"></div>
-            <div class="taskbar-icon pinned" onclick="openCalculator()" title="计算器" data-icon="appCalc"></div>
-            <div class="taskbar-icon pinned" onclick="openPaint()" title="画板" data-icon="appPaint"></div>
-            <div class="taskbar-icon pinned" onclick="openSettings()" title="设置" data-icon="appSettings"></div>
-            <div class="taskbar-icon pinned" onclick="openV86()" title="V86虚拟机" data-icon="appVM"></div>
-            <div class="taskbar-icon pinned" onclick="openCodeEditor()" title="HTML编辑器" data-icon="appCode"></div>
+            <div class="taskbar-icon pinned" onclick="openBrowser()" title="浏览器" data-icon="appBrowser" data-system-app="browser"></div>
+            <div class="taskbar-icon pinned" onclick="openFileExplorer()" title="文件资源管理器" data-icon="appExplorer" data-system-app="explorer"></div>
+            <div class="taskbar-icon pinned" onclick="openNotepad()" title="记事本" data-icon="appNotepad" data-system-app="notepad"></div>
+            <div class="taskbar-icon pinned" onclick="openCalculator()" title="计算器" data-icon="appCalc" data-system-app="calculator"></div>
+            <div class="taskbar-icon pinned" onclick="openPaint()" title="画板" data-icon="appPaint" data-system-app="paint"></div>
+            <div class="taskbar-icon pinned" onclick="openSettings()" title="设置" data-icon="appSettings" data-system-app="settings"></div>
+            <div class="taskbar-icon pinned" onclick="openV86()" title="V86虚拟机" data-icon="appVM" data-system-app="v86"></div>
+            <div class="taskbar-icon pinned" onclick="openCodeEditor()" title="HTML编辑器" data-icon="appCode" data-system-app="code"></div>
             <!-- 运行中窗口的条状图标动态插入这里 -->
             <div class="taskbar-running-area" id="taskbar-running-area"></div>
         </div>
         <div id="taskbar-notify-area"></div>
         <div class="system-tray">
-            <div class="tray-icon" id="tray-wifi" data-icon="uiWifi" title="网络">
-                <svg class="icon-svg" viewBox="0 0 24 24">
-                    <path d="M5 12.55a11 11 0 0 1 14.08 0"/>
-                    <path d="M1.42 9a16 16 0 0 1 21.16 0"/>
-                    <path d="M8.53 16.11a6 6 0 0 1 6.95 0"/>
-                    <circle cx="12" cy="20" r="1"/>
-                </svg>
-            </div>
+            <div class="tray-icon" id="tray-wifi" data-icon="uiWifi" title="网络"></div>
             <div class="clock" id="clock" onclick="toggleCalendar()">
                 <div class="time" id="time">12:00</div>
                 <div class="date" id="date">2024/01/01</div>
@@ -2070,35 +2085,35 @@
     <!-- 开始菜单 -->
     <div class="start-menu" id="start-menu">
         <div class="start-menu-header">
-            <h2>Pinned</h2>
+            <h2>已固定</h2>
         </div>
         <div class="menu-grid">
-            <div class="menu-item" onclick="openBrowser(); toggleStartMenu()" data-icon="appBrowser" data-icon-size="lg">
-                <span>Browser</span>
+            <div class="menu-item" onclick="openBrowser(); toggleStartMenu()" data-icon="appBrowser" data-icon-size="lg" data-system-app="browser">
+                <span>浏览器</span>
             </div>
-            <div class="menu-item" onclick="openNotepad(); toggleStartMenu()" data-icon="appNotepad" data-icon-size="lg">
-                <span>Notepad</span>
+            <div class="menu-item" onclick="openNotepad(); toggleStartMenu()" data-icon="appNotepad" data-icon-size="lg" data-system-app="notepad">
+                <span>记事本</span>
             </div>
-            <div class="menu-item" onclick="openCalculator(); toggleStartMenu()" data-icon="appCalc" data-icon-size="lg">
-                <span>Calculator</span>
+            <div class="menu-item" onclick="openCalculator(); toggleStartMenu()" data-icon="appCalc" data-icon-size="lg" data-system-app="calculator">
+                <span>计算器</span>
             </div>
-            <div class="menu-item" onclick="openPaint(); toggleStartMenu()" data-icon="appPaint" data-icon-size="lg">
-                <span>Paint</span>
+            <div class="menu-item" onclick="openPaint(); toggleStartMenu()" data-icon="appPaint" data-icon-size="lg" data-system-app="paint">
+                <span>画板</span>
             </div>
-            <div class="menu-item" onclick="openSettings(); toggleStartMenu()" data-icon="appSettings" data-icon-size="lg">
-                <span>Settings</span>
+            <div class="menu-item" onclick="openSettings(); toggleStartMenu()" data-icon="appSettings" data-icon-size="lg" data-system-app="settings">
+                <span>设置</span>
             </div>
             <div class="menu-item" onclick="openWallpaperPanel(); toggleStartMenu()" data-icon="uiWallpaper" data-icon-size="lg">
-                <span>Wallpaper</span>
+                <span>壁纸</span>
             </div>
             <div class="menu-item" onclick="resetSystem()" data-icon="uiBrowserRefresh" data-icon-size="lg">
-                <span>Reset</span>
+                <span>重置系统</span>
             </div>
-            <div class="menu-item" onclick="openV86(); toggleStartMenu()" data-icon="appVM" data-icon-size="lg">
-                <span>V86 VM</span>
+            <div class="menu-item" onclick="openV86(); toggleStartMenu()" data-icon="appVM" data-icon-size="lg" data-system-app="v86">
+                <span>V86 虚拟机</span>
             </div>
-            <div class="menu-item" onclick="openCodeEditor(); toggleStartMenu()" data-icon="appCode" data-icon-size="lg">
-                <span>HTML Editor</span>
+            <div class="menu-item" onclick="openCodeEditor(); toggleStartMenu()" data-icon="appCode" data-icon-size="lg" data-system-app="code">
+                <span>HTML 编辑器</span>
             </div>
         </div>
     </div>
@@ -2159,6 +2174,9 @@
             mounted: false,
             desktopPath: '/desktop',
             configPath: '/system/config/wallpaper.cfg',
+            settingsPath: '/system/config/settings.json',
+            clickBehavior: 'double',
+            hiddenSystemApps: [],
             currentMonth: new Date().getMonth(),
             currentYear: new Date().getFullYear(),
             selectedIcons: [],           
@@ -2168,6 +2186,104 @@
             localFolders: {},  // 保留兼容性，实际使用 mountedFolders
             folderWindowStates: {}
         };
+
+        // 内置应用快捷方式的统一清单；系统设置永远不能隐藏，确保用户始终可以恢复配置。
+        const SYSTEM_APP_DEFS = [
+            { key: 'browser', desktopId: 'app-browser', name: '浏览器', action: 'openBrowser()', icon: 'appBrowser', hideable: true },
+            { key: 'explorer', desktopId: 'app-explorer', name: '文件资源管理器', action: 'openFileExplorer()', icon: 'appExplorer', hideable: true },
+            { key: 'notepad', desktopId: 'app-notepad', name: '记事本', action: 'openNotepad()', icon: 'appNotepad', hideable: true },
+            { key: 'calculator', desktopId: 'app-calc', name: '计算器', action: 'openCalculator()', icon: 'appCalc', hideable: true },
+            { key: 'paint', desktopId: 'app-paint', name: '画板', action: 'openPaint()', icon: 'appPaint', hideable: true },
+            { key: 'settings', desktopId: 'app-settings', name: '系统设置', action: 'openSettings()', icon: 'appSettings', hideable: false },
+            { key: 'v86', desktopId: 'app-v86', name: 'V86 虚拟机', action: 'openV86()', icon: 'appVM', hideable: true },
+            { key: 'code', desktopId: 'app-editor', name: 'HTML 编辑器', action: 'openCodeEditor()', icon: 'appCode', hideable: true }
+        ];
+        const SYSTEM_SETTINGS_STORAGE_KEY = 'JISHENG_OS_SETTINGS';
+
+        function applySystemSettings(rawSettings) {
+            const settings = rawSettings && typeof rawSettings === 'object' ? rawSettings : {};
+            SYSTEM.clickBehavior = settings.clickBehavior === 'single' ? 'single' : 'double';
+            const hideableKeys = new Set(SYSTEM_APP_DEFS.filter(app => app.hideable).map(app => app.key));
+            SYSTEM.hiddenSystemApps = Array.isArray(settings.hiddenSystemApps)
+                ? [...new Set(settings.hiddenSystemApps.filter(key => hideableKeys.has(key)))]
+                : [];
+        }
+
+        function loadSystemSettings(callback) {
+            let localSettings = null;
+            try {
+                const stored = localStorage.getItem(SYSTEM_SETTINGS_STORAGE_KEY);
+                if (stored) {
+                    const parsed = JSON.parse(stored);
+                    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) localSettings = parsed;
+                }
+            } catch (e) { localSettings = null; }
+
+            SYSTEM.fs.readFile(SYSTEM.settingsPath, 'utf8', (err, data) => {
+                let fileSettings = null;
+                if (!err && data) {
+                    try {
+                        const parsed = JSON.parse(data);
+                        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) fileSettings = parsed;
+                    } catch (e) { fileSettings = null; }
+                }
+                // localStorage 作为快速镜像，文件系统作为持久化备份；重置系统时同步清除两者。
+                applySystemSettings(localSettings || fileSettings || {});
+                if (!localSettings && fileSettings) {
+                    try { localStorage.setItem(SYSTEM_SETTINGS_STORAGE_KEY, JSON.stringify(fileSettings)); } catch (e) {}
+                }
+                if (typeof callback === 'function') callback();
+            });
+        }
+
+        function saveSystemSettings() {
+            const settings = {
+                version: 1,
+                clickBehavior: SYSTEM.clickBehavior === 'single' ? 'single' : 'double',
+                hiddenSystemApps: SYSTEM.hiddenSystemApps.filter(key => SYSTEM_APP_DEFS.some(app => app.key === key && app.hideable))
+            };
+            const serialized = JSON.stringify(settings);
+            try { localStorage.setItem(SYSTEM_SETTINGS_STORAGE_KEY, serialized); } catch (e) {}
+            if (SYSTEM.mounted && SYSTEM.fs) {
+                SYSTEM.fs.writeFile(SYSTEM.settingsPath, serialized, err => {
+                    if (err) console.warn('保存系统设置失败:', err);
+                });
+            }
+        }
+
+        function isSystemAppHidden(appKey) {
+            const app = SYSTEM_APP_DEFS.find(item => item.key === appKey);
+            return !!app && app.hideable && SYSTEM.hiddenSystemApps.includes(appKey);
+        }
+
+        function applySystemAppVisibility() {
+            document.querySelectorAll('[data-system-app]').forEach(el => {
+                const hidden = isSystemAppHidden(el.dataset.systemApp);
+                el.classList.toggle('system-app-hidden', hidden);
+                el.hidden = hidden;
+                if (hidden) el.setAttribute('aria-hidden', 'true');
+                else el.removeAttribute('aria-hidden');
+            });
+        }
+
+        function setSystemAppHidden(appKey, hidden) {
+            const app = SYSTEM_APP_DEFS.find(item => item.key === appKey);
+            if (!app || !app.hideable) return false;
+            const hiddenApps = new Set(SYSTEM.hiddenSystemApps);
+            if (hidden) hiddenApps.add(appKey);
+            else hiddenApps.delete(appKey);
+            SYSTEM.hiddenSystemApps = [...hiddenApps];
+            saveSystemSettings();
+            applySystemAppVisibility();
+            if (SYSTEM.mounted) refreshDesktop();
+            return true;
+        }
+
+        function setClickBehavior(behavior) {
+            if (behavior !== 'single' && behavior !== 'double') return;
+            SYSTEM.clickBehavior = behavior;
+            saveSystemSettings();
+        }
 
         function toggleWinFullscreen(id, type) {
             const win = document.getElementById('win-' + id);
@@ -3100,12 +3216,15 @@
             SYSTEM.fs.readFile(SYSTEM.configPath, 'utf8', (err, data) => {
                 if (!err && data) setBg(data, false);
                 else setBg('https://images.unsplash.com/photo-1614121181207-4b6c334d353d?w=1920', false);
-                
-                refreshDesktop();
-                renderCalendar();
-                Notify.init();
-                initGlobalUploadInputs();
-                Notify.success('欢迎回来', 'JISHENG OS 已准备就绪');
+
+                loadSystemSettings(() => {
+                    applySystemAppVisibility();
+                    refreshDesktop();
+                    renderCalendar();
+                    Notify.init();
+                    initGlobalUploadInputs();
+                    Notify.success('欢迎回来', 'JISHENG OS 已准备就绪');
+                });
             });
         }
 
@@ -3289,18 +3408,16 @@
             }
             
             loadIconPositions(() => {
-                // 系统固定应用
-                const systemApps = [
-                    { id: 'app-browser', name: '浏览器', action: 'openBrowser()', icon: iconBody('appBrowser') },
-                    { id: 'app-explorer', name: '文件资源管理器', action: 'openFileExplorer()', icon: iconBody('appExplorer') },
-                    { id: 'app-notepad', name: '记事本', action: 'openNotepad()', icon: iconBody('appNotepad') },
-                    { id: 'app-calc', name: '计算器', action: 'openCalculator()', icon: iconBody('appCalc') },
-                    { id: 'app-paint', name: '画板', action: 'openPaint()', icon: iconBody('appPaint') },
-                    { id: 'app-settings', name: '系统设置', action: 'openSettings()', icon: iconBody('appSettings') }
-                ];
+                // 系统固定应用；隐藏设置只影响快捷方式，桌面、开始菜单和任务栏保持一致。
+                const systemApps = SYSTEM_APP_DEFS
+                    .filter(app => !isSystemAppHidden(app.key))
+                    .map(app => ({
+                        id: app.desktopId, name: app.name, action: app.action,
+                        icon: iconBody(app.icon), key: app.key
+                    }));
 
                 // 排列逻辑
-                const maxPerColumn = Math.floor((window.innerHeight - 80) / SYSTEM.gridSize);
+                const maxPerColumn = Math.max(1, Math.floor((window.innerHeight - 80) / SYSTEM.gridSize));
                 let index = 0;
 
                 const getNextPos = () => {
@@ -3310,27 +3427,11 @@
                     return { x: 24 + col * SYSTEM.gridSize, y: 24 + row * SYSTEM.gridSize };
                 };
 
-                // 添加 V86 到系统应用列表
-                systemApps.push({
-                    id: 'app-v86',
-                    name: 'V86 虚拟机',
-                    action: 'openV86()',
-                    icon: iconBody('appVM')
-                });
-
-                // 添加代码编辑器到系统应用列表
-                systemApps.push({
-                    id: 'app-editor',
-                    name: 'HTML编辑器',
-                    action: 'openCodeEditor()',
-                    icon: iconBody('appCode')
-                });
-
-                // 渲染系统应用
+                // 渲染系统应用（设置应用由清单标记为不可隐藏）
                 systemApps.forEach(app => {
                     const defaultPos = getNextPos();
                     const pos = SYSTEM.iconPositions[app.id] || defaultPos;
-                    container.appendChild(createIconElement(app.id, app.name, app.icon, app.action, pos));
+                    container.appendChild(createIconElement(app.id, app.name, app.icon, app.action, pos, 'app', null, app.key));
                 });
 
                 // 渲染用户文件
@@ -3391,11 +3492,57 @@
             initDesktopEvents();
         }
 
+        // 用于桌面/文件管理器的单击模式；组合键仍保留选择行为，拖拽松手不会误触发打开。
+        function shouldOpenFromSingleClick(event, el) {
+            if (SYSTEM.clickBehavior !== 'single' || !el) return false;
+            if (event && (event.ctrlKey || event.shiftKey || (event.detail && event.detail > 1))) return false;
+            const now = Date.now();
+            if (el._ignoreActivationUntil && now < el._ignoreActivationUntil) return false;
+            const isTouch = (event && event.pointerType === 'touch') ||
+                (el._lastTouchStartAt && now - el._lastTouchStartAt < 1000);
+            if (isTouch) {
+                if (el._lastSingleClickOpenAt && now - el._lastSingleClickOpenAt < 320) return false;
+                el._lastSingleClickOpenAt = now;
+            }
+            return true;
+        }
+
+        let _lastDesktopTouchTapEl = null;
+        let _lastDesktopTouchTapAt = 0;
+        function handleDesktopIconTouchStart(event, el, startHandler) {
+            const now = Date.now();
+            el._lastTouchStartAt = now;
+            if (SYSTEM.clickBehavior === 'double') {
+                if (_lastDesktopTouchTapEl === el && now - _lastDesktopTouchTapAt < 350) {
+                    _lastDesktopTouchTapEl = null;
+                    _lastDesktopTouchTapAt = 0;
+                    event.preventDefault();
+                    event.stopPropagation();
+                    el._suppressNextDblClick = true;
+                    setTimeout(() => { el._suppressNextDblClick = false; }, 450);
+                    activateDesktopIcon(el);
+                    return;
+                }
+                _lastDesktopTouchTapEl = el;
+                _lastDesktopTouchTapAt = now;
+            } else {
+                _lastDesktopTouchTapEl = null;
+                _lastDesktopTouchTapAt = 0;
+            }
+            startHandler(event);
+        }
+
+        function activateDesktopIcon(el) {
+            if (el && typeof el._jishengOpen === 'function') el._jishengOpen();
+        }
+
         // 3. 创建图标 DOM 元素 (绑定交互事件)
-        function createIconElement(id, name, iconSvg, action, pos, type = 'app', filename = null) {
+        function createIconElement(id, name, iconSvg, action, pos, type = 'app', filename = null, systemAppKey = null) {
             const el = document.createElement('div');
             el.className = 'desktop-icon';
             el.id = id;
+            if (systemAppKey) el.dataset.systemApp = systemAppKey;
+            el._jishengOpenAction = action;
             if(filename) el.dataset.filename = filename;
             // 修复(#4)：标记图标是否为文件夹，供拖放投放目标判定使用，
             // 避免把文件拖到普通文件图标上时误判为"放入文件夹"。
@@ -3425,9 +3572,7 @@
             };
 
             el.onmousedown = handleStart;
-            el.ontouchstart = (e) => {
-                handleStart(e); 
-            };
+            el.ontouchstart = (e) => handleDesktopIconTouchStart(e, el, handleStart);
 
             if(filename) {
                 el.setAttribute('draggable', 'true');
@@ -3460,9 +3605,8 @@
                 showIconContextMenu(pos.x, pos.y);
             };
 
-            // 安全的动作执行方式，避免eval注入风险
-            el.ondblclick = () => {
-                // 处理内置应用动作
+            // 安全的动作执行方式，避免eval注入风险。右键菜单始终可以显式打开。
+            el._jishengOpen = () => {
                 if (action === 'openBrowser()') {
                     openBrowser();
                 } else if (action === 'openNotepad()') {
@@ -3479,18 +3623,21 @@
                     openCodeEditor();
                 } else if (action === 'openFileExplorer()') {
                     openFileExplorer();
-                }
-                // 处理文件夹动作
-                else if (action.startsWith('openFolderWindow(')) {
-                    const folderName = action.match(/openFolderWindow\('(.*)'\)/)[1];
-                    openFolderWindow(folderName);
-                } 
-                // 处理文件动作
-                else if (action.startsWith('openFile(')) {
-                    const filename = action.match(/openFile\('(.*)'\)/)[1];
-                    openFile(filename);
+                } else if (action.startsWith('openFolderWindow(')) {
+                    const folderName = action.match(/openFolderWindow\('(.*)'\)/)?.[1];
+                    if (folderName != null) openFolderWindow(folderName);
+                } else if (action.startsWith('openFile(')) {
+                    const filename = action.match(/openFile\('(.*)'\)/)?.[1];
+                    if (filename != null) openFile(filename);
                 }
                 clearSelection();
+            };
+            el.onclick = (e) => {
+                if (shouldOpenFromSingleClick(e, el)) activateDesktopIcon(el);
+            };
+            el.ondblclick = (e) => {
+                if (SYSTEM.clickBehavior !== 'double' || el._suppressNextDblClick) return;
+                activateDesktopIcon(el);
             };
             
             return el;
@@ -3526,7 +3673,11 @@
             };
 
             el.onmousedown = handleStart;
-            el.ontouchstart = (e) => { handleStart(e); };
+            el.ontouchstart = (e) => handleDesktopIconTouchStart(e, el, handleStart);
+            el._jishengOpen = () => { openLocalFolder(folderId); clearSelection(); };
+            el.onclick = (e) => {
+                if (shouldOpenFromSingleClick(e, el)) activateDesktopIcon(el);
+            };
 
             el.oncontextmenu = (e) => {
                 e.preventDefault(); e.stopPropagation();
@@ -3538,7 +3689,9 @@
                 showLocalFolderContextMenu(pos.x, pos.y, folderId, name);
             };
 
-            el.ondblclick = () => { openLocalFolder(folderId); clearSelection(); };
+            el.ondblclick = () => {
+                if (SYSTEM.clickBehavior === 'double' && !el._suppressNextDblClick) activateDesktopIcon(el);
+            };
             
             return el;
         }
@@ -3634,6 +3787,11 @@
             const dx = pos.x - dragState.startX;
             const dy = pos.y - dragState.startY;
 
+            if (e.type === 'touchmove' && (Math.abs(dx) > 5 || Math.abs(dy) > 5) && _lastDesktopTouchTapEl === dragState.el) {
+                _lastDesktopTouchTapEl = null;
+                _lastDesktopTouchTapAt = 0;
+            }
+
             if(!dragState.hasMoved && (Math.abs(dx) > 3 || Math.abs(dy) > 3)) {
                 dragState.hasMoved = true;
                 // 将图标从桌面容器移到 body，脱离桌面层叠上下文，确保浮在所有窗口上层
@@ -3666,6 +3824,9 @@
         }
 
         function onIconDragEnd(e) {
+            if (dragState && dragState.hasMoved && dragState.el) {
+                dragState.el._ignoreActivationUntil = Date.now() + (e.type === 'touchend' ? 420 : 120);
+            }
             nativeDragHelper.style.display = 'none';
             endDropHighlight();
             
@@ -4190,7 +4351,7 @@
             
             if (isSystemApp) {
                 cm.innerHTML = `
-                    <div class="context-item" onclick="document.getElementById('${targetId}').ondblclick(); closeCtx()">
+                    <div class="context-item" onclick="activateDesktopIcon(document.getElementById('${targetId}')); closeCtx()">
                         ${icon('uiOpen','sm')}
                         <span>打开</span>
                     </div>
@@ -4207,7 +4368,7 @@
             let html = '';
             
             html += `
-                <div class="context-item" onclick="document.getElementById('${targetId}').ondblclick(); closeCtx()">
+                <div class="context-item" onclick="activateDesktopIcon(document.getElementById('${targetId}')); closeCtx()">
                     ${icon('uiOpen','sm')}
                     <span>打开</span>
                 </div>
@@ -5427,7 +5588,8 @@
                                      ondragstart="return handleFolderItemDragStart(event, this)"
                                      ondragend="SYSTEM._folderNativeDrag=false; SYSTEM._internalNativeDrag=false; this.style.outline='none';"
                                      onmouseenter="preloadFolderItemForDrag(this)"
-                                     ondblclick="handleFolderItemDblClick('${windowId}', '${safeFile}', '${safePath}', ${isDir})"
+                                     onclick="handleFolderItemSingleClick(event, '${windowId}', this)"
+                                     ondblclick="handleFolderItemDblClick('${windowId}', '${safeFile}', '${safePath}', ${isDir}, this)"
                                      onmousedown="handleFolderItemMouseDown(event, '${windowId}')"
                                      ontouchstart="handleFolderItemTouchStart(event, '${windowId}')"
                                      oncontextmenu="handleFolderItemContextMenu(event, '${windowId}', '${safeFile}', '${safePath}')">
@@ -5458,7 +5620,8 @@
                                      ondragstart="return handleFolderItemDragStart(event, this)"
                                      ondragend="SYSTEM._folderNativeDrag=false; SYSTEM._internalNativeDrag=false; this.style.outline='none';"
                                      onmouseenter="preloadFolderItemForDrag(this)"
-                                     ondblclick="handleFolderItemDblClick('${windowId}', '${safeFile}', '${safePath}', ${isDir})"
+                                     onclick="handleFolderItemSingleClick(event, '${windowId}', this)"
+                                     ondblclick="handleFolderItemDblClick('${windowId}', '${safeFile}', '${safePath}', ${isDir}, this)"
                                      onmousedown="handleFolderItemMouseDown(event, '${windowId}')"
                                      ontouchstart="handleFolderItemTouchStart(event, '${windowId}')"
                                      oncontextmenu="handleFolderItemContextMenu(event, '${windowId}', '${safeFile}', '${safePath}')">
@@ -5562,28 +5725,27 @@
             });
         }
 
-        // 文件夹项双击处理
-        function handleFolderItemDblClick(windowId, filename, fullPath, isDir) {
+        // 文件夹列表/网格中的单项激活：目录在当前窗口导航，文件按路径打开。
+        function activateFolderItem(windowId, filename, fullPath, isDir) {
             if (isDir) {
-                // 打开子文件夹
                 const state = SYSTEM.folderWindowStates[windowId];
-                if (!state) return;
+                if (!state) {
+                    openFileFromPath(fullPath, filename);
+                    return;
+                }
                 state.folderName = filename;
                 state.parentPath = state.currentPath;
                 state.currentPath = fullPath;
                 state.searchQuery = '';
                 state.fileStats = {};
-                // 确保父路径正确
                 if (!state.parentPath) {
                     state.parentPath = fullPath.substring(0, fullPath.lastIndexOf('/')) || SYSTEM.desktopPath;
                 }
-                // 更新窗口标题
                 const win = document.getElementById('folder-content-' + windowId)?.closest('.window');
                 if (win) {
                     const titleEl = win.querySelector('.window-title-text');
                     if (titleEl) titleEl.textContent = filename;
                 }
-                // 清空搜索框
                 const searchInput = document.getElementById('folder-search-' + windowId);
                 if (searchInput) searchInput.value = '';
                 updateFolderBreadcrumb(windowId);
@@ -5591,6 +5753,28 @@
             } else {
                 openFileFromPath(fullPath, filename);
             }
+        }
+
+        function handleFolderItemSingleClick(event, windowId, item) {
+            if (!shouldOpenFromSingleClick(event, item)) return;
+            activateFolderItem(windowId, item.dataset.filename, item.dataset.path, item.dataset.isdir === 'true');
+        }
+
+        function handleFolderItemDblClick(windowId, filename, fullPath, isDir, item) {
+            if (SYSTEM.clickBehavior !== 'double') return;
+            if (item && item._suppressNextDoubleOpen) {
+                item._suppressNextDoubleOpen = false;
+                return;
+            }
+            activateFolderItem(windowId, filename, fullPath, isDir);
+        }
+
+        function handleLegacyFolderItemSingleClick(event, item) {
+            if (shouldOpenFromSingleClick(event, item)) openFileFromPath(item.dataset.path, item.dataset.filename);
+        }
+
+        function handleLegacyFolderItemDoubleClick(event, item) {
+            if (SYSTEM.clickBehavior === 'double') openFileFromPath(item.dataset.path, item.dataset.filename);
         }
 
         // 排序
@@ -6010,8 +6194,9 @@
                                 let icon = getFileIconPath(file, false);
 
                                 return `
-                                    <div class="folder-item" data-filename="${file}" data-path="${path}/${file}"
-                                         ondblclick="openFileFromPath('${path}/${file}', '${file}')"
+                                    <div class="folder-item" data-filename="${escapeAttr(file)}" data-path="${escapeAttr(path + '/' + file)}" data-isdir="false"
+                                         onclick="handleLegacyFolderItemSingleClick(event, this)"
+                                         ondblclick="handleLegacyFolderItemDoubleClick(event, this)"
                                          onmousedown="handleFolderItemMouseDown(event, '${contentId.replace('folder-content-', '')}')"
                                          ontouchstart="handleFolderItemTouchStart(event, '${contentId.replace('folder-content-', '')}')"
                                          oncontextmenu="handleFolderItemContextMenu(event, '${contentId.replace('folder-content-', '')}', '${file}', '${path}/${file}')">
@@ -6347,16 +6532,16 @@
 
             const item = e.currentTarget;
             const now = Date.now();
+            item._lastTouchStartAt = now;
 
-            // 双击检测：同一元素300ms内连续两次触摸 = 双击
-            if (_lastTapTarget === item && now - _lastTapTime < 300) {
+            // 双击模式下，同一元素 300ms 内连续两次触摸视为双击。
+            if (SYSTEM.clickBehavior === 'double' && _lastTapTarget === item && now - _lastTapTime < 300) {
                 const filename = item.dataset.filename;
-                const state = SYSTEM.folderWindowStates[windowId];
-
-                // 统一使用 BrowserFS 路径
                 const fullPath = item.dataset.path;
                 const isDir = item.dataset.isdir === 'true';
-                handleFolderItemDblClick(windowId, filename, fullPath, isDir);
+                item._suppressNextDoubleOpen = true;
+                setTimeout(() => { item._suppressNextDoubleOpen = false; }, 450);
+                activateFolderItem(windowId, filename, fullPath, isDir);
                 _lastTapTime = 0;
                 _lastTapTarget = null;
                 e.preventDefault();
@@ -6364,8 +6549,13 @@
                 return;
             }
 
-            _lastTapTime = now;
-            _lastTapTarget = item;
+            if (SYSTEM.clickBehavior === 'double') {
+                _lastTapTime = now;
+                _lastTapTarget = item;
+            } else {
+                _lastTapTime = 0;
+                _lastTapTarget = null;
+            }
 
             if(!item.classList.contains('selected')) {
                 clearFolderSelection(windowId);
@@ -6878,7 +7068,9 @@
             const startPos = getPos(e);
             const startX = startPos.x;
             const startY = startPos.y;
+            const activationItem = touchItem || e.currentTarget || null;
             let isDragging = false;
+            let hasMovedForActivation = false;
             let dragPreview = null;
             let longPressTimer = null;
             let longPressTriggered = false;
@@ -6930,6 +7122,7 @@
                 const pos = getPos(moveEvent);
                 const dx = pos.x - startX;
                 const dy = pos.y - startY;
+                if (Math.abs(dx) > 5 || Math.abs(dy) > 5) hasMovedForActivation = true;
 
                 // 长按已触发，取消后续拖拽
                 if (longPressTriggered) {
@@ -7022,6 +7215,13 @@
                     dragPreview = null;
                 }
                 endDropHighlight();
+
+                // 拖动或触屏滚动结束后可能仍会收到合成 click；单击打开模式下抑制它。
+                if (hasMovedForActivation) {
+                    const ignoreUntil = Date.now() + (upEvent.type === 'touchend' ? 420 : 120);
+                    if (activationItem) activationItem._ignoreActivationUntil = ignoreUntil;
+                    selectedItems.forEach(it => { it._ignoreActivationUntil = ignoreUntil; });
+                }
 
                 if(!isDragging) return;
 
@@ -11422,11 +11622,24 @@
             }
         }
 
+        function buildSystemAppVisibilitySettings() {
+            return SYSTEM_APP_DEFS.filter(app => app.hideable).map(app => `
+                <label class="settings-toggle-row" for="hide-app-${app.key}">
+                    <span class="settings-toggle-app">${icon(app.icon, 'sm')}<span>${app.name}</span></span>
+                    <span class="settings-toggle-control">
+                        <span>隐藏</span>
+                        <input id="hide-app-${app.key}" type="checkbox" ${isSystemAppHidden(app.key) ? 'checked' : ''}
+                               aria-label="隐藏${app.name}快捷方式" onchange="setSystemAppHidden('${app.key}', this.checked)">
+                    </span>
+                </label>
+            `).join('');
+        }
+
         function openSettings() {
             createWindow({
                 title: '系统设置',
                 iconHtml: icon('appSettings','sm'),
-                width: 550, height: 500,
+                width: 550, height: 610,
                 content: `
                     <div class="content-area dark" style="overflow-y:auto">
                         <div class="settings-content">
@@ -11441,6 +11654,25 @@
                                     <label>更换壁纸</label>
                                     ${icon('uiChevronRight')}
                                 </div>
+                                <div class="settings-item settings-item--stacked">
+                                    <div class="settings-item-copy">
+                                        <label for="click-behavior-setting">图标打开方式</label>
+                                        <span class="settings-hint">桌面与文件管理器中的应用、文件和文件夹均使用此方式。</span>
+                                    </div>
+                                    <select id="click-behavior-setting" class="settings-select" aria-label="图标打开方式" onchange="setClickBehavior(this.value)">
+                                        <option value="double" ${SYSTEM.clickBehavior === 'double' ? 'selected' : ''}>双击打开</option>
+                                        <option value="single" ${SYSTEM.clickBehavior === 'single' ? 'selected' : ''}>单击打开</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="settings-section">
+                                <h4>系统应用</h4>
+                                <p class="settings-hint">勾选后会隐藏桌面、开始菜单和任务栏中的固定快捷方式。</p>
+                                <div class="settings-toggle-list">
+                                    ${buildSystemAppVisibilitySettings()}
+                                </div>
+                                <p class="settings-note">系统设置始终保留，不能隐藏，以便随时恢复和调整配置。</p>
                             </div>
                             
                             <div class="settings-section">
@@ -11460,14 +11692,6 @@
                                 <div class="settings-item">
                                     <label>系统版本</label>
                                     <span>10.5.6</span>
-                                </div>
-                                <div class="settings-item">
-                                    <label>内核</label>
-                                    <span>BrowserFS</span>
-                                </div>
-                                <div class="settings-item">
-                                    <label>渲染引擎</label>
-                                    <span>${navigator.userAgent.match(/Chrome|Firefox|Safari|Edge/)?.[0] || 'Unknown'}</span>
                                 </div>
                                 <div class="settings-item" onclick="window.open('https://github.com/SFGFDSD/JISHENGOS','_blank')" style="cursor:pointer">
                                     <label>仓库</label>
@@ -11520,7 +11744,10 @@
         async function resetSystem() {
             if (await SysDialog.confirm({ title: '重置系统', icon: 'uiWarning', danger: true, okText: '重置', message: '警告：这会清空所有保存的文件和设置，且无法恢复。确定重置吗？' })) {
                 const req = indexedDB.deleteDatabase('JISHENG_OS_V3');
-                req.onsuccess = () => location.reload();
+                req.onsuccess = () => {
+                    try { localStorage.removeItem(SYSTEM_SETTINGS_STORAGE_KEY); } catch (e) {}
+                    location.reload();
+                };
             }
         }
 
