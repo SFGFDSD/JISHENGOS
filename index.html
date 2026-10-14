@@ -4381,6 +4381,17 @@
                 html += `<div class="context-divider"></div>` + buildOpenWithMenu(dfFullPath, dfFilename, filename);
             }
 
+            // 「设为桌面壁纸」：仅单选的图片文件显示
+            if (!isLocalFolder && filename && count <= 1 && isImageFile(filename)) {
+                const wpPathArg = escapeAttr(JSON.stringify(SYSTEM.desktopPath + '/' + filename));
+                const wpNameArg = escapeAttr(JSON.stringify(filename));
+                html += `<div class="context-divider"></div>
+                <div class="context-item" onclick="setWallpaperFromPath(${wpPathArg}, ${wpNameArg}); closeCtx()">
+                    ${icon('uiWallpaperCtx','sm')}
+                    <span>设为桌面壁纸</span>
+                </div>`;
+            }
+
             if (!isLocalFolder && filename && isArchiveFile(filename)) {
                 html += `
                 <div class="context-item" onclick="extractZip('${filename}'); closeCtx()">
@@ -6625,6 +6636,7 @@
                         <span>打开</span>
                     </div>
                     ${(!isDirItem && canOpenWith(filename)) ? `<div class="context-divider"></div>${buildOpenWithMenu(safeFullPath, safeFilename, filename)}` : ''}
+                    ${(!isDirItem && isImageFile(filename)) ? `<div class="context-divider"></div><div class="context-item" onclick="setWallpaperFromPath(${escapeAttr(JSON.stringify(fullPath))}, ${escapeAttr(JSON.stringify(filename))}); closeCtx()">${icon('uiWallpaperCtx','sm')}<span>设为桌面壁纸</span></div>` : ''}
                     ${isArchiveFile(filename) ? `<div class="context-item" onclick="extractZipFromPath('${safeFullPath}'); closeCtx()">${icon('uiExtractSimple','sm')}<span>解压</span></div>` : ''}
                     <div class="context-divider"></div>
                     <div class="context-item" onclick="copySelectedFolderItems('${windowId}'); closeCtx()">
@@ -7878,6 +7890,53 @@
                 const url = URL.createObjectURL(blob);
                 openBrowser(url);
                 Notify.success('正在打开', `已在浏览器中打开 "${filename}"`);
+            });
+        }
+
+        // ============================================
+        // 「设为桌面壁纸」：图片文件右键菜单
+        // ============================================
+        const WALLPAPER_IMAGE_MIME = {
+            jpg: 'image/jpeg', jpeg: 'image/jpeg', jfif: 'image/jpeg', png: 'image/png',
+            gif: 'image/gif', webp: 'image/webp', bmp: 'image/bmp', svg: 'image/svg+xml',
+            avif: 'image/avif', ico: 'image/x-icon'
+        };
+
+        function isImageFile(filename) {
+            const ext = String(filename || '').split('.').pop().toLowerCase();
+            return String(filename || '').includes('.') && Object.prototype.hasOwnProperty.call(WALLPAPER_IMAGE_MIME, ext);
+        }
+
+        // 读取虚拟文件系统中的图片，转为 Data URL 后设置为壁纸并持久化
+        // （与「上传本地图片」相同，保存 Data URL，源文件删除/改名后壁纸依然有效）
+        function setWallpaperFromPath(fullPath, filename) {
+            if (!SYSTEM.fs) { Notify.error('设置失败', '文件系统尚未就绪'); return; }
+            const name = filename || String(fullPath).split('/').pop();
+            const ext = name.split('.').pop().toLowerCase();
+            const mime = WALLPAPER_IMAGE_MIME[ext] || 'image/png';
+            SYSTEM.fs.stat(fullPath, (err, stats) => {
+                if (err) { Notify.error('设置失败', err.message); return; }
+                const isDir = typeof stats.isDirectory === 'function' ? stats.isDirectory() : !!stats.isDirectory;
+                if (isDir) { Notify.warning('设置失败', '所选项目不是图片文件'); return; }
+                SYSTEM.fs.readFile(fullPath, (err, data) => {
+                    if (err) { Notify.error('设置失败', err.message); return; }
+                    let dataUrl;
+                    try {
+                        const base64 = SYSTEM.Buffer.from(data).toString('base64');
+                        dataUrl = `data:${mime};base64,${base64}`;
+                    } catch (e) {
+                        Notify.error('设置失败', e.message || '图片读取失败');
+                        return;
+                    }
+                    // 先预加载校验图片可解码，避免损坏文件导致桌面变空白
+                    const img = new Image();
+                    img.onload = () => {
+                        setBg(dataUrl);
+                        Notify.success('壁纸已更换', `已将 "${name}" 设为桌面壁纸`);
+                    };
+                    img.onerror = () => Notify.error('设置失败', `"${name}" 无法作为图片解码`);
+                    img.src = dataUrl;
+                });
             });
         }
 
