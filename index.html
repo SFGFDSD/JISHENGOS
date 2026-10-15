@@ -2767,7 +2767,7 @@
                 };
                 
                 SYSTEM.setMtimeCache = function(path, mtime) {
-                    if (!mtime) return;
+                    if (!mtime || isLocalMountedPath(path)) return;
                     const ms = mtime instanceof Date ? mtime.getTime() : Number(mtime);
                     if (!isNaN(ms) && ms > 0) {
                         // 统一用规范化路径作键（去掉重复/结尾斜杠），保证 rename 迁移时能匹配
@@ -2804,7 +2804,7 @@
                     return originalStat(path, function(err, stats) {
                         let cachedMs = SYSTEM.mtimeCache[path];
                         if (!cachedMs) cachedMs = SYSTEM.mtimeCache[_normMtimePath(path)];
-                        if (!err && stats && cachedMs) {
+                        if (!err && stats && cachedMs && !isLocalMountedPath(path)) {
                             try {
                                 stats.mtime = new Date(cachedMs);
                                 stats.mtimeMs = cachedMs;
@@ -2839,6 +2839,7 @@
                     if (_dropMtimeSubtree(p)) SYSTEM.saveMtimeCache();
                 };
                 SYSTEM.moveMtimeCache = function(oldPath, newPath, srcMtimeMs) {
+                    if (isLocalMountedPath(oldPath) || isLocalMountedPath(newPath)) return;
                     const o = _normMtimePath(oldPath);
                     const n = _normMtimePath(newPath);
                     if (o === n) return;
@@ -2911,8 +2912,10 @@
                 // 同时作为属性和函数，兼容 BrowserFS 的两种调用方式
                 this.isFile = isFile;
                 this.isDirectory = isDir;
-                this.size = size || 0;
-                this.mtime = mtime || Date.now();
+                this.size = Number.isFinite(Number(size)) ? Number(size) : 0;
+                // Directory modification time is unavailable from File System Access API.
+                // Keep it empty instead of presenting a fabricated current timestamp.
+                this.mtime = (mtime && Number(mtime) > 0) ? new Date(Number(mtime)) : null;
                 this.blocks = 1;
                 this.mode = isFile ? 0o666 : (0o777 | 0o40000);
                 // BrowserFS 内部可能调用 stats.isDirectory() 作为函数
@@ -2927,12 +2930,13 @@
         }
 
         class FSAFile {
-            constructor(handle, fs) {
+            constructor(handle, fs, path) {
                 this._handle = handle;
                 this._fs = fs;
                 this._position = 0;
                 this._writable = null;
                 this._closed = false;
+                this._path = path || '';
             }
             getStats(cb) {
                 this._handle.getFile().then(f => {
@@ -2941,9 +2945,14 @@
             }
             close(cb) {
                 if (this._writable) {
-                    this._writable.close().then(() => { this._closed = true; cb(); }).catch(cb);
+                    this._writable.close().then(() => {
+                        this._closed = true;
+                        if (this._fs && this._fs._invalidate) this._fs._invalidate(this._path);
+                        cb();
+                    }).catch(cb);
                 } else {
                     this._closed = true;
+                    if (this._fs && this._fs._invalidate) this._fs._invalidate(this._path);
                     cb();
                 }
             }
@@ -2972,6 +2981,7 @@
                         await this._writable.seek(pos);
                         await this._writable.write(data);
                         this._position = pos + data.length;
+                        if (this._fs && this._fs._invalidate) this._fs._invalidate(this._path);
                         cb(null, data.length);
                     } catch(e) { cb(e); }
                 })();
@@ -2991,6 +3001,32 @@
             constructor(dirHandle) {
                 this._handle = dirHandle;
                 this._name = 'FileSystemAccess';
+                // readdir already yields each entry's handle/kind. Keep a short-lived metadata
+                // snapshot so the explorer's follow-up stat calls don't traverse the same path again.
+                this._statCache = new Map();
+                this._statCacheTtl = 2500;
+            }
+
+            _cachePath(path) {
+                const parts = this._resolve(path);
+                return parts.length ? '/' + parts.join('/') : '/';
+            }
+
+            _cacheStat(path, isFile, size, mtime) {
+                if (this._statCache.size > 10000) this._statCache.clear();
+                this._statCache.set(this._cachePath(path), {
+                    isFile: !!isFile, size: Number(size) || 0, mtime: Number(mtime) || 0,
+                    expires: Date.now() + this._statCacheTtl
+                });
+            }
+
+            _invalidate(path) {
+                const key = this._cachePath(path);
+                const parent = key === '/' ? '/' : (key.slice(0, key.lastIndexOf('/')) || '/');
+                const prefix = key === '/' ? '/' : key + '/';
+                for (const cachedPath of this._statCache.keys()) {
+                    if (cachedPath === key || cachedPath === parent || cachedPath.startsWith(prefix)) this._statCache.delete(cachedPath);
+                }
             }
             getName() { return 'FileSystemAccess'; }
             static Create(opts, cb) {
@@ -3022,8 +3058,15 @@
             stat(path, isLstat, cb) {
                 if (typeof isLstat === 'function') { cb = isLstat; isLstat = false; }
                 const parts = this._resolve(path);
+                const cacheKey = this._cachePath(path);
+                const cached = this._statCache.get(cacheKey);
+                if (cached && cached.expires > Date.now()) {
+                    cb(null, new FSAStats(cached.isFile, cached.size, cached.mtime));
+                    return;
+                }
+                if (cached) this._statCache.delete(cacheKey);
                 if (parts.length === 0) {
-                    cb(null, new FSAStats(false, 0, Date.now()));
+                    cb(null, new FSAStats(false, 0, 0));
                     return;
                 }
                 const parentParts = parts.slice(0, -1);
@@ -3034,10 +3077,12 @@
                 }
                 chain.then(parentHandle => {
                     return parentHandle.getDirectoryHandle(name).then(() => {
-                        cb(null, new FSAStats(false, 0, Date.now()));
+                        this._cacheStat(path, false, 0, 0);
+                        cb(null, new FSAStats(false, 0, 0));
                     }).catch(() => {
                         return parentHandle.getFileHandle(name).then(fh => {
                             return fh.getFile().then(f => {
+                                this._cacheStat(path, true, f.size, f.lastModified);
                                 cb(null, new FSAStats(true, f.size, f.lastModified));
                             });
                         });
@@ -3046,17 +3091,29 @@
             }
 
             readdir(path, cb) {
-                this._getHandle(path).then(handle => {
+                this._getHandle(path).then(async handle => {
                     const items = [];
-                    const iter = handle.entries();
-                    function next() {
-                        return iter.next().then(result => {
-                            if (result.done) return items;
-                            items.push(result.value[0]);
-                            return next();
-                        });
+                    const fileJobs = [];
+                    for await (const [name, entryHandle] of handle.entries()) {
+                        items.push(name);
+                        const childPath = this._cachePath(path === '/' ? '/' + name : path + '/' + name);
+                        if (entryHandle.kind === 'directory') {
+                            this._cacheStat(childPath, false, 0, 0);
+                        } else {
+                            fileJobs.push(async () => {
+                                try {
+                                    const file = await entryHandle.getFile();
+                                    this._cacheStat(childPath, true, file.size, file.lastModified);
+                                } catch (_) { /* A later stat can retry if metadata is temporarily unavailable. */ }
+                            });
+                        }
                     }
-                    return next();
+                    // Bound concurrency for large directories instead of firing thousands of
+                    // getFile requests at once. Metadata calls run in parallel within each batch.
+                    for (let i = 0; i < fileJobs.length; i += 32) {
+                        await Promise.all(fileJobs.slice(i, i + 32).map(job => job()));
+                    }
+                    return items;
                 }).then(items => cb(null, items)).catch(cb);
             }
 
@@ -3072,7 +3129,7 @@
                 }
                 chain.then(parentHandle => {
                     return parentHandle.getDirectoryHandle(name, { create: true });
-                }).then(() => cb(null)).catch(cb);
+                }).then(() => { this._invalidate(path); cb(null); }).catch(cb);
             }
 
             rmdir(path, cb) {
@@ -3086,7 +3143,7 @@
                 }
                 chain.then(parentHandle => {
                     return parentHandle.removeEntry(name, { recursive: true });
-                }).then(() => cb(null)).catch(cb);
+                }).then(() => { this._invalidate(path); cb(null); }).catch(cb);
             }
 
             unlink(path, cb) {
@@ -3100,7 +3157,7 @@
                 }
                 chain.then(parentHandle => {
                     return parentHandle.removeEntry(name);
-                }).then(() => cb(null)).catch(cb);
+                }).then(() => { this._invalidate(path); cb(null); }).catch(cb);
             }
 
             // BrowserFS 签名: readFile(path, encoding, flag, cb)
@@ -3157,7 +3214,7 @@
                         content = new Uint8Array(data);
                     }
                     return writable.write(content).then(() => writable.close());
-                }).then(() => cb(null)).catch(cb);
+                }).then(() => { this._invalidate(path); cb(null); }).catch(cb);
             }
 
             rename(oldPath, newPath, cb) {
@@ -3185,7 +3242,7 @@
                 chain.then(parentHandle => {
                     return parentHandle.getFileHandle(name, { create: !!create });
                 }).then(fh => {
-                    cb(null, new FSAFile(fh, this));
+                    cb(null, new FSAFile(fh, this, path));
                 }).catch(cb);
             }
 
@@ -3710,10 +3767,11 @@
                 ${isDisconnected ? `<div class="context-item" onclick="remountFolder('${folderId}'); closeCtx()" style="color:var(--accent-cyan)">
                     ${icon('uiEject','sm')}
                     <span>重新挂载</span>
-                </div>` : `<div class="context-item" onclick="unmountLocalFolder('${folderId}'); closeCtx()" style="color:var(--win-close-red)">
+                </div>` : ''}
+                <div class="context-item" onclick="unmountLocalFolder('${folderId}'); closeCtx()" style="color:var(--win-close-red)">
                     ${icon('uiEject','sm')}
-                    <span>卸载挂载</span>
-                </div>`}
+                    <span>${isDisconnected ? '忘记此文件夹' : '卸载挂载'}</span>
+                </div>
             `;
             showCtx(x, y);
         }
@@ -5258,6 +5316,18 @@
         }
 
         // 格式化文件大小
+        // 本地挂载目录的递归统计会触发大量真实磁盘 I/O；这里只显示单文件真实元数据，
+        // 目录大小与目录修改时间均未知时显示“--”，绝不伪造或递归扫描。
+        function isLocalMountedPath(path) {
+            const norm = String(path || '/').replace(/\\/g, '/').replace(/\/+/g, '/').replace(/\/$/, '') || '/';
+            const folders = Object.values(SYSTEM.mountedFolders || {}).concat(Object.values(SYSTEM.localFolders || {}));
+            return folders.some(info => {
+                if (!info) return false;
+                const mountPath = String(info.mountPath || ('/mnt/local/' + info.name)).replace(/\\/g, '/').replace(/\/+/g, '/').replace(/\/$/, '') || '/';
+                return norm === mountPath || norm.startsWith(mountPath + '/');
+            });
+        }
+
         function formatFileSize(bytes) {
             if (bytes === 0 || bytes == null) return '--';
             if (bytes < 1024) return bytes + ' B';
@@ -5585,8 +5655,10 @@
                             const stats = allStats[file] || {};
                             const isDir = stats.isDirectory;
                             const iconPath = getFileIconPath(file, isDir);
-                            const cachedDirSize = isDir ? getCachedDirSize(state.currentPath + '/' + file) : null;
-                            const sizeStr = isDir ? (cachedDirSize !== null ? formatFileSize(cachedDirSize) : '…') : formatFileSize(stats.size);
+                            const itemPath = state.currentPath + '/' + file;
+                            const localMountItem = isDir && isLocalMountedPath(itemPath);
+                            const cachedDirSize = isDir && !localMountItem ? getCachedDirSize(itemPath) : null;
+                            const sizeStr = localMountItem ? '--' : (isDir ? (cachedDirSize !== null ? formatFileSize(cachedDirSize) : '…') : formatFileSize(stats.size));
                             const dateStr = formatDate(stats.mtime);
                             const typeStr = isDir ? '文件夹' : getFileExtension(file);
                             const fullPath = state.currentPath + '/' + file;
@@ -5676,15 +5748,18 @@
                         });
                         return t;
                     };
-                    const totalSize = computeTotalSize();
-                    if (statusSizeEl) statusSizeEl.textContent = totalSize > 0 ? '总计: ' + formatFileSize(totalSize) : '';
+                    const totalSize = isLocalMountedPath(state.currentPath) ? 0 : computeTotalSize();
+                    if (statusSizeEl) statusSizeEl.textContent = (!isLocalMountedPath(state.currentPath) && totalSize > 0) ? '总计: ' + formatFileSize(totalSize) : '';
 
-                    // 异步计算各文件夹的实际大小（带缓存 + 请求合并，不阻塞 UI），算完回填单元格
-                    if (state.viewMode === 'list') {
+                    // 普通虚拟目录仍可异步统计；本地挂载内不递归遍历文件夹，避免卡顿。
+                    if (state.viewMode === 'list' && !isLocalMountedPath(state.currentPath)) {
                         const itemEls = filelistEl.querySelectorAll('.folder-item');
                         const dirJobs = [];
                         filtered.forEach((file, i) => {
-                            if (allStats[file]?.isDirectory) dirJobs.push({ file: file, index: i });
+                            const itemPath = state.currentPath + '/' + file;
+                            if (allStats[file]?.isDirectory && !isLocalMountedPath(itemPath)) {
+                                dirJobs.push({ file: file, index: i });
+                            }
                         });
                         let dirPending = dirJobs.length;
                         let sizeChanged = false;
@@ -8369,13 +8444,9 @@
                                     const mountPath = folder.mountPath || ('/mnt/local/' + folder.name);
                                     await mountFSA(folder.handle, mountPath, folder.id, folder.name);
                                 } else {
-                                    const reqPerm = await folder.handle.requestPermission({ mode: 'readwrite' });
-                                    if (reqPerm === 'granted') {
-                                        const mountPath = folder.mountPath || ('/mnt/local/' + folder.name);
-                                        await mountFSA(folder.handle, mountPath, folder.id, folder.name);
-                                    } else {
-                                        SYSTEM.mountedFolders[folder.id] = { handle: folder.handle, name: folder.name, id: folder.id, mountPath: folder.mountPath || ('/mnt/local/' + folder.name), disconnected: true };
-                                    }
+                                    // Permission prompts require an explicit user gesture. Keep the
+                                    // saved handle visible as disconnected until the user remounts or forgets it.
+                                    SYSTEM.mountedFolders[folder.id] = { handle: folder.handle, name: folder.name, id: folder.id, mountPath: folder.mountPath || ('/mnt/local/' + folder.name), disconnected: true };
                                 }
                             } else {
                                 SYSTEM.mountedFolders[folder.id] = { handle: folder.handle, name: folder.name, id: folder.id, mountPath: folder.mountPath || ('/mnt/local/' + folder.name), disconnected: true };
@@ -8437,6 +8508,38 @@
             }
         }
 
+        async function remountFolder(folderId, openAfterMount = false) {
+            const folderInfo = SYSTEM.mountedFolders[folderId] || SYSTEM.localFolders[folderId];
+            if (!folderInfo || !folderInfo.disconnected) return false;
+            try {
+                if (!folderInfo.handle || typeof folderInfo.handle.requestPermission !== 'function') {
+                    Notify.warning('无法重新挂载', '浏览器未保存可用的文件夹授权');
+                    return false;
+                }
+                const perm = await folderInfo.handle.requestPermission({ mode: 'readwrite' });
+                if (perm !== 'granted') {
+                    Notify.warning('需要授权', '未获得本地文件夹访问权限');
+                    return false;
+                }
+                const mountPath = folderInfo.mountPath || ('/mnt/local/' + folderInfo.name);
+                await mountFSA(folderInfo.handle, mountPath, folderInfo.id, folderInfo.name);
+                delete SYSTEM.mountedFolders[folderInfo.id].disconnected;
+                Notify.success('重新挂载成功', `已挂载: ${folderInfo.name}`);
+                refreshDesktop();
+                if (openAfterMount) {
+                    const pathParts = mountPath.split('/');
+                    const fName = pathParts[pathParts.length - 1];
+                    const parentPath = pathParts.slice(0, -1).join('/') || '/';
+                    openFolderWindow(fName, parentPath);
+                }
+                return true;
+            } catch (e) {
+                console.error('重新挂载失败:', e);
+                Notify.error('重新挂载失败', e.message || String(e));
+                return false;
+            }
+        }
+
         async function openLocalFolder(folderId) {
             const folderInfo = SYSTEM.mountedFolders[folderId] || SYSTEM.localFolders[folderId];
             if (!folderInfo) {
@@ -8444,26 +8547,7 @@
                 return;
             }
             if (folderInfo.disconnected) {
-                try {
-                    if (folderInfo.handle && typeof folderInfo.handle.requestPermission === 'function') {
-                        const perm = await folderInfo.handle.requestPermission({ mode: 'readwrite' });
-                        if (perm === 'granted') {
-                            const mountPath = folderInfo.mountPath || ('/mnt/local/' + folderInfo.name);
-                            await mountFSA(folderInfo.handle, mountPath, folderInfo.id, folderInfo.name);
-                            delete SYSTEM.mountedFolders[folderInfo.id].disconnected;
-                            Notify.success('重新挂载成功', `已挂载: ${folderInfo.name}`);
-                            refreshDesktop();
-                            const pathParts = mountPath.split('/');
-                            const fName = pathParts[pathParts.length - 1];
-                            const parentPath = pathParts.slice(0, -1).join('/') || '/';
-                            openFolderWindow(fName, parentPath);
-                            return;
-                        }
-                    }
-                } catch (e) {
-                    console.error('重新挂载失败:', e);
-                }
-                Notify.warning('需要重新挂载', '请右键点击该文件夹选择重新挂载');
+                await remountFolder(folderId, true);
                 return;
             }
             const mountPath = folderInfo.mountPath || ('/mnt/local/' + folderInfo.name);
