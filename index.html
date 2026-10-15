@@ -835,6 +835,69 @@
         .settings-note { margin-top: 10px; color: var(--text-muted); font-size: 11px; line-height: 1.55; }
         .system-app-hidden { display: none !important; }
 
+        /* === 存储设置：实际浏览器配额与文件分类 === */
+        .storage-overview { display: grid; grid-template-columns: 1fr auto; gap: 14px; align-items: end; padding: 14px; border: 1px solid rgba(0, 120, 212, 0.2); border-radius: 9px; background: linear-gradient(135deg, rgba(0, 120, 212, 0.12), rgba(0, 212, 255, 0.035)); }
+        .storage-overview-label { display: block; color: var(--text-muted); font-size: 11px; margin-bottom: 5px; }
+        .storage-overview-value { color: var(--text-main); font-size: 18px; font-weight: 650; font-variant-numeric: tabular-nums; }
+        .storage-overview-subvalue { color: var(--text-muted); font-size: 11px; margin-top: 4px; }
+        .storage-overview-percent { color: var(--accent-cyan); font-size: 22px; font-weight: 650; font-variant-numeric: tabular-nums; text-align: right; }
+        .storage-overview-percent small { display: block; color: var(--text-muted); font-size: 10px; font-weight: 400; margin-top: 2px; }
+        .storage-meter { width: 100%; height: 8px; margin-top: 12px; overflow: hidden; border-radius: 999px; background: rgba(255,255,255,0.09); border: 1px solid rgba(255,255,255,0.05); }
+        .storage-meter-fill { height: 100%; min-width: 0; max-width: 100%; border-radius: inherit; background: linear-gradient(90deg, #087ed7, #00d4ff); box-shadow: 0 0 12px rgba(0,212,255,0.35); transition: width .28s ease; }
+        .storage-breakdown { margin-top: 10px; }
+        .storage-breakdown-row { display: grid; grid-template-columns: 9px minmax(0, 1fr) auto; gap: 9px; align-items: center; padding: 7px 1px; border-bottom: 1px solid rgba(255,255,255,0.055); font-size: 12px; }
+        .storage-breakdown-row:last-child { border-bottom: 0; }
+        .storage-breakdown-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--storage-color, var(--accent-blue)); box-shadow: 0 0 7px color-mix(in srgb, var(--storage-color, var(--accent-blue)) 50%, transparent); }
+        .storage-breakdown-label { color: var(--text-main); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .storage-breakdown-value { color: var(--text-muted); font-size: 11px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+        .storage-breakdown-hint { grid-column: 2 / 4; color: var(--text-muted); font-size: 10px; line-height: 1.4; margin-top: -4px; }
+        .storage-loading { padding: 14px 1px; color: var(--text-muted); font-size: 12px; }
+        .settings-action-btn { padding: 7px 10px; border: 1px solid rgba(255,255,255,0.14); border-radius: 7px; background: rgba(255,255,255,0.06); color: var(--text-main); font: inherit; font-size: 12px; cursor: pointer; white-space: nowrap; }
+        .settings-action-btn:hover { background: rgba(255,255,255,0.12); }
+        .settings-action-btn:disabled { opacity: .45; cursor: not-allowed; }
+        .settings-action-btn:disabled:hover { background: rgba(255,255,255,0.06); }
+        .settings-action-btn.danger { color: #ff9aa6; border-color: rgba(232,17,35,0.35); }
+        .settings-action-btn.danger:hover { background: rgba(232,17,35,0.14); }
+        .settings-file-manager-path { color: var(--accent-cyan) !important; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+        /* 一次性缓存清理：结果区独占整行，按钮和结果统一使用系统玻璃风格 */
+        .settings-item--cleanup { display: flex; flex-direction: column; align-items: stretch; gap: 12px; width: 100%; min-width: 0; }
+        .settings-item--cleanup > .settings-item-copy { width: 100%; }
+        .cleanup-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; width: 100%; margin-top: 0; }
+        .cleanup-actions .settings-action-btn { min-height: 38px; padding: 8px 13px; border-radius: 9px; font-size: 12px; transition: background .16s ease, border-color .16s ease, transform .16s ease, box-shadow .16s ease; }
+        .cleanup-actions .settings-action-btn:not(:disabled):active { transform: translateY(1px); }
+        .cleanup-actions .settings-action-btn:focus-visible, .cleanup-group-select input:focus-visible, .cleanup-item input:focus-visible { outline: 2px solid var(--accent-cyan); outline-offset: 2px; }
+        .cleanup-results { box-sizing: border-box; width: 100%; max-height: 440px; overflow: auto; margin-top: 0; padding: 12px; border: 1px solid rgba(255,255,255,.09); border-radius: 12px; background: rgba(5,10,18,.28); scrollbar-gutter: stable; }
+        .cleanup-empty, .cleanup-loading { padding: 14px 4px; color: var(--text-muted); font-size: 12px; line-height: 1.6; }
+        .cleanup-group { margin: 0 0 14px; padding: 10px; border: 1px solid rgba(255,255,255,.075); border-radius: 10px; background: rgba(255,255,255,.025); }
+        .cleanup-group:last-of-type { margin-bottom: 0; }
+        .cleanup-group-select { display: flex; align-items: center; gap: 9px; min-height: 34px; color: var(--text-main); cursor: pointer; }
+        .cleanup-group-select input { width: 17px; height: 17px; flex: 0 0 auto; margin: 0; accent-color: var(--accent-blue); cursor: pointer; }
+        .cleanup-group-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; min-width: 0; width: 100%; }
+        .cleanup-group-title { color: var(--text-main); font-size: 12px; font-weight: 600; line-height: 1.4; }
+        .cleanup-group-meta { color: var(--text-muted); font-size: 11px; font-weight: 400; text-align: right; white-space: nowrap; }
+        .cleanup-group-action { flex: 0 0 auto; color: var(--accent-cyan); font-size: 10px; white-space: nowrap; }
+        .cleanup-item { display: grid; grid-template-columns: 18px minmax(0, 1fr) auto; column-gap: 10px; align-items: center; padding: 10px; border: 1px solid transparent; border-radius: 8px; background: rgba(255,255,255,.035); margin-top: 6px; font-size: 12px; cursor: pointer; transition: background .14s ease, border-color .14s ease; }
+        .cleanup-item:hover { background: rgba(255,255,255,.07); border-color: rgba(255,255,255,.08); }
+        .cleanup-item input { width: 17px; height: 17px; margin: 0; accent-color: var(--accent-blue); cursor: pointer; }
+        .cleanup-item-copy { min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+        .cleanup-item-path { color: var(--text-main); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; overflow-wrap: anywhere; word-break: break-word; line-height: 1.45; }
+        .cleanup-item-reason { color: var(--text-muted); line-height: 1.45; overflow-wrap: anywhere; }
+        .cleanup-item-size { color: var(--text-muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+        .cleanup-summary { margin-top: 12px; padding: 10px 11px; border-radius: 8px; background: rgba(0,120,212,.1); color: var(--text-main); font-size: 12px; line-height: 1.5; }
+        @media (max-width: 560px) {
+            .settings-item--cleanup { gap: 10px; }
+            .cleanup-results { max-height: 52vh; padding: 9px; }
+            .cleanup-group { padding: 8px; }
+            .cleanup-group-heading { align-items: flex-start; flex-direction: column; gap: 2px; }
+            .cleanup-group-meta { text-align: left; white-space: normal; }
+            .cleanup-item { grid-template-columns: 18px minmax(0, 1fr); column-gap: 8px; padding: 9px 7px; }
+            .cleanup-item-size { grid-column: 2; justify-self: start; font-size: 11px; }
+            .cleanup-actions .settings-action-btn { flex: 1 1 auto; }
+        }
+        .reset-scope-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 10px; }
+        .reset-scope-grid .settings-action-btn { width: 100%; min-height: 38px; white-space: normal; line-height: 1.35; }
+        @media (max-width: 420px) { .storage-overview { grid-template-columns: 1fr; } .storage-overview-percent { text-align: left; } .reset-scope-grid { grid-template-columns: 1fr; } }
+
         .about-card {
             background: linear-gradient(135deg, rgba(0, 120, 212, 0.15), rgba(0, 212, 255, 0.08));
             border: 1px solid rgba(0, 120, 212, 0.2);
@@ -2172,7 +2235,13 @@
             fs: null,
             Buffer: null,
             mounted: false,
+            // 用户工作区可在 IndexedDB 与 OPFS 间切换；系统配置始终放在 IndexedDB，
+            // 这样即使 OPFS 不可用也不会丢失设置或让系统无法启动。
             desktopPath: '/desktop',
+            documentsPath: '/documents',
+            storageBackend: 'indexeddb',
+            opfs: { supported: false, available: false, rootPath: '/opfs' },
+            showHiddenFiles: false,
             configPath: '/system/config/wallpaper.cfg',
             settingsPath: '/system/config/settings.json',
             clickBehavior: 'double',
@@ -2200,9 +2269,49 @@
         ];
         const SYSTEM_SETTINGS_STORAGE_KEY = 'JISHENG_OS_SETTINGS';
 
+        // 两个可写用户工作区的固定入口。系统文件仍放在 IndexedDB 根目录的 /system，
+        // 因此切换工作区不会影响壁纸、图标设置或系统启动。
+        function getStorageDesktopPath(backend) {
+            return backend === 'opfs' ? '/opfs/desktop' : '/desktop';
+        }
+        function getStorageDocumentsPath(backend) {
+            return backend === 'opfs' ? '/opfs/documents' : '/documents';
+        }
+        function storageBackendLabel(backend) {
+            return backend === 'opfs' ? 'OPFS' : 'IndexedDB';
+        }
+        function getExplorerStorageRoots() {
+            const roots = ['/desktop'];
+            if (SYSTEM.opfs && SYSTEM.opfs.available) roots.push('/opfs/desktop');
+            return roots;
+        }
+        function isPathInStorage(path, backend) {
+            const root = getStorageDesktopPath(backend);
+            return path === root || String(path || '').startsWith(root + '/');
+        }
+        function syncStorageMigrationControls() {
+            const canUseOPFS = !!(SYSTEM.opfs && SYSTEM.opfs.available);
+            document.querySelectorAll('[data-storage-migration-target]').forEach(select => {
+                const idb = select.querySelector('option[value="indexeddb"]');
+                const opfs = select.querySelector('option[value="opfs"]');
+                if (idb) idb.disabled = SYSTEM.storageBackend === 'indexeddb';
+                if (opfs) opfs.disabled = SYSTEM.storageBackend === 'opfs' || !canUseOPFS;
+                select.disabled = !canUseOPFS;
+                const preferred = SYSTEM.storageBackend === 'indexeddb' ? 'opfs' : 'indexeddb';
+                select.value = (preferred === 'opfs' && canUseOPFS) ? 'opfs' : 'indexeddb';
+            });
+            document.querySelectorAll('[data-storage-migration-button]').forEach(button => { button.disabled = !canUseOPFS; });
+        }
+
         function applySystemSettings(rawSettings) {
             const settings = rawSettings && typeof rawSettings === 'object' ? rawSettings : {};
             SYSTEM.clickBehavior = settings.clickBehavior === 'single' ? 'single' : 'double';
+            const requestedBackend = settings.storageBackend === 'opfs' ? 'opfs' : 'indexeddb';
+            // OPFS 是渐进增强：旧浏览器 / 隐私模式不可用时安全回退到 IndexedDB。
+            SYSTEM.storageBackend = requestedBackend === 'opfs' && SYSTEM.opfs && SYSTEM.opfs.available ? 'opfs' : 'indexeddb';
+            SYSTEM.desktopPath = getStorageDesktopPath(SYSTEM.storageBackend);
+            SYSTEM.documentsPath = getStorageDocumentsPath(SYSTEM.storageBackend);
+            SYSTEM.showHiddenFiles = settings.showHiddenFiles === true;
             const hideableKeys = new Set(SYSTEM_APP_DEFS.filter(app => app.hideable).map(app => app.key));
             SYSTEM.hiddenSystemApps = Array.isArray(settings.hiddenSystemApps)
                 ? [...new Set(settings.hiddenSystemApps.filter(key => hideableKeys.has(key)))]
@@ -2238,8 +2347,10 @@
 
         function saveSystemSettings() {
             const settings = {
-                version: 1,
+                version: 2,
                 clickBehavior: SYSTEM.clickBehavior === 'single' ? 'single' : 'double',
+                storageBackend: SYSTEM.storageBackend === 'opfs' && SYSTEM.opfs && SYSTEM.opfs.available ? 'opfs' : 'indexeddb',
+                showHiddenFiles: SYSTEM.showHiddenFiles === true,
                 hiddenSystemApps: SYSTEM.hiddenSystemApps.filter(key => SYSTEM_APP_DEFS.some(app => app.key === key && app.hideable))
             };
             const serialized = JSON.stringify(settings);
@@ -2283,6 +2394,86 @@
             if (behavior !== 'single' && behavior !== 'double') return;
             SYSTEM.clickBehavior = behavior;
             saveSystemSettings();
+        }
+
+        // 切换“桌面”默认写入位置；已有文件绝不会被静默迁移或删除，两个后端仍可在
+        // 文件管理器侧栏中同时访问。用户可直接在任一后端目录里新建、上传或粘贴文件。
+        async function setStorageBackend(backend) {
+            if (backend !== 'indexeddb' && backend !== 'opfs') return;
+            if (backend === 'opfs' && !(SYSTEM.opfs && SYSTEM.opfs.available)) {
+                Notify.warning('OPFS 不可用', '当前浏览器或运行环境不支持 Origin Private File System，已继续使用 IndexedDB');
+                document.querySelectorAll('[data-storage-backend-select]').forEach(select => { select.value = SYSTEM.storageBackend; });
+                return;
+            }
+            try {
+                await ensureDir(getStorageDesktopPath(backend));
+                await ensureDir(getStorageDocumentsPath(backend));
+            } catch (err) {
+                Notify.error('切换失败', err && err.message ? err.message : '无法准备存储工作区');
+                document.querySelectorAll('[data-storage-backend-select]').forEach(select => { select.value = SYSTEM.storageBackend; });
+                return;
+            }
+            SYSTEM.storageBackend = backend;
+            SYSTEM.desktopPath = getStorageDesktopPath(backend);
+            SYSTEM.documentsPath = getStorageDocumentsPath(backend);
+            saveSystemSettings();
+            document.querySelectorAll('[data-storage-backend-select]').forEach(select => { select.value = backend; });
+            document.querySelectorAll('[data-storage-current-path]').forEach(el => { el.textContent = SYSTEM.desktopPath; });
+            syncStorageMigrationControls();
+            refreshDesktop();
+            refreshOpenFileManagers();
+            Notify.success('默认存储已切换', `桌面新文件将保存到 ${storageBackendLabel(backend)}。未进行文件复制，现有文件仍留在原后端。`);
+            refreshAllStorageDashboards();
+        }
+
+        // 默认后端切换与数据复制严格分离：只有用户点击此操作并二次确认时才会复制。
+        // 使用 copyFolderRecursive，它会对每个文件及目录持久化源修改日期（包括 OPFS）。
+        async function copyCurrentWorkspaceToBackend(targetBackend) {
+            const sourceBackend = SYSTEM.storageBackend;
+            if (targetBackend !== 'indexeddb' && targetBackend !== 'opfs') return;
+            if (targetBackend === sourceBackend) {
+                Notify.info('无需复制', '源后端与目标后端相同。');
+                return;
+            }
+            if (targetBackend === 'opfs' && !(SYSTEM.opfs && SYSTEM.opfs.available)) {
+                Notify.warning('OPFS 不可用', '当前浏览器或运行环境不支持 Origin Private File System。');
+                return;
+            }
+            const sourcePath = getStorageDesktopPath(sourceBackend);
+            const targetPath = getStorageDesktopPath(targetBackend);
+            const confirmed = await SysDialog.confirm({
+                title: '复制工作区', icon: 'uiCopy', okText: '开始复制',
+                message: `将 ${storageBackendLabel(sourceBackend)} 工作区中的内容复制到 ${storageBackendLabel(targetBackend)}。源文件会保留，目标同名文件会被覆盖；所有文件和文件夹的修改日期将一并保留。此操作不会切换默认后端。`
+            });
+            if (!confirmed) return;
+            try {
+                await ensureDir(targetPath);
+                await new Promise((resolve, reject) => copyFolderRecursive(sourcePath, targetPath, err => err ? reject(err) : resolve()));
+                invalidateAllDirSizes();
+                refreshOpenFileManagers();
+                refreshDesktop();
+                refreshAllStorageDashboards();
+                Notify.success('工作区复制完成', `已从 ${storageBackendLabel(sourceBackend)} 复制到 ${storageBackendLabel(targetBackend)}，修改日期已保留；默认后端未改变。`);
+            } catch (err) {
+                Notify.error('工作区复制失败', err && err.message ? err.message : '复制过程中发生错误；源文件没有被删除。');
+            }
+        }
+
+        function setShowHiddenFiles(show) {
+            SYSTEM.showHiddenFiles = !!show;
+            saveSystemSettings();
+            refreshOpenFileManagers();
+            Notify.info(SYSTEM.showHiddenFiles ? '已显示系统与隐藏文件' : '已隐藏系统与隐藏文件');
+        }
+
+        // 所有已打开的资源管理器实时应用侧栏/隐藏文件设置，不要求用户重新打开窗口。
+        function refreshOpenFileManagers() {
+            Object.keys(SYSTEM.folderWindowStates || {}).forEach(windowId => {
+                const sidebar = document.getElementById('folder-sidebar-' + windowId);
+                if (sidebar && typeof buildFolderSidebar === 'function') sidebar.innerHTML = buildFolderSidebar(windowId);
+                if (typeof updateFolderBreadcrumb === 'function') updateFolderBreadcrumb(windowId);
+                if (typeof renderFolderContent === 'function') renderFolderContent(windowId);
+            });
         }
 
         function toggleWinFullscreen(id, type) {
@@ -2900,8 +3091,10 @@
                 // 创建挂载点目录
                 SYSTEM.fs.mkdir('/mnt', () => {});
                 SYSTEM.fs.mkdir('/mnt/local', () => {});
-                
-                checkSystemFiles();
+
+                // OPFS 通过同一个 BrowserFS 挂载表暴露到 /opfs，失败时不阻塞系统启动。
+                // 这样 IndexedDB 和 OPFS 可以同时在文件管理器中访问，而不只是二选一。
+                initOPFSBackend(checkSystemFiles);
             });
         }
 
@@ -3253,6 +3446,33 @@
             }
         }
 
+        // === OPFS 后端 ===
+        // Origin Private File System 由浏览器提供，容量会计入 navigator.storage.estimate()。
+        // 它被挂载到 /opfs，而不是替换根文件系统：用户可随时在文件管理器中同时查看
+        // IndexedDB 与 OPFS，并把文件直接创建、上传、复制或移动到任一位置。
+        function initOPFSBackend(done) {
+            const finish = typeof done === 'function' ? done : function() {};
+            SYSTEM.opfs = { supported: false, available: false, rootPath: '/opfs' };
+            const supportsOPFS = !!(navigator.storage && typeof navigator.storage.getDirectory === 'function');
+            SYSTEM.opfs.supported = supportsOPFS;
+            if (!supportsOPFS || !SYSTEM.rootFs) { finish(); return; }
+
+            navigator.storage.getDirectory().then(async rootHandle => {
+                try {
+                    SYSTEM.rootFs.mount(SYSTEM.opfs.rootPath, new FileSystemAccessFS(rootHandle));
+                    SYSTEM.opfs.available = true;
+                    // OPFS 根目录已经由挂载提供，只需创建用户可直接使用的工作区。
+                    await ensureDir('/opfs/desktop');
+                    await ensureDir('/opfs/documents');
+                    console.info('OPFS 后端已挂载到 /opfs');
+                } catch (err) {
+                    SYSTEM.opfs.available = false;
+                    console.warn('OPFS 后端不可用，将继续使用 IndexedDB:', err);
+                }
+            }).catch(err => {
+                console.warn('无法获取 OPFS 根目录，将继续使用 IndexedDB:', err);
+            }).finally(finish);
+        }
 
         function checkSystemFiles() {
             const fs = SYSTEM.fs;
@@ -4786,97 +5006,80 @@
             processNext(0);
         }
 
-        // 递归复制文件夹（改进错误处理，保留目录原始修改时间）
+        // 修改时间是跨后端文件元数据的一部分，不能因为一次复制、移动或浏览器不支持
+        // utimes 而被“写入时刻”覆盖。OPFS 本身没有设置 lastModified 的原生 API，因此
+        // 先同步写入 JISHENG OS 的持久化 mtimeCache（展示/排序/下次启动均以它为准），
+        // 再尽力回写底层文件系统。底层回写失败不视为日期丢失。
+        function preserveMtime(path, mtime, callback) {
+            const done = typeof callback === 'function' ? callback : function() {};
+            const ms = mtime instanceof Date ? mtime.getTime() : Number(mtime);
+            if (!Number.isFinite(ms) || ms <= 0) { done(); return; }
+            const date = new Date(ms);
+            try {
+                if (SYSTEM.setMtimeCache) SYSTEM.setMtimeCache(path, date);
+            } catch (err) { console.warn('保存修改时间元数据失败:', err); }
+            if (!SYSTEM.fs || typeof SYSTEM.fs.utimes !== 'function') { done(); return; }
+            try {
+                // SYSTEM.fs.utimes 已被内核包装：即使 OPFS/IndexedDB 返回 ENOTSUP，缓存日期仍保留。
+                SYSTEM.fs.utimes(path, date, date, () => done());
+            } catch (_) { done(); }
+        }
+
+        function copyFilePreservingMtime(srcPath, destPath, sourceMtime, callback) {
+            SYSTEM.fs.readFile(srcPath, (readErr, data) => {
+                if (readErr) { callback(readErr); return; }
+                SYSTEM.fs.writeFile(destPath, data, writeErr => {
+                    if (writeErr) { callback(writeErr); return; }
+                    preserveMtime(destPath, sourceMtime, () => callback(null));
+                });
+            });
+        }
+
+        // 递归复制文件夹：每个文件和每一层目录都在复制完成后回写源修改日期。
+        // 这是 IndexedDB ↔ OPFS 专用迁移和普通跨目录复制共用的唯一实现，避免日期逻辑分叉。
         function copyFolderRecursive(srcPath, destPath, callback) {
-            SYSTEM.fs.stat(srcPath, (statErr, srcStats) => {
-                let _srcDirMtime = null;
-                if (!statErr && srcStats && srcStats.mtime) _srcDirMtime = srcStats.mtime;
-                SYSTEM.fs.mkdir(destPath, (mkdirErr) => {
-                // mkdir 失败时检查是否因为目录已存在（EEXIST），其他错误则中止
-                if (mkdirErr) {
-                    SYSTEM.fs.stat(destPath, (statErr, stats) => {
-                        if (statErr || !stats.isDirectory()) {
-                            callback(mkdirErr);
-                            return;
-                        }
-                        // 目录已存在，继续
+            const isDir = stats => !!stats && (typeof stats.isDirectory === 'function' ? stats.isDirectory() : stats.isDirectory);
+            SYSTEM.fs.stat(srcPath, (sourceStatErr, sourceStats) => {
+                if (sourceStatErr || !sourceStats) { callback(sourceStatErr || new Error('无法读取源文件夹')); return; }
+                const sourceDirMtime = sourceStats.mtime || null;
+                SYSTEM.fs.mkdir(destPath, mkdirErr => {
+                    if (!mkdirErr) { copyFolderContents(); return; }
+                    // 目标已存在时允许合并，但类型不同必须终止。
+                    SYSTEM.fs.stat(destPath, (destStatErr, destStats) => {
+                        if (destStatErr || !isDir(destStats)) { callback(mkdirErr); return; }
                         copyFolderContents();
                     });
-                } else {
-                    copyFolderContents();
+                });
+
+                function finish(err) {
+                    // 目录时间必须最后恢复，避免后续创建子项再次把目录日期刷成当前时间。
+                    preserveMtime(destPath, sourceDirMtime, () => callback(err || null));
                 }
-                
+
                 function copyFolderContents() {
-                    SYSTEM.fs.readdir(srcPath, (err, files) => {
-                        if (err) {
-                            // 即使读取失败，也尝试回写目录时间
-                            if (_srcDirMtime && SYSTEM.fs.utimes) {
-                                try { SYSTEM.fs.utimes(destPath, _srcDirMtime, _srcDirMtime, () => {}); } catch(e) {}
-                            }
-                            callback(err);
-                            return;
-                        }
-                        
-                        if (files.length === 0) {
-                            if (_srcDirMtime && SYSTEM.fs.utimes) {
-                                try { SYSTEM.fs.utimes(destPath, _srcDirMtime, _srcDirMtime, () => {}); } catch(e) {}
-                            }
-                            callback(null);
-                            return;
-                        }
-                        
+                    SYSTEM.fs.readdir(srcPath, (readDirErr, files) => {
+                        if (readDirErr) { finish(readDirErr); return; }
+                        if (!files || files.length === 0) { finish(null); return; }
                         let pending = files.length;
-                        let hasError = false;
+                        let firstError = null;
+                        const completeOne = err => {
+                            if (err && !firstError) firstError = err;
+                            if (--pending === 0) finish(firstError);
+                        };
                         files.forEach(file => {
-                            const srcFilePath = srcPath + '/' + file;
-                            const destFilePath = destPath + '/' + file;
-                            
-                            SYSTEM.fs.stat(srcFilePath, (err, stats) => {
-                                if (err) {
-                                    if (!hasError) { hasError = true; }
-                                    if (--pending === 0) callback(null);
-                                    return;
-                                }
-                                
-                                if (stats.isDirectory()) {
-                                    copyFolderRecursive(srcFilePath, destFilePath, () => {
-                                        if (--pending === 0) {
-                                            if (_srcDirMtime && SYSTEM.fs.utimes) {
-                                                try { SYSTEM.fs.utimes(destPath, _srcDirMtime, _srcDirMtime, () => {}); } catch(e) {}
-                                            }
-                                            callback(null);
-                                        }
-                                    });
+                            const childSource = srcPath + '/' + file;
+                            const childDest = destPath + '/' + file;
+                            SYSTEM.fs.stat(childSource, (childStatErr, childStats) => {
+                                if (childStatErr || !childStats) { completeOne(childStatErr || new Error('无法读取源项目')); return; }
+                                if (isDir(childStats)) {
+                                    copyFolderRecursive(childSource, childDest, completeOne);
                                 } else {
-                                    SYSTEM.fs.readFile(srcFilePath, (err, data) => {
-                                        if (err) {
-                                            console.error('复制文件失败:', srcFilePath, err);
-                                            if (!hasError) { hasError = true; }
-                                            if (--pending === 0) callback(null);
-                                            return;
-                                        }
-                                        SYSTEM.fs.writeFile(destFilePath, data, (writeErr) => {
-                                            if (writeErr) {
-                                                console.error('写入文件失败:', destFilePath, writeErr);
-                                                if (!hasError) { hasError = true; }
-                                            } else if (stats.mtime && SYSTEM.fs.utimes) {
-                                                // 复制时保留原始修改时间
-                                                try { SYSTEM.fs.utimes(destFilePath, stats.mtime, stats.mtime, () => {}); } catch(e) {}
-                                            }
-                                            if (--pending === 0) {
-                                                if (_srcDirMtime && SYSTEM.fs.utimes) {
-                                                    try { SYSTEM.fs.utimes(destPath, _srcDirMtime, _srcDirMtime, () => {}); } catch(e) {}
-                                                }
-                                                callback(null);
-                                            }
-                                        });
-                                    });
+                                    copyFilePreservingMtime(childSource, childDest, childStats.mtime || null, completeOne);
                                 }
                             });
                         });
                     });
                 }
-                });
             });
         }
 
@@ -4974,17 +5177,21 @@
             });
         }
 
-        function openFileExplorer() {
-            const path = SYSTEM.desktopPath;
+        function openFileExplorer(initialPath = SYSTEM.desktopPath) {
+            const path = initialPath || SYSTEM.desktopPath;
             SYSTEM.fs.readdir(path, (err, files) => {
                 if(err) { Notify.error('错误', err.message); return; }
                 const windowId = 'folder-' + Date.now();
                 const sortPref = loadFolderSortPref();
+                const rootName = path === '/' ? '完整文件系统'
+                    : path === '/desktop' ? 'IndexedDB 文件'
+                    : path === '/opfs/desktop' ? 'OPFS 文件'
+                    : path.split('/').pop() || '文件管理器';
                 const winState = {
                     windowId: windowId,
-                    folderName: '桌面',
+                    folderName: rootName,
                     currentPath: path,
-                    parentPath: path,
+                    parentPath: path === '/' ? '/' : (path.substring(0, path.lastIndexOf('/')) || '/'),
                     viewMode: 'list',
                     sortBy: sortPref.sortBy,
                     sortAsc: sortPref.sortAsc,
@@ -4996,7 +5203,7 @@
                 SYSTEM.folderWindowStates[windowId] = winState;
 
                 createWindow({
-                    title: '桌面',
+                    title: rootName,
                     iconHtml: icon('appExplorer', 'sm'),
                     width: 1450, height: 800,
                     content: `
@@ -5056,34 +5263,74 @@
             });
         }
 
-        // 构建侧边栏 HTML（含本地挂载文件夹入口）
+        // 构建侧边栏：两个内部后端始终并列显示，让用户可以明确决定文件放入哪里。
         function buildFolderSidebar(windowId) {
+            const state = SYSTEM.folderWindowStates && SYSTEM.folderWindowStates[windowId];
+            const currentPath = state ? state.currentPath : SYSTEM.desktopPath;
+            const isIndexedDB = isPathInStorage(currentPath, 'indexeddb');
+            const isOPFS = SYSTEM.opfs && SYSTEM.opfs.available && isPathInStorage(currentPath, 'opfs');
             let mountedItems = '';
-            Object.keys(SYSTEM.mountedFolders).forEach(folderId => {
+            Object.keys(SYSTEM.mountedFolders || {}).forEach(folderId => {
                 const info = SYSTEM.mountedFolders[folderId];
-                if (info.disconnected) return;
+                if (!info || info.disconnected) return;
                 const safeName = escapeAttr(info.name);
                 mountedItems += `
                     <div class="folder-sidebar-item" id="sidebar-mounted-${safeName}-${windowId}" onclick="sidebarNavigateToMounted('${windowId}', '${folderId}')">
                         ${icon('uiEject','sm')}
-                        <span>${info.name}</span>
+                        <span>${escapeHtml(info.name)}</span>
                     </div>
                 `;
             });
             return `
                 <div class="folder-sidebar-section">
-                    <div class="folder-sidebar-title">快速访问</div>
-                    <div class="folder-sidebar-item active" id="sidebar-desktop-${windowId}" onclick="sidebarNavigateToDesktop('${windowId}')">
-                        ${icon('uiMonitor','sm')}
-                        <span>桌面</span>
+                    <div class="folder-sidebar-title">存储位置</div>
+                    <div class="folder-sidebar-item ${isIndexedDB ? 'active' : ''}" id="sidebar-storage-indexeddb-${windowId}" onclick="sidebarNavigateToStorage('${windowId}', 'indexeddb')" title="/desktop">
+                        ${icon('fileFolder','sm')}
+                        <span>IndexedDB 文件${SYSTEM.storageBackend === 'indexeddb' ? ' · 默认' : ''}</span>
                     </div>
+                    ${SYSTEM.opfs && SYSTEM.opfs.available ? `
+                    <div class="folder-sidebar-item ${isOPFS ? 'active' : ''}" id="sidebar-storage-opfs-${windowId}" onclick="sidebarNavigateToStorage('${windowId}', 'opfs')" title="/opfs/desktop">
+                        ${icon('fileFolder','sm')}
+                        <span>OPFS 文件${SYSTEM.storageBackend === 'opfs' ? ' · 默认' : ''}</span>
+                    </div>` : `
+                    <div class="folder-sidebar-item" style="opacity:.48;cursor:default" title="当前浏览器不支持 OPFS">
+                        ${icon('fileFolder','sm')}
+                        <span>OPFS（不可用）</span>
+                    </div>`}
                 </div>
+                ${SYSTEM.showHiddenFiles ? `
+                <div class="folder-sidebar-section">
+                    <div class="folder-sidebar-title">系统</div>
+                    <div class="folder-sidebar-item ${currentPath === '/' ? 'active' : ''}" id="sidebar-system-root-${windowId}" onclick="sidebarNavigateToSystemRoot('${windowId}')" title="显示完整文件系统">
+                        ${icon('appSettings','sm')}
+                        <span>完整文件系统</span>
+                    </div>
+                    <div class="folder-sidebar-item ${currentPath === '/system' || currentPath.startsWith('/system/') ? 'active' : ''}" id="sidebar-system-files-${windowId}" onclick="sidebarNavigateToPath('${windowId}', '/system', '系统文件')">
+                        ${icon('fileFolder','sm')}
+                        <span>系统文件</span>
+                    </div>
+                </div>` : ''}
                 ${mountedItems ? '<div class="folder-sidebar-section"><div class="folder-sidebar-title">已挂载</div>' + mountedItems + '</div>' : ''}
                 <div class="folder-sidebar-section">
-                    <div class="folder-sidebar-title">文件夹</div>
+                    <div class="folder-sidebar-title">默认工作区中的文件夹</div>
                     <div id="sidebar-folder-list-${windowId}"></div>
                 </div>
             `;
+        }
+
+        // 侧边栏导航到某一内部后端的用户工作区。
+        function sidebarNavigateToStorage(windowId, backend) {
+            if (backend === 'opfs' && !(SYSTEM.opfs && SYSTEM.opfs.available)) {
+                Notify.warning('OPFS 不可用', '当前浏览器不支持 OPFS 后端');
+                return;
+            }
+            const path = getStorageDesktopPath(backend);
+            folderNavigateTo(windowId, path, `${storageBackendLabel(backend)} 文件`);
+        }
+
+        function sidebarNavigateToSystemRoot(windowId) {
+            if (!SYSTEM.showHiddenFiles) return;
+            folderNavigateTo(windowId, '/', '完整文件系统');
         }
 
         // 侧边栏导航到本地文件根目录
@@ -5253,6 +5500,15 @@
 
         function escapeHtml(str) {
             return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        }
+
+        // 默认不在常规文件管理器里展示点文件和系统根目录内容；设置中开启后不做过滤，
+        // 让用户能够审查、导出或手动清理所有当前可见的内部文件。
+        function shouldHideExplorerItem(parentPath, name) {
+            if (SYSTEM.showHiddenFiles) return false;
+            const base = String(parentPath || '/').replace(/\/$/, '') || '/';
+            const itemPath = base === '/' ? '/' + name : base + '/' + name;
+            return String(name || '').startsWith('.') || itemPath === '/system' || itemPath === '/mnt';
         }
 
         // 构建工具栏 HTML
@@ -5582,6 +5838,9 @@
                     return;
                 }
 
+                // 常规视图隐藏点文件与系统入口；开启“显示系统与隐藏文件”后完整保留。
+                files = (files || []).filter(file => !shouldHideExplorerItem(state.currentPath, file));
+
                 // 获取统计信息
                 let pendingStats = files.length;
                 const allStats = {};
@@ -5782,7 +6041,10 @@
                         });
                     }
 
-                    // 更新侧边栏文件夹列表
+                    // 侧栏的存储后端/系统文件入口会随当前路径与设置变化，渲染时同步状态。
+                    const sidebarEl = document.getElementById('folder-sidebar-' + windowId);
+                    if (sidebarEl) sidebarEl.innerHTML = buildFolderSidebar(windowId);
+                    // 更新默认工作区中的文件夹列表
                     updateSidebarFolderList(windowId);
 
                     // 更新粘贴按钮状态（剪贴板为空时禁用）
@@ -5989,25 +6251,26 @@
             renderFolderContent(windowId);
         }
 
-        // 返回上级
+        // 返回上级。两个用户工作区各自是常规浏览的顶层；开启系统文件后，根目录 / 也可安全浏览。
         function folderGoUp(windowId) {
             const state = SYSTEM.folderWindowStates[windowId];
             if (!state) return;
 
-            // 统一逻辑：所有文件夹都使用路径导航
-            const topPaths = [SYSTEM.desktopPath, '/mnt/local', '/mnt'];
+            const topPaths = getExplorerStorageRoots().concat(['/mnt/local', '/mnt', '/']);
             if (topPaths.includes(state.currentPath)) {
-                Notify.warning('提示', '已经是最顶层目录');
+                Notify.warning('提示', '已经是此位置的最顶层目录');
                 return;
             }
-            const parentPath = state.parentPath;
-            const parentName = parentPath === SYSTEM.desktopPath ? '桌面' : 
-                              parentPath === '/mnt/local' ? '本地文件' : 
-                              parentPath === '/mnt' ? '挂载点' :
-                              parentPath.split('/').pop();
+            const parentPath = state.currentPath.substring(0, state.currentPath.lastIndexOf('/')) || '/';
+            const parentName = parentPath === '/desktop' ? 'IndexedDB 文件'
+                              : parentPath === '/opfs/desktop' ? 'OPFS 文件'
+                              : parentPath === '/mnt/local' ? '本地文件'
+                              : parentPath === '/mnt' ? '挂载点'
+                              : parentPath === '/' ? '完整文件系统'
+                              : parentPath.split('/').pop();
             state.currentPath = parentPath;
             state.folderName = parentName;
-            state.parentPath = parentPath.substring(0, parentPath.lastIndexOf('/')) || SYSTEM.desktopPath;
+            state.parentPath = parentPath === '/' ? '/' : (parentPath.substring(0, parentPath.lastIndexOf('/')) || '/');
             state.searchQuery = '';
             state.fileStats = {};
             // 更新窗口标题
@@ -6055,34 +6318,38 @@
             }
         }
 
-        // 更新面包屑导航（支持 /mnt/local 路径）
+        // 更新面包屑导航，显式标明当前路径属于 IndexedDB、OPFS 还是系统根目录。
         function updateFolderBreadcrumb(windowId) {
             const state = SYSTEM.folderWindowStates[windowId];
             const bcEl = document.getElementById('folder-breadcrumb-' + windowId);
             if (!state || !bcEl) return;
 
-            // 构建路径层级
+            const rootLabels = {
+                '/desktop': 'IndexedDB 文件',
+                '/opfs/desktop': 'OPFS 文件',
+                '/mnt/local': '本地文件',
+                '/mnt': '挂载点',
+                '/': '完整文件系统'
+            };
             const parts = [];
-            let p = state.currentPath;
-            const topPaths = [SYSTEM.desktopPath, '/mnt/local', '/mnt'];
-            while (p && !topPaths.includes(p) && p.length > 1) {
+            let p = state.currentPath || '/';
+            while (p) {
+                if (Object.prototype.hasOwnProperty.call(rootLabels, p)) {
+                    // OPFS 不可用时不会主动产生该路径，但保留标签以兼容旧窗口状态。
+                    parts.unshift({ name: rootLabels[p], path: p });
+                    break;
+                }
                 parts.unshift({ name: p.split('/').pop(), path: p });
-                p = p.substring(0, p.lastIndexOf('/')) || '/';
-            }
-            // 添加根节点
-            if (p === SYSTEM.desktopPath) {
-                parts.unshift({ name: '桌面', path: SYSTEM.desktopPath });
-            } else if (p === '/mnt/local') {
-                parts.unshift({ name: '本地文件', path: '/mnt/local' });
-            } else if (p === '/mnt') {
-                parts.unshift({ name: '挂载点', path: '/mnt' });
+                const parent = p.substring(0, p.lastIndexOf('/')) || '/';
+                if (parent === p) break;
+                p = parent;
             }
 
             let html = '';
             parts.forEach((part, i) => {
                 if (i > 0) html += '<span class="bc-sep">›</span>';
                 const isCurrent = i === parts.length - 1;
-                html += `<span class="bc-item ${isCurrent ? 'current' : ''}" onclick="folderNavigateTo('${windowId}', '${part.path}', '${part.name}')">${part.name}</span>`;
+                html += `<span class="bc-item ${isCurrent ? 'current' : ''}" onclick="folderNavigateTo('${windowId}', '${part.path}', '${part.name}')">${escapeHtml(part.name)}</span>`;
             });
             bcEl.innerHTML = html;
         }
@@ -6093,7 +6360,7 @@
             if (!state || state.currentPath === targetPath) return;
             state.currentPath = targetPath;
             state.folderName = targetName;
-            state.parentPath = targetPath.substring(0, targetPath.lastIndexOf('/')) || SYSTEM.desktopPath;
+            state.parentPath = targetPath === '/' ? '/' : (targetPath.substring(0, targetPath.lastIndexOf('/')) || '/');
             state.searchQuery = '';
             state.fileStats = {};
             const win = document.getElementById('folder-content-' + windowId)?.closest('.window');
@@ -11765,6 +12032,429 @@
             }
         }
 
+        // === 存储观测与清理 ===
+        // navigator.storage.estimate() 给出浏览器实际计入配额的总已用/配额；
+        // 下面的扫描只用于把 JISHENG OS 自己的文件按后端与系统目录分类，二者不混淆。
+        function storageFsReaddir(path) {
+            return new Promise((resolve, reject) => SYSTEM.fs.readdir(path, (err, files) => err ? reject(err) : resolve(files || [])));
+        }
+        function storageFsStat(path) {
+            return new Promise((resolve, reject) => SYSTEM.fs.stat(path, (err, stat) => err ? reject(err) : resolve(stat)));
+        }
+        function isDirectoryStat(stat) {
+            return !!(stat && (typeof stat.isDirectory === 'function' ? stat.isDirectory() : stat.isDirectory));
+        }
+        function formatStorageBytes(bytes) {
+            if (!Number.isFinite(Number(bytes))) return '不可用';
+            const n = Math.max(0, Number(bytes));
+            if (n < 1024) return Math.round(n) + ' B';
+            if (n < 1024 * 1024) return (n / 1024).toFixed(1) + ' KB';
+            if (n < 1024 * 1024 * 1024) return (n / (1024 * 1024)).toFixed(1) + ' MB';
+            return (n / (1024 * 1024 * 1024)).toFixed(2) + ' GB';
+        }
+
+        async function measureStorageTree(rootPath, maxEntries = 50000) {
+            const result = { bytes: 0, files: 0, directories: 0, entries: 0, capped: false, unavailable: false };
+            try {
+                await storageFsStat(rootPath);
+            } catch (_) {
+                result.unavailable = true;
+                return result;
+            }
+            const queue = [rootPath];
+            while (queue.length && !result.capped) {
+                const dir = queue.shift();
+                result.directories++;
+                let names = [];
+                try { names = await storageFsReaddir(dir); } catch (_) { continue; }
+                for (let start = 0; start < names.length && !result.capped; start += 32) {
+                    const batch = names.slice(start, start + 32);
+                    const stats = await Promise.all(batch.map(async name => {
+                        const path = (dir === '/' ? '' : dir) + '/' + name;
+                        try { return { name, path, stat: await storageFsStat(path) }; }
+                        catch (_) { return null; }
+                    }));
+                    for (const item of stats) {
+                        if (!item) continue;
+                        result.entries++;
+                        if (result.entries > maxEntries) { result.capped = true; break; }
+                        if (isDirectoryStat(item.stat)) queue.push(item.path);
+                        else {
+                            result.files++;
+                            result.bytes += Number(item.stat.size) || 0;
+                        }
+                    }
+                }
+            }
+            return result;
+        }
+
+        async function measureStorageRoots(paths) {
+            const reports = await Promise.all(paths.map(path => measureStorageTree(path)));
+            return reports.reduce((total, item) => ({
+                bytes: total.bytes + item.bytes,
+                files: total.files + item.files,
+                directories: total.directories + item.directories,
+                entries: total.entries + item.entries,
+                capped: total.capped || item.capped,
+                unavailable: total.unavailable && item.unavailable
+            }), { bytes: 0, files: 0, directories: 0, entries: 0, capped: false, unavailable: true });
+        }
+
+        function storageBreakdownRow(label, value, color, hint) {
+            return `<div class="storage-breakdown-row">
+                <i class="storage-breakdown-dot" style="--storage-color:${color}"></i>
+                <span class="storage-breakdown-label">${label}</span>
+                <span class="storage-breakdown-value">${value}</span>
+                ${hint ? `<span class="storage-breakdown-hint">${hint}</span>` : ''}
+            </div>`;
+        }
+        function storageScanHint(report, suffix = '') {
+            if (report.unavailable) return '当前不可用';
+            const base = `${report.files} 个文件${suffix}`;
+            return report.capped ? `${base}（扫描达到安全上限，数值为下限）` : base;
+        }
+
+        async function refreshStorageDashboard(windowId) {
+            const host = document.getElementById('storage-dashboard-' + windowId);
+            if (!host) return;
+            host.innerHTML = '<div class="storage-loading">正在读取浏览器配额并统计文件占用…</div>';
+            try {
+                const estimatePromise = navigator.storage && typeof navigator.storage.estimate === 'function'
+                    ? navigator.storage.estimate().catch(() => ({})) : Promise.resolve({});
+                // 扫描整个 OPFS 挂载根，避免遗漏高级用户在 /opfs 下直接创建的隐藏/测试文件。
+                const opfsPaths = SYSTEM.opfs && SYSTEM.opfs.available ? ['/opfs'] : [];
+                const [estimate, indexedDB, opfs, systemFiles] = await Promise.all([
+                    estimatePromise,
+                    measureStorageRoots(['/desktop', '/documents']),
+                    opfsPaths.length ? measureStorageRoots(opfsPaths) : Promise.resolve({ bytes: 0, files: 0, directories: 0, entries: 0, capped: false, unavailable: true }),
+                    measureStorageTree('/system')
+                ]);
+                // 设置窗口可能已经关闭，异步结果不应复活它。
+                if (!document.body.contains(host)) return;
+                const usage = Number(estimate && estimate.usage);
+                const quota = Number(estimate && estimate.quota);
+                const usageKnown = Number.isFinite(usage);
+                const quotaKnown = Number.isFinite(quota) && quota > 0;
+                const details = estimate && estimate.usageDetails && typeof estimate.usageDetails === 'object' ? estimate.usageDetails : {};
+                const cacheBytes = Number.isFinite(Number(details.caches)) ? Number(details.caches) : 0;
+                const classified = indexedDB.bytes + opfs.bytes + systemFiles.bytes + cacheBytes;
+                const otherBytes = usageKnown ? Math.max(0, usage - classified) : 0;
+                const percent = usageKnown && quotaKnown ? Math.min(100, (usage / quota) * 100) : null;
+                const freeBytes = usageKnown && quotaKnown ? Math.max(0, quota - usage) : null;
+                const totalText = usageKnown ? formatStorageBytes(usage) : '浏览器未提供';
+                const quotaText = quotaKnown ? formatStorageBytes(quota) : '浏览器未提供';
+                const freeText = freeBytes === null ? '浏览器未提供' : formatStorageBytes(freeBytes);
+                const percentText = percent === null ? '—' : percent.toFixed(percent >= 10 ? 0 : 1) + '%';
+                const cacheHint = Number.isFinite(Number(details.caches))
+                    ? '浏览器 Cache Storage 的实际占用'
+                    : '浏览器未提供独立缓存大小；可使用下方按钮清理';
+                host.innerHTML = `
+                    <div class="storage-overview">
+                        <div>
+                            <span class="storage-overview-label">浏览器实际已用 / 可用配额</span>
+                            <div class="storage-overview-value">${totalText} <span style="color:var(--text-muted);font-weight:400">/ ${quotaText}</span></div>
+                            <div class="storage-overview-subvalue">可用 ${freeText} · 数据来自 navigator.storage.estimate()</div>
+                        </div>
+                        <div class="storage-overview-percent">${percentText}<small>占用率</small></div>
+                    </div>
+                    <div class="storage-meter" aria-label="存储占用率"><div class="storage-meter-fill" style="width:${percent === null ? 0 : percent}%"></div></div>
+                    <div class="storage-breakdown">
+                        ${storageBreakdownRow('IndexedDB 用户文件', formatStorageBytes(indexedDB.bytes), '#1688e5', storageScanHint(indexedDB, ' · /desktop、/documents'))}
+                        ${storageBreakdownRow('OPFS 用户文件', SYSTEM.opfs && SYSTEM.opfs.available ? formatStorageBytes(opfs.bytes) : '不可用', '#19c37d', SYSTEM.opfs && SYSTEM.opfs.available ? storageScanHint(opfs, ' · /opfs') : '当前浏览器未提供 OPFS 后端')}
+                        ${storageBreakdownRow('系统文件与设置', formatStorageBytes(systemFiles.bytes), '#a78bfa', storageScanHint(systemFiles, ' · /system'))}
+                        ${storageBreakdownRow('Cache Storage', formatStorageBytes(cacheBytes), '#f59e0b', cacheHint)}
+                        ${usageKnown ? storageBreakdownRow('其他浏览器存储 / 文件系统开销', formatStorageBytes(otherBytes), '#64748b', '包括文件系统元数据、草稿及浏览器未单独归类的同源数据') : ''}
+                    </div>`;
+            } catch (err) {
+                if (document.body.contains(host)) host.innerHTML = `<div class="storage-loading">无法读取存储信息：${escapeHtml(err && err.message ? err.message : '未知错误')}</div>`;
+            }
+        }
+
+        function refreshAllStorageDashboards() {
+            document.querySelectorAll('[data-storage-dashboard]').forEach(host => refreshStorageDashboard(host.dataset.storageDashboard));
+        }
+
+        // === 一次性缓存 / 临时文件：只扫描、由用户逐项勾选后才删除 ===
+        // 不自动删除任何文件。扫描结果只是“候选项”，每项都显示路径和判定理由。
+        const TEMP_CLEANUP_STATE = Object.create(null);
+        const TEMP_CLEANUP_EXT = /\.(tmp|temp|part|crdownload|bak|backup|old|log|dmp|swp|swo|~)$/i;
+        const TEMP_CLEANUP_SYSTEM_KEEP = new Set([
+            '/system/config/settings.json',
+            '/system/config/icon-positions.json',
+            '/system/config/wallpaper.cfg'
+        ]);
+
+        function getTempCleanupState(windowId) {
+            if (!TEMP_CLEANUP_STATE[windowId]) TEMP_CLEANUP_STATE[windowId] = { items: [], selected: {}, scanning: false };
+            return TEMP_CLEANUP_STATE[windowId];
+        }
+        function tempCleanupPath(parent, name) {
+            return parent === '/' ? '/' + name : parent.replace(/\/+$/, '') + '/' + name;
+        }
+        function tempCleanupGroupTitle(group) {
+            return {
+                temp: '临时 / 备份 / 缓存文件', cache: '浏览器缓存与历史测试数据', hidden: '隐藏文件（. 开头）',
+                duplicate: '疑似重复副本', blank: '空白未命名文档', draft: '未保存草稿（可能有内容）',
+                protected: '系统配置（建议保留）'
+            }[group] || group;
+        }
+        function tempCleanupGroupOrder() { return ['temp', 'cache', 'hidden', 'duplicate', 'blank', 'draft', 'protected']; }
+
+        async function scanTempFilesystem(rootPath, volumeLabel, maxDepth = 8) {
+            const found = [];
+            let scanned = 0;
+            const walk = async (dir, depth) => {
+                if (depth > maxDepth || scanned > 50000) return;
+                let names;
+                try { names = await storageFsReaddir(dir); } catch (_) { return; }
+                for (const name of names) {
+                    if (++scanned > 50000) break;
+                    const fullPath = tempCleanupPath(dir, name);
+                    let stat;
+                    try { stat = await storageFsStat(fullPath); } catch (_) { continue; }
+                    const isDir = isDirectoryStat(stat);
+                    let group = null, reason = null;
+                    if (TEMP_CLEANUP_SYSTEM_KEEP.has(fullPath)) {
+                        group = 'protected'; reason = '系统配置文件，OS 正在使用，建议保留';
+                    } else if (name === '.cache' || name === '.tmp' || TEMP_CLEANUP_EXT.test(name)
+                        || (isDir && /^(tmp|temp|cache|trash|recycle|\.trash|回收站)$/i.test(name))) {
+                        group = 'temp'; reason = isDir ? '临时缓存 / 回收目录' : '临时、下载残留或备份文件';
+                    } else if (/^~\$/.test(name)) {
+                        group = 'temp'; reason = 'Office 临时文件残留';
+                    } else if (name.startsWith('.')) {
+                        group = 'hidden'; reason = '隐藏文件或隐藏目录（. 开头）';
+                    } else if (!isDir && /\(\d+\)(\.[a-z0-9]+)?$/i.test(name)) {
+                        group = 'duplicate'; reason = '自动重命名产生的疑似重复副本';
+                    } else if (!isDir && /^(新建文本文档|未命名|untitled).*\.(txt|html?)$/i.test(name) && !(Number(stat.size) || 0)) {
+                        group = 'blank'; reason = '0 字节的未命名文档';
+                    }
+                    if (group) found.push({ kind: 'fs', group, path: fullPath, isDir, size: isDir ? null : (Number(stat.size) || 0), reason, volume: volumeLabel });
+                    if (isDir) await walk(fullPath, depth + 1);
+                }
+            };
+            await walk(rootPath, 0);
+            // 目录候选项显示递归体积，便于用户自己判断是否值得删除。
+            for (const item of found) {
+                if (item.isDir) {
+                    const measured = await measureStorageTree(item.path, 8000);
+                    item.size = measured.bytes || 0;
+                    if (measured.capped) item.reason += '（体积统计达到安全上限）';
+                }
+            }
+            return found;
+        }
+
+        async function scanTempBrowserData() {
+            const found = [];
+            // 只列出“指向已不存在文件”的日期元数据；有效日期绝不作为清理候选。
+            try {
+                const cache = SYSTEM.mtimeCache || JSON.parse(localStorage.getItem('JISHENG_OS_MTIME_CACHE') || '{}');
+                const stalePaths = [];
+                for (const path of Object.keys(cache || {})) {
+                    if (String(path).startsWith('/mnt/')) continue;
+                    const exists = await new Promise(resolve => SYSTEM.fs.exists(path, value => resolve(!!value)));
+                    if (!exists) stalePaths.push(path);
+                }
+                stalePaths.forEach(path => found.push({
+                    kind: 'mtime', group: 'cache', path, keys: [path], size: 32,
+                    reason: '这个文件已经删除，只剩下它的日期记录；清理记录不会影响现有文件。'
+                }));
+            } catch (_) {}
+            try {
+                for (let i = 0; i < localStorage.length; i++) {
+                    const key = localStorage.key(i);
+                    if (!key || !key.startsWith(NP_DRAFT_PREFIX)) continue;
+                    const value = localStorage.getItem(key) || '';
+                    found.push({ kind: 'draft', group: 'draft', path: key, keys: [key], size: value.length, reason: '记事本未保存草稿，请确认不再需要后再勾选' });
+                }
+            } catch (_) {}
+            try {
+                if (indexedDB.databases) {
+                    const known = new Set(['JISHENG_OS_V3', 'MountedFoldersDB']);
+                    const databases = await indexedDB.databases();
+                    const names = databases.map(db => db.name).filter(name => name && !known.has(name));
+                    names.forEach(name => found.push({ kind: 'idb', group: 'cache', path: name, keys: [name], size: 0, reason: '非当前系统使用的 IndexedDB 数据库，可能是历史版本或测试残留' }));
+                }
+            } catch (_) {}
+            try {
+                if (window.caches && caches.keys) {
+                    const keys = await caches.keys();
+                    for (const key of keys) {
+                        let bytes = 0, responseCount = 0;
+                        try {
+                            const cache = await caches.open(key);
+                            const requests = await cache.keys();
+                            responseCount = requests.length;
+                            for (const request of requests) {
+                                const response = await cache.match(request);
+                                if (!response) continue;
+                                const length = Number(response.headers.get('content-length'));
+                                bytes += Number.isFinite(length) && length > 0 ? length : (await response.clone().blob()).size;
+                            }
+                        } catch (_) {}
+                        found.push({ kind: 'cache', group: 'cache', path: key, keys: [key], size: bytes, reason: `Cache Storage 缓存（${responseCount} 个响应，可能包含离线资源或历史测试数据）` });
+                    }
+                }
+            } catch (_) {}
+            return found;
+        }
+
+        async function scanOneOffCache(windowId) {
+            const state = getTempCleanupState(windowId);
+            if (state.scanning) return;
+            const area = document.getElementById('temp-cleanup-area-' + windowId);
+            const scanButton = document.getElementById('temp-cleanup-scan-' + windowId);
+            if (!area) return;
+            state.scanning = true;
+            if (scanButton) scanButton.disabled = true;
+            area.innerHTML = '<div class="cleanup-loading">正在扫描 IndexedDB、OPFS、系统目录和浏览器缓存；不会删除任何内容…</div>';
+            try {
+                const items = [];
+                for (const path of ['/desktop', '/documents', '/system']) {
+                    items.push(...await scanTempFilesystem(path, 'IndexedDB'));
+                }
+                if (SYSTEM.opfs && SYSTEM.opfs.available) items.push(...await scanTempFilesystem('/opfs', 'OPFS'));
+                items.push(...await scanTempBrowserData());
+                state.items = items;
+                state.selected = {}; // 扫描后全部默认不勾选，始终由用户决定。
+                renderOneOffCache(windowId);
+            } catch (err) {
+                area.innerHTML = `<div class="cleanup-empty">扫描失败：${escapeHtml(err && err.message ? err.message : String(err))}</div>`;
+            } finally {
+                state.scanning = false;
+                if (scanButton) scanButton.disabled = false;
+            }
+        }
+
+        function renderOneOffCache(windowId) {
+            const state = getTempCleanupState(windowId);
+            const area = document.getElementById('temp-cleanup-area-' + windowId);
+            const allButton = document.getElementById('temp-cleanup-all-' + windowId);
+            const noneButton = document.getElementById('temp-cleanup-none-' + windowId);
+            const cleanButton = document.getElementById('temp-cleanup-clean-' + windowId);
+            if (!area) return;
+            if (!state.items.length) {
+                area.innerHTML = '<div class="cleanup-empty">没有发现可疑的一次性缓存或临时文件。</div>';
+                [allButton, noneButton, cleanButton].forEach(button => { if (button) button.hidden = true; });
+                return;
+            }
+            let html = '';
+            tempCleanupGroupOrder().forEach(group => {
+                const entries = state.items.map((item, index) => ({ item, index })).filter(entry => entry.item.group === group);
+                if (!entries.length) return;
+                const bytes = entries.reduce((total, entry) => total + (entry.item.size || 0), 0);
+                const selectable = entries.filter(entry => entry.item.group !== 'protected');
+                const selectedCount = selectable.filter(entry => !!state.selected[entry.index]).length;
+                const allSelected = selectable.length > 0 && selectedCount === selectable.length;
+                html += `<section class="cleanup-group">
+                    <label class="cleanup-group-select">
+                        <input type="checkbox" data-cleanup-group-select="${group}" aria-label="整组选择：${escapeAttr(tempCleanupGroupTitle(group))}" ${allSelected ? 'checked' : ''} ${selectable.length ? '' : 'disabled'} onchange="toggleOneOffCacheGroup('${windowId}', '${group}', this.checked)">
+                        <span class="cleanup-group-heading"><span class="cleanup-group-title">${tempCleanupGroupTitle(group)}</span><span class="cleanup-group-meta">${entries.length} 项 · ${formatStorageBytes(bytes)}</span></span>
+                        <span class="cleanup-group-action">${selectable.length ? '整组选择' : '受保护'}</span>
+                    </label>`;
+                entries.forEach(({ item, index }) => {
+                    html += `<label class="cleanup-item">
+                        <input type="checkbox" ${state.selected[index] ? 'checked' : ''} onchange="setOneOffCacheSelected('${windowId}', ${index}, this.checked)">
+                        <span class="cleanup-item-copy"><span class="cleanup-item-path" title="${escapeAttr(item.path)}">${escapeHtml(item.path)}</span><span class="cleanup-item-reason">${escapeHtml(item.reason)}${item.volume ? ' · ' + escapeHtml(item.volume) : ''}</span></span>
+                        <span class="cleanup-item-size">${formatStorageBytes(item.size || 0)}</span>
+                    </label>`;
+                });
+                html += `</section>`;
+            });
+            const chosen = state.items.filter((_, index) => state.selected[index]);
+            html += `<div class="cleanup-summary">已选 ${chosen.length} 项，预计释放 ${formatStorageBytes(chosen.reduce((sum, item) => sum + (item.size || 0), 0))}。只有你勾选并确认的项目才会删除。</div>`;
+            area.innerHTML = html;
+            area.querySelectorAll('[data-cleanup-group-select]').forEach(input => {
+                const group = input.dataset.cleanupGroupSelect;
+                const entries = state.items.map((item, index) => ({ item, index })).filter(entry => entry.item.group === group && entry.item.group !== 'protected');
+                const count = entries.filter(entry => !!state.selected[entry.index]).length;
+                input.checked = entries.length > 0 && count === entries.length;
+                input.indeterminate = count > 0 && count < entries.length;
+            });
+            [allButton, noneButton, cleanButton].forEach(button => { if (button) button.hidden = false; });
+            if (cleanButton) { cleanButton.disabled = chosen.length === 0; cleanButton.textContent = `清理选中项 (${chosen.length})`; }
+        }
+
+        function setOneOffCacheSelected(windowId, index, selected) {
+            getTempCleanupState(windowId).selected[index] = !!selected;
+            renderOneOffCache(windowId);
+        }
+        function toggleAllOneOffCache(windowId, selected) {
+            const state = getTempCleanupState(windowId);
+            state.items.forEach((item, index) => { state.selected[index] = selected && item.group !== 'protected'; });
+            renderOneOffCache(windowId);
+        }
+        function toggleOneOffCacheGroup(windowId, group, selected) {
+            const state = getTempCleanupState(windowId);
+            state.items.forEach((item, index) => {
+                if (item.group === group && item.group !== 'protected') state.selected[index] = !!selected;
+            });
+            renderOneOffCache(windowId);
+        }
+        async function removeOneOffFilesystemPath(path) {
+            const stat = await storageFsStat(path);
+            await new Promise((resolve, reject) => {
+                const done = err => err ? reject(err) : resolve();
+                if (isDirectoryStat(stat)) deleteFolderRecursive(path, done);
+                else SYSTEM.fs.unlink(path, done);
+            });
+        }
+
+        async function cleanSelectedOneOffCache(windowId) {
+            const state = getTempCleanupState(windowId);
+            const chosen = state.items.filter((_, index) => state.selected[index]);
+            if (!chosen.length) { Notify.info('没有选中项目'); return; }
+            const estimatedBytes = chosen.reduce((sum, item) => sum + (item.size || 0), 0);
+            const protectedCount = chosen.filter(item => item.group === 'protected').length;
+            const confirmed = await SysDialog.confirm({
+                title: '清理已选项目', icon: 'uiDelete', danger: true, okText: '清理',
+                message: `只会删除你选中的 ${chosen.length} 个项目（预计 ${formatStorageBytes(estimatedBytes)}）。\n\n`
+                    + `其中含 ${chosen.filter(item => item.kind === 'fs').length} 个文件或目录、${chosen.filter(item => item.kind !== 'fs').length} 项浏览器数据。`
+                    + (protectedCount ? `\n\n注意：你选择了 ${protectedCount} 个系统配置项，相关设置可能会恢复默认。` : '')
+            });
+            if (!confirmed) return;
+            let removed = 0, failed = 0;
+            for (const item of chosen) {
+                try {
+                    if (item.kind === 'fs') await removeOneOffFilesystemPath(item.path);
+                    else if (item.kind === 'mtime') {
+                        const cache = SYSTEM.mtimeCache || JSON.parse(localStorage.getItem('JISHENG_OS_MTIME_CACHE') || '{}');
+                        item.keys.forEach(key => delete cache[key]);
+                        SYSTEM.mtimeCache = cache;
+                        if (SYSTEM.saveMtimeCache) SYSTEM.saveMtimeCache();
+                    } else if (item.kind === 'draft') item.keys.forEach(key => localStorage.removeItem(key));
+                    else if (item.kind === 'idb') {
+                        for (const name of item.keys) {
+                            const ok = await new Promise(resolve => {
+                                try { const req = indexedDB.deleteDatabase(name); req.onsuccess = () => resolve(true); req.onerror = req.onblocked = () => resolve(false); }
+                                catch (_) { resolve(false); }
+                            });
+                            if (!ok) throw new Error('无法删除数据库：' + name);
+                        }
+                    } else if (item.kind === 'cache') {
+                        for (const key of item.keys) { if (!(await caches.delete(key))) throw new Error('无法删除缓存：' + key); }
+                    }
+                    removed++;
+                } catch (err) { failed++; console.warn('清理项目失败:', item.path, err); }
+                await new Promise(resolve => setTimeout(resolve, 0));
+            }
+            invalidateAllDirSizes();
+            refreshDesktop();
+            refreshOpenFileManagers();
+            refreshAllStorageDashboards();
+            Notify[failed ? 'warning' : 'success'](failed ? '清理完成（有失败项）' : '清理完成', `已清理 ${removed} 项，失败 ${failed} 项。`);
+            await scanOneOffCache(windowId);
+        }
+
+        function openFullFileExplorer() {
+            if (!SYSTEM.showHiddenFiles) {
+                Notify.warning('请先开启显示', '请先在“文件管理器”中开启“显示系统与隐藏文件”。');
+                return;
+            }
+            openFileExplorer('/');
+        }
+
         function buildSystemAppVisibilitySettings() {
             return SYSTEM_APP_DEFS.filter(app => app.hideable).map(app => `
                 <label class="settings-toggle-row" for="hide-app-${app.key}">
@@ -11779,18 +12469,19 @@
         }
 
         function openSettings() {
+            const settingsWindowId = SYSTEM.idCounter + 1;
             createWindow({
                 title: '系统设置',
                 iconHtml: icon('appSettings','sm'),
-                width: 550, height: 610,
+                width: 680, height: 800,
                 content: `
                     <div class="content-area dark" style="overflow-y:auto">
                         <div class="settings-content">
                             <div class="about-card">
                                 <div class="logo">JISHENG OS</div>
-                                <p>Ultimate Web Operating System<br>Version 10.5.6 • Build 2026</p>
+                                <p>Ultimate Web Operating System<br>Version 10.5.7 • Build 2026</p>
                             </div>
-                            
+
                             <div class="settings-section" style="margin-top:20px">
                                 <h4>个性化</h4>
                                 <div class="settings-item" onclick="openWallpaperPanel()" style="cursor:pointer">
@@ -11799,13 +12490,109 @@
                                 </div>
                                 <div class="settings-item settings-item--stacked">
                                     <div class="settings-item-copy">
-                                        <label for="click-behavior-setting">图标打开方式</label>
+                                        <label for="click-behavior-setting-${settingsWindowId}">图标打开方式</label>
                                         <span class="settings-hint">桌面与文件管理器中的应用、文件和文件夹均使用此方式。</span>
                                     </div>
-                                    <select id="click-behavior-setting" class="settings-select" aria-label="图标打开方式" onchange="setClickBehavior(this.value)">
+                                    <select id="click-behavior-setting-${settingsWindowId}" class="settings-select" aria-label="图标打开方式" onchange="setClickBehavior(this.value)">
                                         <option value="double" ${SYSTEM.clickBehavior === 'double' ? 'selected' : ''}>双击打开</option>
                                         <option value="single" ${SYSTEM.clickBehavior === 'single' ? 'selected' : ''}>单击打开</option>
                                     </select>
+                                </div>
+                            </div>
+
+                            <div class="settings-section">
+                                <h4>存储空间</h4>
+                                <div id="storage-dashboard-${settingsWindowId}" data-storage-dashboard="${settingsWindowId}" aria-live="polite">
+                                    <div class="storage-loading">正在读取存储空间…</div>
+                                </div>
+                                <div class="settings-item" style="padding-top:14px">
+                                    <div class="settings-item-copy">
+                                        <label>默认文件存储后端</label>
+                                        <span class="settings-hint">桌面、新建文件和常规上传的默认位置；切换不会移动或删除旧文件。</span>
+                                    </div>
+                                    <select class="settings-select" data-storage-backend-select aria-label="默认文件存储后端" onchange="setStorageBackend(this.value)">
+                                        <option value="indexeddb" ${SYSTEM.storageBackend === 'indexeddb' ? 'selected' : ''}>IndexedDB</option>
+                                        <option value="opfs" ${SYSTEM.storageBackend === 'opfs' ? 'selected' : ''} ${SYSTEM.opfs && SYSTEM.opfs.available ? '' : 'disabled'}>OPFS${SYSTEM.opfs && SYSTEM.opfs.available ? '' : '（不可用）'}</option>
+                                    </select>
+                                </div>
+                                <div class="settings-item">
+                                    <div class="settings-item-copy">
+                                        <label>当前默认工作区</label>
+                                        <span class="settings-hint settings-file-manager-path" data-storage-current-path>${SYSTEM.desktopPath}</span>
+                                    </div>
+                                    <button class="settings-action-btn" type="button" onclick="refreshStorageDashboard('${settingsWindowId}')">刷新统计</button>
+                                </div>
+                                <div class="settings-item settings-item--stacked">
+                                    <div class="settings-item-copy">
+                                        <label for="storage-copy-target-${settingsWindowId}">复制当前工作区到另一后端</label>
+                                        <span class="settings-hint">这是独立的手动操作：不会随默认后端切换自动执行。复制会保留每一个文件和文件夹的修改日期，源文件不会删除。</span>
+                                    </div>
+                                    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end">
+                                        <select id="storage-copy-target-${settingsWindowId}" class="settings-select" data-storage-migration-target aria-label="复制工作区目标后端">
+                                            <option value="indexeddb" ${SYSTEM.storageBackend === 'indexeddb' ? 'disabled' : ''}>IndexedDB</option>
+                                            <option value="opfs" ${SYSTEM.storageBackend === 'opfs' || !(SYSTEM.opfs && SYSTEM.opfs.available) ? 'disabled' : ''}>OPFS${SYSTEM.opfs && SYSTEM.opfs.available ? '' : '（不可用）'}</option>
+                                        </select>
+                                        <button class="settings-action-btn" type="button" data-storage-migration-button ${SYSTEM.opfs && SYSTEM.opfs.available ? '' : 'disabled'} onclick="copyCurrentWorkspaceToBackend(document.getElementById('storage-copy-target-${settingsWindowId}').value)">复制工作区</button>
+                                    </div>
+                                </div>
+                                <p class="settings-note">顶部“已用/配额/占用率”取自浏览器的实际配额接口；下方为 JISHENG OS 文件扫描分类，因此文件系统元数据与浏览器其他同源数据会归入“其他”。</p>
+                            </div>
+
+                            <div class="settings-section">
+                                <h4>文件管理器</h4>
+                                <label class="settings-toggle-row" for="show-hidden-files-${settingsWindowId}">
+                                    <span class="settings-item-copy">
+                                        <span>显示系统与隐藏文件</span>
+                                        <span class="settings-hint">显示点文件、/system、挂载点和完整内部文件系统。仅建议在检查或维护时开启。</span>
+                                    </span>
+                                    <span class="settings-toggle-control">
+                                        <span>显示</span>
+                                        <input id="show-hidden-files-${settingsWindowId}" type="checkbox" ${SYSTEM.showHiddenFiles ? 'checked' : ''} aria-label="显示系统与隐藏文件" onchange="setShowHiddenFiles(this.checked)">
+                                    </span>
+                                </label>
+                                <div class="settings-item">
+                                    <div class="settings-item-copy">
+                                        <label>选择文件存放位置</label>
+                                        <span class="settings-hint">资源管理器侧栏同时提供 IndexedDB 与 OPFS；在任一位置新建、上传、复制或粘贴即可决定文件后端。</span>
+                                    </div>
+                                    <button class="settings-action-btn" type="button" onclick="openFileExplorer()">打开文件管理器</button>
+                                </div>
+                                <div class="settings-item">
+                                    <div class="settings-item-copy">
+                                        <label>完整文件系统</label>
+                                        <span class="settings-hint">查看系统目录、隐藏文件与挂载点；需先开启上方显示选项。</span>
+                                    </div>
+                                    <button class="settings-action-btn" type="button" onclick="openFullFileExplorer()">全部显示</button>
+                                </div>
+                            </div>
+
+                            <div class="settings-section">
+                                <h4>数据维护</h4>
+                                <div class="settings-item settings-item--cleanup">
+                                    <div class="settings-item-copy">
+                                        <label>一次性缓存 / 临时文件清理</label>
+                                        <span class="settings-hint">先扫描，再由你查看路径、原因和体积后逐项勾选。扫描不会删除内容，所有项目默认不选中；不会删除现有文件，也不会改动它们的日期信息。</span>
+                                    </div>
+                                    <div class="cleanup-actions">
+                                        <button id="temp-cleanup-scan-${settingsWindowId}" class="settings-action-btn" type="button" onclick="scanOneOffCache('${settingsWindowId}')">扫描可清理项目</button>
+                                        <button id="temp-cleanup-all-${settingsWindowId}" class="settings-action-btn" type="button" hidden onclick="toggleAllOneOffCache('${settingsWindowId}', true)">全选（不含系统配置）</button>
+                                        <button id="temp-cleanup-none-${settingsWindowId}" class="settings-action-btn" type="button" hidden onclick="toggleAllOneOffCache('${settingsWindowId}', false)">全部取消</button>
+                                        <button id="temp-cleanup-clean-${settingsWindowId}" class="settings-action-btn danger" type="button" hidden disabled onclick="cleanSelectedOneOffCache('${settingsWindowId}')">清理选中项</button>
+                                    </div>
+                                    <div id="temp-cleanup-area-${settingsWindowId}" class="cleanup-results" aria-live="polite">
+                                        <div class="cleanup-empty">点击“扫描可清理项目”后，会列出临时文件、缓存和其他可能不再需要的内容。扫描不会删除文件；你可以逐项勾选，也可以按类别整组选择。已删除文件留下的日期记录会单独列出，清理它不会影响现有文件。</div>
+                                    </div>
+                                </div>
+                                <div class="settings-item settings-item--stacked">
+                                    <div class="settings-item-copy">
+                                        <label style="color:var(--win-close-red)">重置存储数据</label>
+                                        <span class="settings-hint">三种操作相互独立：可只重置 IndexedDB、只重置 OPFS，或同时重置两者。操作不可恢复；每种操作都会单独确认。</span>
+                                    </div>
+                                    <div class="reset-scope-grid">
+                                        <button class="settings-action-btn danger" type="button" onclick="resetStorageScope('indexeddb')">仅重置 IndexedDB</button>
+                                        <button class="settings-action-btn danger" type="button" ${SYSTEM.opfs && SYSTEM.opfs.available ? '' : 'disabled'} onclick="resetStorageScope('opfs')">仅重置 OPFS${SYSTEM.opfs && SYSTEM.opfs.available ? '' : '（不可用）'}</button>
+                                        <button class="settings-action-btn danger" type="button" ${SYSTEM.opfs && SYSTEM.opfs.available ? '' : 'disabled'} onclick="resetStorageScope('all')">重置两者${SYSTEM.opfs && SYSTEM.opfs.available ? '' : '（OPFS 不可用）'}</button>
+                                    </div>
                                 </div>
                             </div>
 
@@ -11817,24 +12604,12 @@
                                 </div>
                                 <p class="settings-note">系统设置始终保留，不能隐藏，以便随时恢复和调整配置。</p>
                             </div>
-                            
-                            <div class="settings-section">
-                                <h4>存储</h4>
-                                <div class="settings-item">
-                                    <label>虚拟磁盘</label>
-                                    <span>IndexedDB</span>
-                                </div>
-                                <div class="settings-item" onclick="resetSystem()" style="cursor:pointer">
-                                    <label style="color:var(--win-close-red)">重置系统</label>
-                                    ${icon('uiChevronRight')}
-                                </div>
-                            </div>
-                            
+
                             <div class="settings-section">
                                 <h4>关于</h4>
                                 <div class="settings-item">
                                     <label>系统版本</label>
-                                    <span>10.5.6</span>
+                                    <span>10.5.7</span>
                                 </div>
                                 <div class="settings-item" onclick="window.open('https://github.com/SFGFDSD/JISHENGOS','_blank')" style="cursor:pointer">
                                     <label>仓库</label>
@@ -11846,7 +12621,11 @@
                             </div>
                         </div>
                     </div>
-                `
+                `,
+                onInit: (w, winId) => {
+                    syncStorageMigrationControls();
+                    refreshStorageDashboard(winId);
+                }
             });
         }
 
@@ -11884,15 +12663,111 @@
 
 
 
-        async function resetSystem() {
-            if (await SysDialog.confirm({ title: '重置系统', icon: 'uiWarning', danger: true, okText: '重置', message: '警告：这会清空所有保存的文件和设置，且无法恢复。确定重置吗？' })) {
-                const req = indexedDB.deleteDatabase('JISHENG_OS_V3');
-                req.onsuccess = () => {
-                    try { localStorage.removeItem(SYSTEM_SETTINGS_STORAGE_KEY); } catch (e) {}
-                    location.reload();
-                };
+        async function clearOPFSForReset() {
+            if (!(navigator.storage && typeof navigator.storage.getDirectory === 'function')) {
+                throw new Error('当前浏览器不提供 OPFS，无法执行 OPFS 重置');
+            }
+            const root = await navigator.storage.getDirectory();
+            const names = [];
+            for await (const [name] of root.entries()) names.push(name);
+            for (const name of names) await root.removeEntry(name, { recursive: true });
+        }
+
+        function dropResetMtimeEntries(prefixes) {
+            try {
+                const cache = SYSTEM.mtimeCache || JSON.parse(localStorage.getItem('JISHENG_OS_MTIME_CACHE') || '{}');
+                Object.keys(cache).forEach(path => {
+                    if (prefixes.some(prefix => path === prefix || path.startsWith(prefix + '/'))) delete cache[path];
+                });
+                SYSTEM.mtimeCache = cache;
+                if (SYSTEM.saveMtimeCache) SYSTEM.saveMtimeCache();
+                else localStorage.setItem('JISHENG_OS_MTIME_CACHE', JSON.stringify(cache));
+            } catch (err) { console.warn('清理重置后的日期元数据失败:', err); }
+        }
+
+        function deleteStorageDatabase(name) {
+            return new Promise((resolve, reject) => {
+                try {
+                    const request = indexedDB.deleteDatabase(name);
+                    request.onsuccess = () => resolve();
+                    request.onerror = () => reject(request.error || new Error('无法删除数据库：' + name));
+                    request.onblocked = () => reject(new Error('数据库正被其他页面占用，请关闭其他 JISHENG OS 标签页后重试'));
+                } catch (err) { reject(err); }
+            });
+        }
+
+        async function clearIndexedDBVolumeForReset() {
+            // BrowserFS 正在使用 JISHENG_OS_V3。直接 deleteDatabase 会被本页自己的连接阻塞，
+            // 因此只删除其数据卷中的所有条目，保留已打开的文件系统容器和 /mnt、/opfs 挂载点。
+            let rootEntries = [];
+            try { rootEntries = await storageFsReaddir('/'); } catch (err) { throw new Error('无法读取 IndexedDB 根目录：' + (err.message || err)); }
+            for (const name of rootEntries) {
+                if (name === 'mnt' || name === 'opfs') continue;
+                await removeOneOffFilesystemPath('/' + name);
+            }
+            // 立即恢复空的基础目录，后续重新加载能稳定启动，不会因空卷出现 ENOENT。
+            await ensureDir('/system');
+            await ensureDir('/system/config');
+            await ensureDir('/desktop');
+            await ensureDir('/documents');
+        }
+
+        function clearAllJishengLocalData() {
+            try {
+                const keys = [];
+                for (let index = 0; index < localStorage.length; index++) {
+                    const key = localStorage.key(index);
+                    if (key && (key.startsWith('JISHENG_OS_') || key.startsWith(NP_DRAFT_PREFIX))) keys.push(key);
+                }
+                keys.forEach(key => localStorage.removeItem(key));
+                SYSTEM.mtimeCache = {};
+            } catch (err) { console.warn('清理本地系统数据失败:', err); }
+        }
+
+        async function resetStorageScope(scope) {
+            const descriptions = {
+                indexeddb: {
+                    title: '仅重置 IndexedDB',
+                    message: '这会删除 IndexedDB 中 JISHENG OS 的文件、系统目录和已保存的本地文件夹授权记录。OPFS 文件、浏览器缓存和 localStorage 设置不会删除；操作完成后页面会重新加载。'
+                },
+                opfs: {
+                    title: '仅重置 OPFS',
+                    message: '这会删除 OPFS 中的所有文件和目录。IndexedDB 中的文件、系统设置和浏览器缓存不会删除；操作完成后页面会重新加载。'
+                },
+                all: {
+                    title: '重置 IndexedDB 与 OPFS',
+                    message: '这会删除 IndexedDB 与 OPFS 中 JISHENG OS 的全部文件和系统数据，并移除 JISHENG OS 的本地设置、草稿和修改时间元数据。浏览器将重新加载。'
+                }
+            };
+            const detail = descriptions[scope];
+            if (!detail) return;
+            const confirmed = await SysDialog.confirm({
+                title: detail.title, icon: 'uiWarning', danger: true, okText: '确认重置',
+                message: `警告：${detail.message}\n\n此操作不可恢复，确定继续吗？`
+            });
+            if (!confirmed) return;
+            try {
+                if (scope === 'opfs' || scope === 'all') {
+                    await clearOPFSForReset();
+                    dropResetMtimeEntries(['/opfs']);
+                }
+                if (scope === 'indexeddb' || scope === 'all') {
+                    await clearIndexedDBVolumeForReset();
+                    // 挂载记录本身也在独立 IndexedDB；先关闭本页连接，避免删除时自我阻塞。
+                    try { if (mountedFoldersDB) mountedFoldersDB.close(); mountedFoldersDB = null; } catch (_) {}
+                    await deleteStorageDatabase(MOUNTED_FOLDERS_DB);
+                    dropResetMtimeEntries(['/desktop', '/documents', '/system']);
+                }
+                if (scope === 'all') clearAllJishengLocalData();
+                location.reload();
+            } catch (err) {
+                console.error('重置存储失败:', err);
+                Notify.error('重置失败', err && err.message ? err.message : '存储数据无法删除');
             }
         }
+
+        // 保留开始菜单的“重置系统”入口，语义为重置两个后端。
+        function resetSystem() { return resetStorageScope('all'); }
 
         // ============================================
         // === Aero Peek 系统 + 运行窗口任务栏 ===
