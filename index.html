@@ -132,6 +132,16 @@
         .icon-svg.xl { width: 40px; height: 40px; }
         .icon-svg.github { width: 18px; height: 18px; fill: currentColor; stroke: none; color: var(--text-muted); }
 
+        /* === JISHENG-OS-APP 应用的自定义 SVG 图标 ===
+           用户在应用标记注释里粘贴的 SVG 是"原样使用"的（可能来自 iconfont / Bootstrap /
+           FontAwesome / 手写实心图），绝不能套 .icon-svg —— 那个类是描边风格图标的样式，
+           里面写死了 fill:none，会把实心图标直接洗没。
+           所以这里只做尺寸与配色：尺寸交给容器，配色交给 currentColor（图标自己写了颜色则优先）。 */
+        .app-custom-icon { display: block; width: 24px; height: 24px; }
+        .desktop-icon .app-custom-icon { width: 36px; height: 36px; color: rgba(255,255,255,0.9); filter: drop-shadow(0 2px 8px rgba(0,0,0,0.4)); }
+        .window-icon .app-custom-icon { display: block; width: 16px; height: 16px; color: var(--text-muted); }
+        .taskbar-running-item .running-icon .app-custom-icon { width: 18px; height: 18px; color: rgba(255,255,255,0.85); }
+
         /* 恢复原始内联 SVG 的 stroke-width="2" 视觉效果 */
         .tb-notify-icon .icon-svg,
         .icon-svg.tb-notify-icon { stroke-width: 2; }
@@ -4258,14 +4268,12 @@
                                         let displayName = file;
                                         let displayIcon = iconSvg;
                                         if(!err && data) {
-                                            const appConfig = parseJishengApp(data);
+                                            const appConfig = parseJishengApp(data, file);
                                             if(appConfig) {
                                                 displayName = appConfig.name;
-                                                if(appConfig.icon && appConfig.icon.includes('<svg')) {
-                                                    displayIcon = appConfig.icon.replace(/<\/?svg[^>]*>/g, '');
-                                                } else {
-                                                    displayIcon = iconBody('appUnknown');
-                                                }
+                                                // 自定义图标是完整 <svg>（parseJishengApp 已清洗过），
+                                                // createIconElement 会原样使用，不再剥离外层标签
+                                                displayIcon = appConfig.icon || iconBody('appUnknown');
                                             }
                                         }
                                         container.appendChild(createIconElement(fileId, displayName, displayIcon, `openFile('${file}')`, pos, 'file', file));
@@ -4351,7 +4359,13 @@
             el.style.left = pos.x + 'px';
             el.style.top = pos.y + 'px';
             
-            el.innerHTML = `<svg class="icon-svg xl" viewBox="0 0 24 24">${iconSvg}</svg><div class="label">${name}</div>`;
+            // 图标：集中式图标库给的是 <path> 内部片段 → 套统一外壳；
+            // JISHENG-OS-APP 应用的自定义图标给的是完整 <svg>（自带 viewBox/配色）→ 原样使用，
+            // 不能再嵌套一层、更不能套 .icon-svg（那是描边风格的样式，里面写死 fill:none，会把实心图标洗没）。
+            el.innerHTML = (iconSvg && iconSvg.indexOf('<svg') !== -1
+                    ? iconSvg
+                    : `<svg class="icon-svg xl" viewBox="0 0 24 24">${iconSvg}</svg>`)
+                + `<div class="label">${name}</div>`;
             
             const handleStart = (e) => {
                 if(e.button === 2) return;
@@ -4454,7 +4468,13 @@
             el.style.left = pos.x + 'px';
             el.style.top = pos.y + 'px';
             
-            el.innerHTML = `<svg class="icon-svg xl" viewBox="0 0 24 24">${iconSvg}</svg><div class="label">${name}</div>`;
+            // 图标：集中式图标库给的是 <path> 内部片段 → 套统一外壳；
+            // JISHENG-OS-APP 应用的自定义图标给的是完整 <svg>（自带 viewBox/配色）→ 原样使用，
+            // 不能再嵌套一层、更不能套 .icon-svg（那是描边风格的样式，里面写死 fill:none，会把实心图标洗没）。
+            el.innerHTML = (iconSvg && iconSvg.indexOf('<svg') !== -1
+                    ? iconSvg
+                    : `<svg class="icon-svg xl" viewBox="0 0 24 24">${iconSvg}</svg>`)
+                + `<div class="label">${name}</div>`;
             
             const handleStart = (e) => {
                 if(e.button === 2) return;
@@ -8511,55 +8531,430 @@
         }
 
         // === JISHENG OS 应用识别 ===
-        /**
-         * 解析HTML文件中的JISHENG OS应用标记
-         * @param {string} htmlContent - HTML文件内容
-         * @returns {Object|null} 应用配置对象，如果不是应用则返回null
-         */
-        function parseJishengApp(htmlContent) {
-            // 只检查前200行，避免处理大文件影响性能
-            const searchContent = htmlContent.split('\n').slice(0, 200).join('\n');
-            // 正则匹配 <!-- JISHENG-OS-APP: {...} -->
-            const match = searchContent.match(/<!--\s*JISHENG-OS-APP:\s*(\{[\s\S]*?\})\s*-->/);
-            if (!match) return null;
+        // 新版应用标记：一个 HTML 注释里只要两样东西 —— 应用名 + 从任何地方复制来的 SVG。
+        // 不用 JSON、不用转义引号、不用写宽高（应用窗口一律最大化打开）。
+        //
+        //   <!--
+        //   JISHENG-OS-APP
+        //   NAME: 计算器
+        //   <svg viewBox="0 0 24 24">…原样粘贴…</svg>
+        //   -->
+        //
+        // 解析规则（都是宽松容错的，认不出来的行直接忽略）：
+        //   · 标记必须写在 HTML 注释（<!-- -->）里，且落在文件前 100 行内；
+        //     标记在注释里的位置随意，注释上方写标题/说明文字都不影响。
+        //   · 应用名：NAME/应用名/名称/标题/名字/APP/TITLE 等键名 + : ： = ，或者直接写在标记名后面。
+        //   · 图标键（与应用名键对称）：SVG图标/图标/SVG/ICON + : ： = ，写了它就从这一行往后找图标。
+        //   · 图标两种粘贴都认：
+        //       ① 完整 <svg>…</svg>（说明文字里写的 <svg 字样会被跳过）；
+        //       ② 只有内部图形 <rect/> <path/> …（没有外层 svg）→ 自动包一层 0 0 24 24 的 svg，
+        //          并按线框图标渲染（补 fill="none" stroke="currentColor"），不会变成被填满的白块。
+        //   · 旧版 JSON 标记依旧兼容，只是 width/height 不再生效。
+        //   · 粘贴的图标若自带 <!-- -->，外层注释会被提前截断（HTML 注释不能嵌套）——
+        //     这里不做跨注释捞回，只兜底补 </svg>；请直接删掉图标里的注释。
+        const APP_NAME_KEYS = 'JISHENG-OS-APP|APPNAME|APP|NAME|TITLE|应用名|应用名称|名称|名字|标题|软件名|程序名';
+        const APP_NAME_LINE_RE = new RegExp('^(?:' + APP_NAME_KEYS + ')\\s*(?:[:：=＝]\\s*(.*)|\\s+(.+))$', 'i');
+        // 只有内部图形、没有外层 <svg> 时，能认出来的图形标签
+        const APP_SHAPE_RE = /<(path|circle|rect|ellipse|line|polyline|polygon|g|use|text|defs|symbol|clipPath|mask|linearGradient|radialGradient|pattern|filter|style)\b/i;
+        // 图标键：和"应用名："对称的写法 —— SVG图标：<svg …> / 图标： / ICON:
+        // 作用不只是好看：写了它，解析器就从这一行开始找图标，注释前面提到的 SVG 不会被误选。
+        const APP_ICON_KEYS = 'SVGICON|APPICON|ICON|SVG图标|应用图标|软件图标|程序图标|图标|SVG';
+        const APP_ICON_LINE_RE = new RegExp('^(?:' + APP_ICON_KEYS + ')\\s*(?:[:：=＝]\\s*(.*)|\\s+(.+))?$', 'i');
+        const APP_ICON_ANY_RE = new RegExp('^[ \\t]*(?:' + APP_ICON_KEYS + ')[ \\t]*(?:[:：=＝][ \\t]*|$)', 'im');
+        // 旧版 JSON 标记的兼容探测
+        const APP_JSON_RE = /^\s*[:：]?\s*(\{[\s\S]*\})\s*$/;
 
-            try {
-                const config = JSON.parse(match[1]);
-                if (!config.name) return null; // 必须有name字段
-                return {
-                    name: config.name,
-                    icon: config.icon || null,
-                    width: config.width || 700,
-                    height: config.height || 500
-                };
-            } catch (e) {
-                console.warn('JISHENG-OS-APP 配置解析失败:', e);
-                return null;
-            }
+        /** 这一行是不是"图标键"行（图标键不参与应用名解析） */
+        function isAppIconKeyLine(line) {
+            return APP_ICON_LINE_RE.test(String(line || '').trim());
         }
 
         /**
-         * 作为JISHENG OS应用打开HTML文件（无地址栏）
+         * 图标键在注释正文里的位置（没有则返回 -1）
+         * 找到后从这里往后找图标 —— "SVG图标："下面贴什么就用什么，前面提过的 SVG 不参与。
+         * @param {string} body - 注释正文
+         * @returns {number}
+         */
+        function findAppIconStart(body) {
+            const m = APP_ICON_ANY_RE.exec(String(body || ''));
+            return m ? m.index : -1;
+        }
+
+        /** 应用标记的搜索范围：只在前 100 行里找（大文件不做全文扫描） */
+        const APP_MARKER_LINE_LIMIT = 100;
+
+        /**
+         * 找出应用标记所在的注释
+         * 标记可以出现在注释里的任何位置（注释上方写标题、说明都不影响）。
+         * @param {string} htmlContent - HTML 文件内容
+         * @returns {string|null} 注释正文（标记名本身也在里面）；找不到则返回 null
+         */
+        function findAppComment(htmlContent) {
+            // 只在前 100 行里找标记，避免大文件全文正则；
+            // split+join 出来的前缀与原文完全一致，所以下标可以直接用在原文上。
+            // 标记要在前 100 行内，但注释里粘贴的 SVG 可以一直延伸到第 100 行之后。
+            const head = htmlContent.split('\n').slice(0, APP_MARKER_LINE_LIMIT).join('\n');
+            const re = /JISHENG-OS-APP/gi;
+            let m;
+            while ((m = re.exec(head))) {
+                const at = m.index;
+                const open = htmlContent.lastIndexOf('<!--', at);
+                if (open === -1) continue;                                   // 前面没有注释开头 → 不在注释里
+                if (htmlContent.slice(open, at).indexOf('-->') !== -1) continue; // 中间已经闭合过 → 不在注释里
+                const close = htmlContent.indexOf('-->', at);
+                if (close === -1) continue;
+                return htmlContent.slice(open + 4, close);
+            }
+            return null;
+        }
+
+        /**
+         * 取出第一段"看得像图标"的 <svg>…</svg>
+         * 按标签配对计数，嵌套 <svg> 也能正确闭合，自闭合 <svg/> 也不会吃错东西。
+         * @param {string} source
+         * @returns {string|null}
+         */
+        function extractFirstSvg(source) {
+            const text = String(source || '');
+            const start = text.search(/<svg\b/i);
+            if (start === -1) return null;
+            const tagRE = /<\/?svg\b[^>]*>/gi;
+            tagRE.lastIndex = start;
+            let depth = 0, m;
+            while ((m = tagRE.exec(text))) {
+                if (m[0].slice(0, 2) === '</') {
+                    depth--;
+                    if (depth <= 0) return text.slice(start, m.index + m[0].length);
+                } else if (/\/>\s*$/.test(m[0])) {
+                    if (depth === 0) return m[0];   // <svg .../> 自闭合
+                    depth++;
+                } else {
+                    depth++;
+                }
+            }
+            return text.slice(start);   // 没有闭合标签：先取到末尾，交给 repairSvgAcrossComment 处理
+        }
+
+        /** SVG 是否已经完整（有 </svg> 收尾，或者本身就是 <svg .../> 自闭合） */
+        function isCompleteSvg(text) {
+            const t = String(text || '').trim();
+            return /<\/svg\s*>/i.test(t) || /^<svg\b[^>]*\/>$/.test(t);
+        }
+
+        /**
+         * 判断这段文本"是不是一个图标"，而不是说明文字里顺口写的 <svg 字样。
+         * 图标源码里的标签/属性都是 ASCII；说明文字里往往带省略号、中文。
+         */
+        function looksLikeAppSvg(text) {
+            const t = String(text || '').trim();
+            const open = /^<svg\b[^>]*\/?>/i.exec(t);
+            if (!open) return false;
+            if (!/^[\x20-\x7E]*$/.test(open[0])) return false;   // 开标签里混进中文/省略号 → 说明文字
+            if (/\/>$/.test(open[0])) return true;               // <svg ... /> 自闭合
+            const after = t.slice(open[0].length);
+            if (after && !/^\s*</.test(after)) return false;     // 开标签后面应直接跟子标签，而不是说明文字
+            return APP_SHAPE_RE.test(t);
+        }
+
+        /**
+         * 兜底：SVG 少写 </svg> 时补上（顺手砍掉没闭合的 <!-- 残尾）。
+         * 万一用户粘贴的图标自带 <!-- -->（外层注释会被提前截断），也只让图标少一截内容，
+         * 不会连带把后面的桌面标签"吞"进 SVG 里。
+         * 跨注释把剩余内容捞回来那种修复已按需求去掉：直接让用户删掉图标里的注释即可。
+         */
+        function closeIncompleteSvg(svgText) {
+            let text = String(svgText || '');
+            const openComment = text.lastIndexOf('<!--');
+            if (openComment !== -1 && text.indexOf('-->', openComment) === -1) text = text.slice(0, openComment);
+            return text + '</svg>';
+        }
+
+        /**
+         * 把用户粘贴的 SVG "洗"成能在系统外壳里稳定显示的样子：
+         *   · 补 xmlns；补 class="app-custom-icon"（尺寸交给系统 CSS，不再写死宽高）
+         *   · 写死了 width/height 又没有 viewBox 的，用它们换算 viewBox，保证等比缩放
+         *   · 配色兜底：完全没写 fill/stroke 的按时实心图标补 fill="currentColor"；
+         *     线框图标补 fill="none" stroke="currentColor"，没写描边宽度再补 stroke-width="1.5"（系统官方值）；
+         *     自己写了颜色的原样不动。
+         * @param {string} svg
+         * @returns {string|null}
+         */
+        function polishAppSvg(svg) {
+            if (!svg) return null;
+            const openEnd = svg.indexOf('>');
+            if (openEnd === -1) return null;
+            let tag = svg.slice(0, openEnd + 1);
+            const body = svg.slice(openEnd + 1);
+            const selfClose = /\/\s*>$/.test(tag);   // <svg .../> 自闭合
+            tag = tag.replace(/\/?\s*>$/, '');       // 统一去掉收尾的 > 或 /> ，最后再补回
+
+            if (!/\sviewBox\s*=/i.test(tag)) {
+                const w = (tag.match(/\swidth\s*=\s*["']?\s*([\d.]+)/i) || [])[1];
+                const h = (tag.match(/\sheight\s*=\s*["']?\s*([\d.]+)/i) || [])[1];
+                if (w && h) tag = tag.replace(/^<svg/i, `<svg viewBox="0 0 ${w} ${h}"`);
+            }
+            // 尺寸交给容器（.app-custom-icon / .desktop-icon / .window-icon），删掉粘贴来的固定宽高
+            tag = tag.replace(/\s(?:width|height)\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, '');
+            if (!/\sxmlns\s*=/i.test(tag)) tag = tag.replace(/^<svg/i, '<svg xmlns="http://www.w3.org/2000/svg"');
+            if (/\sclass\s*=/i.test(tag)) {
+                tag = tag.replace(/\sclass\s*=\s*(?:"([^"]*)"|'([^']*)')/i, (mm, a, b) => ` class="${((a || b || '') + ' app-custom-icon').trim()}"`);
+            } else {
+                tag = tag.replace(/^<svg/i, '<svg class="app-custom-icon"');
+            }
+
+            const hasColor   = (t) => /\sfill\s*=|\sstroke\s*=|\sstyle\s*=\s*["'][^"']*(?:fill|stroke)/i.test(t);
+            const hasFill    = (t) => /\sfill\s*=|\sstyle\s*=\s*["'][^"']*fill/i.test(t);
+            const hasStroke  = (t) => /\sstroke\s*=|\sstyle\s*=\s*["'][^"']*stroke/i.test(t);
+            const hasStrokeW = (t) => /stroke-width\s*[:=]/i.test(t);
+            const fillIsNone = (t) => /fill\s*[:=]\s*["']?\s*none/i.test(t);
+            if (!hasColor(tag) && !hasColor(body)) {
+                // 一点颜色信息都没有 → 按实心图标（和 SVG 默认 fill 行为一致，Simple Icons 那类图标就长这样）
+                tag += ' fill="currentColor"';
+            } else {
+                // 有颜色信息：
+                //   · 没有任何 fill → 补 fill="none"，否则 SVG 默认的黑色会把图形填成实心块（白块那个 bug 的根源）
+                //   · 确认是线框图标（fill="none"）→ 缺 stroke 补 stroke="currentColor"、缺宽度补系统官方 1.5
+                //   · 本来就写着 fill（实心/多色图标）→ 什么都不动，别给它加描边
+                const missingFill = !hasFill(tag) && !hasFill(body);
+                const lineFrame = missingFill || fillIsNone(tag) || fillIsNone(body);
+                let inject = '';
+                if (missingFill) inject += ' fill="none"';
+                if (lineFrame) {
+                    if (!hasStroke(tag) && !hasStroke(body)) inject += ' stroke="currentColor"';
+                    if (!hasStrokeW(tag) && !hasStrokeW(body)) inject += ' stroke-width="' + APP_ICON_STROKE_WIDTH + '"';
+                }
+                if (inject) tag += inject;   // 追加在原有属性后面，输出更好读
+            }
+            return tag + (selfClose ? '/>' : '>') + body;
+        }
+
+        /**
+         * 只粘贴了内部图形（没有外层 <svg>）时能认出来的图形标签。
+         * 每一行必须是"纯标签"，像"把 <path> 图形贴这里"这种说明文字不会被当成图标。
+         */
+        const FRAGMENT_TAGS = 'path|circle|rect|ellipse|line|polyline|polygon|g|use|defs|symbol|clipPath|mask|linearGradient|radialGradient|stop|pattern|filter';
+        const FRAGMENT_BLOCK_RE = new RegExp('^\\s*(?:<?/?(?:' + FRAGMENT_TAGS + ')\\b[^<>]*?/?>\\s*)+$', 'i');
+        // 裸图形片段的默认画法：线框（描边）。从 Lucide / Feather / Tabler 这类线框图标站复制内部图形时，
+        // fill="none" stroke=… 这些属性在父级 <svg> 上、不会被一起复制过来，所以必须由我们补上，
+        // 否则圆角矩形会被当成实心块填充 —— 也就是"粘贴进去变成一个白块"的那个 bug。
+        // 描边宽度用系统官方值（与 .icon-svg 的默认 stroke-width: 1.5 保持一致），想改就改这一行。
+        const APP_ICON_STROKE_WIDTH = '1.5';
+        const FRAGMENT_STROKE_ATTRS = 'fill="none" stroke="currentColor" stroke-width="' + APP_ICON_STROKE_WIDTH + '" stroke-linecap="round" stroke-linejoin="round"';
+
+        /**
+         * 从注释里找"连续成块"的裸图形（没有外层 <svg> 的粘贴内容）
+         * @param {string} source
+         * @returns {string|null} 完整的 <svg> 字符串
+         */
+        function buildFragmentIcon(source) {
+            const lines = String(source || '').split(/\r?\n/);
+            const block = [];
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i];
+                if (!FRAGMENT_BLOCK_RE.test(line)) {
+                    if (block.length) break;   // 图形块结束，后面的说明文字/其它内容不参与
+                    continue;
+                }
+                block.push(line.trim());
+            }
+            if (!block.length) return null;
+            const fragment = block.join('');
+            // 片段自己写了颜色就听它的：有 stroke → 线框；只有 fill → 实心；什么都没写 → 线框（最常见来源）
+            let attrs = FRAGMENT_STROKE_ATTRS;
+            if (!/\sstroke\s*=/i.test(fragment) && /\sfill\s*=/i.test(fragment)) attrs = 'fill="currentColor" stroke="none"';
+            return polishAppSvg('<svg viewBox="0 0 24 24" ' + attrs + '>' + fragment + '</svg>');
+        }
+
+        /**
+         * 从一段文本里抓出图标：
+         *   ① 第一个"看得像图标"的完整 <svg>…</svg>（说明文字里写的 <svg 字样会被跳过）；
+         *   ② 只粘贴了 <path>/<circle> 这类内部图形时，自动补一层 <svg viewBox="0 0 24 24">（按线框渲染）。
+         * @param {string} source - 待扫描的文本（一般是注释正文）
+         * @returns {string|null} 完整的 <svg> 字符串
+         */
+        function buildAppIcon(source) {
+            const text = String(source || '');
+            let from = 0;
+            while (from < text.length) {
+                const at = text.toLowerCase().indexOf('<svg', from);
+                if (at === -1) break;
+                from = at + 4;
+                let svgText = extractFirstSvg(text.slice(at));
+                if (!svgText) continue;
+                if (!isCompleteSvg(svgText)) svgText = closeIncompleteSvg(svgText);
+                if (looksLikeAppSvg(svgText)) return polishAppSvg(svgText);
+            }
+            return buildFragmentIcon(text);
+        }
+
+        /**
+         * 名字行的合法写法（键名大小写不敏感，冒号/等号/全角冒号都行）：
+         *   ① NAME: 计算器      ② 应用名：计算器      ③ NAME:（冒号后留空 → 名字写在下一行）
+         * 认不出来的行（装饰线、说明文字、SVG 内容）一律忽略。
+         * @param {string} line
+         * @returns {string|null} 名字；'' 表示"键名后面是空的"；null 表示这行不认识
+         */
+        function appNameFromLine(line) {
+            const m = APP_NAME_LINE_RE.exec(String(line || '').trim());
+            if (!m) return null;
+            return String((m[1] !== undefined ? m[1] : m[2]) || '').trim();
+        }
+
+        /**
+         * 值里出现这些字样，基本是在写"提示/占位符"，不是真名字。
+         * 有了它，像"应用名 ↓ 写在这里"这种自解释模板也不会被当成名字。
+         */
+        function looksLikeAppNameHint(value) {
+            const v = String(value || '').trim();
+            if (!v) return true;
+            if (/^[←→↑↓⇦⇨⇧⇩⤴⤵><=~^|·•\-—…:：=＝!！?？]+$/.test(v)) return true;      // 纯箭头/分隔符号
+            if (/[←→↑↓⇦⇨⇧⇩⤴⤵]/.test(v)) return true;                             // 出现箭头 → 是示意，不是名字
+            if (/(写|填|粘贴|复制|放)(在|到|入)?(这|下面|上面|此处|这里)/.test(v)) return true;
+            if (/^(这里|此处|应用名|应用名称|名称|名字|你的应用名|XX+|XXX?)$/i.test(v)) return true;
+            if (/^[（(\[【<].{0,10}[）)\]】>]$/.test(v) && /(应?用?名|名称|名字|填|写|这里)/.test(v)) return true;
+            return false;
+        }
+
+        /** 装饰线（===== / ----- / *****）不算名字 */
+        function isDecorationLine(line) {
+            return /^[=\-*_~#·•\s]+$/.test(String(line || '')) || /[=]{4,}|[-]{4,}/.test(String(line || ''));
+        }
+
+        /**
+         * 从注释正文里挑应用名
+         * 顺序：① 标记同一行写的内容 → ② 认得出的键名行 → ③ SVG 上方最近的一行普通文字
+         * @param {string} body - 注释正文
+         * @returns {string|null}
+         */
+        function parseAppNameFromComment(body) {
+            const lines = String(body || '').split(/\r?\n/);
+            // 标记所在的那一行：标记名后面的内容就是"同一行写法"
+            let markerLine = -1;
+            for (let i = 0; i < lines.length; i++) {
+                if (/JISHENG-OS-APP/i.test(lines[i])) { markerLine = i; break; }
+            }
+            const head = markerLine === -1 ? ''
+                : lines[markerLine].replace(/[\s\S]*?JISHENG-OS-APP[ \t]*/i, '').replace(/^[:：=＝][ \t]*/, '').trim();
+            // 同一行直接写名字：<!-- JISHENG-OS-APP: 计算器 -->
+            // 排除两种"不是名字"的情况：以标签开头（把 SVG 贴到了标记后面）、以及 JSON 对象（旧格式）
+            if (head && !/^</.test(head) && !/<svg\b/i.test(head) && !/^\{/.test(head) && appNameFromLine(head) === null) return head;
+
+            const others = lines.filter((_, i) => i !== markerLine);
+            const keys = markerLine === -1 ? lines : [head].concat(others);
+
+            // ② 键名行（含"键名后面留空 → 取下一行"的写法）
+            for (let i = 0; i < keys.length; i++) {
+                if (isAppIconKeyLine(keys[i])) continue;   // "SVG图标：…"是图标键，不当应用名
+                const val = appNameFromLine(keys[i]);
+                if (val === null) continue;
+                if (val && !looksLikeAppNameHint(val)) return val;   // 值是提示文字 → 当没写，继续往下找
+                for (let j = i + 1; j < keys.length; j++) {
+                    const next = keys[j].trim();
+                    if (!next || next.includes('<') || looksLikeAppNameHint(next) || isAppIconKeyLine(next)) continue;
+                    if (appNameFromLine(next) !== null) break;
+                    return next;
+                }
+            }
+
+            // ③ 一个键名都没写：取图标上方最近的一行普通文字（最省事的写法）
+            const raw = String(body || '');
+            const svgAt = raw.search(/<svg\b/i);
+            const headLines = svgAt === -1 ? lines : lines.slice(0, raw.slice(0, svgAt).split(/\r?\n/).length);
+            for (let i = headLines.length - 1; i >= 0; i--) {
+                const v = headLines[i].trim();
+                if (!v || v.includes('<') || /JISHENG-OS-APP/i.test(v) || isDecorationLine(v) || isAppIconKeyLine(v)) continue;
+                const parsed = appNameFromLine(v);
+                const candidate = parsed === null ? v : parsed;
+                if (!candidate || looksLikeAppNameHint(candidate)) continue;
+                return candidate;
+            }
+            return null;
+        }
+
+        /** 收拾名字：合并空白、去掉成对引号、限制长度（名字会进标题栏/任务栏/桌面标签） */
+        function cleanAppName(raw) {
+            let s = String(raw == null ? '' : raw).replace(/\s+/g, ' ').trim();
+            while (s.length > 1 && /^["'“”‘’]/.test(s) && /["'“”‘’]$/.test(s)) s = s.slice(1, -1).trim();
+            return s.slice(0, 60);
+        }
+
+        /**
+         * 解析 HTML 文件中的 JISHENG OS 应用标记
+         *
+         * 只要注释里出现 JISHENG-OS-APP，这个文件就按"应用"打开（窗口无地址栏、默认最大化）；
+         * 名字和图标能解析出来就用，解析不出来就用 <title>/文件名 + 系统默认问号图标兜底。
+         * 标记要在前 100 行内；注释里的 SVG 再长也没关系（可以一路延伸下去）。
+         *
          * @param {string} htmlContent - HTML文件内容
-         * @param {Object} appConfig - 应用配置
+         * @param {string} [filename] - 文件名（没写名字时的兜底）
+         * @returns {Object|null} 应用配置 { name, icon }；不是应用则返回 null
+         */
+        function parseJishengApp(htmlContent, filename) {
+            if (!htmlContent) return null;
+            const body = findAppComment(htmlContent);
+            if (body === null) return null;
+
+            let name = null;
+            let icon = null;
+
+            // ① 旧版 JSON 标记照旧兼容：<!-- JISHENG-OS-APP: {"name":"…","icon":"<svg …>"} -->
+            //   （body 里含标记名本身，先把它剥掉再判断是不是纯 JSON）
+            const json = body.replace(/^[\s\S]*?JISHENG-OS-APP[ \t]*/i, '').match(APP_JSON_RE);
+            if (json) {
+                try {
+                    const cfg = JSON.parse(json[1]);
+                    if (cfg && cfg.name) {
+                        name = cleanAppName(cfg.name);
+                        icon = buildAppIcon(cfg.icon);
+                    }
+                } catch (e) {
+                    // 不是合法 JSON 就当新版格式继续解析（新版本来就不要求 JSON）
+                }
+            }
+
+            // ② 新版：标记里直接挑名字 + 抓 SVG
+            if (!name) name = cleanAppName(parseAppNameFromComment(body));
+            if (!icon) {
+                // 写了"SVG图标："就从那一行往后找；没找到再退回整段注释找
+                const iconStart = findAppIconStart(body);
+                if (iconStart >= 0) icon = buildAppIcon(body.slice(iconStart));
+            }
+            if (!icon) icon = buildAppIcon(body);
+
+            // ③ 兜底：<title> → 文件名（去掉扩展名）→ 未命名应用
+            if (!name) {
+                const title = (htmlContent.match(/<title[^>]*>([\s\S]*?)<\/title>/i) || [])[1];
+                name = cleanAppName((title || '').split(/\s+[-–—|·]\s+/)[0])
+                    || cleanAppName(String(filename || '').replace(/\.[a-z0-9]+$/i, ''))
+                    || '未命名应用';
+            }
+
+            // 名字会进 innerHTML（标题栏/任务栏/桌面标签），转义一下更稳
+            return { name: escapeHtml(name), icon: icon || null };
+        }
+
+        /**
+         * 作为 JISHENG OS 应用打开 HTML 文件（无地址栏、默认最大化）
+         * @param {string} htmlContent - HTML文件内容
+         * @param {Object} appConfig - 应用配置 { name, icon }
          * @param {string} filename - 文件名
          */
         function openJishengApp(htmlContent, appConfig, filename) {
             const blob = new Blob([htmlContent], { type: 'text/html' });
             const url = URL.createObjectURL(blob);
 
-            // 根据icon配置生成图标HTML（无自定义图标时，回退到集中式图标库的 appUnknown 问号图标）
-            let iconHtml = icon('appUnknown', 'sm');
-            // 如果icon是SVG代码，直接使用
-            if (appConfig.icon && appConfig.icon.includes('<svg')) {
-                iconHtml = appConfig.icon;
-            }
+            // 应用图标：标记里带 SVG 就用它（parseJishengApp 已清洗成完整 <svg>），
+            // 没有则回退到集中式图标库的 appUnknown 问号图标
+            const iconHtml = appConfig.icon || icon('appUnknown', 'sm');
 
             createWindow({
                 title: appConfig.name,
                 iconHtml: iconHtml,
-                width: appConfig.width,
-                height: appConfig.height,
+                // 应用窗口没必要让用户先看见一个小窗口：一律最大化打开。
+                // 想改尺寸？点标题栏的最大化按钮还原（回到下面这套默认几何），或者直接拖窗口边缘。
+                maximized: true,
+                width: 1000,
+                height: 700,
                 content: `
                     <div class="content-area dark" style="position:relative;flex:1;">
                         <div class="loading-overlay active"><div class="spinner"></div></div>
@@ -8569,6 +8964,7 @@
                 `
             });
         }
+
 
         // === 文件操作 ===
         function openFile(filename) {
@@ -8606,8 +9002,8 @@
                 SYSTEM.fs.readFile(fullPath, 'utf8', (err, data) => {
                     if(err) { Notify.error('打开失败', err.message); return; }
                     
-                    // 检测是否为 JISHENG OS 应用
-                    const appConfig = parseJishengApp(data);
+                    // 检测是否为 JISHENG OS 应用（传文件名：标记里没写应用名时用它兜底）
+                    const appConfig = parseJishengApp(data, filename);
                     if (appConfig) {
                         // 作为独立应用打开（无地址栏）
                         openJishengApp(data, appConfig, filename);
@@ -9839,12 +10235,15 @@
         function createWindow(opts) {
             const id = ++SYSTEM.idCounter;
             const isMobile = window.innerWidth <= 768; // 检测手机
+            // 创建即最大化：手机端本来就全屏；桌面端由 opts.maximized 决定
+            // （JISHENG-OS-APP 应用窗口传 true —— 应用一律最大化打开，想缩小直接点标题栏最大化按钮或用边缘拖拽）
+            const startMaximized = isMobile || opts.maximized === true;
             
             const w = document.createElement('div');
             w.id = 'win-' + id;
             
-            // 如果是手机，自动添加 maximized 类
-            w.className = `window ultra-glass focused ${isMobile ? 'maximized' : ''}`;
+            // 如果是手机或调用方要求，自动添加 maximized 类
+            w.className = `window ultra-glass focused ${startMaximized ? 'maximized' : ''}`;
             
             // 始终写明几何尺寸（含手机端）。
             // 以前手机端不写 style，一旦取消最大化窗口就没有 width/height/left/top，
@@ -9859,6 +10258,10 @@
                 const T = Math.max(0, Math.min(50 + step, areaH - H - 10));
                 w.style.cssText = `width:${W}px;height:${H}px;top:${T}px;left:${L}px;`;
             }
+            // 创建即最大化的窗口：把上面算出来的几何尺寸留作"还原"目标。
+            // 用户点标题栏最大化按钮取消最大化时会精确回到这套尺寸（restoreWindowGeometry 用它），
+            // 也随时可以拖窗口边缘自己调大小。
+            const savedPos = (startMaximized && !isMobile) ? w.style.cssText : null;
             
             w.innerHTML = `
                 <div class="title-bar">
@@ -9884,7 +10287,7 @@
             
             document.getElementById('windows-container').appendChild(w);
             
-            const winObj = { id, element: w, title: opts.title, minimized: false, maximized: isMobile, iconHtml: opts.iconHtml };
+            const winObj = { id, element: w, title: opts.title, minimized: false, maximized: startMaximized, savedPos, iconHtml: opts.iconHtml };
             SYSTEM.windows.push(winObj);
             
             makeDraggable(w, id);
