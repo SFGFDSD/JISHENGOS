@@ -562,11 +562,7 @@
         @keyframes spin { to { transform: rotate(360deg); } }
 
         /* === 记事本特定样式 === */
-        .notepad-toolbar {
-            padding: 8px 12px; background: rgba(0,0,0,0.2); 
-            border-bottom: 1px solid var(--glass-border); display: flex; gap: 8px;
-            flex-wrap: wrap; align-items: center;
-        }
+        /* .notepad-btn 仍被 V86 虚拟机工具栏使用，保留 */
         .notepad-btn {
             background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border);
             color: var(--text-main); padding: 4px 12px; border-radius: 4px; font-size: 12px; cursor: pointer;
@@ -576,27 +572,64 @@
         .notepad-btn:disabled { opacity: 0.35; cursor: default; }
         .notepad-btn:disabled:hover { background: rgba(255,255,255,0.05); }
         .notepad-btn svg { width: 14px; height: 14px; vertical-align: -2px; }
-        .notepad-sep { width: 1px; height: 18px; background: var(--glass-border); margin: 0 2px; }
-        .notepad-fontsize {
-            min-width: 34px; text-align: center; font-size: 12px; color: var(--text-main);
-            font-variant-numeric: tabular-nums; user-select: none;
-        }
-        .notepad-status {
-            margin-left: auto; font-size: 11px; color: var(--text-muted); white-space: nowrap;
-        }
-        .notepad-status.dirty { color: #f59e0b; }
-        .notepad-status.saved { color: #22c55e; }
-        .notepad-group { display: flex; gap: 6px; align-items: center; }
-        @media (max-width: 768px) {
-            .notepad-toolbar { padding: 6px 8px; gap: 6px; }
-            .notepad-btn { padding: 6px 9px; }
-            .notepad-sep { display: none; }
-            .notepad-status { flex-basis: 100%; margin-left: 0; text-align: left; overflow: hidden; text-overflow: ellipsis; }
-        }
         .notepad-area {
             flex: 1; background: #1e1e1e; border: none; color: #e0e0e0;
             padding: 16px; font-family: 'Consolas', monospace; font-size: 14px; resize: none;
             line-height: 1.6;
+        }
+        /* === 记事本（v10.5.8 重做外观）===
+           单行工具栏（不再换行变高）；按记事本自身宽度（容器查询）收起按钮文字；
+           与 HTML 编辑器、系统设置共用一套按钮 / 分隔 / 状态点样式，图标线宽 1.5 */
+        .npx {
+            --line: rgba(255,255,255,.075); --ink: #e9eaf0; --muted: #9a9bab; --ok: #19c37d; --warn: #f5a524;
+            container-type: inline-size; container-name: npx;
+            flex: 1; min-height: 0; display: flex; flex-direction: column; background: #1e1e24; color: var(--ink);
+        }
+        .npx .icon-svg { width: 16px; height: 16px; flex: none; }
+        .npx-bar { display: flex; align-items: center; gap: 2px; height: 40px; padding: 0 6px; flex: none; min-width: 0;
+            background: rgba(0,0,0,.22); border-bottom: 1px solid var(--line); }
+        .npx-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 28px; min-width: 28px; padding: 0 8px;
+            border: 0; border-radius: 7px; background: transparent; color: #c9cad4; font: inherit; font-size: 12.5px; cursor: pointer; white-space: nowrap; flex: none;
+            transition: background .12s, color .12s; }
+        .npx-btn:hover:not(:disabled) { background: rgba(255,255,255,.07); color: #fff; }
+        .npx-btn:active:not(:disabled) { background: rgba(255,255,255,.1); }
+        .npx-btn:disabled { opacity: .35; cursor: default; }
+        .npx-btn.icon { padding: 0 6px; }
+        .npx-btn.save.pending { color: #fff; background: rgba(0,120,212,.22); }               /* 有未保存修改时“保存”轻微高亮 */
+        .npx-btn.save.pending:hover { background: rgba(0,120,212,.34); }
+        .npx :where(button):focus-visible { outline: 2px solid var(--accent-cyan); outline-offset: 1px; }
+        .npx-sep { width: 1px; height: 18px; background: var(--line); margin: 0 5px; flex: none; }
+        .npx-font { display: inline-flex; align-items: center; height: 28px; padding: 0 2px; border-radius: 8px; background: rgba(0,0,0,.25);
+            border: 1px solid var(--line); flex: none; }
+        .npx-font .npx-btn { height: 24px; min-width: 26px; padding: 0 4px; border-radius: 6px; }
+        .npx-font .npx-btn .icon-svg { width: 15px; height: 15px; }
+        .npx-fsize { min-width: 26px; text-align: center; font-size: 12px; color: var(--ink); font-variant-numeric: tabular-nums; cursor: default; user-select: none; }
+        .npx-sp { flex: 1; min-width: 6px; }
+        .npx-status { display: inline-flex; align-items: center; gap: 6px; min-width: 0; padding: 0 6px; font-size: 11.5px; color: var(--muted); white-space: nowrap; overflow: hidden; }
+        .npx-status i { width: 6px; height: 6px; border-radius: 50%; background: var(--muted); flex: none; }
+        .npx-status.saved i { background: var(--ok); }
+        .npx-status.dirty i { background: var(--warn); }
+        .npx-status.dirty .main { color: #f3c77a; }
+        .npx-status .sub { overflow: hidden; text-overflow: ellipsis; }
+        .npx .notepad-area { background: transparent; color: #e3e4ea; padding: 14px 18px; border: 0; outline: none; resize: none; line-height: 1.7;
+            font-family: Consolas, 'Cascadia Mono', 'JetBrains Mono', 'SF Mono', Menlo, 'Microsoft YaHei UI', 'PingFang SC', monospace;
+            caret-color: var(--accent-cyan); tab-size: 4; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.18) transparent; }
+        .npx .notepad-area::placeholder { color: #6b6c7a; }
+        .npx .notepad-area::selection { background: rgba(0,120,212,.45); }
+        @container npx (max-width: 480px) {
+            .npx-btn .lbl { display: none; }
+            .npx-btn { padding: 0 6px; }
+            .npx-status .sub { display: none; }
+        }
+        @container npx (max-width: 330px) {
+            .npx-sep { margin: 0 2px; }
+            .npx-status .main { display: none; }
+        }
+        @media (pointer: coarse) {
+            .npx-bar { height: 44px; }
+            .npx-btn { height: 32px; min-width: 32px; }
+            .npx-font { height: 32px; }
+            .npx-font .npx-btn { height: 28px; min-width: 30px; }
         }
 
         /* === CSV 表格查看器样式 === */
@@ -6463,6 +6496,10 @@
             edxMinus: '<path d="M5 12h14"/>',
             edxPlus: '<path d="M5 12h14"/><path d="M12 5v14"/>',
             edxWand: '<path d="m21.64 3.64-1.28-1.28a1.21 1.21 0 0 0-1.72 0L2.36 18.64a1.21 1.21 0 0 0 0 1.72l1.28 1.28a1.2 1.2 0 0 0 1.72 0L21.64 5.36a1.2 1.2 0 0 0 0-1.72"/><path d="m14 7 3 3"/><path d="M5 6v4"/><path d="M19 14v4"/><path d="M10 2v2"/><path d="M7 8H3"/><path d="M21 16h-4"/><path d="M11 3H9"/>',
+            // 记事本（Lucide，线宽沿用系统 1.5）
+            npxSaveAs: '<path d="M14.364 13.634a2 2 0 0 0-.506.854l-.837 2.87a.5.5 0 0 0 .62.62l2.87-.837a2 2 0 0 0 .854-.506l4.013-4.009a1 1 0 0 0-3.004-3.004z"/><path d="M14.487 7.858A1 1 0 0 1 14 7V2"/><path d="M20 19.645V20a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l2.516 2.516"/><path d="M8 18h1"/>',
+            npxFontDown: '<path d="m14 12 4 4 4-4"/><path d="M18 16V7"/><path d="m2 16 4.039-9.69a.5.5 0 0 1 .923 0L11 16"/><path d="M3.304 13h6.392"/>',
+            npxFontUp: '<path d="m14 11 4-4 4 4"/><path d="M18 16V7"/><path d="m2 16 4.039-9.69a.5.5 0 0 1 .923 0L11 16"/><path d="M3.304 13h6.392"/>',
         };
         // 返回图标内部 path 片段（兼容 <svg class="icon-svg" viewBox="0 0 24 24">${iconBody(name)}</svg> 模式）
         function iconBody(name){ return ICONS[name] || ICONS.fileGeneric; }
@@ -11274,8 +11311,8 @@
         //  - 移除无用的「新建」按钮（要新建直接从任务栏/开始菜单再开一个记事本即可）
         //  - 自动暂存草稿（参考「炸字移动端文字编辑」）：输入后 ~400ms 自动写入 localStorage，
         //    关窗、刷新、断电都不会丢；下次打开同一文件时自动恢复未保存的内容
-        //  - 字号调节（A- / A+，Ctrl + 滚轮，Ctrl + - / =），全局记忆
-        //  - 撤销 / 恢复按钮（自维护历史栈，最多 200 步；Ctrl+Z / Ctrl+Y / Ctrl+Shift+Z）
+        //  - 字号调节（工具栏字号按钮，Ctrl + 滚轮，Ctrl + - / = / 0），全局记忆
+        //  - 撤销 / 重做按钮（自维护历史栈，最多 200 步；Ctrl+Z / Ctrl+Y / Ctrl+Shift+Z）
         //  - Ctrl+S 保存；标题栏用 ● 标记未保存
         const NP_DRAFT_PREFIX = 'JSOS_NP_DRAFT::';
         const NP_FONT_KEY = 'JSOS_NP_FONTSIZE';
@@ -11298,7 +11335,7 @@
                 return true;
             } catch (e) {
                 // 存储已满等情况：静默失败，但通知一次
-                if (!npWriteDraft._warned) { npWriteDraft._warned = true; Notify.warning('草稿暂存失败', '浏览器本地存储已满，请及时手动保存'); }
+                if (!npWriteDraft._warned) { npWriteDraft._warned = true; Notify.warning('草稿无法暂存', '浏览器存储空间已满，请按 Ctrl+S 保存到文件'); }
                 return false;
             }
         }
@@ -11307,37 +11344,38 @@
             const d = new Date(ts); const p = n => String(n).padStart(2, '0');
             return `${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
         }
+        function npFmtHM(ts) {
+            const d = new Date(ts); const p = n => String(n).padStart(2, '0');
+            return `${p(d.getHours())}:${p(d.getMinutes())}`;
+        }
 
         function openNotepad(content = '', filename = '未命名.txt', saveDir = null) {
             // 修复：textarea 内容需转义，避免文件内容含 </textarea> 等破坏 DOM。
             const safeContent = escapeHtml(content);
-            const svgUndo = icon('uiUndo','stroke-2');
-            const svgRedo = icon('uiRedo','stroke-2');
             const nid = SYSTEM.idCounter + 1;
             const id = createWindow({
                 title: '记事本 - ' + filename,
                 iconHtml: icon('appNotepad','sm'),
                 width: 650, height: 480,
                 content: `
-                    <div class="notepad-toolbar">
-                        <span class="notepad-group">
-                            <button class="notepad-btn" id="np-save-${nid}" title="保存 (Ctrl+S)">保存</button>
-                            <button class="notepad-btn" id="np-saveas-${nid}" title="另存为">另存为</button>
-                        </span>
-                        <span class="notepad-sep"></span>
-                        <span class="notepad-group">
-                            <button class="notepad-btn" id="np-undo-${nid}" title="撤销 (Ctrl+Z)" disabled>${svgUndo} 撤销</button>
-                            <button class="notepad-btn" id="np-redo-${nid}" title="恢复 (Ctrl+Y)" disabled>${svgRedo} 恢复</button>
-                        </span>
-                        <span class="notepad-sep"></span>
-                        <span class="notepad-group">
-                            <button class="notepad-btn" id="np-fdec-${nid}" title="缩小字号 (Ctrl + -)">A-</button>
-                            <span class="notepad-fontsize" id="np-fsize-${nid}" title="双击恢复默认字号">14</span>
-                            <button class="notepad-btn" id="np-finc-${nid}" title="放大字号 (Ctrl + =)">A+</button>
-                        </span>
-                        <span class="notepad-status" id="np-status-${nid}"></span>
+                    <div class="npx">
+                        <div class="npx-bar" role="toolbar" aria-label="记事本工具栏">
+                            <button type="button" class="npx-btn save" id="np-save-${nid}" title="保存 (Ctrl+S)">${icon('edxSave')}<span class="lbl">保存</span></button>
+                            <button type="button" class="npx-btn" id="np-saveas-${nid}" title="另存为">${icon('npxSaveAs')}<span class="lbl">另存为</span></button>
+                            <span class="npx-sep"></span>
+                            <button type="button" class="npx-btn icon" id="np-undo-${nid}" title="撤销 (Ctrl+Z)" aria-label="撤销" disabled>${icon('edxUndo')}</button>
+                            <button type="button" class="npx-btn icon" id="np-redo-${nid}" title="重做 (Ctrl+Y)" aria-label="重做" disabled>${icon('edxRedo')}</button>
+                            <span class="npx-sep"></span>
+                            <div class="npx-font" role="group" aria-label="字号">
+                                <button type="button" class="npx-btn" id="np-fdec-${nid}" title="缩小字号 (Ctrl+-)" aria-label="缩小字号">${icon('npxFontDown')}</button>
+                                <span class="npx-fsize" id="np-fsize-${nid}" title="字号 · 双击恢复默认 (Ctrl+0)">14</span>
+                                <button type="button" class="npx-btn" id="np-finc-${nid}" title="放大字号 (Ctrl+=)" aria-label="放大字号">${icon('npxFontUp')}</button>
+                            </div>
+                            <span class="npx-sp"></span>
+                            <span class="npx-status" id="np-status-${nid}" role="status"><i></i><span class="main"></span><span class="sub"></span></span>
+                        </div>
+                        <textarea class="notepad-area" id="np-area-${nid}" placeholder="在此输入内容" spellcheck="false">${safeContent}</textarea>
                     </div>
-                    <textarea class="notepad-area" id="np-area-${nid}" placeholder="开始输入..." spellcheck="false">${safeContent}</textarea>
                 `,
                 onInit: (w, winId) => {
                     let currentFile = filename;
@@ -11365,8 +11403,19 @@
                     const HIST_MAX = 200;
 
                     const isDirty = () => area.value !== savedContent;
-                    const setTitle = () => { titleEl.innerText = (isDirty() ? '● ' : '') + '记事本 - ' + currentFile; };
-                    const setStatus = (text, cls) => { statusEl.textContent = text; statusEl.className = 'notepad-status' + (cls ? ' ' + cls : ''); };
+                    const setTitle = () => {
+                        titleEl.innerText = (isDirty() ? '● ' : '') + '记事本 - ' + currentFile;
+                        btnSave.classList.toggle('pending', isDirty());
+                    };
+                    // 状态：主文字（已保存 / 未保存 / 新文件）+ 次要说明（窄窗口时隐藏）+ 悬停提示
+                    const filePathTip = () => '文件：' + currentDir + '/' + currentFile;
+                    const setStatus = (main, sub, cls, tip) => {
+                        statusEl.className = 'npx-status' + (cls ? ' ' + cls : '');
+                        statusEl.querySelector('.main').textContent = main;
+                        statusEl.querySelector('.sub').textContent = sub ? ' · ' + sub : '';
+                        statusEl.title = tip || filePathTip();
+                    };
+                    const DRAFT_TIP = '修改已暂存在本机浏览器，刷新页面或关闭窗口不会丢失。\n按 Ctrl+S 保存到文件。';
 
                     const refreshAfterSave = () => {
                         // 刷新桌面 + 该目录已打开的文件夹窗口，使保存立即可见。
@@ -11381,21 +11430,22 @@
                     const flushDraft = () => {
                         clearTimeout(draftTimer); draftTimer = 0;
                         if (isDirty()) {
-                            if (npWriteDraft(draftKey, area.value)) setStatus('已自动暂存 ' + npFmtTime(Date.now()) + ' · 未保存到文件', 'dirty');
+                            if (npWriteDraft(draftKey, area.value)) setStatus('未保存', '草稿已暂存 ' + npFmtHM(Date.now()), 'dirty', DRAFT_TIP);
+                            else setStatus('未保存', '', 'dirty', '草稿无法暂存，请按 Ctrl+S 保存到文件');
                         } else {
                             npClearDraft(draftKey);
-                            setStatus('与文件一致', 'saved');
+                            setStatus('已保存', '', 'saved');
                         }
                         setTitle();
                     };
                     const scheduleDraft = () => {
-                        setStatus('暂存中…', 'dirty');
+                        if (isDirty()) setStatus('未保存', '正在暂存…', 'dirty', DRAFT_TIP);
                         setTitle();
                         clearTimeout(draftTimer);
                         draftTimer = setTimeout(flushDraft, 400);
                     };
 
-                    // ---------- 撤销 / 恢复 ----------
+                    // ---------- 撤销 / 重做 ----------
                     const updateHistBtns = () => { btnUndo.disabled = histI <= 0; btnRedo.disabled = histI >= hist.length - 1; };
                     const pushHist = () => {
                         clearTimeout(histTimer); histTimer = 0;
@@ -11451,10 +11501,10 @@
                             if (err) { Notify.error('保存失败', err.message); return; }
                             savedContent = val;
                             npClearDraft(draftKey);
-                            setStatus('已保存 ' + npFmtTime(Date.now()), 'saved');
+                            setStatus('已保存', npFmtHM(Date.now()), 'saved');
                             setTitle();
                             refreshAfterSave();
-                            Notify.success('保存成功', `文件已保存为 "${currentFile}"`);
+                            Notify.success('已保存', currentFile);
                             if (cb) cb();
                         });
                     };
@@ -11504,12 +11554,13 @@
                         area.value = draft.content;
                         hist = [content, draft.content]; histI = 1;   // 按一次「撤销」即可回到文件原内容
                         updateHistBtns();
-                        setStatus('已恢复 ' + npFmtTime(draft.time) + ' 的未保存草稿', 'dirty');
+                        setStatus('未保存', '已恢复 ' + npFmtHM(draft.time) + ' 的草稿', 'dirty', '已恢复 ' + npFmtTime(draft.time) + ' 暂存的修改。\n按 Ctrl+S 保存到文件，或点撤销回到文件原内容。');
                         setTitle();
-                        Notify.info('已恢复未保存的内容', `找到 "${currentFile}" 上次(${npFmtTime(draft.time)})未保存的草稿并已恢复；点「保存」写入文件，或按「撤销」回到文件原内容`);
+                        Notify.info('已恢复未保存的草稿', `“${currentFile}”有 ${npFmtHM(draft.time)} 暂存的修改尚未保存。按 Ctrl+S 保存，或点撤销回到文件原内容。`);
                     } else {
                         if (draft) npClearDraft(draftKey);
-                        setStatus(content ? '与文件一致' : '草稿会自动暂存，刷新也不会丢', content ? 'saved' : '');
+                        if (content) setStatus('已保存', '', 'saved');
+                        else setStatus('新文件', '', '', '输入的内容会自动暂存在本机，刷新页面不会丢失');
                     }
                     updateHistBtns();
                     setTimeout(() => { try { area.focus({ preventScroll: true }); } catch (e) {} }, 50);
@@ -13883,7 +13934,7 @@
         // 布局：左侧固定分类与搜索，右侧一次只显示一个分类；内容区宽度 ≤600px 时侧栏
         // 自动变为顶部横向标签（CSS 容器查询）。所有交互通过 window id 定位，支持多窗口并存，
         // 但 openSettings() 默认复用已打开的设置窗口。
-        const STX_VERSION = '10.5.7';
+        const STX_VERSION = '10.5.8';
         const STX_PAGES = [
             { k: 'personal', n: '个性化', d: '壁纸与桌面交互方式', ic: 'stxPalette' },
             { k: 'storage', n: '存储', d: '空间占用、存储位置与工作区复制', ic: 'stxHardDrive' },
@@ -14767,7 +14818,7 @@
             return `<div class="stx-page">${stxHead('about')}
                 <div class="stx-card" data-stx-row="version"><div class="stx-about">
                     <div class="stx-logo lg"><span>JS</span></div>
-                    <div><b>JISHENG OS</b><small>Ultimate Web Operating System</small><small>版本 ${STX_VERSION} · Build 2026</small></div>
+                    <div><b>JISHENG OS</b><small>终极网页操作系统</small><small>版本 ${STX_VERSION} · 构建 2026</small></div>
                     ${stxBtn('GitHub 仓库', "window.open('https://github.com/SFGFDSD/JISHENGOS','_blank','noopener')", { cls: 'sm', ic: 'stxExternalLink' })}
                 </div></div>
                 ${stxGroup('浏览器能力', '决定哪些功能可用', `<div class="stx-card" data-stx-row="caps"><div class="stx-caps">${caps}</div></div>`,
