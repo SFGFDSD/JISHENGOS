@@ -799,132 +799,272 @@
         .wp-thumb:hover { transform: scale(1.03); box-shadow: 0 8px 24px rgba(0,0,0,0.4); }
         .wp-thumb.active { border-color: var(--accent-blue); }
 
-        /* === 设置窗口内容 === */
-        .settings-content {
-            padding: 28px;
-            color: var(--text-main);
-        }
-        .settings-section {
-            background: rgba(255,255,255,0.04);
-            border-radius: 10px;
-            padding: 20px;
-            margin-bottom: 16px;
-        }
-        .settings-section h4 {
-            font-size: 11px; font-weight: 600; color: var(--text-muted);
-            text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 16px;
-        }
-        .settings-item {
-            display: flex; justify-content: space-between; align-items: center;
-            padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.06);
-        }
-        .settings-item:last-child { border: none; }
-        .settings-item label { font-size: 13px; color: var(--text-main); }
-        .settings-item span { font-size: 12px; color: var(--text-muted); }
-        .settings-item--stacked { gap: 16px; }
-        .settings-item-copy { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
-        .settings-hint, .settings-item .settings-hint { color: var(--text-muted); font-size: 11px; line-height: 1.5; }
-        .settings-select {
-            min-width: 132px; padding: 8px 10px; border: 1px solid rgba(255,255,255,0.14);
-            border-radius: 7px; background: rgba(12,12,18,0.9); color: var(--text-main);
-            font: inherit; font-size: 12px; cursor: pointer;
-        }
-        .settings-select:focus { border-color: var(--accent-blue); }
-        .settings-toggle-list { margin-top: 8px; }
-        .settings-toggle-row {
-            display: flex; align-items: center; justify-content: space-between; gap: 14px;
-            padding: 11px 2px; border-bottom: 1px solid rgba(255,255,255,0.06);
-            color: var(--text-main); cursor: pointer;
-        }
-        .settings-toggle-row:last-child { border-bottom: 0; }
-        .settings-toggle-app { display: flex; align-items: center; gap: 10px; font-size: 13px; }
-        .settings-toggle-app .icon-svg { width: 18px; height: 18px; color: var(--text-muted); }
-        .settings-toggle-control { display: flex; align-items: center; gap: 9px; color: var(--text-muted); font-size: 11px; }
-        .settings-toggle-control input { width: 16px; height: 16px; accent-color: var(--accent-blue); cursor: pointer; }
-        .settings-note { margin-top: 10px; color: var(--text-muted); font-size: 11px; line-height: 1.55; }
+        /* === 系统设置（侧栏导航版，v10.6）===
+           所有规则以 .stx 作用域隔离，避免与文件管理器等窗口的通用类名冲突。
+           .stx-scroll 是 inline-size 容器：按“内容区宽度”而不是视口宽度自适应，
+           因此窗口拖窄 / 最大化 / 手机全屏都能得到合适的布局。 */
         .system-app-hidden { display: none !important; }
+        .stx {
+            --line: rgba(255,255,255,.075); --card: rgba(255,255,255,.035); --ink: #f2f3f7; --muted: #9a9bab;
+            --acc: var(--accent-blue); --cyan: var(--accent-cyan); --ok: #19c37d; --warn: #f5a524; --danger: #ff6b78;
+            container-type: inline-size; color: var(--ink); font-size: 13px; line-height: 1.45; min-height: 0;
+        }
+        .stx .icon-svg { width: 18px; height: 18px; flex: none; }
+        .stx-shell { flex: 1; min-height: 0; display: grid; grid-template-columns: 216px minmax(0,1fr); }
+        .stx-nav { min-height: 0; overflow-y: auto; border-right: 1px solid var(--line); padding: 14px 10px; display: flex; flex-direction: column; gap: 3px; background: rgba(0,0,0,.16); scrollbar-width: thin; }
+        .stx-me { display: flex; gap: 10px; align-items: center; padding: 6px 8px 14px; min-width: 0; }
+        .stx-me b { display: block; font-size: 13px; font-weight: 600; white-space: nowrap; }
+        .stx-me small { display: block; font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .stx-logo { width: 38px; height: 38px; border-radius: 10px; flex: none; display: grid; place-items: center; font: 900 14px "Arial Black", Inter, sans-serif; background: linear-gradient(135deg,#0a0a0f,#181c24); border: 1px solid var(--line); }
+        .stx-logo span { background: linear-gradient(90deg,#0078d4,#00d4ff); -webkit-background-clip: text; background-clip: text; color: transparent; }
+        .stx-logo.lg { width: 60px; height: 60px; border-radius: 15px; font-size: 22px; }
+        .stx-search { position: relative; margin: 0 2px 10px; flex: none; }
+        .stx-search input { width: 100%; height: 34px; border-radius: 8px; border: 1px solid var(--line); background: rgba(0,0,0,.3); color: var(--ink); padding: 0 28px 0 32px; font: inherit; font-size: 12.5px; }
+        .stx-search input::placeholder { color: var(--muted); }
+        .stx-search input:focus { border-color: var(--acc); }
+        .stx-search input::-webkit-search-cancel-button { display: none; }
+        .stx-search > .icon-svg { position: absolute; left: 10px; top: 9.5px; width: 15px; height: 15px; color: var(--muted); pointer-events: none; }
+        .stx-search-x { position: absolute; right: 5px; top: 6px; width: 22px; height: 22px; border: 0; border-radius: 6px; background: transparent; color: var(--muted); cursor: pointer; display: none; place-items: center; }
+        .stx-search-x .icon-svg { width: 13px; height: 13px; }
+        .stx-search-x:hover { background: rgba(255,255,255,.08); color: var(--ink); }
+        .stx-search.has-q .stx-search-x { display: grid; }
+        .stx-navi { display: flex; align-items: center; gap: 11px; width: 100%; padding: 8px 10px; border: 0; border-radius: 8px; background: transparent; color: #cfd0da; font: inherit; font-size: 13px; text-align: left; cursor: pointer; position: relative; user-select: none; flex: none; }
+        .stx-navi:hover { background: rgba(255,255,255,.05); }
+        .stx-navi.on { background: rgba(255,255,255,.085); color: #fff; }
+        .stx-navi.on::before { content: ""; position: absolute; left: 0; top: 9px; bottom: 9px; width: 3px; border-radius: 2px; background: var(--acc); }
+        .stx-navi em { margin-left: auto; font-style: normal; font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
+        .stx-navi em.warn { color: var(--warn); }
+        .stx-main { min-height: 0; display: flex; flex-direction: column; }
+        .stx-scroll { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; container-type: inline-size; scrollbar-gutter: stable; }
+        .stx-scroll::-webkit-scrollbar, .stx-nav::-webkit-scrollbar { width: 8px; height: 6px; }
+        .stx-scroll::-webkit-scrollbar-thumb, .stx-nav::-webkit-scrollbar-thumb { background: rgba(255,255,255,.12); border-radius: 8px; border: 2px solid transparent; background-clip: padding-box; }
 
-        /* === 存储设置：实际浏览器配额与文件分类 === */
-        .storage-overview { display: grid; grid-template-columns: 1fr auto; gap: 14px; align-items: end; padding: 14px; border: 1px solid rgba(0, 120, 212, 0.2); border-radius: 9px; background: linear-gradient(135deg, rgba(0, 120, 212, 0.12), rgba(0, 212, 255, 0.035)); }
-        .storage-overview-label { display: block; color: var(--text-muted); font-size: 11px; margin-bottom: 5px; }
-        .storage-overview-value { color: var(--text-main); font-size: 18px; font-weight: 650; font-variant-numeric: tabular-nums; }
-        .storage-overview-subvalue { color: var(--text-muted); font-size: 11px; margin-top: 4px; }
-        .storage-overview-percent { color: var(--accent-cyan); font-size: 22px; font-weight: 650; font-variant-numeric: tabular-nums; text-align: right; }
-        .storage-overview-percent small { display: block; color: var(--text-muted); font-size: 10px; font-weight: 400; margin-top: 2px; }
-        .storage-meter { width: 100%; height: 8px; margin-top: 12px; overflow: hidden; border-radius: 999px; background: rgba(255,255,255,0.09); border: 1px solid rgba(255,255,255,0.05); }
-        .storage-meter-fill { height: 100%; min-width: 0; max-width: 100%; border-radius: inherit; background: linear-gradient(90deg, #087ed7, #00d4ff); box-shadow: 0 0 12px rgba(0,212,255,0.35); transition: width .28s ease; }
-        .storage-breakdown { margin-top: 10px; }
-        .storage-breakdown-row { display: grid; grid-template-columns: 9px minmax(0, 1fr) auto; gap: 9px; align-items: center; padding: 7px 1px; border-bottom: 1px solid rgba(255,255,255,0.055); font-size: 12px; }
-        .storage-breakdown-row:last-child { border-bottom: 0; }
-        .storage-breakdown-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--storage-color, var(--accent-blue)); box-shadow: 0 0 7px color-mix(in srgb, var(--storage-color, var(--accent-blue)) 50%, transparent); }
-        .storage-breakdown-label { color: var(--text-main); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .storage-breakdown-value { color: var(--text-muted); font-size: 11px; font-variant-numeric: tabular-nums; white-space: nowrap; }
-        .storage-breakdown-hint { grid-column: 2 / 4; color: var(--text-muted); font-size: 10px; line-height: 1.4; margin-top: -4px; }
-        .storage-loading { padding: 14px 1px; color: var(--text-muted); font-size: 12px; }
-        .settings-action-btn { padding: 7px 10px; border: 1px solid rgba(255,255,255,0.14); border-radius: 7px; background: rgba(255,255,255,0.06); color: var(--text-main); font: inherit; font-size: 12px; cursor: pointer; white-space: nowrap; }
-        .settings-action-btn:hover { background: rgba(255,255,255,0.12); }
-        .settings-action-btn:disabled { opacity: .45; cursor: not-allowed; }
-        .settings-action-btn:disabled:hover { background: rgba(255,255,255,0.06); }
-        .settings-action-btn.danger { color: #ff9aa6; border-color: rgba(232,17,35,0.35); }
-        .settings-action-btn.danger:hover { background: rgba(232,17,35,0.14); }
-        .settings-file-manager-path { color: var(--accent-cyan) !important; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
-        /* 一次性缓存清理：结果区独占整行，按钮和结果统一使用系统玻璃风格 */
-        .settings-item--cleanup { display: flex; flex-direction: column; align-items: stretch; gap: 12px; width: 100%; min-width: 0; }
-        .settings-item--cleanup > .settings-item-copy { width: 100%; }
-        .cleanup-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; width: 100%; margin-top: 0; }
-        .cleanup-actions .settings-action-btn { min-height: 38px; padding: 8px 13px; border-radius: 9px; font-size: 12px; transition: background .16s ease, border-color .16s ease, transform .16s ease, box-shadow .16s ease; }
-        .cleanup-actions .settings-action-btn:not(:disabled):active { transform: translateY(1px); }
-        .cleanup-actions .settings-action-btn:focus-visible, .cleanup-group-select input:focus-visible, .cleanup-item input:focus-visible { outline: 2px solid var(--accent-cyan); outline-offset: 2px; }
-        .cleanup-results { box-sizing: border-box; width: 100%; max-height: 440px; overflow: auto; margin-top: 0; padding: 12px; border: 1px solid rgba(255,255,255,.09); border-radius: 12px; background: rgba(5,10,18,.28); scrollbar-gutter: stable; }
-        .cleanup-empty, .cleanup-loading { padding: 14px 4px; color: var(--text-muted); font-size: 12px; line-height: 1.6; }
-        .cleanup-group { margin: 0 0 14px; padding: 10px; border: 1px solid rgba(255,255,255,.075); border-radius: 10px; background: rgba(255,255,255,.025); }
-        .cleanup-group:last-of-type { margin-bottom: 0; }
-        .cleanup-group-select { display: flex; align-items: center; gap: 9px; min-height: 34px; color: var(--text-main); cursor: pointer; }
-        .cleanup-group-select input { width: 17px; height: 17px; flex: 0 0 auto; margin: 0; accent-color: var(--accent-blue); cursor: pointer; }
-        .cleanup-group-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; min-width: 0; width: 100%; }
-        .cleanup-group-title { color: var(--text-main); font-size: 12px; font-weight: 600; line-height: 1.4; }
-        .cleanup-group-meta { color: var(--text-muted); font-size: 11px; font-weight: 400; text-align: right; white-space: nowrap; }
-        .cleanup-group-action { flex: 0 0 auto; color: var(--accent-cyan); font-size: 10px; white-space: nowrap; }
-        .cleanup-item { display: grid; grid-template-columns: 18px minmax(0, 1fr) auto; column-gap: 10px; align-items: center; padding: 10px; border: 1px solid transparent; border-radius: 8px; background: rgba(255,255,255,.035); margin-top: 6px; font-size: 12px; cursor: pointer; transition: background .14s ease, border-color .14s ease; }
-        .cleanup-item:hover { background: rgba(255,255,255,.07); border-color: rgba(255,255,255,.08); }
-        .cleanup-item input { width: 17px; height: 17px; margin: 0; accent-color: var(--accent-blue); cursor: pointer; }
-        .cleanup-item-copy { min-width: 0; display: flex; flex-direction: column; gap: 4px; }
-        .cleanup-item-path { color: var(--text-main); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; overflow-wrap: anywhere; word-break: break-word; line-height: 1.45; }
-        .cleanup-item-reason { color: var(--text-muted); line-height: 1.45; overflow-wrap: anywhere; }
-        .cleanup-item-size { color: var(--text-muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
-        .cleanup-summary { margin-top: 12px; padding: 10px 11px; border-radius: 8px; background: rgba(0,120,212,.1); color: var(--text-main); font-size: 12px; line-height: 1.5; }
-        @media (max-width: 560px) {
-            .settings-item--cleanup { gap: 10px; }
-            .cleanup-results { max-height: 52vh; padding: 9px; }
-            .cleanup-group { padding: 8px; }
-            .cleanup-group-heading { align-items: flex-start; flex-direction: column; gap: 2px; }
-            .cleanup-group-meta { text-align: left; white-space: normal; }
-            .cleanup-item { grid-template-columns: 18px minmax(0, 1fr); column-gap: 8px; padding: 9px 7px; }
-            .cleanup-item-size { grid-column: 2; justify-self: start; font-size: 11px; }
-            .cleanup-actions .settings-action-btn { flex: 1 1 auto; }
+        /* 内容区宽度 ≤ 600px（整个窗口变窄 / 手机）：侧栏折叠为顶部横向标签 */
+        @container (max-width: 600px) {
+            .stx-shell { grid-template-columns: 1fr; grid-template-rows: auto minmax(0,1fr); }
+            .stx-nav { flex-direction: row; align-items: center; border-right: 0; border-bottom: 1px solid var(--line); padding: 8px 10px; overflow-x: auto; overflow-y: hidden; gap: 4px; scrollbar-width: none; }
+            .stx-nav::-webkit-scrollbar { display: none; }
+            .stx-me { display: none; }
+            .stx-search { margin: 0 4px 0 0; flex: 0 0 150px; }
+            .stx-navi { width: auto; padding: 7px 11px; white-space: nowrap; }
+            .stx-navi em { display: none; }
+            .stx-navi.on::before { left: 10px; right: 10px; top: auto; bottom: 0; width: auto; height: 2px; }
         }
-        .reset-scope-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 10px; }
-        .reset-scope-grid .settings-action-btn { width: 100%; min-height: 38px; white-space: normal; line-height: 1.35; }
-        @media (max-width: 420px) { .storage-overview { grid-template-columns: 1fr; } .storage-overview-percent { text-align: left; } .reset-scope-grid { grid-template-columns: 1fr; } }
 
-        .about-card {
-            background: linear-gradient(135deg, rgba(0, 120, 212, 0.15), rgba(0, 212, 255, 0.08));
-            border: 1px solid rgba(0, 120, 212, 0.2);
-            border-radius: 12px;
-            padding: 24px;
-            text-align: center;
+        /* 通用控件 */
+        .stx-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 32px; padding: 0 13px; border-radius: 8px; border: 1px solid rgba(255,255,255,.12); background: rgba(255,255,255,.06); color: var(--ink); font: inherit; font-size: 12.5px; cursor: pointer; white-space: nowrap; transition: background .15s, border-color .15s, transform .1s; }
+        .stx-btn:hover { background: rgba(255,255,255,.11); }
+        .stx-btn:active { transform: translateY(1px); }
+        .stx-btn:disabled { opacity: .42; cursor: not-allowed; transform: none; }
+        .stx-btn:disabled:hover { background: rgba(255,255,255,.06); }
+        .stx-btn .icon-svg { width: 15px; height: 15px; }
+        .stx-btn.primary { background: var(--acc); border-color: transparent; color: #fff; }
+        .stx-btn.primary:hover:not(:disabled) { filter: brightness(1.12); background: var(--acc); }
+        .stx-btn.danger { color: var(--danger); border-color: rgba(255,107,120,.35); background: rgba(255,107,120,.06); }
+        .stx-btn.danger:hover:not(:disabled) { background: rgba(255,107,120,.14); }
+        .stx-btn.ghost { background: transparent; border-color: transparent; color: var(--muted); }
+        .stx-btn.ghost:hover:not(:disabled) { color: var(--ink); background: rgba(255,255,255,.06); }
+        .stx-btn.sm { min-height: 28px; padding: 0 10px; font-size: 12px; }
+        .stx-btn.busy .icon-svg { animation: spin .8s linear infinite; }
+        .stx-btns { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; align-items: center; }
+        .stx :where(.stx-btn, .stx-sw, .stx-seg button, .stx-navi, .stx-rcard, .stx-cb, .stx-tile, .stx-file, .stx-wp-preset):focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
+        .stx-sw { position: relative; width: 40px; height: 22px; flex: none; border-radius: 99px; border: 0; background: rgba(255,255,255,.18); cursor: pointer; transition: background .18s; padding: 0; }
+        .stx-sw::after { content: ""; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.4); transition: transform .2s cubic-bezier(.3,1.4,.5,1); }
+        .stx-sw[aria-checked="true"] { background: var(--acc); }
+        .stx-sw[aria-checked="true"]::after { transform: translateX(18px); }
+        .stx-sw:disabled { opacity: .45; cursor: not-allowed; }
+        .stx-seg { display: inline-flex; padding: 3px; gap: 2px; border-radius: 9px; background: rgba(0,0,0,.28); border: 1px solid var(--line); }
+        .stx-seg button { border: 0; background: transparent; color: var(--muted); padding: 5px 12px; border-radius: 6px; font: inherit; font-size: 12.5px; cursor: pointer; white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; }
+        .stx-seg button .icon-svg { width: 14px; height: 14px; }
+        .stx-seg button.on { background: rgba(255,255,255,.12); color: var(--ink); box-shadow: 0 1px 2px rgba(0,0,0,.3); }
+        .stx-pill { display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; padding: 2px 9px; border-radius: 99px; background: rgba(255,255,255,.07); color: var(--muted); white-space: nowrap; }
+        .stx-pill .icon-svg { width: 12px; height: 12px; }
+        .stx-pill.ok { background: rgba(25,195,125,.13); color: #5ee0a6; }
+        .stx-pill.warn { background: rgba(245,165,36,.13); color: #f5c26b; }
+        .stx-pill.bad { background: rgba(255,107,120,.12); color: #ff9aa6; }
+        .stx-mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; }
+        .stx-muted { color: var(--muted); }
+        .stx-cb { appearance: none; -webkit-appearance: none; width: 17px; height: 17px; border-radius: 5px; border: 1.5px solid rgba(255,255,255,.3); display: grid; place-items: center; cursor: pointer; margin: 0; background: transparent; flex: none; }
+        .stx-cb:checked, .stx-cb:indeterminate { background: var(--acc); border-color: var(--acc); }
+        .stx-cb:checked::after { content: ""; width: 9px; height: 5px; border: 2px solid #fff; border-top: 0; border-right: 0; transform: rotate(-45deg) translate(1px,-1px); }
+        .stx-cb:indeterminate::after { content: ""; width: 8px; height: 2px; background: #fff; border-radius: 1px; }
+        .stx-cb:disabled { opacity: .35; cursor: not-allowed; }
+
+        /* 页面与分组（inset grouped list）——内容限制在舒适阅读宽度，拉宽窗口不会被拉散 */
+        .stx-page { width: 100%; max-width: 800px; margin: 0 auto; padding: 22px 24px 40px; display: flex; flex-direction: column; gap: 22px; }
+        .stx-page.wide { max-width: 1080px; }
+        .stx-ph { display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap; }
+        .stx-ph h2 { font-size: 21px; font-weight: 650; letter-spacing: -.015em; }
+        .stx-ph p { color: var(--muted); font-size: 12.5px; margin-top: 3px; }
+        .stx-ph > div:first-child { min-width: 0; flex: 1 1 260px; }
+        .stx-grp { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+        .stx-grp-h { display: flex; align-items: center; gap: 8px; padding: 0 4px; min-height: 28px; flex-wrap: wrap; }
+        .stx-grp-h h3 { font-size: 12px; font-weight: 600; color: #c9c9d6; letter-spacing: .02em; }
+        .stx-grp-h > span { font-size: 11.5px; color: var(--muted); }
+        .stx-grp-h .sp, .stx-ph .sp { flex: 1; }
+        .stx-card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; min-width: 0; }
+        .stx-card.pad { padding: 16px; }
+        .stx-row { display: grid; grid-template-columns: 34px minmax(0,1fr) auto; align-items: center; column-gap: 14px; row-gap: 10px; padding: 13px 16px; min-height: 58px; position: relative; }
+        .stx-row + .stx-row { border-top: 1px solid var(--line); }
+        .stx-row.noicon { grid-template-columns: minmax(0,1fr) auto; }
+        .stx-row.click { cursor: pointer; }
+        .stx-row.click:hover { background: rgba(255,255,255,.03); }
+        .stx-row-ic { width: 34px; height: 34px; border-radius: 9px; display: grid; place-items: center; background: rgba(255,255,255,.06); color: #cfd3dc; }
+        .stx-row-tx { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+        .stx-row-tx b { font-weight: 500; font-size: 13.5px; color: var(--ink); overflow-wrap: anywhere; }
+        .stx-row-tx small { font-size: 12px; color: var(--muted); line-height: 1.5; overflow-wrap: anywhere; }
+        .stx-row-ct { justify-self: end; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; min-width: 0; }
+        .stx-row-ct > .icon-svg { color: var(--muted); width: 16px; height: 16px; }
+        .stx-row.dis .stx-row-tx, .stx-row.dis .stx-row-ic { opacity: .55; }
+        .stx-row.flash { animation: stxFlash 1.8s ease; }
+        @keyframes stxFlash { 0%, 35% { background: rgba(0,212,255,.16); } 100% { background: transparent; } }
+        .stx-note { font-size: 11.5px; color: var(--muted); padding: 0 4px; line-height: 1.6; }
+        .stx-note .icon-svg { width: 13px; height: 13px; margin-right: 3px; vertical-align: -2px; }
+        .stx-empty { padding: 22px 16px; text-align: center; color: var(--muted); font-size: 12.5px; line-height: 1.6; }
+        .stx-empty .icon-svg { width: 26px; height: 26px; display: block; margin: 0 auto 8px; opacity: .6; }
+        .stx-danger { border-color: rgba(255,107,120,.28); background: rgba(255,107,120,.035); }
+        .stx-danger .stx-row-ic { background: rgba(255,107,120,.12); color: var(--danger); }
+        /* 窄内容区：控件换到第二行（避免“按钮挤压文字 / 文字凸出”） */
+        @container (max-width: 420px) {
+            .stx-row { grid-template-columns: 34px minmax(0,1fr); }
+            .stx-row.noicon { grid-template-columns: minmax(0,1fr); }
+            .stx-row-ct { grid-column: 2; justify-self: start; justify-content: flex-start; }
+            .stx-row.noicon .stx-row-ct { grid-column: 1; }
+            .stx-row.keep { grid-template-columns: 34px minmax(0,1fr) auto; }
+            .stx-row.keep .stx-row-ct { grid-column: auto; justify-self: end; }
+            .stx-page { padding: 18px 14px 36px; }
         }
-        .about-card .logo { 
-            font-size: 48px; 
-            font-weight: 700; 
-            margin-bottom: 16px; 
-            letter-spacing: -2px;
-            background: linear-gradient(135deg, #0078d4, #00d4ff); 
-            -webkit-background-clip: text; 
-            -webkit-text-fill-color: transparent;
-        }
-        .about-card h3 { font-size: 18px; font-weight: 700; margin-bottom: 8px; }
-        .about-card p { font-size: 12px; color: var(--text-muted); line-height: 1.6; }
+
+        /* 存储 */
+        .stx-hero { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 6px 18px; align-items: end; }
+        .stx-big { font-size: 26px; font-weight: 650; letter-spacing: -.02em; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+        .stx-big span { font-size: 15px; color: var(--muted); font-weight: 400; }
+        .stx-sub { font-size: 12px; color: var(--muted); }
+        .stx-pct { text-align: right; font-size: 22px; font-weight: 650; color: var(--cyan); font-variant-numeric: tabular-nums; }
+        .stx-pct small { display: block; font-size: 11px; color: var(--muted); font-weight: 400; }
+        .stx-meter { height: 6px; border-radius: 3px; background: rgba(255,255,255,.08); overflow: hidden; margin-top: 12px; }
+        .stx-meter i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg,#087ed7,#00d4ff); }
+        .stx-meter.warn i { background: linear-gradient(90deg,#f59e0b,#ef4444); }
+        .stx-stack-label { display: flex; justify-content: space-between; gap: 8px; font-size: 11.5px; color: var(--muted); margin-top: 16px; }
+        .stx-stack { display: flex; height: 14px; border-radius: 7px; overflow: hidden; background: rgba(255,255,255,.07); margin-top: 6px; gap: 2px; }
+        .stx-stack i { display: block; height: 100%; min-width: 3px; transition: opacity .15s, filter .15s; }
+        .stx-stack:hover i { opacity: .55; } .stx-stack i:hover { opacity: 1; filter: brightness(1.2); }
+        .stx-legend { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px,1fr)); gap: 4px 18px; margin-top: 12px; }
+        .stx-lg { display: grid; grid-template-columns: 10px minmax(0,1fr) auto; gap: 2px 8px; align-items: center; font-size: 12.5px; padding: 3px 0; }
+        .stx-lg i { width: 10px; height: 10px; border-radius: 3px; }
+        .stx-lg span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .stx-lg em { font-style: normal; color: var(--muted); font-variant-numeric: tabular-nums; font-size: 12px; white-space: nowrap; }
+        .stx-lg small { grid-column: 2 / 4; color: var(--muted); font-size: 11px; margin-top: -2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .stx-vgrid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 18px; align-items: start; }
+        @container (max-width: 720px) { .stx-vgrid { grid-template-columns: 1fr; } }
+        .stx-bars { display: flex; flex-direction: column; gap: 11px; }
+        .stx-bar { display: grid; grid-template-columns: 28px minmax(0,1fr) auto; gap: 4px 10px; align-items: center; }
+        .stx-bar .ic, .stx-file .ic { width: 28px; height: 28px; border-radius: 8px; display: grid; place-items: center; }
+        .stx-bar .ic .icon-svg, .stx-file .ic .icon-svg { width: 15px; height: 15px; }
+        .stx-bar .nm { font-size: 12.5px; display: flex; justify-content: space-between; gap: 8px; min-width: 0; }
+        .stx-bar .nm span:last-child { color: var(--muted); font-size: 11.5px; white-space: nowrap; }
+        .stx-bar .sz { font-size: 12.5px; font-variant-numeric: tabular-nums; text-align: right; min-width: 62px; }
+        .stx-bar .tr { grid-column: 2 / 4; height: 6px; border-radius: 3px; background: rgba(255,255,255,.07); overflow: hidden; margin-top: -2px; }
+        .stx-bar .tr i { display: block; height: 100%; border-radius: 3px; min-width: 2px; }
+        .stx-files { display: flex; flex-direction: column; }
+        .stx-file { display: grid; grid-template-columns: 28px minmax(0,1fr) auto; gap: 10px; align-items: center; padding: 8px 6px; border-radius: 8px; border: 0; background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; width: 100%; }
+        .stx-file:hover { background: rgba(255,255,255,.045); }
+        .stx-file + .stx-file { box-shadow: 0 -1px 0 var(--line); }
+        .stx-file .nm { min-width: 0; }
+        .stx-file .nm b { display: block; font-weight: 500; font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .stx-file .nm small { display: block; color: var(--muted); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .stx-file .sz { font-size: 12.5px; font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+        .stx-tm { position: relative; width: 100%; aspect-ratio: 16 / 7; min-height: 160px; max-height: 380px; border-radius: 10px; overflow: hidden; background: rgba(0,0,0,.25); }
+        .stx-tile { position: absolute; display: flex; flex-direction: column; justify-content: flex-start; align-items: stretch; padding: 6px 8px; border: 2px solid rgba(20,20,28,.95); border-radius: 8px; overflow: hidden; font-size: 11.5px; line-height: 1.35; color: rgba(255,255,255,.96); transition: filter .15s; cursor: default; text-align: left; font-family: inherit; }
+        button.stx-tile { cursor: pointer; }
+        .stx-tile:hover { filter: brightness(1.18); }
+        .stx-tile b { display: block; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .stx-tile span { display: block; opacity: .82; font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .stx-tile.xs b, .stx-tile.xs span { display: none; }
+        .stx-tm-legend { display: flex; gap: 6px 14px; flex-wrap: wrap; margin-top: 10px; font-size: 11.5px; color: var(--muted); }
+        .stx-tm-legend span { display: inline-flex; align-items: center; gap: 6px; }
+        .stx-tm-legend i { width: 9px; height: 9px; border-radius: 3px; }
+        .stx-skel { height: 12px; border-radius: 6px; background: linear-gradient(90deg, rgba(255,255,255,.05), rgba(255,255,255,.11), rgba(255,255,255,.05)); background-size: 200% 100%; animation: stxSkel 1.2s ease-in-out infinite; }
+        @keyframes stxSkel { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+        .stx-rcards { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px,1fr)); gap: 10px; }
+        .stx-rcard { text-align: left; display: flex; gap: 11px; padding: 13px; border-radius: 11px; border: 1px solid var(--line); background: rgba(255,255,255,.03); cursor: pointer; color: var(--ink); font: inherit; }
+        .stx-rcard:hover:not(:disabled) { background: rgba(255,255,255,.055); }
+        .stx-rcard.on { border-color: var(--acc); background: color-mix(in srgb, var(--acc) 12%, transparent); }
+        .stx-rcard:disabled { opacity: .45; cursor: not-allowed; }
+        .stx-rcard .dot { width: 16px; height: 16px; border-radius: 50%; border: 1.5px solid rgba(255,255,255,.35); flex: none; margin-top: 2px; display: grid; place-items: center; }
+        .stx-rcard.on .dot { border-color: var(--acc); }
+        .stx-rcard.on .dot::after { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--acc); }
+        .stx-rcard b { display: block; font-weight: 550; font-size: 13px; }
+        .stx-rcard small { display: block; color: var(--muted); font-size: 11.5px; line-height: 1.5; margin-top: 2px; }
+        .stx-mig { display: grid; grid-template-columns: minmax(0,1fr) auto minmax(0,1fr); gap: 12px; align-items: center; }
+        .stx-mig .end { padding: 12px; border-radius: 10px; background: rgba(255,255,255,.035); border: 1px solid var(--line); min-width: 0; }
+        .stx-mig .end small { color: var(--muted); font-size: 11px; display: block; }
+        .stx-mig .end b { font-weight: 600; font-size: 13.5px; }
+        .stx-mig .end .stx-mono { display: block; color: var(--muted); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .stx-mig > .icon-svg { color: var(--muted); }
+        .stx-mig-foot { display: flex; align-items: center; gap: 12px; margin-top: 14px; flex-wrap: wrap; }
+        .stx-mig-foot small { flex: 1 1 220px; color: var(--muted); font-size: 11.5px; line-height: 1.55; }
+        @container (max-width: 470px) { .stx-hero { grid-template-columns: 1fr; } .stx-pct { text-align: left; } .stx-mig { grid-template-columns: 1fr; } .stx-mig > .icon-svg { transform: rotate(90deg); justify-self: center; } }
+
+        /* 清理流程 */
+        .stx-steps { display: flex; gap: 6px; align-items: center; font-size: 12px; color: var(--muted); flex-wrap: wrap; }
+        .stx-steps span { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+        .stx-steps span i { width: 18px; height: 18px; border-radius: 50%; display: grid; place-items: center; font-style: normal; font-size: 10.5px; background: rgba(255,255,255,.08); }
+        .stx-steps span.on { color: var(--ink); } .stx-steps span.on i { background: var(--acc); color: #fff; }
+        .stx-steps span.done i { background: var(--ok); color: #fff; }
+        .stx-steps .ln { width: 18px; height: 1px; background: var(--line); }
+        .stx-clean-head { display: flex; align-items: center; gap: 12px; padding: 14px 16px; flex-wrap: wrap; }
+        .stx-clean-head .sp { flex: 1; }
+        .stx-scan { display: flex; flex-direction: column; gap: 10px; padding: 16px; border-top: 1px solid var(--line); }
+        .stx-scan .stx-mono { color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .stx-indet { height: 6px; border-radius: 3px; background: rgba(255,255,255,.08); overflow: hidden; position: relative; }
+        .stx-indet i { position: absolute; top: 0; bottom: 0; width: 35%; border-radius: 3px; background: linear-gradient(90deg, var(--acc), var(--cyan)); animation: stxIndet 1.1s ease-in-out infinite; }
+        @keyframes stxIndet { from { left: -35%; } to { left: 100%; } }
+        .stx-cg { border-top: 1px solid var(--line); }
+        .stx-cg-h { display: grid; grid-template-columns: 20px minmax(0,1fr) auto 16px; gap: 10px; align-items: center; padding: 11px 16px; cursor: pointer; user-select: none; }
+        .stx-cg-h:hover { background: rgba(255,255,255,.025); }
+        .stx-cg-h b { font-weight: 550; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .stx-cg-h small { color: var(--muted); font-size: 11.5px; white-space: nowrap; }
+        .stx-cg-h > .icon-svg { width: 15px; height: 15px; color: var(--muted); transition: transform .15s; }
+        .stx-cg.open .stx-cg-h > .icon-svg { transform: rotate(90deg); }
+        .stx-cg-items { display: none; padding: 0 12px 10px 42px; }
+        .stx-cg.open .stx-cg-items { display: block; }
+        .stx-ci { display: grid; grid-template-columns: 20px minmax(0,1fr) auto; gap: 10px; align-items: center; padding: 8px; border-radius: 8px; cursor: pointer; }
+        .stx-ci:hover { background: rgba(255,255,255,.04); }
+        .stx-ci b { display: block; font-weight: 400; font-size: 12px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; overflow-wrap: anywhere; }
+        .stx-ci small { display: block; color: var(--muted); font-size: 11px; overflow-wrap: anywhere; }
+        .stx-ci em { font-style: normal; color: var(--muted); font-size: 11.5px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+        .stx-actionbar { position: sticky; bottom: 0; display: flex; align-items: center; gap: 8px 10px; flex-wrap: wrap; padding: 12px 16px; border-top: 1px solid var(--line); background: rgba(30,30,40,.97); border-radius: 0 0 12px 12px; z-index: 1; }
+        .stx-actionbar .sp { flex: 1; }
+        .stx-actionbar > span { font-size: 12.5px; }
+        @container (max-width: 470px) { .stx-cg-items { padding-left: 14px; } .stx-ci { grid-template-columns: 20px minmax(0,1fr); } .stx-ci em { grid-column: 2; } .stx-cg-h { grid-template-columns: 20px minmax(0,1fr) 16px; } .stx-cg-h small { grid-column: 2; grid-row: 2; } .stx-cg-h > .icon-svg { grid-column: 3; grid-row: 1; } }
+
+        /* 个性化 */
+        .stx-wp { display: grid; grid-template-columns: minmax(130px,190px) minmax(0,1fr); gap: 16px; align-items: center; padding: 16px; }
+        .stx-wp-thumb { aspect-ratio: 16 / 10; border-radius: 9px; border: 1px solid var(--line); background: #0b1222 center / cover no-repeat; position: relative; overflow: hidden; }
+        .stx-wp-thumb::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 12%; background: rgba(10,10,15,.8); }
+        .stx-wp-copy { min-width: 0; display: flex; flex-direction: column; gap: 10px; }
+        .stx-wp-copy b { font-weight: 500; font-size: 13.5px; }
+        .stx-wp-copy small { display: block; color: var(--muted); font-size: 12px; line-height: 1.5; margin-top: 2px; }
+        .stx-wp-presets { display: flex; gap: 8px; flex-wrap: wrap; }
+        .stx-wp-preset { width: 46px; height: 30px; border-radius: 6px; border: 1px solid var(--line); background: #111 center / cover no-repeat; cursor: pointer; padding: 0; transition: transform .12s; }
+        .stx-wp-preset:hover { transform: scale(1.06); }
+        .stx-wp-preset.on { outline: 2px solid var(--acc); outline-offset: 1px; }
+        .stx-wp-copy .stx-btns { justify-content: flex-start; }
+        @container (max-width: 420px) { .stx-wp { grid-template-columns: 1fr; } .stx-wp-thumb { max-width: 280px; } }
+
+        /* 关于 */
+        .stx-about { display: flex; gap: 16px; align-items: center; padding: 18px; flex-wrap: wrap; }
+        .stx-about > div:nth-child(2) { flex: 1 1 200px; min-width: 0; }
+        .stx-about b { font-size: 17px; font-weight: 650; display: block; }
+        .stx-about small { display: block; color: var(--muted); font-size: 12px; margin-top: 2px; }
+        .stx-caps { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px,1fr)); gap: 8px; padding: 14px 16px; }
+        .stx-cap { display: flex; align-items: center; gap: 8px; font-size: 12.5px; padding: 8px 10px; border-radius: 8px; background: rgba(255,255,255,.03); min-width: 0; }
+        .stx-cap .icon-svg { width: 15px; height: 15px; }
+        .stx-cap .y { color: var(--ok); } .stx-cap .n { color: var(--danger); } .stx-cap .u { color: var(--warn); }
+        .stx-cap span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .stx-cap small { margin-left: auto; color: var(--muted); font-size: 11px; white-space: nowrap; }
+        .stx-sr-page { font-size: 11px; }
 
         /* === 文件夹窗口样式 === */
 
@@ -2355,13 +2495,7 @@
         }
 
         function saveSystemSettings() {
-            const settings = {
-                version: 2,
-                clickBehavior: SYSTEM.clickBehavior === 'single' ? 'single' : 'double',
-                storageBackend: SYSTEM.storageBackend === 'opfs' && SYSTEM.opfs && SYSTEM.opfs.available ? 'opfs' : 'indexeddb',
-                showHiddenFiles: SYSTEM.showHiddenFiles === true,
-                hiddenSystemApps: SYSTEM.hiddenSystemApps.filter(key => SYSTEM_APP_DEFS.some(app => app.key === key && app.hideable))
-            };
+            const settings = buildSystemSettingsSnapshot();
             const serialized = JSON.stringify(settings);
             try { localStorage.setItem(SYSTEM_SETTINGS_STORAGE_KEY, serialized); } catch (e) {}
             if (SYSTEM.mounted && SYSTEM.fs) {
@@ -6237,7 +6371,49 @@
             editorChevronUp:    '<path d="m18 15-6-6-6 6"/>',
             editorChevronDown:  '<path d="m6 9 6 6 6-6"/>',
             editorReplace:      '<path d="M14 4a1 1 0 0 1 1-1"/><path d="M15 10a1 1 0 0 1-1-1"/><path d="M21 4a1 1 0 0 0-1-1"/><path d="M21 9a1 1 0 0 1-1 1"/><path d="m3 7 3 3 3-3"/><path d="M6 10V5a2 2 0 0 1 2-2h2"/><rect x="3" y="14" width="7" height="7" rx="1"/>',
-            editorReplaceAll:   '<path d="M14 14a1 1 0 0 1 1 1v5a1 1 0 0 1-1 1"/><path d="M14 4a1 1 0 0 1 1-1"/><path d="M15 10a1 1 0 0 1-1-1"/><path d="M19 14a1 1 0 0 1 1 1v5a1 1 0 0 1-1 1"/><path d="M21 4a1 1 0 0 0-1-1"/><path d="M21 9a1 1 0 0 1-1 1"/><path d="m3 7 3 3 3-3"/><path d="M6 10V5a2 2 0 0 1 2-2h2"/><rect x="3" y="14" width="7" height="7" rx="1"/>'
+            editorReplaceAll:   '<path d="M14 14a1 1 0 0 1 1 1v5a1 1 0 0 1-1 1"/><path d="M14 4a1 1 0 0 1 1-1"/><path d="M15 10a1 1 0 0 1-1-1"/><path d="M19 14a1 1 0 0 1 1 1v5a1 1 0 0 1-1 1"/><path d="M21 4a1 1 0 0 0-1-1"/><path d="M21 9a1 1 0 0 1-1 1"/><path d="m3 7 3 3 3-3"/><path d="M6 10V5a2 2 0 0 1 2-2h2"/><rect x="3" y="14" width="7" height="7" rx="1"/>',
+            // --- 系统设置（Lucide, stroke 1.5 由 .icon-svg 统一）---
+            stxPalette: '<path d="M12 22a1 1 0 0 1 0-20 10 9 0 0 1 10 9 5 5 0 0 1-5 5h-2.25a1.75 1.75 0 0 0-1.4 2.8l.3.4a1.75 1.75 0 0 1-1.4 2.8z"/><circle cx="13.5" cy="6.5" r=".5" fill="currentColor"/><circle cx="17.5" cy="10.5" r=".5" fill="currentColor"/><circle cx="6.5" cy="12.5" r=".5" fill="currentColor"/><circle cx="8.5" cy="7.5" r=".5" fill="currentColor"/>',
+            stxHardDrive: '<path d="M10 16h.01"/><path d="M2.212 11.577a2 2 0 0 0-.212.896V18a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-5.527a2 2 0 0 0-.212-.896L18.55 5.11A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/><path d="M21.946 12.013H2.054"/><path d="M6 16h.01"/>',
+            stxFolderOpen: '<path d="m6 14 1.5-2.9A2 2 0 0 1 9.24 10H20a2 2 0 0 1 1.94 2.5l-1.54 6a2 2 0 0 1-1.95 1.5H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H18a2 2 0 0 1 2 2v2"/>',
+            stxBrushCleaning: '<path d="m16 22-1-4"/><path d="M19 14a1 1 0 0 0 1-1v-1a2 2 0 0 0-2-2h-3a1 1 0 0 1-1-1V4a2 2 0 0 0-4 0v5a1 1 0 0 1-1 1H6a2 2 0 0 0-2 2v1a1 1 0 0 0 1 1"/><path d="M19 14H5l-1.973 6.767A1 1 0 0 0 4 22h16a1 1 0 0 0 .973-1.233z"/><path d="m8 22 1-4"/>',
+            stxLayoutGrid: '<rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/>',
+            stxInfo: '<circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>',
+            stxSearch: '<path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/>',
+            stxShieldCheck: '<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/>',
+            stxRefreshCw: '<path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/>',
+            stxDownload: '<path d="M12 15V3"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/>',
+            stxUpload: '<path d="M12 3v12"/><path d="m17 8-5-5-5 5"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>',
+            stxFolderPlus: '<path d="M12 10v6"/><path d="M9 13h6"/><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/>',
+            stxUnplug: '<path d="m19 5 3-3"/><path d="m2 22 3-3"/><path d="M6.3 20.3a2.4 2.4 0 0 0 3.4 0L12 18l-6-6-2.3 2.3a2.4 2.4 0 0 0 0 3.4Z"/><path d="M7.5 13.5 10 11"/><path d="M10.5 16.5 13 14"/><path d="m12 6 6 6 2.3-2.3a2.4 2.4 0 0 0 0-3.4l-2.6-2.6a2.4 2.4 0 0 0-3.4 0Z"/>',
+            stxCheck: '<path d="M20 6 9 17l-5-5"/>',
+            stxX: '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
+            stxCopy: '<rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>',
+            stxTriangleAlert: '<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/>',
+            stxChevronRight: '<path d="m9 18 6-6-6-6"/>',
+            stxImage: '<rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>',
+            stxMousePointerClick: '<path d="M14 4.1 12 6"/><path d="m5.1 8-2.9-.8"/><path d="m6 12-1.9 2"/><path d="M7.2 2.2 8 5.1"/><path d="M9.037 9.69a.498.498 0 0 1 .653-.653l11 4.5a.5.5 0 0 1-.074.949l-4.349 1.041a1 1 0 0 0-.74.739l-1.04 4.35a.5.5 0 0 1-.95.074z"/>',
+            stxDatabase: '<ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5V19A9 3 0 0 0 21 19V5"/><path d="M3 12A9 3 0 0 0 21 12"/>',
+            stxArchive: '<rect width="20" height="5" x="2" y="3" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"/><path d="M10 12h4"/>',
+            stxFilm: '<rect width="18" height="18" x="3" y="3" rx="2"/><path d="M7 3v18"/><path d="M3 7.5h4"/><path d="M3 12h18"/><path d="M3 16.5h4"/><path d="M17 3v18"/><path d="M17 7.5h4"/><path d="M17 16.5h4"/>',
+            stxMusic: '<path d="M21 16V3a1 1 0 0 0-1.28-.96l-10 2.917a1 1 0 0 0-.72.96V19"/><circle cx="18" cy="16" r="3"/><circle cx="6" cy="19" r="3"/>',
+            stxFileText: '<path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z"/><path d="M14 2v5a1 1 0 0 0 1 1h5"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/>',
+            stxFileCode: '<path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z"/><path d="M14 2v5a1 1 0 0 0 1 1h5"/><path d="M10 12.5 8 15l2 2.5"/><path d="m14 12.5 2 2.5-2 2.5"/>',
+            stxFile: '<path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z"/><path d="M14 2v5a1 1 0 0 0 1 1h5"/>',
+            stxEye: '<path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/>',
+            stxExternalLink: '<path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>',
+            stxCircleCheck: '<circle cx="12" cy="12" r="10"/><path d="m16 9-5.5 5.5L8 12"/>',
+            stxCircleX: '<circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/>',
+            stxRotateCcw: '<path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/>',
+            stxTrash2: '<path d="M10 11v6"/><path d="M14 11v6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>',
+            stxPlugZap: '<path d="M6.3 20.3a2.4 2.4 0 0 0 3.4 0L12 18l-6-6-2.3 2.3a2.4 2.4 0 0 0 0 3.4Z"/><path d="m2 22 3-3"/><path d="M7.5 13.5 10 11"/><path d="M10.5 16.5 13 14"/><path d="m18 3-4 4h6l-4 4"/>',
+            stxFolder: '<path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/>',
+            stxMonitorSmartphone: '<path d="M18 8V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h8"/><path d="M10 19v-3.96 3.15"/><path d="M7 19h5"/><rect width="6" height="10" x="16" y="12" rx="2"/>',
+            stxWallpaper: '<path d="M12 17v4"/><path d="M8 21h8"/><path d="m9 17 6.1-6.1a2 2 0 0 1 2.81.01L22 15"/><circle cx="8" cy="9" r="2"/><rect x="2" y="3" width="20" height="14" rx="2"/>',
+            stxScanSearch: '<path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><circle cx="12" cy="12" r="3"/><path d="m16 16-1.9-1.9"/>',
+            stxFolderSync: '<path d="M9 20H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H20a2 2 0 0 1 2 2v.5"/><path d="M12 10v4h4"/><path d="m12 14 1.535-1.605a5 5 0 0 1 8 1.5"/><path d="M22 22v-4h-4"/><path d="m22 18-1.535 1.605a5 5 0 0 1-8-1.5"/>',
+            stxLock: '<rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',
+            stxArrowRight: '<path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>',
         };
         // 返回图标内部 path 片段（兼容 <svg class="icon-svg" viewBox="0 0 24 24">${iconBody(name)}</svg> 模式）
         function iconBody(name){ return ICONS[name] || ICONS.fileGeneric; }
@@ -13030,80 +13206,6 @@
             }), { bytes: 0, files: 0, directories: 0, entries: 0, capped: false, unavailable: true });
         }
 
-        function storageBreakdownRow(label, value, color, hint) {
-            return `<div class="storage-breakdown-row">
-                <i class="storage-breakdown-dot" style="--storage-color:${color}"></i>
-                <span class="storage-breakdown-label">${label}</span>
-                <span class="storage-breakdown-value">${value}</span>
-                ${hint ? `<span class="storage-breakdown-hint">${hint}</span>` : ''}
-            </div>`;
-        }
-        function storageScanHint(report, suffix = '') {
-            if (report.unavailable) return '当前不可用';
-            const base = `${report.files} 个文件${suffix}`;
-            return report.capped ? `${base}（扫描达到安全上限，数值为下限）` : base;
-        }
-
-        async function refreshStorageDashboard(windowId) {
-            const host = document.getElementById('storage-dashboard-' + windowId);
-            if (!host) return;
-            host.innerHTML = '<div class="storage-loading">正在读取浏览器配额并统计文件占用…</div>';
-            try {
-                const estimatePromise = navigator.storage && typeof navigator.storage.estimate === 'function'
-                    ? navigator.storage.estimate().catch(() => ({})) : Promise.resolve({});
-                // 扫描整个 OPFS 挂载根，避免遗漏高级用户在 /opfs 下直接创建的隐藏/测试文件。
-                const opfsPaths = SYSTEM.opfs && SYSTEM.opfs.available ? ['/opfs'] : [];
-                const [estimate, indexedDB, opfs, systemFiles] = await Promise.all([
-                    estimatePromise,
-                    measureStorageRoots(['/desktop', '/documents']),
-                    opfsPaths.length ? measureStorageRoots(opfsPaths) : Promise.resolve({ bytes: 0, files: 0, directories: 0, entries: 0, capped: false, unavailable: true }),
-                    measureStorageTree('/system')
-                ]);
-                // 设置窗口可能已经关闭，异步结果不应复活它。
-                if (!document.body.contains(host)) return;
-                const usage = Number(estimate && estimate.usage);
-                const quota = Number(estimate && estimate.quota);
-                const usageKnown = Number.isFinite(usage);
-                const quotaKnown = Number.isFinite(quota) && quota > 0;
-                const details = estimate && estimate.usageDetails && typeof estimate.usageDetails === 'object' ? estimate.usageDetails : {};
-                const cacheBytes = Number.isFinite(Number(details.caches)) ? Number(details.caches) : 0;
-                const classified = indexedDB.bytes + opfs.bytes + systemFiles.bytes + cacheBytes;
-                const otherBytes = usageKnown ? Math.max(0, usage - classified) : 0;
-                const percent = usageKnown && quotaKnown ? Math.min(100, (usage / quota) * 100) : null;
-                const freeBytes = usageKnown && quotaKnown ? Math.max(0, quota - usage) : null;
-                const totalText = usageKnown ? formatStorageBytes(usage) : '浏览器未提供';
-                const quotaText = quotaKnown ? formatStorageBytes(quota) : '浏览器未提供';
-                const freeText = freeBytes === null ? '浏览器未提供' : formatStorageBytes(freeBytes);
-                const percentText = percent === null ? '—' : percent.toFixed(percent >= 10 ? 0 : 1) + '%';
-                const cacheHint = Number.isFinite(Number(details.caches))
-                    ? '浏览器 Cache Storage 的实际占用'
-                    : '浏览器未提供独立缓存大小；可使用下方按钮清理';
-                host.innerHTML = `
-                    <div class="storage-overview">
-                        <div>
-                            <span class="storage-overview-label">浏览器实际已用 / 可用配额</span>
-                            <div class="storage-overview-value">${totalText} <span style="color:var(--text-muted);font-weight:400">/ ${quotaText}</span></div>
-                            <div class="storage-overview-subvalue">可用 ${freeText} · 数据来自 navigator.storage.estimate()</div>
-                        </div>
-                        <div class="storage-overview-percent">${percentText}<small>占用率</small></div>
-                    </div>
-                    <div class="storage-meter" aria-label="存储占用率"><div class="storage-meter-fill" style="width:${percent === null ? 0 : percent}%"></div></div>
-                    <div class="storage-breakdown">
-                        ${storageBreakdownRow('IndexedDB 用户文件', formatStorageBytes(indexedDB.bytes), '#1688e5', storageScanHint(indexedDB, ' · /desktop、/documents'))}
-                        ${storageBreakdownRow('OPFS 用户文件', SYSTEM.opfs && SYSTEM.opfs.available ? formatStorageBytes(opfs.bytes) : '不可用', '#19c37d', SYSTEM.opfs && SYSTEM.opfs.available ? storageScanHint(opfs, ' · /opfs') : '当前浏览器未提供 OPFS 后端')}
-                        ${storageBreakdownRow('系统文件与设置', formatStorageBytes(systemFiles.bytes), '#a78bfa', storageScanHint(systemFiles, ' · /system'))}
-                        ${storageBreakdownRow('Cache Storage', formatStorageBytes(cacheBytes), '#f59e0b', cacheHint)}
-                        ${usageKnown ? storageBreakdownRow('其他浏览器存储 / 文件系统开销', formatStorageBytes(otherBytes), '#64748b', '包括文件系统元数据、草稿及浏览器未单独归类的同源数据') : ''}
-                    </div>`;
-            } catch (err) {
-                if (document.body.contains(host)) host.innerHTML = `<div class="storage-loading">无法读取存储信息：${escapeHtml(err && err.message ? err.message : '未知错误')}</div>`;
-            }
-        }
-
-        function refreshAllStorageDashboards() {
-            document.querySelectorAll('[data-storage-dashboard]').forEach(host => refreshStorageDashboard(host.dataset.storageDashboard));
-        }
-
         // === 一次性缓存 / 临时文件：只扫描、由用户逐项勾选后才删除 ===
         // 不自动删除任何文件。扫描结果只是“候选项”，每项都显示路径和判定理由。
         const TEMP_CLEANUP_STATE = Object.create(null);
@@ -13230,79 +13332,43 @@
         }
 
         async function scanOneOffCache(windowId) {
+            windowId = Number(windowId);
             const state = getTempCleanupState(windowId);
             if (state.scanning) return;
-            const area = document.getElementById('temp-cleanup-area-' + windowId);
-            const scanButton = document.getElementById('temp-cleanup-scan-' + windowId);
-            if (!area) return;
-            state.scanning = true;
-            if (scanButton) scanButton.disabled = true;
-            area.innerHTML = '<div class="cleanup-loading">正在扫描 IndexedDB、OPFS、系统目录和浏览器缓存；不会删除任何内容…</div>';
+            state.scanning = true; state.error = null; state.status = '准备扫描…';
+            renderOneOffCache(windowId);
             try {
                 const items = [];
                 for (const path of ['/desktop', '/documents', '/system']) {
+                    state.status = `正在扫描 IndexedDB · ${path}`; renderOneOffCache(windowId);
                     items.push(...await scanTempFilesystem(path, 'IndexedDB'));
                 }
-                if (SYSTEM.opfs && SYSTEM.opfs.available) items.push(...await scanTempFilesystem('/opfs', 'OPFS'));
+                if (SYSTEM.opfs && SYSTEM.opfs.available) {
+                    state.status = '正在扫描 OPFS · /opfs'; renderOneOffCache(windowId);
+                    items.push(...await scanTempFilesystem('/opfs', 'OPFS'));
+                }
+                state.status = '正在检查浏览器缓存、草稿和日期记录…'; renderOneOffCache(windowId);
                 items.push(...await scanTempBrowserData());
                 state.items = items;
                 state.selected = {}; // 扫描后全部默认不勾选，始终由用户决定。
-                renderOneOffCache(windowId);
+                state.open = {};
+                // 候选项不多时默认展开，方便直接查看；很多时折叠，只看分组摘要。
+                if (items.length <= 12) tempCleanupGroupOrder().forEach(g => { state.open[g] = true; });
+                state.scanned = true;
             } catch (err) {
-                area.innerHTML = `<div class="cleanup-empty">扫描失败：${escapeHtml(err && err.message ? err.message : String(err))}</div>`;
+                state.items = []; state.selected = {};
+                state.error = err && err.message ? err.message : String(err);
             } finally {
                 state.scanning = false;
-                if (scanButton) scanButton.disabled = false;
+                renderOneOffCache(windowId);
             }
         }
 
         function renderOneOffCache(windowId) {
-            const state = getTempCleanupState(windowId);
-            const area = document.getElementById('temp-cleanup-area-' + windowId);
-            const allButton = document.getElementById('temp-cleanup-all-' + windowId);
-            const noneButton = document.getElementById('temp-cleanup-none-' + windowId);
-            const cleanButton = document.getElementById('temp-cleanup-clean-' + windowId);
-            if (!area) return;
-            if (!state.items.length) {
-                area.innerHTML = '<div class="cleanup-empty">没有发现可疑的一次性缓存或临时文件。</div>';
-                [allButton, noneButton, cleanButton].forEach(button => { if (button) button.hidden = true; });
-                return;
-            }
-            let html = '';
-            tempCleanupGroupOrder().forEach(group => {
-                const entries = state.items.map((item, index) => ({ item, index })).filter(entry => entry.item.group === group);
-                if (!entries.length) return;
-                const bytes = entries.reduce((total, entry) => total + (entry.item.size || 0), 0);
-                const selectable = entries.filter(entry => entry.item.group !== 'protected');
-                const selectedCount = selectable.filter(entry => !!state.selected[entry.index]).length;
-                const allSelected = selectable.length > 0 && selectedCount === selectable.length;
-                html += `<section class="cleanup-group">
-                    <label class="cleanup-group-select">
-                        <input type="checkbox" data-cleanup-group-select="${group}" aria-label="整组选择：${escapeAttr(tempCleanupGroupTitle(group))}" ${allSelected ? 'checked' : ''} ${selectable.length ? '' : 'disabled'} onchange="toggleOneOffCacheGroup('${windowId}', '${group}', this.checked)">
-                        <span class="cleanup-group-heading"><span class="cleanup-group-title">${tempCleanupGroupTitle(group)}</span><span class="cleanup-group-meta">${entries.length} 项 · ${formatStorageBytes(bytes)}</span></span>
-                        <span class="cleanup-group-action">${selectable.length ? '整组选择' : '受保护'}</span>
-                    </label>`;
-                entries.forEach(({ item, index }) => {
-                    html += `<label class="cleanup-item">
-                        <input type="checkbox" ${state.selected[index] ? 'checked' : ''} onchange="setOneOffCacheSelected('${windowId}', ${index}, this.checked)">
-                        <span class="cleanup-item-copy"><span class="cleanup-item-path" title="${escapeAttr(item.path)}">${escapeHtml(item.path)}</span><span class="cleanup-item-reason">${escapeHtml(item.reason)}${item.volume ? ' · ' + escapeHtml(item.volume) : ''}</span></span>
-                        <span class="cleanup-item-size">${formatStorageBytes(item.size || 0)}</span>
-                    </label>`;
-                });
-                html += `</section>`;
-            });
-            const chosen = state.items.filter((_, index) => state.selected[index]);
-            html += `<div class="cleanup-summary">已选 ${chosen.length} 项，预计释放 ${formatStorageBytes(chosen.reduce((sum, item) => sum + (item.size || 0), 0))}。只有你勾选并确认的项目才会删除。</div>`;
-            area.innerHTML = html;
-            area.querySelectorAll('[data-cleanup-group-select]').forEach(input => {
-                const group = input.dataset.cleanupGroupSelect;
-                const entries = state.items.map((item, index) => ({ item, index })).filter(entry => entry.item.group === group && entry.item.group !== 'protected');
-                const count = entries.filter(entry => !!state.selected[entry.index]).length;
-                input.checked = entries.length > 0 && count === entries.length;
-                input.indeterminate = count > 0 && count < entries.length;
-            });
-            [allButton, noneButton, cleanButton].forEach(button => { if (button) button.hidden = false; });
-            if (cleanButton) { cleanButton.disabled = chosen.length === 0; cleanButton.textContent = `清理选中项 (${chosen.length})`; }
+            const card = document.getElementById('stx-clean-' + windowId);
+            if (!card) return;
+            card.outerHTML = stxCleanCard(Number(windowId));
+            stxSyncCleanCheckboxes(Number(windowId));
         }
 
         function setOneOffCacheSelected(windowId, index, selected) {
@@ -13319,6 +13385,8 @@
             state.items.forEach((item, index) => {
                 if (item.group === group && item.group !== 'protected') state.selected[index] = !!selected;
             });
+            state.open = state.open || {};
+            if (selected) state.open[group] = true;
             renderOneOffCache(windowId);
         }
         async function removeOneOffFilesystemPath(path) {
@@ -13384,178 +13452,937 @@
             openFileExplorer('/');
         }
 
-        function buildSystemAppVisibilitySettings() {
-            return SYSTEM_APP_DEFS.filter(app => app.hideable).map(app => `
-                <label class="settings-toggle-row" for="hide-app-${app.key}">
-                    <span class="settings-toggle-app">${icon(app.icon, 'sm')}<span>${app.name}</span></span>
-                    <span class="settings-toggle-control">
-                        <span>隐藏</span>
-                        <input id="hide-app-${app.key}" type="checkbox" ${isSystemAppHidden(app.key) ? 'checked' : ''}
-                               aria-label="隐藏${app.name}快捷方式" onchange="setSystemAppHidden('${app.key}', this.checked)">
-                    </span>
-                </label>
-            `).join('');
+        // ============================================================
+        // === 系统设置（侧栏导航版）：分类页 + 搜索 + 详细存储可视化 ===
+        // ============================================================
+        // 布局：左侧固定分类与搜索，右侧一次只显示一个分类；内容区宽度 ≤600px 时侧栏
+        // 自动变为顶部横向标签（CSS 容器查询）。所有交互通过 window id 定位，支持多窗口并存，
+        // 但 openSettings() 默认复用已打开的设置窗口。
+        const STX_VERSION = '10.5.7';
+        const STX_PAGES = [
+            { k: 'personal', n: '个性化', d: '壁纸与桌面交互方式', ic: 'stxPalette' },
+            { k: 'storage', n: '存储', d: '空间占用、存储位置与工作区复制', ic: 'stxHardDrive' },
+            { k: 'files', n: '文件管理', d: '隐藏文件与已挂载的本地文件夹', ic: 'stxFolderOpen' },
+            { k: 'clean', n: '清理与维护', d: '清理临时文件、备份设置、重置数据', ic: 'stxBrushCleaning' },
+            { k: 'apps', n: '应用', d: '控制系统应用快捷方式是否显示', ic: 'stxLayoutGrid' },
+            { k: 'about', n: '关于', d: '版本信息与浏览器能力', ic: 'stxInfo' }
+        ];
+        const STX_PAGE_KEY = 'JISHENG_OS_SETTINGS_PAGE';
+        const STX_STATE = Object.create(null);           // winId -> { page, q }
+        let STX_REPORT = null;                           // 最近一次存储扫描结果（所有设置窗口共享）
+        let STX_REPORT_PROMISE = null;
+        let STX_PERSIST = { supported: !!(navigator.storage && navigator.storage.persisted), persisted: null };
+
+        // 文件类型分类（按扩展名）。顺序即匹配优先级；未匹配的归入“其他”。
+        const STX_TYPES = [
+            { k: 'image', n: '图片', ic: 'stxImage', c: '#3b9eff', re: /^(png|jpe?g|gif|webp|bmp|svg|ico|avif|heic|heif|tiff?|psd)$/ },
+            { k: 'video', n: '视频', ic: 'stxFilm', c: '#f472b6', re: /^(mp4|webm|mkv|mov|avi|m4v|flv|wmv|3gp|mpe?g)$/ },
+            { k: 'audio', n: '音频', ic: 'stxMusic', c: '#a78bfa', re: /^(mp3|wav|ogg|oga|flac|m4a|aac|opus|wma|mid|midi)$/ },
+            { k: 'archive', n: '压缩包与镜像', ic: 'stxArchive', c: '#f59e0b', re: /^(zip|7z|rar|tar|gz|tgz|bz2|xz|zst|cab|cbz|cbr|iso|img|vhd|vhdx|vmdk|qcow2|dmg)$/ },
+            { k: 'doc', n: '文档与数据', ic: 'stxFileText', c: '#19c37d', re: /^(pdf|txt|md|markdown|doc|docx|xls|xlsx|ppt|pptx|csv|tsv|rtf|odt|ods|odp|epub|json|xml|ya?ml|toml|ini|log)$/ },
+            { k: 'code', n: '网页与代码', ic: 'stxFileCode', c: '#22d3ee', re: /^(html?|css|scss|less|js|mjs|cjs|ts|jsx|tsx|vue|py|java|kt|c|cc|cpp|h|hpp|cs|go|rs|php|rb|swift|sh|bat|ps1|sql|wasm)$/ },
+            { k: 'other', n: '其他', ic: 'stxFile', c: '#64748b', re: null }
+        ];
+        // 文件夹树图的“根”：路径最长前缀匹配，树图按根下一级文件夹聚合。
+        const STX_TREE_ROOTS = [
+            { p: '/opfs/desktop', n: 'OPFS 桌面', c: '#14b8a6' },
+            { p: '/opfs/documents', n: 'OPFS 文档', c: '#22c55e' },
+            { p: '/desktop', n: '桌面', c: '#1688e5' },
+            { p: '/documents', n: '文档', c: '#6366f1' },
+            { p: '/opfs', n: 'OPFS 其他', c: '#0ea5a0' }
+        ];
+
+        const stxEsc = s => escapeHtml(String(s == null ? '' : s));
+        const stxAttr = s => escapeAttr(String(s == null ? '' : s));
+        // 供内联 onclick 使用的 JS 字符串字面量（再经 HTML 属性转义）
+        const stxJs = s => stxAttr(JSON.stringify(String(s == null ? '' : s)));
+        function stxOpfsOk() { return !!(SYSTEM.opfs && SYSTEM.opfs.available); }
+        function stxFsaOk() { return 'showDirectoryPicker' in window; }
+        function stxTypeOf(name) {
+            const i = String(name).lastIndexOf('.');
+            const ext = i > 0 ? String(name).slice(i + 1).toLowerCase() : '';
+            return STX_TYPES.find(t => t.re && t.re.test(ext)) || STX_TYPES[STX_TYPES.length - 1];
+        }
+        function stxParent(path) { const i = path.lastIndexOf('/'); return i <= 0 ? '/' : path.slice(0, i); }
+        function stxBucketLabel(path) {
+            if (path === '/opfs' || path.startsWith('/opfs/')) return 'OPFS';
+            if (path === '/system' || path.startsWith('/system/')) return '系统';
+            return 'IndexedDB';
+        }
+        function stxPct(part, total) { return total > 0 ? Math.max(0, Math.min(100, part / total * 100)) : 0; }
+        function stxPctText(p) { return p >= 10 ? p.toFixed(0) + '%' : p >= 0.1 ? p.toFixed(1) + '%' : (p > 0 ? '<0.1%' : '0%'); }
+        function stxTime(ts) { const d = new Date(ts); return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); }
+
+        // ---------- 存储扫描：一次遍历同时得到后端分类、类型统计、最大文件和文件夹聚合 ----------
+        async function stxCollectStorageReport() {
+            const report = {
+                time: Date.now(), usage: NaN, quota: NaN, caches: NaN,
+                idb: { bytes: 0, files: 0 }, opfs: { bytes: 0, files: 0 }, system: { bytes: 0, files: 0 },
+                types: {}, top: [], folders: {}, capped: false, entries: 0, maxEntries: 60000
+            };
+            STX_TYPES.forEach(t => { report.types[t.k] = { bytes: 0, files: 0 }; });
+            const estimatePromise = navigator.storage && typeof navigator.storage.estimate === 'function'
+                ? navigator.storage.estimate().catch(() => ({})) : Promise.resolve({});
+            const addFile = (path, name, size, bucket) => {
+                report[bucket].bytes += size; report[bucket].files++;
+                if (bucket === 'system') return;          // 系统配置只计入后端分类，不参与用户文件统计
+                const t = stxTypeOf(name);
+                report.types[t.k].bytes += size; report.types[t.k].files++;
+                if (report.top.length < 10 || size > report.top[report.top.length - 1].size) {
+                    report.top.push({ path, name, size, type: t.k });
+                    report.top.sort((a, b) => b.size - a.size);
+                    if (report.top.length > 10) report.top.length = 10;
+                }
+                const root = STX_TREE_ROOTS.find(r => path.startsWith(r.p + '/'));
+                if (!root) return;
+                const rest = path.slice(root.p.length + 1);
+                const slash = rest.indexOf('/');
+                const key = slash > 0 ? root.p + '/' + rest.slice(0, slash) : root.p + '/';
+                const f = report.folders[key] || (report.folders[key] = {
+                    key, root: root.p, rootName: root.n, color: root.c, bytes: 0, files: 0,
+                    path: slash > 0 ? root.p + '/' + rest.slice(0, slash) : root.p,
+                    name: slash > 0 ? rest.slice(0, slash) : root.n + ' · 散落文件'
+                });
+                f.bytes += size; f.files++;
+            };
+            const walk = async (rootPath, bucket) => {
+                try { await storageFsStat(rootPath); } catch (_) { return; }
+                const queue = [rootPath];
+                while (queue.length && !report.capped) {
+                    const dir = queue.shift();
+                    let names = [];
+                    try { names = await storageFsReaddir(dir); } catch (_) { continue; }
+                    for (let s = 0; s < names.length && !report.capped; s += 32) {
+                        const batch = await Promise.all(names.slice(s, s + 32).map(async name => {
+                            const path = (dir === '/' ? '' : dir) + '/' + name;
+                            try { return { name, path, stat: await storageFsStat(path) }; } catch (_) { return null; }
+                        }));
+                        for (const it of batch) {
+                            if (!it) continue;
+                            if (++report.entries > report.maxEntries) { report.capped = true; break; }
+                            if (isDirectoryStat(it.stat)) queue.push(it.path);
+                            else addFile(it.path, it.name, Number(it.stat.size) || 0, bucket);
+                        }
+                    }
+                }
+            };
+            await walk('/desktop', 'idb');
+            await walk('/documents', 'idb');
+            if (stxOpfsOk()) await walk('/opfs', 'opfs');
+            await walk('/system', 'system');
+            const est = await estimatePromise;
+            report.usage = Number(est && est.usage);
+            report.quota = Number(est && est.quota);
+            const details = est && est.usageDetails && typeof est.usageDetails === 'object' ? est.usageDetails : {};
+            report.caches = Number(details.caches);
+            report.time = Date.now();
+            return report;
         }
 
-        function openSettings() {
-            const settingsWindowId = SYSTEM.idCounter + 1;
-            createWindow({
+        function stxGetReport(force) {
+            if (!force && STX_REPORT && Date.now() - STX_REPORT.time < 60000) return Promise.resolve(STX_REPORT);
+            if (STX_REPORT_PROMISE) return STX_REPORT_PROMISE;
+            STX_REPORT_PROMISE = stxCollectStorageReport()
+                .then(r => { STX_REPORT = r; return r; })
+                .finally(() => { STX_REPORT_PROMISE = null; });
+            return STX_REPORT_PROMISE;
+        }
+
+        async function stxRefreshPersist() {
+            if (!STX_PERSIST.supported) return;
+            try { STX_PERSIST.persisted = await navigator.storage.persisted(); } catch (_) { STX_PERSIST.persisted = null; }
+        }
+
+        // 兼容旧接口：文件/后端发生变化的地方都会调用它，这里让所有设置窗口重新统计并刷新。
+        function refreshStorageDashboard(windowId) { stxRefreshStorage(Number(windowId)); }
+        function refreshAllStorageDashboards() {
+            STX_REPORT = null;
+            stxAllWins().forEach(id => { const st = STX_STATE[id]; if (st && (st.page === 'storage' || st.page === 'about')) stxRender(id, { keepScroll: true }); else stxRenderNav(id); });
+        }
+        function stxRefreshStorage(winId) {
+            STX_REPORT = null;
+            const btn = document.querySelector(`#win-${winId} [data-stx-refresh]`);
+            if (btn) { btn.classList.add('busy'); btn.disabled = true; }
+            stxGetReport(true).catch(err => Notify.error('无法读取存储信息', stxEsc(err && err.message || err)))
+                .finally(() => stxAllWins().forEach(id => { const st = STX_STATE[id]; if (st && (st.page === 'storage' || st.page === 'about')) stxRender(id, { keepScroll: true }); else stxRenderNav(id); }));
+        }
+
+        // ---------- 通用渲染辅助 ----------
+        function stxRow(o) {
+            const cls = ['stx-row', o.ic ? '' : 'noicon', o.cls || ''].join(' ').trim();
+            return `<div class="${cls}"${o.id ? ` data-stx-row="${o.id}"` : ''}${o.attrs ? ' ' + o.attrs : ''}>
+                ${o.ic ? `<div class="stx-row-ic">${icon(o.ic)}</div>` : ''}
+                <div class="stx-row-tx"><b>${o.title}</b>${o.desc ? `<small>${o.desc}</small>` : ''}</div>
+                <div class="stx-row-ct">${o.ctl || ''}</div>
+            </div>`;
+        }
+        function stxGroup(title, sub, body, right, attrs) {
+            return `<section class="stx-grp"${attrs ? ' ' + attrs : ''}><div class="stx-grp-h"><h3>${title}</h3>${sub ? `<span>${sub}</span>` : ''}<i class="sp"></i>${right || ''}</div>${body}</section>`;
+        }
+        function stxBtn(label, onclick, o = {}) {
+            return `<button type="button" class="stx-btn ${o.cls || ''}" ${o.dis ? 'disabled' : ''} ${o.title ? `title="${stxAttr(o.title)}"` : ''} ${o.attrs || ''} onclick="${onclick}">${o.ic ? icon(o.ic) : ''}${label ? `<span>${label}</span>` : ''}</button>`;
+        }
+        function stxSwitch(on, onclick, label, o = {}) {
+            return `<button type="button" class="stx-sw" role="switch" aria-checked="${on ? 'true' : 'false'}" aria-label="${stxAttr(label)}" ${o.id ? `id="${o.id}"` : ''} ${o.dis ? 'disabled' : ''} onclick="${onclick}"></button>`;
+        }
+        function stxPill(text, kind, ic) { return `<span class="stx-pill ${kind || ''}">${ic ? icon(ic) : ''}${text}</span>`; }
+        function stxHead(page, right) {
+            const p = STX_PAGES.find(x => x.k === page);
+            return `<div class="stx-ph"><div><h2>${p.n}</h2><p>${p.d}</p></div>${right || ''}</div>`;
+        }
+
+        // ---------- 窗口、导航、搜索 ----------
+        function stxAllWins() {
+            return Object.keys(STX_STATE).map(Number).filter(id => document.getElementById('win-' + id));
+        }
+        function openSettings(page) {
+            const targetPage = STX_PAGES.some(p => p.k === page) ? page : null;
+            const existing = stxAllWins()[0];
+            if (existing) {
+                focusWin(existing);
+                if (targetPage) stxGo(existing, targetPage);
+                return existing;
+            }
+            let initialPage = targetPage;
+            if (!initialPage) { try { initialPage = localStorage.getItem(STX_PAGE_KEY); } catch (_) {} }
+            if (!STX_PAGES.some(p => p.k === initialPage)) initialPage = 'personal';
+            return createWindow({
                 title: '系统设置',
-                iconHtml: icon('appSettings','sm'),
-                width: 680, height: 800,
-                content: `
-                    <div class="content-area dark" style="overflow-y:auto">
-                        <div class="settings-content">
-                            <div class="about-card">
-                                <div class="logo">JISHENG OS</div>
-                                <p>Ultimate Web Operating System<br>Version 10.5.7 • Build 2026</p>
-                            </div>
-
-                            <div class="settings-section" style="margin-top:20px">
-                                <h4>个性化</h4>
-                                <div class="settings-item" onclick="openWallpaperPanel()" style="cursor:pointer">
-                                    <label>更换壁纸</label>
-                                    ${icon('uiChevronRight')}
-                                </div>
-                                <div class="settings-item settings-item--stacked">
-                                    <div class="settings-item-copy">
-                                        <label for="click-behavior-setting-${settingsWindowId}">图标打开方式</label>
-                                        <span class="settings-hint">桌面与文件管理器中的应用、文件和文件夹均使用此方式。</span>
-                                    </div>
-                                    <select id="click-behavior-setting-${settingsWindowId}" class="settings-select" aria-label="图标打开方式" onchange="setClickBehavior(this.value)">
-                                        <option value="double" ${SYSTEM.clickBehavior === 'double' ? 'selected' : ''}>双击打开</option>
-                                        <option value="single" ${SYSTEM.clickBehavior === 'single' ? 'selected' : ''}>单击打开</option>
-                                    </select>
-                                </div>
-                            </div>
-
-                            <div class="settings-section">
-                                <h4>存储空间</h4>
-                                <div id="storage-dashboard-${settingsWindowId}" data-storage-dashboard="${settingsWindowId}" aria-live="polite">
-                                    <div class="storage-loading">正在读取存储空间…</div>
-                                </div>
-                                <div class="settings-item" style="padding-top:14px">
-                                    <div class="settings-item-copy">
-                                        <label>默认文件存储后端</label>
-                                        <span class="settings-hint">桌面、新建文件和常规上传的默认位置；切换不会移动或删除旧文件。</span>
-                                    </div>
-                                    <select class="settings-select" data-storage-backend-select aria-label="默认文件存储后端" onchange="setStorageBackend(this.value)">
-                                        <option value="indexeddb" ${SYSTEM.storageBackend === 'indexeddb' ? 'selected' : ''}>IndexedDB</option>
-                                        <option value="opfs" ${SYSTEM.storageBackend === 'opfs' ? 'selected' : ''} ${SYSTEM.opfs && SYSTEM.opfs.available ? '' : 'disabled'}>OPFS${SYSTEM.opfs && SYSTEM.opfs.available ? '' : '（不可用）'}</option>
-                                    </select>
-                                </div>
-                                <div class="settings-item">
-                                    <div class="settings-item-copy">
-                                        <label>当前默认工作区</label>
-                                        <span class="settings-hint settings-file-manager-path" data-storage-current-path>${SYSTEM.desktopPath}</span>
-                                    </div>
-                                    <button class="settings-action-btn" type="button" onclick="refreshStorageDashboard('${settingsWindowId}')">刷新统计</button>
-                                </div>
-                                <div class="settings-item settings-item--stacked">
-                                    <div class="settings-item-copy">
-                                        <label for="storage-copy-target-${settingsWindowId}">复制当前工作区到另一后端</label>
-                                        <span class="settings-hint">这是独立的手动操作：不会随默认后端切换自动执行。复制会保留每一个文件和文件夹的修改日期，源文件不会删除。</span>
-                                    </div>
-                                    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end">
-                                        <select id="storage-copy-target-${settingsWindowId}" class="settings-select" data-storage-migration-target aria-label="复制工作区目标后端">
-                                            <option value="indexeddb" ${SYSTEM.storageBackend === 'indexeddb' ? 'disabled' : ''}>IndexedDB</option>
-                                            <option value="opfs" ${SYSTEM.storageBackend === 'opfs' || !(SYSTEM.opfs && SYSTEM.opfs.available) ? 'disabled' : ''}>OPFS${SYSTEM.opfs && SYSTEM.opfs.available ? '' : '（不可用）'}</option>
-                                        </select>
-                                        <button class="settings-action-btn" type="button" data-storage-migration-button ${SYSTEM.opfs && SYSTEM.opfs.available ? '' : 'disabled'} onclick="copyCurrentWorkspaceToBackend(document.getElementById('storage-copy-target-${settingsWindowId}').value)">复制工作区</button>
-                                    </div>
-                                </div>
-                                <p class="settings-note">顶部“已用/配额/占用率”取自浏览器的实际配额接口；下方为 JISHENG OS 文件扫描分类，因此文件系统元数据与浏览器其他同源数据会归入“其他”。</p>
-                            </div>
-
-                            <div class="settings-section">
-                                <h4>文件管理器</h4>
-                                <label class="settings-toggle-row" for="show-hidden-files-${settingsWindowId}">
-                                    <span class="settings-item-copy">
-                                        <span>显示系统与隐藏文件</span>
-                                        <span class="settings-hint">显示点文件、/system、挂载点和完整内部文件系统。仅建议在检查或维护时开启。</span>
-                                    </span>
-                                    <span class="settings-toggle-control">
-                                        <span>显示</span>
-                                        <input id="show-hidden-files-${settingsWindowId}" type="checkbox" ${SYSTEM.showHiddenFiles ? 'checked' : ''} aria-label="显示系统与隐藏文件" onchange="setShowHiddenFiles(this.checked)">
-                                    </span>
-                                </label>
-                                <div class="settings-item">
-                                    <div class="settings-item-copy">
-                                        <label>选择文件存放位置</label>
-                                        <span class="settings-hint">资源管理器侧栏同时提供 IndexedDB 与 OPFS；在任一位置新建、上传、复制或粘贴即可决定文件后端。</span>
-                                    </div>
-                                    <button class="settings-action-btn" type="button" onclick="openFileExplorer()">打开文件管理器</button>
-                                </div>
-                                <div class="settings-item">
-                                    <div class="settings-item-copy">
-                                        <label>完整文件系统</label>
-                                        <span class="settings-hint">查看系统目录、隐藏文件与挂载点；需先开启上方显示选项。</span>
-                                    </div>
-                                    <button class="settings-action-btn" type="button" onclick="openFullFileExplorer()">全部显示</button>
-                                </div>
-                            </div>
-
-                            <div class="settings-section">
-                                <h4>数据维护</h4>
-                                <div class="settings-item settings-item--cleanup">
-                                    <div class="settings-item-copy">
-                                        <label>一次性缓存 / 临时文件清理</label>
-                                        <span class="settings-hint">先扫描，再由你查看路径、原因和体积后逐项勾选。扫描不会删除内容，所有项目默认不选中；不会删除现有文件，也不会改动它们的日期信息。</span>
-                                    </div>
-                                    <div class="cleanup-actions">
-                                        <button id="temp-cleanup-scan-${settingsWindowId}" class="settings-action-btn" type="button" onclick="scanOneOffCache('${settingsWindowId}')">扫描可清理项目</button>
-                                        <button id="temp-cleanup-all-${settingsWindowId}" class="settings-action-btn" type="button" hidden onclick="toggleAllOneOffCache('${settingsWindowId}', true)">全选（不含系统配置）</button>
-                                        <button id="temp-cleanup-none-${settingsWindowId}" class="settings-action-btn" type="button" hidden onclick="toggleAllOneOffCache('${settingsWindowId}', false)">全部取消</button>
-                                        <button id="temp-cleanup-clean-${settingsWindowId}" class="settings-action-btn danger" type="button" hidden disabled onclick="cleanSelectedOneOffCache('${settingsWindowId}')">清理选中项</button>
-                                    </div>
-                                    <div id="temp-cleanup-area-${settingsWindowId}" class="cleanup-results" aria-live="polite">
-                                        <div class="cleanup-empty">点击“扫描可清理项目”后，会列出临时文件、缓存和其他可能不再需要的内容。扫描不会删除文件；你可以逐项勾选，也可以按类别整组选择。已删除文件留下的日期记录会单独列出，清理它不会影响现有文件。</div>
-                                    </div>
-                                </div>
-                                <div class="settings-item settings-item--stacked">
-                                    <div class="settings-item-copy">
-                                        <label style="color:var(--win-close-red)">重置存储数据</label>
-                                        <span class="settings-hint">三种操作相互独立：可只重置 IndexedDB、只重置 OPFS，或同时重置两者。操作不可恢复；每种操作都会单独确认。</span>
-                                    </div>
-                                    <div class="reset-scope-grid">
-                                        <button class="settings-action-btn danger" type="button" onclick="resetStorageScope('indexeddb')">仅重置 IndexedDB</button>
-                                        <button class="settings-action-btn danger" type="button" ${SYSTEM.opfs && SYSTEM.opfs.available ? '' : 'disabled'} onclick="resetStorageScope('opfs')">仅重置 OPFS${SYSTEM.opfs && SYSTEM.opfs.available ? '' : '（不可用）'}</button>
-                                        <button class="settings-action-btn danger" type="button" ${SYSTEM.opfs && SYSTEM.opfs.available ? '' : 'disabled'} onclick="resetStorageScope('all')">重置两者${SYSTEM.opfs && SYSTEM.opfs.available ? '' : '（OPFS 不可用）'}</button>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="settings-section">
-                                <h4>系统应用</h4>
-                                <p class="settings-hint">勾选后会隐藏桌面、开始菜单和任务栏中的固定快捷方式。</p>
-                                <div class="settings-toggle-list">
-                                    ${buildSystemAppVisibilitySettings()}
-                                </div>
-                                <p class="settings-note">系统设置始终保留，不能隐藏，以便随时恢复和调整配置。</p>
-                            </div>
-
-                            <div class="settings-section">
-                                <h4>关于</h4>
-                                <div class="settings-item">
-                                    <label>系统版本</label>
-                                    <span>10.5.7</span>
-                                </div>
-                                <div class="settings-item" onclick="window.open('https://github.com/SFGFDSD/JISHENGOS','_blank')" style="cursor:pointer">
-                                    <label>仓库</label>
-                                    <div style="display:flex;align-items:center;gap:8px;">
-                                        ${icon('uiGithub','github')}
-                                        <span style="color:var(--text-muted)">GitHub</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+                iconHtml: icon('appSettings', 'sm'),
+                width: 920, height: 680,
+                content: `<div class="content-area dark stx" data-stx-root>
+                    <div class="stx-shell">
+                        <nav class="stx-nav" aria-label="设置分类"></nav>
+                        <div class="stx-main"><div class="stx-scroll" role="region" aria-live="polite"></div></div>
                     </div>
-                `,
+                </div>`,
                 onInit: (w, winId) => {
+                    STX_STATE[winId] = { page: initialPage, q: '' };
+                    w.querySelector('[data-stx-root]').dataset.stxWin = winId;
+                    w.cleanup = () => { delete STX_STATE[winId]; delete TEMP_CLEANUP_STATE[winId]; };
+                    stxRenderNav(winId, true);
+                    stxRender(winId);
+                    stxRefreshPersist().then(() => { if (STX_STATE[winId]) { const pg = STX_STATE[winId].page; if (pg === 'storage' || pg === 'about') stxRender(winId, { keepScroll: true }); } });
                     syncStorageMigrationControls();
-                    refreshStorageDashboard(winId);
                 }
             });
+        }
+
+        function stxRenderNav(winId, full) {
+            const st = STX_STATE[winId];
+            const nav = document.querySelector(`#win-${winId} .stx-nav`);
+            if (!st || !nav) return;
+            const r = STX_REPORT;
+            const pct = r && r.quota > 0 ? Math.max(Number.isFinite(r.usage) ? r.usage : 0, r.idb.bytes + r.opfs.bytes + r.system.bytes) / r.quota * 100 : null;
+            const items = STX_PAGES.map(p => {
+                let badge = '';
+                if (p.k === 'storage' && pct !== null) badge = `<em class="${pct >= 80 ? 'warn' : ''}">${stxPctText(pct)}</em>`;
+                if (p.k === 'files') { const dc = Object.values(SYSTEM.mountedFolders || {}).filter(m => m.disconnected).length; if (dc) badge = `<em class="warn" title="${dc} 个文件夹需要重新授权">${dc}</em>`; }
+                return `<button type="button" class="stx-navi ${!st.q && st.page === p.k ? 'on' : ''}" data-stx-nav="${p.k}" ${!st.q && st.page === p.k ? 'aria-current="page"' : ''} onclick="stxGo(${winId}, '${p.k}')">${icon(p.ic)}<span>${p.n}</span>${badge}</button>`;
+            }).join('');
+            if (full || !nav.querySelector('.stx-search')) {
+                nav.innerHTML = `
+                    <div class="stx-me"><div class="stx-logo"><span>JS</span></div><div style="min-width:0"><b>JISHENG OS</b><small>版本 ${STX_VERSION}</small><small data-stx-me-sub></small></div></div>
+                    <div class="stx-search ${st.q ? 'has-q' : ''}">${icon('stxSearch')}
+                        <input type="search" placeholder="搜索设置" aria-label="搜索设置" value="${stxAttr(st.q)}"
+                               oninput="stxSearch(${winId}, this.value)" onkeydown="stxSearchKey(event, ${winId})">
+                        <button type="button" class="stx-search-x" title="清除搜索" aria-label="清除搜索" onclick="stxClearSearch(${winId}, true)">${icon('stxX')}</button>
+                    </div>
+                    <div class="stx-nav-items" style="display:contents">${items}</div>`;
+            } else {
+                nav.querySelector('.stx-nav-items').innerHTML = items;
+                nav.querySelector('.stx-search').classList.toggle('has-q', !!st.q);
+            }
+            const sub = nav.querySelector('[data-stx-me-sub]');
+            if (sub) { const used = r ? Math.max(Number.isFinite(r.usage) ? r.usage : 0, r.idb.bytes + r.opfs.bytes + r.system.bytes) : 0; sub.textContent = r ? `已用 ${formatStorageBytes(used)}` : ''; sub.hidden = !r; }
+        }
+
+        function stxGo(winId, page, rowId) {
+            const st = STX_STATE[winId];
+            if (!st) return;
+            st.page = page;
+            try { localStorage.setItem(STX_PAGE_KEY, page); } catch (_) {}
+            if (st.q) stxClearSearch(winId, false);
+            stxRenderNav(winId);
+            stxRender(winId);
+            if (rowId) {
+                requestAnimationFrame(() => {
+                    const row = document.querySelector(`#win-${winId} [data-stx-row="${rowId}"]`);
+                    if (!row) return;
+                    row.scrollIntoView({ block: 'center', behavior: 'smooth' });
+                    row.classList.remove('flash'); void row.offsetWidth; row.classList.add('flash');
+                });
+            }
+        }
+
+        function stxRender(winId, opts = {}) {
+            const st = STX_STATE[winId];
+            const scroller = document.querySelector(`#win-${winId} .stx-scroll`);
+            if (!st || !scroller) return;
+            const top = scroller.scrollTop;
+            let html;
+            try {
+                html = st.q ? stxSearchResults(winId) : ({
+                    personal: stxPagePersonal, storage: stxPageStorage, files: stxPageFiles,
+                    clean: stxPageClean, apps: stxPageApps, about: stxPageAbout
+                }[st.page] || stxPagePersonal)(winId);
+            } catch (err) {
+                console.error('渲染设置页失败:', err);
+                html = `<div class="stx-page"><div class="stx-empty">${icon('stxTriangleAlert')}此页面渲染失败：${stxEsc(err && err.message || err)}</div></div>`;
+            }
+            scroller.innerHTML = html;
+            scroller.scrollTop = opts.keepScroll ? top : 0;
+            if (!st.q && st.page === 'clean') stxSyncCleanCheckboxes(winId);
+            if (!st.q && st.page === 'personal') stxSyncWallpaperPreviews();
+            if (!st.q && (st.page === 'storage' || st.page === 'about') && !STX_REPORT) {
+                stxGetReport().then(() => { if (STX_STATE[winId] && STX_STATE[winId].page === st.page && !STX_STATE[winId].q) stxRender(winId, { keepScroll: true }); stxRenderNav(winId); })
+                    .catch(err => { const host = scroller.querySelector('[data-storage-dashboard]'); if (host) host.innerHTML = `<div class="stx-empty">${icon('stxTriangleAlert')}无法读取存储信息：${stxEsc(err && err.message || err)}</div>`; });
+            }
+        }
+
+        // 搜索索引：[页面, 行 id, 标题, 关键词]
+        function stxSearchIndex() {
+            const idx = [
+                ['personal', 'wallpaper', '桌面壁纸', '壁纸 背景 图片 wallpaper 上传 更换'],
+                ['personal', 'click', '图标打开方式', '单击 双击 打开 click 鼠标'],
+                ['storage', 'overview', '存储空间概览', '存储 空间 配额 已用 可用 容量 quota 占用'],
+                ['storage', 'persist', '持久化存储', 'persist 持久 防止 自动清除 驱逐 浏览器清理'],
+                ['storage', 'types', '按文件类型统计', '类型 图片 视频 音频 文档 压缩包 代码'],
+                ['storage', 'top', '占用最多的文件', '最大 大文件 文件 排行'],
+                ['storage', 'tree', '文件夹占用树图', '文件夹 树图 treemap 目录 大小'],
+                ['storage', 'backend', '默认存储位置', 'IndexedDB OPFS 后端 默认 位置 工作区'],
+                ['storage', 'copy', '复制工作区到另一位置', '迁移 复制 工作区 搬家'],
+                ['files', 'hidden', '显示系统与隐藏文件', '隐藏 系统 点文件 dotfile'],
+                ['files', 'explorer', '打开文件管理器', '资源管理器 文件管理器 explorer'],
+                ['files', 'full', '浏览完整文件系统', '根目录 完整 文件系统 /system 挂载点'],
+                ['files', 'mounts', '已挂载的本地文件夹', '挂载 本地 文件夹 卸载 重新连接 授权 mount'],
+                ['clean', 'scan', '缓存与临时文件清理', '清理 缓存 临时 垃圾 扫描 释放空间'],
+                ['clean', 'export', '导出设置备份', '备份 导出 设置 迁移 换电脑'],
+                ['clean', 'import', '从备份恢复设置', '恢复 导入 备份 设置'],
+                ['clean', 'reset', '重置存储数据', '重置 删除 清空 恢复出厂 reset'],
+                ['apps', 'apps', '系统应用快捷方式', '应用 隐藏 显示 快捷方式 桌面 开始菜单 任务栏'],
+                ['about', 'version', '系统版本', '版本 关于 github 仓库 更新'],
+                ['about', 'caps', '浏览器能力检测', '兼容 能力 OPFS WebAssembly File System Access 支持'],
+                ['about', 'diag', '复制诊断信息', '诊断 反馈 bug 问题 报告']
+            ];
+            SYSTEM_APP_DEFS.forEach(app => idx.push(['apps', 'app-' + app.key, app.name, '应用 快捷方式 显示 隐藏']));
+            return idx;
+        }
+        function stxSearch(winId, q) {
+            const st = STX_STATE[winId];
+            if (!st) return;
+            st.q = String(q || '').trim();
+            stxRenderNav(winId);
+            stxRender(winId);
+        }
+        function stxClearSearch(winId, rerender) {
+            const st = STX_STATE[winId];
+            if (!st) return;
+            st.q = '';
+            const input = document.querySelector(`#win-${winId} .stx-search input`);
+            if (input) { input.value = ''; if (rerender) input.focus(); }
+            if (rerender) { stxRenderNav(winId); stxRender(winId); }
+        }
+        function stxSearchKey(e, winId) {
+            if (e.key === 'Escape') { e.stopPropagation(); stxClearSearch(winId, true); }
+            else if (e.key === 'Enter') {
+                const first = document.querySelector(`#win-${winId} .stx-scroll [data-stx-hit]`);
+                if (first) first.click();
+            }
+        }
+        function stxSearchResults(winId) {
+            const st = STX_STATE[winId];
+            const terms = st.q.toLowerCase().split(/\s+/).filter(Boolean);
+            const hits = stxSearchIndex().filter(([pg, , title, kw]) => {
+                const hay = (title + ' ' + kw + ' ' + STX_PAGES.find(p => p.k === pg).n).toLowerCase();
+                return terms.every(t => hay.includes(t));
+            }).map((h, i) => ({ h, i, score: terms.filter(t => h[2].toLowerCase().includes(t)).length }))
+              .sort((a, b) => b.score - a.score || a.i - b.i).map(x => x.h);
+            const body = hits.length ? `<div class="stx-card">${hits.map(([pg, rid, title, kw]) => {
+                const p = STX_PAGES.find(x => x.k === pg);
+                return stxRow({ ic: p.ic, title: stxEsc(title), desc: stxEsc(p.n) + ' · ' + stxEsc(kw.split(' ').slice(0, 4).join('、')), cls: 'click keep',
+                    attrs: `data-stx-hit tabindex="0" role="button" onclick="stxGo(${winId}, '${pg}', '${rid}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click()}"`,
+                    ctl: icon('stxChevronRight') });
+            }).join('')}</div>`
+                : `<div class="stx-card"><div class="stx-empty">${icon('stxSearch')}没有找到与“${stxEsc(st.q)}”相关的设置<br>试试：壁纸、存储、挂载、备份、清理、隐藏</div></div>`;
+            return `<div class="stx-page"><div class="stx-ph"><div><h2>搜索结果</h2><p>${hits.length} 项与“${stxEsc(st.q)}”匹配 · 按 Enter 打开第一项，Esc 清除</p></div></div>${body}</div>`;
+        }
+
+        // ---------- 页面：个性化 ----------
+        function stxCurrentWallpaper() {
+            const el = document.getElementById('dynamic-bg');
+            const bg = el ? (el.style.backgroundImage || getComputedStyle(el).backgroundImage) : '';
+            return bg && bg !== 'none' ? bg : '';
+        }
+        function stxSyncWallpaperPreviews() {
+            const bg = stxCurrentWallpaper();
+            document.querySelectorAll('[data-settings-wallpaper]').forEach(el => { el.style.backgroundImage = bg; });
+            document.querySelectorAll('[data-stx-preset]').forEach(el => {
+                el.classList.toggle('on', bg.includes(el.dataset.stxPreset));
+            });
+        }
+        function stxPagePersonal(winId) {
+            const bg = stxCurrentWallpaper();
+            const presets = (typeof wallpapers !== 'undefined' ? wallpapers : []).map((u, i) => {
+                const thumb = u.replace(/([?&])w=\d+/, '$1w=160');
+                return `<button type="button" class="stx-wp-preset ${bg.includes(u) ? 'on' : ''}" data-stx-preset="${stxAttr(u)}" title="预设壁纸 ${i + 1}" aria-label="使用预设壁纸 ${i + 1}" style="background-image:url('${stxAttr(thumb)}')" onclick="setBg(${stxJs(u)})"></button>`;
+            }).join('');
+            const wp = `<div class="stx-card" data-stx-row="wallpaper"><div class="stx-wp">
+                <div class="stx-wp-thumb" data-settings-wallpaper role="img" aria-label="当前壁纸预览"></div>
+                <div class="stx-wp-copy">
+                    <div><b>桌面壁纸</b><small>点击下方预设立即应用；也可以上传本地图片，或在文件管理器中右键图片“设为壁纸”。</small></div>
+                    ${presets ? `<div class="stx-wp-presets">${presets}</div>` : ''}
+                    <div class="stx-btns">
+                        ${stxBtn('上传图片…', "document.getElementById('file-input').click()", { ic: 'stxUpload', cls: 'primary sm' })}
+                        ${stxBtn('壁纸面板', 'openWallpaperPanel()', { ic: 'stxWallpaper', cls: 'sm' })}
+                    </div>
+                </div>
+            </div></div>`;
+            const click = `<div class="stx-card">${stxRow({
+                id: 'click', ic: 'stxMousePointerClick', title: '图标打开方式',
+                desc: '桌面与文件管理器中的应用、文件和文件夹都使用此方式。',
+                ctl: `<div class="stx-seg" role="radiogroup" aria-label="图标打开方式">
+                    <button type="button" role="radio" aria-checked="${SYSTEM.clickBehavior !== 'single'}" class="${SYSTEM.clickBehavior !== 'single' ? 'on' : ''}" onclick="stxSetClick(${winId}, 'double')">双击</button>
+                    <button type="button" role="radio" aria-checked="${SYSTEM.clickBehavior === 'single'}" class="${SYSTEM.clickBehavior === 'single' ? 'on' : ''}" onclick="stxSetClick(${winId}, 'single')">单击</button>
+                </div>`
+            })}</div>`;
+            return `<div class="stx-page">${stxHead('personal')}${stxGroup('壁纸', '', wp)}${stxGroup('交互', '', click)}</div>`;
+        }
+        function stxSetClick(winId, v) {
+            setClickBehavior(v);
+            stxRender(winId, { keepScroll: true });
+            Notify.success('已更新', v === 'single' ? '图标改为单击打开' : '图标改为双击打开');
+        }
+
+        // ---------- 页面：存储 ----------
+        function stxSquarify(items, W, H) {
+            const total = items.reduce((s, d) => s + d.bytes, 0);
+            if (!total) return [];
+            const scale = (W * H) / total;
+            const list = items.map(d => ({ d, a: d.bytes * scale })).filter(x => x.a > 0).sort((a, b) => b.a - a.a);
+            const out = [];
+            let x = 0, y = 0, w = W, h = H, row = [];
+            const worst = (r, side) => { const s = r.reduce((t, i) => t + i.a, 0); const mx = Math.max(...r.map(i => i.a)), mn = Math.min(...r.map(i => i.a)); return Math.max(side * side * mx / (s * s), (s * s) / (side * side * mn)); };
+            const lay = r => {
+                const s = r.reduce((t, i) => t + i.a, 0);
+                if (w >= h) { const cw = s / h; let cy = y; r.forEach(i => { const ch = i.a / cw; out.push({ ...i, x, y: cy, w: cw, h: ch }); cy += ch; }); x += cw; w -= cw; }
+                else { const ch = s / w; let cx = x; r.forEach(i => { const iw = i.a / ch; out.push({ ...i, x: cx, y, w: iw, h: ch }); cx += iw; }); y += ch; h -= ch; }
+            };
+            while (list.length) {
+                const side = Math.min(w, h), it = list[0];
+                if (!row.length || worst([...row, it], side) <= worst(row, side)) { row.push(it); list.shift(); }
+                else { lay(row); row = []; }
+            }
+            if (row.length) lay(row);
+            return out;
+        }
+        function stxStorageSkeleton() {
+            return `<div class="stx-card pad" data-storage-dashboard style="display:flex;flex-direction:column;gap:12px">
+                <div class="stx-sub">正在读取浏览器配额并统计文件占用…</div>
+                <div class="stx-skel" style="width:42%;height:22px"></div><div class="stx-skel"></div>
+                <div class="stx-skel" style="width:70%"></div><div class="stx-skel" style="width:55%"></div>
+            </div>`;
+        }
+        function stxPersistRow() {
+            let ctl, desc;
+            if (!STX_PERSIST.supported) { ctl = stxPill('浏览器不支持', 'bad'); desc = '当前浏览器没有提供持久化存储接口，空间紧张时数据可能被浏览器自动清除。'; }
+            else if (STX_PERSIST.persisted) { ctl = stxPill('已开启', 'ok', 'stxCheck'); desc = '浏览器不会在磁盘空间不足时自动清除 JISHENG OS 的数据（手动清除站点数据仍会删除）。'; }
+            else { ctl = stxBtn('申请开启', 'stxRequestPersist()', { cls: 'primary sm', ic: 'stxShieldCheck' }); desc = '未开启时，浏览器可能在磁盘空间不足时自动清除站点数据。建议开启以保护你的文件。'; }
+            return stxRow({ id: 'persist', ic: 'stxShieldCheck', title: '持久化存储', desc, ctl });
+        }
+        async function stxRequestPersist() {
+            if (!STX_PERSIST.supported || !navigator.storage.persist) return;
+            let ok = false;
+            try { ok = await navigator.storage.persist(); } catch (_) {}
+            STX_PERSIST.persisted = ok;
+            if (ok) Notify.success('已开启持久化存储', '浏览器不会在空间不足时自动清除系统数据。');
+            else Notify.warning('浏览器暂未同意', '部分浏览器只会对已收藏、已安装为应用或经常访问的网站授予持久化存储，可稍后再试。');
+            stxAllWins().forEach(id => { const st = STX_STATE[id]; if (st && (st.page === 'storage' || st.page === 'about')) stxRender(id, { keepScroll: true }); });
+        }
+        function stxPageStorage(winId) {
+            const r = STX_REPORT;
+            const refreshBtn = stxBtn('刷新', `stxRefreshStorage(${winId})`, { ic: 'stxRefreshCw', cls: 'sm' + (STX_REPORT_PROMISE ? ' busy' : ''), attrs: 'data-stx-refresh', dis: !!STX_REPORT_PROMISE });
+            const headRight = `<div class="stx-btns">${r ? `<span class="stx-muted" style="font-size:11.5px">更新于 ${stxTime(r.time)}</span>` : ''}${refreshBtn}</div>`;
+            const opfsOk = stxOpfsOk();
+            const backendCards = `<div class="stx-rcards" data-stx-row="backend">
+                <button type="button" class="stx-rcard ${SYSTEM.storageBackend === 'indexeddb' ? 'on' : ''}" onclick="stxSetBackend(${winId}, 'indexeddb')" aria-pressed="${SYSTEM.storageBackend === 'indexeddb'}"><span class="dot"></span><span><b>IndexedDB</b><small>兼容性最好，所有浏览器可用。路径 /desktop</small></span></button>
+                <button type="button" class="stx-rcard ${SYSTEM.storageBackend === 'opfs' ? 'on' : ''}" ${opfsOk ? '' : 'disabled'} onclick="stxSetBackend(${winId}, 'opfs')" aria-pressed="${SYSTEM.storageBackend === 'opfs'}"><span class="dot"></span><span><b>OPFS${opfsOk ? '' : '（不可用）'}</b><small>${opfsOk ? '读写大文件更快，适合视频、压缩包。路径 /opfs/desktop' : '当前浏览器或隐私模式未提供 Origin Private File System'}</small></span></button>
+            </div>
+            <p class="stx-note" style="margin-top:2px">${icon('stxInfo')}桌面、新建文件和常规上传默认保存到这里。切换不会移动或删除已有文件，当前工作区：<span class="stx-mono" data-storage-current-path>${stxEsc(SYSTEM.desktopPath)}</span></p>`;
+            const src = SYSTEM.storageBackend, dst = src === 'opfs' ? 'indexeddb' : 'opfs';
+            const copyCard = `<div class="stx-card pad" data-stx-row="copy">
+                <div class="stx-mig">
+                    <div class="end"><small>从（当前默认）</small><b>${storageBackendLabel(src)}</b><span class="stx-mono">${stxEsc(getStorageDesktopPath(src))}</span></div>
+                    ${icon('stxArrowRight')}
+                    <div class="end"><small>复制到</small><b>${storageBackendLabel(dst)}${opfsOk ? '' : '（不可用）'}</b><span class="stx-mono">${stxEsc(getStorageDesktopPath(dst))}</span></div>
+                </div>
+                <div class="stx-mig-foot"><small>源文件保留，目标中的同名文件会被覆盖；所有修改日期一并保留。复制不会改变默认存储位置。</small>
+                    ${stxBtn(STX_STATE[winId] && STX_STATE[winId].copying ? '复制中…' : '开始复制', `stxCopyWorkspace(${winId}, '${dst}')`, { ic: STX_STATE[winId] && STX_STATE[winId].copying ? 'stxRefreshCw' : 'stxCopy', cls: (STX_STATE[winId] && STX_STATE[winId].copying ? 'busy ' : ''), dis: !opfsOk || (STX_STATE[winId] && STX_STATE[winId].copying), attrs: 'data-storage-migration-button' })}
+                </div>
+            </div>`;
+            const tail = stxGroup('默认存储位置', '', backendCards) + stxGroup('复制工作区到另一位置', '一次性的手动操作', copyCard);
+            if (!r) return `<div class="stx-page wide">${stxHead('storage', headRight)}${stxStorageSkeleton()}<div class="stx-card">${stxPersistRow()}</div>${tail}</div>`;
+
+            const quotaKnown = Number.isFinite(r.quota) && r.quota > 0;
+            const cacheBytes = Number.isFinite(r.caches) ? r.caches : 0;
+            const classified = r.idb.bytes + r.opfs.bytes + r.system.bytes + cacheBytes;
+            // 浏览器的 estimate() 可能滞后（刚写入的数据尚未计入）或因压缩偏小；
+            // 此时以文件扫描合计为准，避免出现“已用 < 文件总和”的矛盾数字。
+            const reported = Number.isFinite(r.usage) ? r.usage : NaN;
+            const lagging = Number.isFinite(reported) && classified > reported;
+            const used = Number.isFinite(reported) ? Math.max(reported, classified) : classified;
+            const usageKnown = Number.isFinite(reported) || classified > 0;
+            const pct = usageKnown && quotaKnown ? used / r.quota * 100 : null;
+            const otherBytes = Number.isFinite(reported) ? Math.max(0, reported - classified) : 0;
+            const stackTotal = used || 1;
+            const segs = [
+                { n: 'IndexedDB 文件', c: '#1688e5', b: r.idb.bytes, s: `${r.idb.files} 个文件 · /desktop、/documents` },
+                { n: 'OPFS 文件', c: '#19c37d', b: r.opfs.bytes, s: opfsOk ? `${r.opfs.files} 个文件 · /opfs` : '当前浏览器不可用' },
+                { n: '系统文件与设置', c: '#a78bfa', b: r.system.bytes, s: `${r.system.files} 个文件 · /system` },
+                { n: 'Cache Storage', c: '#f59e0b', b: cacheBytes, s: Number.isFinite(r.caches) ? '浏览器离线缓存' : '浏览器未单独提供' },
+                { n: '其他 / 文件系统开销', c: '#64748b', b: otherBytes, s: '元数据、草稿与未单独归类的数据' }
+            ];
+            const totalFiles = r.idb.files + r.opfs.files;
+            const overview = `<div class="stx-card pad" data-storage-dashboard="${winId}" data-stx-row="overview">
+                <div class="stx-hero">
+                    <div><div class="stx-big">${usageKnown ? formatStorageBytes(used) : '—'} <span>/ ${quotaKnown ? formatStorageBytes(r.quota) : '浏览器未提供配额'}</span></div>
+                        <div class="stx-sub">${quotaKnown && usageKnown ? '可用 ' + formatStorageBytes(Math.max(0, r.quota - used)) + ' · ' : ''}共 ${totalFiles} 个用户文件${r.capped ? '（文件过多，已达扫描上限，数值为下限）' : ''}</div>${lagging ? `<div class="stx-sub" title="浏览器的配额统计通常会延迟几秒到几分钟更新">浏览器报告 ${formatStorageBytes(reported)}，尚未计入最新写入，已按文件扫描合计显示</div>` : ''}</div>
+                    <div class="stx-pct">${pct === null ? '—' : stxPctText(pct)}<small>配额占用率</small></div>
+                </div>
+                <div class="stx-meter ${pct !== null && pct >= 80 ? 'warn' : ''}" role="meter" aria-label="配额占用率" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct === null ? 0 : pct.toFixed(1)}"><i style="width:${pct === null ? 0 : Math.max(pct, 0.6)}%"></i></div>
+                <div class="stx-stack-label"><span>已用空间构成</span><span>${usageKnown ? formatStorageBytes(used) : ''}</span></div>
+                <div class="stx-stack">${segs.filter(s => s.b > 0).map(s => `<i style="background:${s.c};width:${stxPct(s.b, stackTotal)}%" title="${stxAttr(s.n + '：' + formatStorageBytes(s.b))}"></i>`).join('')}</div>
+                <div class="stx-legend">${segs.map(s => `<div class="stx-lg"><i style="background:${s.c}"></i><span>${s.n}</span><em>${formatStorageBytes(s.b)}</em><small>${s.s}</small></div>`).join('')}</div>
+            </div>`;
+
+            const typeTotal = STX_TYPES.reduce((t, x) => t + r.types[x.k].bytes, 0);
+            const typeMax = Math.max(1, ...STX_TYPES.map(x => r.types[x.k].bytes));
+            const typeRows = STX_TYPES.filter(t => r.types[t.k].files > 0).sort((a, b) => r.types[b.k].bytes - r.types[a.k].bytes).map(t => {
+                const v = r.types[t.k];
+                return `<div class="stx-bar" title="${stxAttr(t.n + '：' + formatStorageBytes(v.bytes) + '，占用户文件 ' + stxPctText(stxPct(v.bytes, typeTotal)))}">
+                    <div class="ic" style="background:${t.c}22;color:${t.c}">${icon(t.ic)}</div>
+                    <div class="nm"><span>${t.n}</span><span>${v.files} 个 · ${stxPctText(stxPct(v.bytes, typeTotal))}</span></div>
+                    <div class="sz">${formatStorageBytes(v.bytes)}</div>
+                    <div class="tr"><i style="width:${stxPct(v.bytes, typeMax)}%;background:${t.c}"></i></div>
+                </div>`;
+            }).join('');
+            const types = stxGroup('按文件类型', typeTotal ? formatStorageBytes(typeTotal) : '', `<div class="stx-card pad" data-stx-row="types">${typeRows ? `<div class="stx-bars">${typeRows}</div>` : `<div class="stx-empty">${icon('stxFile')}还没有用户文件</div>`}</div>`);
+
+            const topRows = r.top.map(f => {
+                const t = STX_TYPES.find(x => x.k === f.type);
+                const parent = stxParent(f.path);
+                return `<button type="button" class="stx-file" title="${stxAttr('打开所在位置：' + parent)}" onclick="openFileExplorer(${stxJs(parent)})">
+                    <div class="ic" style="background:${t.c}22;color:${t.c}">${icon(t.ic)}</div>
+                    <div class="nm"><b>${stxEsc(f.name)}</b><small>${stxBucketLabel(f.path)} · ${stxEsc(parent)}</small></div>
+                    <div class="sz">${formatStorageBytes(f.size)}</div>
+                </button>`;
+            }).join('');
+            const top = stxGroup('占用最多的文件', '点击打开所在位置', `<div class="stx-card pad" data-stx-row="top" style="padding:8px 10px">${topRows ? `<div class="stx-files">${topRows}</div>` : `<div class="stx-empty">${icon('stxFile')}还没有用户文件</div>`}</div>`);
+
+            const folders = Object.values(r.folders).filter(f => f.bytes > 0).sort((a, b) => b.bytes - a.bytes);
+            const shown = folders.slice(0, 18);
+            const rest = folders.slice(18);
+            if (rest.length) shown.push({ key: '__rest', name: `其他 ${rest.length} 个文件夹`, rootName: '合计', color: '#475569', bytes: rest.reduce((t, f) => t + f.bytes, 0), files: rest.reduce((t, f) => t + f.files, 0) });
+            const folderTotal = folders.reduce((t, f) => t + f.bytes, 0);
+            const shadeIdx = {};
+            const tiles = stxSquarify(shown, 100, 100).map(t => {
+                const f = t.d, xs = t.w < 9 || t.h < 13;
+                const label = `${f.name}（${f.rootName}）：${formatStorageBytes(f.bytes)} · ${f.files} 个文件 · ${stxPctText(stxPct(f.bytes, folderTotal))}`;
+                const k = (shadeIdx[f.root] = (shadeIdx[f.root] ?? -1) + 1);
+                const bg = f.key === '__rest' ? f.color : `color-mix(in srgb, ${f.color} ${[100, 78, 90, 68, 84, 60][k % 6]}%, #0b1020)`;
+                const style = `left:${t.x}%;top:${t.y}%;width:${t.w}%;height:${t.h}%;background:${bg}`;
+                const inner = `<b>${stxEsc(f.name)}</b><span>${formatStorageBytes(f.bytes)}</span>`;
+                return f.key === '__rest'
+                    ? `<div class="stx-tile ${xs ? 'xs' : ''}" style="${style}" title="${stxAttr(label)}">${inner}</div>`
+                    : `<button type="button" class="stx-tile ${xs ? 'xs' : ''}" style="${style}" title="${stxAttr(label + '\n点击打开')}" aria-label="${stxAttr(label)}" onclick="openFileExplorer(${stxJs(f.path)})">${inner}</button>`;
+            }).join('');
+            const usedRoots = STX_TREE_ROOTS.filter(rt => folders.some(f => f.root === rt.p));
+            const tree = stxGroup('文件夹占用', '面积代表大小 · 点击方块打开文件夹', `<div class="stx-card pad" data-stx-row="tree">${tiles
+                ? `<div class="stx-tm">${tiles}</div><div class="stx-tm-legend">${usedRoots.map(rt => `<span><i style="background:${rt.c}"></i>${rt.n}</span>`).join('')}</div>`
+                : `<div class="stx-empty">${icon('stxFolder')}还没有可显示的文件夹</div>`}</div>`);
+
+            return `<div class="stx-page wide">${stxHead('storage', headRight)}
+                ${overview}
+                <div class="stx-card">${stxPersistRow()}</div>
+                <div class="stx-vgrid">${types}${top}</div>
+                ${tree}
+                ${tail}
+                <p class="stx-note">${icon('stxInfo')}总量与配额来自浏览器 navigator.storage.estimate()；分类与文件统计来自 JISHENG OS 对 /desktop、/documents、/opfs、/system 的扫描。已挂载的本地文件夹不占用浏览器空间，不计入统计。</p>
+            </div>`;
+        }
+        async function stxSetBackend(winId, v) {
+            if (v === SYSTEM.storageBackend) return;
+            await setStorageBackend(v);
+            stxAllWins().forEach(id => stxRender(id, { keepScroll: true }));
+        }
+        async function stxCopyWorkspace(winId, target) {
+            const st = STX_STATE[winId];
+            if (!st || st.copying) return;
+            st.copying = true;
+            stxRender(winId, { keepScroll: true });
+            try { await copyCurrentWorkspaceToBackend(target); }
+            finally { if (STX_STATE[winId]) { st.copying = false; stxRender(winId, { keepScroll: true }); } }
+        }
+
+        // ---------- 页面：文件管理 ----------
+        function stxPageFiles(winId) {
+            const hidden = SYSTEM.showHiddenFiles;
+            const display = `<div class="stx-card">
+                ${stxRow({ id: 'hidden', ic: 'stxEye', title: '显示系统与隐藏文件', desc: '显示点文件、/system、挂载点和完整内部文件系统。仅建议在检查或维护时开启。', cls: 'keep',
+                    ctl: stxSwitch(hidden, `stxToggleHidden(${winId})`, '显示系统与隐藏文件', { id: `show-hidden-files-${winId}` }) })}
+                ${stxRow({ id: 'full', ic: 'stxFolder', title: '浏览完整文件系统', cls: hidden ? '' : 'dis',
+                    desc: hidden ? '从根目录 / 查看系统目录、隐藏文件与挂载点。' : '需要先打开上方“显示系统与隐藏文件”。',
+                    ctl: stxBtn('打开根目录', 'openFullFileExplorer()', { cls: 'sm', dis: !hidden }) })}
+                ${stxRow({ id: 'explorer', ic: 'stxFolderOpen', title: '文件管理器', desc: '侧栏同时提供 IndexedDB 与 OPFS；在哪个位置新建、上传或粘贴，文件就保存在哪里。',
+                    ctl: stxBtn('打开', 'openFileExplorer()', { cls: 'sm', ic: 'stxExternalLink' }) })}
+            </div>`;
+            const mounts = Object.values(SYSTEM.mountedFolders || {});
+            const fsa = stxFsaOk();
+            const mountBtn = stxBtn('挂载文件夹…', `stxMount(${winId})`, { ic: 'stxFolderPlus', cls: 'primary sm', dis: !fsa, title: fsa ? '' : '当前浏览器不支持 File System Access API' });
+            const list = mounts.length ? `<div class="stx-card">${mounts.map(m => {
+                const path = m.mountPath || ('/mnt/local/' + m.name);
+                const id = stxJs(m.id);
+                return stxRow({
+                    ic: m.disconnected ? 'stxUnplug' : 'stxFolderSync',
+                    title: `${stxEsc(m.name)} ${m.disconnected ? stxPill('需要重新授权', 'warn') : stxPill('已连接', 'ok')}`,
+                    desc: `<span class="stx-mono">${stxEsc(path)}</span>`,
+                    ctl: (m.disconnected
+                        ? stxBtn('重新授权', `stxRemount(${winId}, ${id})`, { cls: 'primary sm', ic: 'stxPlugZap' })
+                        : stxBtn('打开', `openLocalFolder(${id})`, { cls: 'sm', ic: 'stxExternalLink' }))
+                        + stxBtn('卸载', `stxUnmount(${winId}, ${id})`, { cls: 'ghost sm', ic: 'stxUnplug', title: '卸载不会删除电脑上的任何文件' })
+                });
+            }).join('')}</div>`
+                : `<div class="stx-card"><div class="stx-empty">${icon('stxFolderSync')}还没有挂载本地文件夹<br>挂载后可以在 JISHENG OS 中直接读写电脑上的文件夹，文件不占用浏览器空间。</div></div>`;
+            const mountNote = fsa
+                ? `<p class="stx-note">${icon('stxInfo')}浏览器重启后，出于安全考虑通常需要点击“重新授权”才能继续访问。卸载只会移除授权，不会删除电脑上的文件。</p>`
+                : `<p class="stx-note">${icon('stxTriangleAlert')}当前浏览器不支持 File System Access API（需要 Chrome / Edge 等 Chromium 内核桌面浏览器）。</p>`;
+            return `<div class="stx-page">${stxHead('files')}
+                ${stxGroup('显示与浏览', '', display)}
+                ${stxGroup('已挂载的本地文件夹', mounts.length ? mounts.length + ' 个' : '', list + mountNote, mountBtn, 'data-stx-row="mounts"')}
+            </div>`;
+        }
+        function stxToggleHidden(winId) {
+            setShowHiddenFiles(!SYSTEM.showHiddenFiles);
+            stxRender(winId, { keepScroll: true });
+        }
+        async function stxMount(winId) {
+            await mountLocalFolder();
+            stxAllWins().forEach(id => { stxRenderNav(id); if (STX_STATE[id].page === 'files') stxRender(id, { keepScroll: true }); });
+        }
+        async function stxRemount(winId, folderId) {
+            await remountFolder(folderId, false);
+            stxAllWins().forEach(id => { stxRenderNav(id); if (STX_STATE[id].page === 'files') stxRender(id, { keepScroll: true }); });
+        }
+        async function stxUnmount(winId, folderId) {
+            const info = SYSTEM.mountedFolders[folderId];
+            if (!info) return;
+            const ok = await SysDialog.confirm({
+                title: '卸载文件夹', icon: 'uiEject', okText: '卸载',
+                message: `卸载“${info.name}”后，JISHENG OS 将不再能访问它，已打开的相关窗口可能无法继续使用。\n\n电脑上的文件不会被删除，之后可以随时重新挂载。`
+            });
+            if (!ok) return;
+            await unmountLocalFolder(folderId);
+            stxAllWins().forEach(id => { stxRenderNav(id); if (STX_STATE[id].page === 'files') stxRender(id, { keepScroll: true }); });
+        }
+
+        // ---------- 页面：清理与维护 ----------
+        function stxCleanCard(winId) {
+            const state = getTempCleanupState(winId);
+            const has = state.items.length > 0;
+            const selectable = state.items.filter(i => i.group !== 'protected');
+            const chosen = state.items.filter((_, i) => state.selected[i]);
+            const step = state.scanning ? 1 : !state.scanned ? 1 : chosen.length ? 3 : 2;
+            const stepHtml = ['扫描', '勾选', '清理'].map((n, i) => {
+                const k = i + 1, cls = state.scanned && k < step ? 'done' : k === step ? 'on' : '';
+                return `${i ? '<i class="ln"></i>' : ''}<span class="${cls}"><i>${cls === 'done' ? '✓' : k}</i>${n}</span>`;
+            }).join('');
+            const head = `<div class="stx-clean-head"><div class="stx-steps">${stepHtml}</div><i class="sp"></i>
+                ${stxBtn(state.scanning ? '扫描中…' : state.scanned ? '重新扫描' : '开始扫描', `scanOneOffCache(${winId})`, { ic: state.scanning ? 'stxRefreshCw' : 'stxScanSearch', cls: (state.scanned ? 'sm' : 'primary sm') + (state.scanning ? ' busy' : ''), dis: state.scanning })}</div>`;
+            let body;
+            if (state.scanning) {
+                body = `<div class="stx-scan"><div class="stx-indet"><i></i></div><div class="stx-mono">${stxEsc(state.status || '正在扫描…')}</div><small class="stx-muted">只读取，不会删除任何内容。</small></div>`;
+            } else if (state.error) {
+                body = `<div class="stx-empty" style="border-top:1px solid var(--line)">${icon('stxTriangleAlert')}扫描失败：${stxEsc(state.error)}</div>`;
+            } else if (!state.scanned) {
+                body = `<div class="stx-empty" style="border-top:1px solid var(--line);text-align:left;padding:14px 16px">会检查 IndexedDB、OPFS、系统目录和浏览器缓存，列出临时文件、缓存、重复副本、空白文档等候选项。<br>扫描不会删除任何内容；所有项目默认不勾选，由你逐项确认。</div>`;
+            } else if (!has) {
+                body = `<div class="stx-empty" style="border-top:1px solid var(--line)">${icon('stxCircleCheck')}很干净，没有发现可清理的临时文件或缓存。</div>`;
+            } else {
+                state.open = state.open || {};
+                body = tempCleanupGroupOrder().map(group => {
+                    const entries = state.items.map((item, index) => ({ item, index })).filter(e => e.item.group === group);
+                    if (!entries.length) return '';
+                    const bytes = entries.reduce((t, e) => t + (e.item.size || 0), 0);
+                    const isProt = group === 'protected';
+                    const open = !!state.open[group];
+                    return `<div class="stx-cg ${open ? 'open' : ''}">
+                        <div class="stx-cg-h" onclick="stxToggleCleanGroup(${winId}, '${group}')" role="button" tabindex="0" aria-expanded="${open}" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click()}">
+                            <input type="checkbox" class="stx-cb" data-cleanup-group-select="${group}" ${isProt ? 'disabled title="受保护，需要单独勾选"' : ''} aria-label="整组选择：${stxAttr(tempCleanupGroupTitle(group))}" onclick="event.stopPropagation()" onchange="toggleOneOffCacheGroup(${winId}, '${group}', this.checked)">
+                            <b>${tempCleanupGroupTitle(group)}${isProt ? ' ' + stxPill('建议保留', 'warn', 'stxLock') : ''}</b>
+                            <small>${entries.length} 项 · ${formatStorageBytes(bytes)}</small>
+                            ${icon('stxChevronRight')}
+                        </div>
+                        <div class="stx-cg-items">${entries.map(({ item, index }) => `<label class="stx-ci">
+                            <input type="checkbox" class="stx-cb" ${state.selected[index] ? 'checked' : ''} onchange="setOneOffCacheSelected(${winId}, ${index}, this.checked)">
+                            <span style="min-width:0"><b title="${stxAttr(item.path)}">${stxEsc(item.path)}</b><small>${stxEsc(item.reason)}${item.volume ? ' · ' + stxEsc(item.volume) : ''}</small></span>
+                            <em>${formatStorageBytes(item.size || 0)}</em>
+                        </label>`).join('')}</div>
+                    </div>`;
+                }).join('');
+                const freed = chosen.reduce((t, i) => t + (i.size || 0), 0);
+                body += `<div class="stx-actionbar">
+                    <span>已选 <b>${chosen.length}</b> 项 · 预计释放 <b>${formatStorageBytes(freed)}</b></span><i class="sp"></i>
+                    ${stxBtn('全选', `toggleAllOneOffCache(${winId}, true)`, { cls: 'ghost sm', dis: !selectable.length, title: '选择全部候选项（不含系统配置）' })}
+                    ${stxBtn('清空', `toggleAllOneOffCache(${winId}, false)`, { cls: 'ghost sm', dis: !chosen.length })}
+                    ${stxBtn(`清理 ${chosen.length} 项`, `cleanSelectedOneOffCache(${winId})`, { cls: 'danger sm', ic: 'stxTrash2', dis: !chosen.length })}
+                </div>`;
+            }
+            return `<div class="stx-card" id="stx-clean-${winId}" data-stx-row="scan">${head}${body}</div>`;
+        }
+        function stxSyncCleanCheckboxes(winId) {
+            const state = getTempCleanupState(winId);
+            document.querySelectorAll(`#win-${winId} [data-cleanup-group-select]`).forEach(input => {
+                const g = input.dataset.cleanupGroupSelect;
+                const entries = state.items.map((item, index) => ({ item, index })).filter(e => e.item.group === g && g !== 'protected');
+                const count = entries.filter(e => !!state.selected[e.index]).length;
+                input.checked = entries.length > 0 && count === entries.length;
+                input.indeterminate = count > 0 && count < entries.length;
+            });
+        }
+        function stxToggleCleanGroup(winId, group) {
+            const state = getTempCleanupState(winId);
+            state.open = state.open || {};
+            state.open[group] = !state.open[group];
+            renderOneOffCache(winId);
+        }
+        function stxPageClean(winId) {
+            const opfsOk = stxOpfsOk();
+            const backup = `<div class="stx-card">
+                ${stxRow({ id: 'export', ic: 'stxDownload', title: '导出设置备份', desc: '保存系统设置、壁纸和桌面图标位置为一个 .json 文件，可在换电脑或重置后恢复。不包含文件本身。',
+                    ctl: stxBtn('导出…', 'stxExportBackup()', { cls: 'sm', ic: 'stxDownload' }) })}
+                ${stxRow({ id: 'import', ic: 'stxUpload', title: '从备份恢复设置', desc: '选择之前导出的备份文件，恢复前会显示备份内容并请你确认。',
+                    ctl: stxBtn('选择文件…', `stxImportBackup(${winId})`, { cls: 'sm', ic: 'stxUpload' }) })}
+            </div>`;
+            const danger = `<div class="stx-card stx-danger">${stxRow({ id: 'reset', ic: 'stxTriangleAlert', title: '重置存储数据',
+                desc: `可选择只重置 IndexedDB${opfsOk ? '、只重置 OPFS，或全部重置' : ''}。会显示每种范围的影响并要求输入确认，操作不可恢复。`,
+                ctl: stxBtn('重置…', 'stxReset()', { cls: 'danger sm', ic: 'stxRotateCcw' }) })}</div>`;
+            return `<div class="stx-page">${stxHead('clean')}
+                ${stxGroup('缓存与临时文件', '先扫描，再由你逐项勾选', stxCleanCard(winId))}
+                ${stxGroup('备份与恢复', '', backup)}
+                ${stxGroup('危险操作', '', danger)}
+            </div>`;
+        }
+
+        function buildSystemSettingsSnapshot() {
+            return {
+                version: 2,
+                clickBehavior: SYSTEM.clickBehavior === 'single' ? 'single' : 'double',
+                storageBackend: SYSTEM.storageBackend === 'opfs' && SYSTEM.opfs && SYSTEM.opfs.available ? 'opfs' : 'indexeddb',
+                showHiddenFiles: SYSTEM.showHiddenFiles === true,
+                hiddenSystemApps: SYSTEM.hiddenSystemApps.filter(key => SYSTEM_APP_DEFS.some(app => app.key === key && app.hideable))
+            };
+        }
+        function stxReadText(path) {
+            return new Promise(resolve => {
+                if (!SYSTEM.fs) { resolve(null); return; }
+                SYSTEM.fs.readFile(path, 'utf8', (err, data) => resolve(err ? null : String(data)));
+            });
+        }
+        function stxDownload(filename, text, mime) {
+            const blob = new Blob([text], { type: mime || 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url; a.download = filename; a.style.display = 'none';
+            document.body.appendChild(a); a.click();
+            setTimeout(() => { a.remove(); URL.revokeObjectURL(url); }, 1000);
+        }
+        async function stxExportBackup() {
+            try {
+                const wallpaper = await stxReadText(SYSTEM.configPath);
+                const data = {
+                    type: 'jisheng-os-settings-backup', formatVersion: 1, osVersion: STX_VERSION,
+                    exportedAt: new Date().toISOString(),
+                    settings: buildSystemSettingsSnapshot(),
+                    wallpaper: wallpaper && wallpaper.trim() ? wallpaper.trim() : null,
+                    iconPositions: SYSTEM.iconPositions && typeof SYSTEM.iconPositions === 'object' ? SYSTEM.iconPositions : {}
+                };
+                const text = JSON.stringify(data, null, 2);
+                const d = new Date(), p = n => String(n).padStart(2, '0');
+                const name = `JISHENG-OS-设置备份-${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}.json`;
+                stxDownload(name, text);
+                Notify.success('备份已导出', `${stxEsc(name)}（${formatStorageBytes(new Blob([text]).size)}）`);
+            } catch (err) {
+                Notify.error('导出失败', stxEsc(err && err.message || err));
+            }
+        }
+        function stxImportBackup(winId) {
+            const input = document.createElement('input');
+            input.type = 'file'; input.accept = '.json,application/json'; input.style.display = 'none';
+            input.onchange = async () => {
+                const file = input.files && input.files[0];
+                input.remove();
+                if (!file) return;
+                let data;
+                try { data = JSON.parse(await file.text()); } catch (_) { Notify.error('无法读取备份', '文件不是有效的 JSON。'); return; }
+                if (!data || data.type !== 'jisheng-os-settings-backup' || !data.settings || typeof data.settings !== 'object') {
+                    Notify.error('无法读取备份', '这不是 JISHENG OS 导出的设置备份文件。'); return;
+                }
+                const wp = typeof data.wallpaper === 'string' && /^(data:image\/|https?:\/\/)/i.test(data.wallpaper) && !/['"\\\n\r()]/.test(data.wallpaper.replace(/^data:[^,]*,/, '')) && !/['"\\\n\r]/.test(data.wallpaper) ? data.wallpaper : null;
+                const pos = data.iconPositions && typeof data.iconPositions === 'object' && !Array.isArray(data.iconPositions) ? data.iconPositions : null;
+                const s = data.settings;
+                const parts = [
+                    `· 图标打开方式：${s.clickBehavior === 'single' ? '单击' : '双击'}`,
+                    `· 默认存储位置：${s.storageBackend === 'opfs' ? 'OPFS' + (stxOpfsOk() ? '' : '（当前不可用，将使用 IndexedDB）') : 'IndexedDB'}`,
+                    `· 显示隐藏文件：${s.showHiddenFiles ? '开' : '关'}`,
+                    `· 隐藏的系统应用：${Array.isArray(s.hiddenSystemApps) && s.hiddenSystemApps.length ? s.hiddenSystemApps.map(k => (SYSTEM_APP_DEFS.find(a => a.key === k) || { name: k }).name).join('、') : '无'}`,
+                    `· 壁纸：${wp ? '包含' : '不包含'}`,
+                    `· 桌面图标位置：${pos ? Object.keys(pos).length + ' 个' : '不包含'}`
+                ];
+                const ok = await SysDialog.confirm({
+                    title: '从备份恢复设置', icon: 'uiUpload', okText: '恢复',
+                    message: `备份时间：${data.exportedAt ? new Date(data.exportedAt).toLocaleString() : '未知'}（系统版本 ${data.osVersion || '未知'}）\n\n将恢复以下内容，当前对应设置会被覆盖：\n${parts.join('\n')}\n\n不会修改或删除任何文件。`
+                });
+                if (!ok) return;
+                try {
+                    applySystemSettings(s);
+                    try { await ensureDir(SYSTEM.desktopPath); await ensureDir(SYSTEM.documentsPath); } catch (_) {}
+                    saveSystemSettings();
+                    applySystemAppVisibility();
+                    syncStorageMigrationControls();
+                    if (wp) setBg(wp);
+                    if (pos) { SYSTEM.iconPositions = pos; saveIconPositions(); }
+                    if (SYSTEM.mounted) refreshDesktop();
+                    refreshOpenFileManagers();
+                    STX_REPORT = null;
+                    stxAllWins().forEach(id => { stxRenderNav(id); stxRender(id, { keepScroll: true }); });
+                    Notify.success('设置已恢复', '备份中的设置已应用。');
+                } catch (err) {
+                    Notify.error('恢复失败', stxEsc(err && err.message || err));
+                }
+            };
+            document.body.appendChild(input);
+            input.click();
+        }
+        async function stxReset() {
+            const opfsOk = stxOpfsOk();
+            const options = [{ value: 'indexeddb', label: '仅 IndexedDB', icon: 'stxDatabase', desc: '删除 IndexedDB 中的文件、系统目录和本地文件夹授权记录。OPFS 文件、设置和浏览器缓存保留。' }];
+            if (opfsOk) {
+                options.push({ value: 'opfs', label: '仅 OPFS', icon: 'stxHardDrive', desc: '删除 OPFS 中的所有文件和目录。IndexedDB 文件、设置和浏览器缓存保留。' });
+                options.push({ value: 'all', label: '全部重置', icon: 'stxTriangleAlert', desc: '删除 IndexedDB 与 OPFS 的全部文件和系统数据，并清除本地设置、草稿和日期记录，相当于恢复出厂。' });
+            }
+            const v = await SysDialog.form({
+                title: '重置存储数据', icon: 'uiWarning', danger: true, okText: '永久删除并重置',
+                message: '此操作不可恢复，完成后页面会重新加载。建议先导出设置备份，并把重要文件复制到电脑上。',
+                fields: [
+                    { type: 'radio', name: 'scope', label: '重置范围', value: 'indexeddb', options },
+                    { type: 'text', name: 'confirm', label: '输入“重置”以确认', value: '', placeholder: '重置', selectStem: false }
+                ],
+                validate: val => val.confirm === '重置' ? null : '请输入“重置”两个字以确认'
+            });
+            if (!v || !v.scope) return;
+            resetStorageScope(v.scope, { confirmed: true });
+        }
+
+        // ---------- 页面：应用 ----------
+        function stxPageApps(winId) {
+            const anyHidden = SYSTEM_APP_DEFS.some(a => a.hideable && isSystemAppHidden(a.key));
+            const rows = SYSTEM_APP_DEFS.map(app => {
+                if (!app.hideable) return stxRow({ id: 'app-' + app.key, ic: app.icon, title: stxEsc(app.name), desc: '始终显示，以便随时恢复和调整配置', cls: 'keep', ctl: stxPill('始终显示', '', 'stxLock') });
+                const shown = !isSystemAppHidden(app.key);
+                return stxRow({ id: 'app-' + app.key, ic: app.icon, title: stxEsc(app.name), desc: shown ? '显示在桌面、开始菜单和任务栏' : '已隐藏', cls: 'keep',
+                    ctl: stxSwitch(shown, `stxToggleApp(${winId}, '${app.key}')`, '显示' + app.name, { id: 'hide-app-' + app.key }) });
+            }).join('');
+            const right = anyHidden ? stxBtn('全部显示', `stxShowAllApps(${winId})`, { cls: 'ghost sm' }) : '';
+            return `<div class="stx-page">${stxHead('apps')}
+                ${stxGroup('系统应用快捷方式', '关闭后从桌面、开始菜单和任务栏隐藏', `<div class="stx-card">${rows}</div>`, right, 'data-stx-row="apps"')}
+                <p class="stx-note">${icon('stxInfo')}隐藏只影响快捷方式，应用本身不会被删除，可随时在这里重新打开。</p>
+            </div>`;
+        }
+        function stxToggleApp(winId, key) {
+            setSystemAppHidden(key, !isSystemAppHidden(key));
+            stxRender(winId, { keepScroll: true });
+        }
+        function stxShowAllApps(winId) {
+            SYSTEM_APP_DEFS.filter(a => a.hideable && isSystemAppHidden(a.key)).forEach(a => setSystemAppHidden(a.key, false));
+            stxRender(winId, { keepScroll: true });
+        }
+
+        // ---------- 页面：关于 ----------
+        function stxCapabilities() {
+            const r = STX_REPORT;
+            return [
+                { n: 'IndexedDB', ok: typeof indexedDB !== 'undefined', d: '基础文件存储' },
+                { n: 'OPFS', ok: stxOpfsOk(), d: '高速文件存储' },
+                { n: 'File System Access', ok: stxFsaOk(), d: '挂载本地文件夹' },
+                { n: '持久化存储', ok: STX_PERSIST.supported ? STX_PERSIST.persisted : false, d: !STX_PERSIST.supported ? '不支持' : STX_PERSIST.persisted ? '已开启' : STX_PERSIST.persisted === false ? '未开启' : '检测中', warn: STX_PERSIST.supported && !STX_PERSIST.persisted },
+                { n: '存储配额查询', ok: !!(navigator.storage && navigator.storage.estimate), d: r && r.quota > 0 ? formatStorageBytes(r.quota) : '' },
+                { n: 'Cache Storage', ok: 'caches' in window, d: '离线缓存' },
+                { n: 'WebAssembly', ok: typeof WebAssembly === 'object', d: '解压、虚拟机' },
+                { n: 'SharedArrayBuffer', ok: typeof SharedArrayBuffer !== 'undefined' && !!window.crossOriginIsolated, d: '多线程加速' },
+                { n: '剪贴板写入', ok: !!(navigator.clipboard && navigator.clipboard.writeText), d: '复制文本' }
+            ];
+        }
+        function stxBrowserName() {
+            const ua = navigator.userAgent;
+            const m = ua.match(/(Edg|OPR|Firefox|Chrome|Version)\/(\d+)/);
+            if (!m) return ua.slice(0, 60);
+            const name = { Edg: 'Edge', OPR: 'Opera', Firefox: 'Firefox', Chrome: 'Chrome', Version: /Safari/.test(ua) ? 'Safari' : 'Browser' }[m[1]];
+            const os = /Windows/.test(ua) ? 'Windows' : /Android/.test(ua) ? 'Android' : /iPhone|iPad/.test(ua) ? 'iOS' : /Mac OS X/.test(ua) ? 'macOS' : /Linux/.test(ua) ? 'Linux' : '';
+            return `${name} ${m[2]}${os ? ' · ' + os : ''}`;
+        }
+        function stxPageAbout(winId) {
+            const caps = stxCapabilities().map(c => `<div class="stx-cap" title="${stxAttr(c.n + (c.d ? '：' + c.d : ''))}">
+                <span class="${c.warn ? 'u' : c.ok ? 'y' : 'n'}" style="display:flex">${icon(c.warn ? 'stxTriangleAlert' : c.ok ? 'stxCircleCheck' : 'stxCircleX')}</span>
+                <span>${c.n}</span>${c.d ? `<small>${stxEsc(c.d)}</small>` : ''}</div>`).join('');
+            const r = STX_REPORT;
+            const info = `<div class="stx-card">
+                ${stxRow({ ic: 'stxMonitorSmartphone', title: '浏览器', desc: stxEsc(stxBrowserName()) })}
+                ${stxRow({ ic: 'stxHardDrive', title: '存储', desc: r ? `已用 ${formatStorageBytes(Math.max(Number.isFinite(r.usage) ? r.usage : 0, r.idb.bytes + r.opfs.bytes + r.system.bytes))}${r.quota > 0 ? ' / ' + formatStorageBytes(r.quota) : ''} · 默认 ${storageBackendLabel(SYSTEM.storageBackend)}` : `默认 ${storageBackendLabel(SYSTEM.storageBackend)}`, cls: 'click', attrs: `onclick="stxGo(${winId}, 'storage')"`, ctl: icon('stxChevronRight') })}
+            </div>`;
+            return `<div class="stx-page">${stxHead('about')}
+                <div class="stx-card" data-stx-row="version"><div class="stx-about">
+                    <div class="stx-logo lg"><span>JS</span></div>
+                    <div><b>JISHENG OS</b><small>Ultimate Web Operating System</small><small>版本 ${STX_VERSION} · Build 2026</small></div>
+                    ${stxBtn('GitHub 仓库', "window.open('https://github.com/SFGFDSD/JISHENGOS','_blank','noopener')", { cls: 'sm', ic: 'stxExternalLink' })}
+                </div></div>
+                ${stxGroup('浏览器能力', '决定哪些功能可用', `<div class="stx-card" data-stx-row="caps"><div class="stx-caps">${caps}</div></div>`,
+                    stxBtn('复制诊断信息', 'stxCopyDiagnostics()', { cls: 'sm', ic: 'stxCopy', attrs: 'data-stx-row="diag"' }))}
+                ${stxGroup('运行环境', '', info)}
+                <p class="stx-note">${icon('stxInfo')}反馈问题时附上“诊断信息”，可以更快定位原因。诊断信息不包含任何文件内容或文件名。</p>
+            </div>`;
+        }
+        async function stxCopyDiagnostics() {
+            let r = STX_REPORT;
+            try { r = await stxGetReport(); } catch (_) {}
+            const mounts = Object.values(SYSTEM.mountedFolders || {});
+            const lines = [
+                'JISHENG OS 诊断信息',
+                `版本: ${STX_VERSION}`,
+                `时间: ${new Date().toISOString()}`,
+                `浏览器: ${navigator.userAgent}`,
+                `语言: ${navigator.language || ''}`,
+                `窗口: ${window.innerWidth}×${window.innerHeight} @${window.devicePixelRatio || 1}x`,
+                `默认存储: ${storageBackendLabel(SYSTEM.storageBackend)} (${SYSTEM.desktopPath})`,
+                r ? `存储: 已用 ${formatStorageBytes(Math.max(Number.isFinite(r.usage) ? r.usage : 0, r.idb.bytes + r.opfs.bytes + r.system.bytes))}（浏览器报告 ${formatStorageBytes(r.usage)}） / 配额 ${formatStorageBytes(r.quota)}；IndexedDB ${formatStorageBytes(r.idb.bytes)}（${r.idb.files} 个）、OPFS ${formatStorageBytes(r.opfs.bytes)}（${r.opfs.files} 个）、系统 ${formatStorageBytes(r.system.bytes)}${r.capped ? '、扫描达上限' : ''}` : '存储: 未知',
+                `持久化存储: ${!STX_PERSIST.supported ? '不支持' : STX_PERSIST.persisted ? '已开启' : '未开启'}`,
+                `已挂载文件夹: ${mounts.length}（需重新授权 ${mounts.filter(m => m.disconnected).length}）`,
+                `显示隐藏文件: ${SYSTEM.showHiddenFiles ? '是' : '否'} · 打开方式: ${SYSTEM.clickBehavior === 'single' ? '单击' : '双击'}`,
+                '能力: ' + stxCapabilities().map(c => `${c.n} ${c.ok ? '✓' : '✗'}`).join('，')
+            ];
+            const text = lines.join('\n');
+            let ok = false;
+            try { if (navigator.clipboard && navigator.clipboard.writeText) { await navigator.clipboard.writeText(text); ok = true; } } catch (_) {}
+            if (!ok) {
+                try {
+                    const ta = document.createElement('textarea');
+                    ta.value = text; ta.style.cssText = 'position:fixed;left:-9999px;top:0;opacity:0';
+                    document.body.appendChild(ta); ta.select();
+                    ok = document.execCommand('copy');
+                    ta.remove();
+                } catch (_) {}
+            }
+            if (ok) Notify.success('诊断信息已复制', '可以直接粘贴到问题反馈中。');
+            else SysDialog.alert({ title: '请手动复制诊断信息', icon: 'uiInfo', message: text });
         }
 
         // === 壁纸管理 ===
@@ -13575,6 +14402,7 @@
         
         function setBg(u, save = true) {
             document.getElementById('dynamic-bg').style.backgroundImage = `url('${u}')`;
+            stxSyncWallpaperPreviews();
             if (save && SYSTEM.mounted) {
                 SYSTEM.fs.writeFile(SYSTEM.configPath, u, (err) => { if(err) console.error("Save WP failed", err); });
             }
@@ -13653,7 +14481,7 @@
             } catch (err) { console.warn('清理本地系统数据失败:', err); }
         }
 
-        async function resetStorageScope(scope) {
+        async function resetStorageScope(scope, options = {}) {
             const descriptions = {
                 indexeddb: {
                     title: '仅重置 IndexedDB',
@@ -13670,11 +14498,14 @@
             };
             const detail = descriptions[scope];
             if (!detail) return;
-            const confirmed = await SysDialog.confirm({
-                title: detail.title, icon: 'uiWarning', danger: true, okText: '确认重置',
-                message: `警告：${detail.message}\n\n此操作不可恢复，确定继续吗？`
-            });
-            if (!confirmed) return;
+            // 设置页的重置对话框已让用户选择范围并输入确认词，此时不再重复确认。
+            if (!options.confirmed) {
+                const confirmed = await SysDialog.confirm({
+                    title: detail.title, icon: 'uiWarning', danger: true, okText: '确认重置',
+                    message: `警告：${detail.message}\n\n此操作不可恢复，确定继续吗？`
+                });
+                if (!confirmed) return;
+            }
             try {
                 if (scope === 'opfs' || scope === 'all') {
                     await clearOPFSForReset();
