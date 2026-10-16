@@ -25,8 +25,7 @@
     <title>JISHENG OS</title>
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cdefs%3E%3ClinearGradient id='bg' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0%25' stop-color='%230a0a0f'/%3E%3Cstop offset='100%25' stop-color='%23181c24'/%3E%3C/linearGradient%3E%3ClinearGradient id='txt' x1='0' y1='0' x2='1' y2='0'%3E%3Cstop offset='0%25' stop-color='%230078d4'/%3E%3Cstop offset='100%25' stop-color='%2300d4ff'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='100' height='100' rx='18' fill='url(%23bg)'/%3E%3Ctext x='50%25' y='56%25' dominant-baseline='middle' text-anchor='middle' font-family='Arial Black,sans-serif' font-weight='900' font-size='52' fill='url(%23txt)'%3EJS%3C/text%3E%3C/svg%3E">
     
-    <!-- 核心驱动：BrowserFS 文件系统 -->
-    <script src="https://unpkg.com/browserfs@1.4.3/dist/browserfs.min.js"></script>
+    <!-- 文件系统由下方的原生 IndexedDB 内核直接实现，无第三方文件系统依赖。 -->
     <!-- JSZip 解压缩库 -->
     <script src="https://unpkg.com/jszip@3.10.1/dist/jszip.min.js"></script>
     <!-- V86 虚拟机模拟器 -->
@@ -2917,26 +2916,548 @@
             return !!SYSTEM._internalNativeDrag;
         }
 
-        // === 初始化内核 (BrowserFS) ===
-        function initKernel() {
-            if (typeof BrowserFS === 'undefined') {
-                console.error("Error: FS Lib failed to load.");
-                return;
+        // Native IndexedDB filesystem: it directly reads and writes the existing v3 key/value
+        // volume format, with no third-party filesystem runtime and no data-copy migration.
+        class NativeBuffer extends Uint8Array {
+            static from(value, encoding) {
+                if (typeof value === 'string') {
+                    if (encoding === 'base64') {
+                        const binary = atob(value);
+                        const out = new NativeBuffer(binary.length);
+                        for (let i = 0; i < binary.length; i++) out[i] = binary.charCodeAt(i);
+                        return out;
+                    }
+                    if (encoding === 'hex') {
+                        const out = new NativeBuffer(Math.floor(value.length / 2));
+                        for (let i = 0; i < out.length; i++) out[i] = parseInt(value.slice(i * 2, i * 2 + 2), 16) || 0;
+                        return out;
+                    }
+                    return new NativeBuffer(new TextEncoder().encode(value));
+                }
+                if (value instanceof ArrayBuffer) return new NativeBuffer(new Uint8Array(value));
+                if (ArrayBuffer.isView(value)) return new NativeBuffer(new Uint8Array(value.buffer, value.byteOffset, value.byteLength));
+                if (value && value.data && Array.isArray(value.data)) return new NativeBuffer(value.data);
+                return new NativeBuffer(value || 0);
             }
+            static isBuffer(value) { return value instanceof NativeBuffer; }
+            toString(encoding = 'utf8') {
+                if (encoding === 'base64') {
+                    let binary = '';
+                    for (let i = 0; i < this.length; i += 0x8000) {
+                        binary += String.fromCharCode.apply(null, this.subarray(i, Math.min(i + 0x8000, this.length)));
+                    }
+                    return btoa(binary);
+                }
+                if (encoding === 'hex') return Array.from(this, b => b.toString(16).padStart(2, '0')).join('');
+                if (encoding === 'ascii' || encoding === 'latin1') return Array.from(this, b => String.fromCharCode(b)).join('');
+                return new TextDecoder(encoding === 'utf-8' ? 'utf-8' : encoding).decode(this);
+            }
+        }
+        window.Buffer = NativeBuffer;
 
-            BrowserFS.install(window);
-            BrowserFS.configure({
-                fs: "MountableFileSystem",
-                options: { '/': { fs: "IndexedDB", options: { storeName: 'JISHENG_OS_V3' } } }
-            }, function(e) {
-                if (e) {
-                    console.error(e);
+        class NativeStats {
+            constructor(record) {
+                this.size = record.kind === 'file' ? (record.size || 0) : 4096;
+                this.mtimeMs = Number(record.mtime) || 0;
+                this.mtime = new Date(this.mtimeMs || 0);
+                this.atime = new Date(Number(record.atime) || this.mtimeMs || 0);
+                this.ctime = new Date(Number(record.ctime) || this.mtimeMs || 0);
+                this.mode = record.kind === 'dir' ? 0o40777 : 0o100666;
+                this.blocks = Math.ceil(this.size / 512);
+                this.isFile = () => record.kind === 'file';
+                this.isDirectory = () => record.kind === 'dir';
+            }
+        }
+
+        class NativeFileSystem {
+            constructor(db) {
+                this._db = db;
+                this._storeName = 'JISHENG_OS_V3';
+                this._mounts = new Map();
+            }
+            static _bytes(value) {
+                if (value instanceof ArrayBuffer) return new Uint8Array(value);
+                if (ArrayBuffer.isView(value)) return new Uint8Array(value.buffer, value.byteOffset, value.byteLength);
+                return null;
+            }
+            static _parseInode(raw) {
+                const bytes = NativeFileSystem._bytes(raw);
+                if (!bytes || bytes.length < 30) return null;
+                const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+                let id = '';
+                for (let i = 30; i < bytes.length; i++) id += String.fromCharCode(bytes[i]);
+                return {
+                    id,
+                    size: view.getUint32(0, true),
+                    mode: view.getUint16(4, true),
+                    atime: view.getFloat64(6, true),
+                    mtime: view.getFloat64(14, true),
+                    ctime: view.getFloat64(22, true)
+                };
+            }
+            static _serializeInode(inode) {
+                const id = String(inode.id);
+                const bytes = new Uint8Array(30 + id.length);
+                const view = new DataView(bytes.buffer);
+                view.setUint32(0, Math.max(0, Math.min(0xFFFFFFFF, Number(inode.size) || 0)), true);
+                view.setUint16(4, Number(inode.mode) || 0, true);
+                view.setFloat64(6, Number(inode.atime) || Date.now(), true);
+                view.setFloat64(14, Number(inode.mtime) || Date.now(), true);
+                view.setFloat64(22, Number(inode.ctime) || Date.now(), true);
+                for (let i = 0; i < id.length; i++) bytes[30 + i] = id.charCodeAt(i) & 0x7F;
+                return bytes.buffer;
+            }
+            static _newId() {
+                try {
+                    if (window.crypto && typeof window.crypto.randomUUID === 'function') return 'js-' + window.crypto.randomUUID();
+                    if (window.crypto && typeof window.crypto.getRandomValues === 'function') {
+                        const bytes = new Uint8Array(16);
+                        window.crypto.getRandomValues(bytes);
+                        return 'js-' + Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('');
+                    }
+                } catch (_) {}
+                return 'js-' + Date.now().toString(16) + '-' + Math.random().toString(16).slice(2) + Math.random().toString(16).slice(2);
+            }
+            static open() {
+                if (!window.indexedDB) return Promise.reject(new Error('此浏览器不支持 IndexedDB，无法启动持久化文件系统'));
+                return new Promise((resolve, reject) => {
+                    let request;
+                    try { request = indexedDB.open('JISHENG_OS_V3', 1); }
+                    catch (error) { reject(error); return; }
+                    request.onupgradeneeded = () => {
+                        const db = request.result;
+                        if (!db.objectStoreNames.contains('JISHENG_OS_V3')) db.createObjectStore('JISHENG_OS_V3');
+                    };
+                    request.onsuccess = () => {
+                        const fs = new NativeFileSystem(request.result);
+                        fs._ensureRoot().then(() => resolve(fs), error => {
+                            try { request.result.close(); } catch (_) {}
+                            reject(error);
+                        });
+                    };
+                    request.onerror = () => reject(request.error || new Error('无法打开本地文件存储'));
+                    request.onblocked = () => reject(new Error('旧文件卷正被其他标签页占用，请关闭其他系统标签页后重试'));
+                });
+            }
+            _error(code, path) {
+                const messages = { ENOENT: 'No such file or directory', EEXIST: 'File already exists', ENOTDIR: 'Not a directory', EISDIR: 'Is a directory', ENOTEMPTY: 'Directory not empty', EXDEV: 'Cross-device operation not permitted', EINVAL: 'Invalid argument', EBUSY: 'Resource busy', EFBIG: 'File too large' };
+                const error = new Error((messages[code] || 'Filesystem error') + ': ' + path);
+                error.code = code;
+                error.path = path;
+                return error;
+            }
+            _normalize(path) {
+                const parts = [];
+                for (const part of String(path == null ? '/' : path).split('/')) {
+                    if (!part || part === '.') continue;
+                    if (part === '..') { parts.pop(); continue; }
+                    parts.push(part);
+                }
+                return '/' + parts.join('/');
+            }
+            _parent(path) {
+                if (path === '/') return '';
+                const index = path.lastIndexOf('/');
+                return index <= 0 ? '/' : path.slice(0, index);
+            }
+            _route(path) {
+                const normalized = this._normalize(path);
+                let best = null;
+                for (const [mountPath, backend] of this._mounts) {
+                    if ((normalized === mountPath || normalized.startsWith(mountPath + '/')) && (!best || mountPath.length > best.mountPath.length)) {
+                        best = { mountPath, backend, path: normalized.slice(mountPath.length) || '/' };
+                    }
+                }
+                return best || { mountPath: null, backend: null, path: normalized };
+            }
+            _run(mode, work, callback) {
+                const cb = typeof callback === 'function' ? callback : function() {};
+                let tx;
+                let value;
+                let failure = null;
+                let completed = false;
+                const finish = (err, result) => {
+                    if (completed) return;
+                    completed = true;
+                    cb(err || null, result);
+                };
+                try { tx = this._db.transaction(this._storeName, mode); }
+                catch (error) { finish(error); return; }
+                tx.oncomplete = () => finish(failure, value);
+                tx.onerror = () => { if (!failure) failure = tx.error || new Error('本地文件存储事务失败'); };
+                tx.onabort = () => finish(failure || tx.error || new Error('本地文件存储事务已中止'));
+                const store = tx.objectStore(this._storeName);
+                const fail = error => {
+                    if (failure) return;
+                    failure = error instanceof Error ? error : new Error(String(error || 'Filesystem error'));
+                    try { tx.abort(); } catch (_) { finish(failure); }
+                };
+                const get = (key, done) => {
+                    let request;
+                    try { request = store.get(key); }
+                    catch (error) { fail(error); return; }
+                    request.onsuccess = () => {
+                        try { done(null, request.result); } catch (error) { fail(error); }
+                    };
+                    request.onerror = () => fail(request.error || new Error('IndexedDB 读取失败'));
+                };
+                const put = (valueToStore, key) => {
+                    try { store.put(valueToStore, key); } catch (error) { fail(error); }
+                };
+                const del = key => {
+                    try { store.delete(key); } catch (error) { fail(error); }
+                };
+                const setResult = result => { value = result; };
+                try { work({ store, get, put, del, fail, setResult, fs: this }); }
+                catch (error) { fail(error); }
+            }
+            _ensureRoot() {
+                return new Promise((resolve, reject) => {
+                    this._run('readwrite', ({ get, put, setResult, fail }) => {
+                        get('/', (err, raw) => {
+                            if (err) { fail(err); return; }
+                            if (raw !== undefined) {
+                                if (!NativeFileSystem._parseInode(raw)) { fail(new Error('现有文件卷根目录格式无效，未修改原数据')); return; }
+                                setResult(true);
+                                return;
+                            }
+                            const now = Date.now();
+                            const inode = { id: NativeFileSystem._newId(), size: 4096, mode: 0x41FF, atime: now, mtime: now, ctime: now };
+                            put(new TextEncoder().encode('{}').buffer, inode.id);
+                            put(NativeFileSystem._serializeInode(inode), '/');
+                            setResult(true);
+                        });
+                    }, err => err ? reject(err) : resolve());
+                });
+            }
+            _lookup(ctx, path, callback) {
+                const parts = path === '/' ? [] : path.slice(1).split('/');
+                ctx.get('/', (err, raw) => {
+                    if (err) { callback(err); return; }
+                    let inode = NativeFileSystem._parseInode(raw);
+                    if (!inode) { callback(this._error('ENOENT', '/')); return; }
+                    const walk = (index, key) => {
+                        if (index >= parts.length) { callback(null, { key, inode }); return; }
+                        if ((inode.mode & 0xF000) !== 0x4000) { callback(this._error('ENOTDIR', '/' + parts.slice(0, index).join('/'))); return; }
+                        ctx.get(inode.id, (listingErr, rawListing) => {
+                            if (listingErr) { callback(listingErr); return; }
+                            let listing;
+                            try { listing = JSON.parse(new TextDecoder().decode(NativeFileSystem._bytes(rawListing))); }
+                            catch (_) { callback(new Error('目录索引损坏: ' + path)); return; }
+                            const childName = parts[index];
+                            const childKey = listing && this._entryKey(listing, childName);
+                            if (!childKey) { callback(this._error('ENOENT', path)); return; }
+                            ctx.get(childKey, (childErr, childRaw) => {
+                                if (childErr) { callback(childErr); return; }
+                                inode = NativeFileSystem._parseInode(childRaw);
+                                if (!inode) { callback(this._error('ENOENT', path)); return; }
+                                walk(index + 1, childKey);
+                            });
+                        });
+                    };
+                    walk(0, '/');
+                });
+            }
+            _listing(ctx, inode, path, callback) {
+                ctx.get(inode.id, (err, raw) => {
+                    if (err) { callback(err); return; }
+                    try {
+                        const listing = JSON.parse(new TextDecoder().decode(NativeFileSystem._bytes(raw)));
+                        if (!listing || typeof listing !== 'object' || Array.isArray(listing)) throw new Error('invalid listing');
+                        callback(null, listing);
+                    } catch (_) { callback(new Error('目录索引损坏: ' + path)); }
+                });
+            }
+            _parentInfo(ctx, path, callback) {
+                if (path === '/') { callback(this._error('EINVAL', path)); return; }
+                const parentPath = this._parent(path);
+                const name = path.slice(path.lastIndexOf('/') + 1);
+                this._lookup(ctx, parentPath, (err, parent) => {
+                    if (err) { callback(err); return; }
+                    if ((parent.inode.mode & 0xF000) !== 0x4000) { callback(this._error('ENOTDIR', parentPath)); return; }
+                    this._listing(ctx, parent.inode, parentPath, (listingErr, listing) => {
+                        if (listingErr) { callback(listingErr); return; }
+                        callback(null, { parentPath, parentKey: parent.key, parentInode: parent.inode, name, listing });
+                    });
+                });
+            }
+            _hasEntry(listing, name) { return Object.prototype.hasOwnProperty.call(listing, name); }
+            _entryKey(listing, name) { return this._hasEntry(listing, name) ? listing[name] : null; }
+            _setEntry(listing, name, key) {
+                Object.defineProperty(listing, name, { value: key, enumerable: true, configurable: true, writable: true });
+            }
+            _writeParent(ctx, info) {
+                const now = Date.now();
+                info.parentInode.atime = now;
+                info.parentInode.mtime = now;
+                ctx.put(new TextEncoder().encode(JSON.stringify(info.listing)).buffer, info.parentInode.id);
+                ctx.put(NativeFileSystem._serializeInode(info.parentInode), info.parentKey);
+            }
+            _newInode(kind, id, size = 0) {
+                const now = Date.now();
+                return { id, size, mode: kind === 'dir' ? 0x41FF : 0x81B6, atime: now, mtime: now, ctime: now };
+            }
+            _mountedCall(method, route, args) {
+                const fn = route.backend && route.backend[method];
+                if (typeof fn !== 'function') {
+                    const callback = args[args.length - 1];
+                    if (typeof callback === 'function') callback(null);
                     return;
                 }
-                SYSTEM.fs = require('fs');
-                SYSTEM.Buffer = require('buffer').Buffer;
+                return fn.apply(route.backend, [route.path].concat(args));
+            }
+            mount(path, backend) {
+                const mountPath = this._normalize(path);
+                if (mountPath === '/') throw this._error('EINVAL', path);
+                if (this._mounts.has(mountPath)) throw this._error('EEXIST', mountPath);
+                this._mounts.set(mountPath, backend);
+            }
+            umount(path) {
+                const mountPath = this._normalize(path);
+                if (!this._mounts.has(mountPath)) throw this._error('ENOENT', mountPath);
+                this._mounts.delete(mountPath);
+            }
+            stat(path, callback) {
+                const route = this._route(path);
+                if (route.backend) return this._mountedCall('stat', route, [callback]);
+                this._run('readonly', ctx => this._lookup(ctx, route.path, (err, found) => {
+                    if (err) { ctx.fail(err); return; }
+                    const directory = (found.inode.mode & 0xF000) === 0x4000;
+                    ctx.setResult(new NativeStats({ kind: directory ? 'dir' : 'file', size: found.inode.size, atime: found.inode.atime, mtime: found.inode.mtime, ctime: found.inode.ctime }));
+                }), callback);
+            }
+            readdir(path, callback) {
+                const route = this._route(path);
+                if (route.backend) return this._mountedCall('readdir', route, [callback]);
+                this._run('readonly', ctx => this._lookup(ctx, route.path, (err, found) => {
+                    if (err) { ctx.fail(err); return; }
+                    if ((found.inode.mode & 0xF000) !== 0x4000) { ctx.fail(this._error('ENOTDIR', route.path)); return; }
+                    this._listing(ctx, found.inode, route.path, (listingErr, listing) => {
+                        if (listingErr) { ctx.fail(listingErr); return; }
+                        const names = new Set(Object.keys(listing));
+                        for (const mountPath of this._mounts.keys()) {
+                            if (this._parent(mountPath) === route.path) names.add(mountPath.slice(mountPath.lastIndexOf('/') + 1));
+                        }
+                        ctx.setResult(Array.from(names));
+                    });
+                }), callback);
+            }
+            mkdir(path, mode, callback) {
+                if (typeof mode === 'function') { callback = mode; mode = undefined; }
+                const route = this._route(path);
+                if (route.backend) return this._mountedCall('mkdir', route, [callback]);
+                if (route.path === '/') { if (typeof callback === 'function') callback(this._error('EEXIST', route.path)); return; }
+                this._run('readwrite', ctx => this._parentInfo(ctx, route.path, (err, parent) => {
+                    if (err) { ctx.fail(err); return; }
+                    if (this._hasEntry(parent.listing, parent.name)) { ctx.fail(this._error('EEXIST', route.path)); return; }
+                    const dataId = NativeFileSystem._newId();
+                    const inodeKey = NativeFileSystem._newId();
+                    const inode = this._newInode('dir', dataId, 4096);
+                    ctx.put(new TextEncoder().encode('{}').buffer, dataId);
+                    ctx.put(NativeFileSystem._serializeInode(inode), inodeKey);
+                    this._setEntry(parent.listing, parent.name, inodeKey);
+                    this._writeParent(ctx, parent);
+                    ctx.setResult(undefined);
+                }), callback);
+            }
+            readFile(path, encoding, flag, callback) {
+                if (typeof encoding === 'function') { callback = encoding; encoding = null; }
+                else if (typeof flag === 'function') callback = flag;
+                const route = this._route(path);
+                if (route.backend) return this._mountedCall('readFile', route, [encoding, callback]);
+                this._run('readonly', ctx => this._lookup(ctx, route.path, (err, found) => {
+                    if (err) { ctx.fail(err); return; }
+                    if ((found.inode.mode & 0xF000) === 0x4000) { ctx.fail(this._error('EISDIR', route.path)); return; }
+                    ctx.get(found.inode.id, (dataErr, raw) => {
+                        if (dataErr) { ctx.fail(dataErr); return; }
+                        if (raw === undefined) { ctx.fail(this._error('ENOENT', route.path)); return; }
+                        const bytes = NativeFileSystem._bytes(raw);
+                        if (!bytes) { ctx.fail(new Error('文件数据格式无效: ' + route.path)); return; }
+                        const data = NativeBuffer.from(bytes);
+                        ctx.setResult(typeof encoding === 'string' && encoding ? data.toString(encoding === 'utf8' ? 'utf-8' : encoding) : data);
+                    });
+                }), callback);
+            }
+            writeFile(path, data, encoding, flag, mode, callback) {
+                if (typeof encoding === 'function') callback = encoding;
+                else if (typeof flag === 'function') callback = flag;
+                else if (typeof mode === 'function') callback = mode;
+                const route = this._route(path);
+                if (route.backend) return this._mountedCall('writeFile', route, [data, encoding, flag, mode, callback]);
+                if (route.path === '/') { if (typeof callback === 'function') callback(this._error('EISDIR', route.path)); return; }
+                let bytes;
+                try {
+                    if (typeof data === 'string') bytes = NativeBuffer.from(data, typeof encoding === 'string' ? encoding : 'utf8');
+                    else if (data instanceof ArrayBuffer) bytes = NativeBuffer.from(data);
+                    else if (ArrayBuffer.isView(data)) bytes = NativeBuffer.from(data);
+                    else if (data && typeof data.length === 'number') bytes = NativeBuffer.from(data);
+                    else bytes = new NativeBuffer(0);
+                } catch (error) { if (typeof callback === 'function') callback(error); return; }
+                if (bytes.byteLength > 0xFFFFFFFF) { if (typeof callback === 'function') callback(this._error('EFBIG', route.path)); return; }
+                const content = bytes.slice().buffer;
+                this._run('readwrite', ctx => this._parentInfo(ctx, route.path, (err, parent) => {
+                    if (err) { ctx.fail(err); return; }
+                    const inodeKey = this._entryKey(parent.listing, parent.name);
+                    if (!inodeKey) {
+                        const dataId = NativeFileSystem._newId();
+                        const newInodeKey = NativeFileSystem._newId();
+                        const inode = this._newInode('file', dataId, bytes.byteLength);
+                        ctx.put(content, dataId);
+                        ctx.put(NativeFileSystem._serializeInode(inode), newInodeKey);
+                        this._setEntry(parent.listing, parent.name, newInodeKey);
+                        this._writeParent(ctx, parent);
+                        ctx.setResult(undefined);
+                        return;
+                    }
+                    ctx.get(inodeKey, (inodeErr, rawInode) => {
+                        if (inodeErr) { ctx.fail(inodeErr); return; }
+                        const inode = NativeFileSystem._parseInode(rawInode);
+                        if (!inode) { ctx.fail(new Error('文件元数据损坏: ' + route.path)); return; }
+                        if ((inode.mode & 0xF000) === 0x4000) { ctx.fail(this._error('EISDIR', route.path)); return; }
+                        inode.size = bytes.byteLength;
+                        inode.atime = inode.mtime = inode.ctime = Date.now();
+                        ctx.put(content, inode.id);
+                        ctx.put(NativeFileSystem._serializeInode(inode), inodeKey);
+                        ctx.setResult(undefined);
+                    });
+                }), callback);
+            }
+            unlink(path, callback) {
+                const route = this._route(path);
+                if (route.backend) return this._mountedCall('unlink', route, [callback]);
+                if (route.path === '/') { if (typeof callback === 'function') callback(this._error('EISDIR', route.path)); return; }
+                this._run('readwrite', ctx => this._parentInfo(ctx, route.path, (err, parent) => {
+                    if (err) { ctx.fail(err); return; }
+                    const inodeKey = this._entryKey(parent.listing, parent.name);
+                    if (!inodeKey) { ctx.fail(this._error('ENOENT', route.path)); return; }
+                    ctx.get(inodeKey, (inodeErr, rawInode) => {
+                        if (inodeErr) { ctx.fail(inodeErr); return; }
+                        const inode = NativeFileSystem._parseInode(rawInode);
+                        if (!inode) { ctx.fail(this._error('ENOENT', route.path)); return; }
+                        if ((inode.mode & 0xF000) === 0x4000) { ctx.fail(this._error('EISDIR', route.path)); return; }
+                        ctx.del(inodeKey); ctx.del(inode.id);
+                        delete parent.listing[parent.name];
+                        this._writeParent(ctx, parent);
+                        ctx.setResult(undefined);
+                    });
+                }), callback);
+            }
+            rmdir(path, callback) {
+                const route = this._route(path);
+                if (route.backend) return this._mountedCall('rmdir', route, [callback]);
+                if (route.path === '/') { if (typeof callback === 'function') callback(this._error('EBUSY', route.path)); return; }
+                this._run('readwrite', ctx => this._parentInfo(ctx, route.path, (err, parent) => {
+                    if (err) { ctx.fail(err); return; }
+                    const inodeKey = this._entryKey(parent.listing, parent.name);
+                    if (!inodeKey) { ctx.fail(this._error('ENOENT', route.path)); return; }
+                    ctx.get(inodeKey, (inodeErr, rawInode) => {
+                        if (inodeErr) { ctx.fail(inodeErr); return; }
+                        const inode = NativeFileSystem._parseInode(rawInode);
+                        if (!inode) { ctx.fail(this._error('ENOENT', route.path)); return; }
+                        if ((inode.mode & 0xF000) !== 0x4000) { ctx.fail(this._error('ENOTDIR', route.path)); return; }
+                        this._listing(ctx, inode, route.path, (listErr, listing) => {
+                            if (listErr) { ctx.fail(listErr); return; }
+                            const hasMount = Array.from(this._mounts.keys()).some(mountPath => this._parent(mountPath) === route.path);
+                            if (Object.keys(listing).length || hasMount) { ctx.fail(this._error('ENOTEMPTY', route.path)); return; }
+                            ctx.del(inodeKey); ctx.del(inode.id);
+                            delete parent.listing[parent.name];
+                            this._writeParent(ctx, parent);
+                            ctx.setResult(undefined);
+                        });
+                    });
+                }), callback);
+            }
+            rename(oldPath, newPath, callback) {
+                const sourceRoute = this._route(oldPath), targetRoute = this._route(newPath);
+                if (sourceRoute.backend || targetRoute.backend) {
+                    if (sourceRoute.backend !== targetRoute.backend) {
+                        const cb = typeof callback === 'function' ? callback : function() {};
+                        cb(this._error('EXDEV', oldPath)); return;
+                    }
+                    return this._mountedCall('rename', sourceRoute, [targetRoute.path, callback]);
+                }
+                const from = sourceRoute.path, to = targetRoute.path;
+                if (from === to) { if (typeof callback === 'function') callback(null); return; }
+                if (from === '/' || to === '/') { if (typeof callback === 'function') callback(this._error('EINVAL', from)); return; }
+                if (to.startsWith(from + '/')) { if (typeof callback === 'function') callback(this._error('EINVAL', to)); return; }
+                this._run('readwrite', ctx => {
+                    const fromParentPath = this._parent(from), toParentPath = this._parent(to);
+                    this._parentInfo(ctx, from, (sourceErr, sourceParent) => {
+                        if (sourceErr) { ctx.fail(sourceErr); return; }
+                        const withTarget = targetParent => {
+                            const sourceKey = this._entryKey(sourceParent.listing, sourceParent.name);
+                            if (!sourceKey) { ctx.fail(this._error('ENOENT', from)); return; }
+                            if (fromParentPath === toParentPath && sourceParent.name === targetParent.name) { ctx.setResult(undefined); return; }
+                            ctx.get(sourceKey, (inodeErr, rawInode) => {
+                                if (inodeErr) { ctx.fail(inodeErr); return; }
+                                const sourceInode = NativeFileSystem._parseInode(rawInode);
+                                if (!sourceInode) { ctx.fail(this._error('ENOENT', from)); return; }
+                                const targetKey = this._entryKey(targetParent.listing, targetParent.name);
+                                const finishRename = () => {
+                                    delete sourceParent.listing[sourceParent.name];
+                                    this._setEntry(targetParent.listing, targetParent.name, sourceKey);
+                                    if (fromParentPath === toParentPath) this._writeParent(ctx, sourceParent);
+                                    else { this._writeParent(ctx, sourceParent); this._writeParent(ctx, targetParent); }
+                                    ctx.setResult(undefined);
+                                };
+                                if (!targetKey) { finishRename(); return; }
+                                ctx.get(targetKey, (targetErr, rawTarget) => {
+                                    if (targetErr) { ctx.fail(targetErr); return; }
+                                    const targetInode = NativeFileSystem._parseInode(rawTarget);
+                                    if (!targetInode) { ctx.fail(this._error('ENOENT', to)); return; }
+                                    const sourceIsDir = (sourceInode.mode & 0xF000) === 0x4000;
+                                    const targetIsDir = (targetInode.mode & 0xF000) === 0x4000;
+                                    if (sourceIsDir !== targetIsDir) { ctx.fail(this._error(sourceIsDir ? 'ENOTDIR' : 'EISDIR', to)); return; }
+                                    const replace = () => {
+                                        ctx.del(targetKey); ctx.del(targetInode.id);
+                                        if (fromParentPath === toParentPath) delete sourceParent.listing[sourceParent.name];
+                                        finishRename();
+                                    };
+                                    if (targetIsDir) {
+                                        this._listing(ctx, targetInode, to, (targetListErr, targetListing) => {
+                                            if (targetListErr) { ctx.fail(targetListErr); return; }
+                                            if (Object.keys(targetListing).length) { ctx.fail(this._error('ENOTEMPTY', to)); return; }
+                                            replace();
+                                        });
+                                    } else replace();
+                                });
+                            });
+                        };
+                        if (fromParentPath === toParentPath) {
+                            withTarget(Object.assign({}, sourceParent, { name: to.slice(to.lastIndexOf('/') + 1) }));
+                        } else this._parentInfo(ctx, to, (targetErr, targetParent) => targetErr ? ctx.fail(targetErr) : withTarget(targetParent));
+                    });
+                }, callback);
+            }
+            utimes(path, atime, mtime, callback) {
+                const route = this._route(path);
+                if (route.backend) return this._mountedCall('utimes', route, [atime, mtime, callback]);
+                this._run('readwrite', ctx => this._lookup(ctx, route.path, (err, found) => {
+                    if (err) { ctx.fail(err); return; }
+                    const at = atime instanceof Date ? atime.getTime() : Number(atime);
+                    const mt = mtime instanceof Date ? mtime.getTime() : Number(mtime);
+                    found.inode.atime = Number.isFinite(at) && at > 0 ? at : Date.now();
+                    found.inode.mtime = Number.isFinite(mt) && mt > 0 ? mt : Date.now();
+                    ctx.put(NativeFileSystem._serializeInode(found.inode), found.key);
+                    ctx.setResult(undefined);
+                }), callback);
+            }
+            exists(path, callback) {
+                const route = this._route(path);
+                if (route.backend) { route.backend.stat(route.path, err => callback(!err)); return; }
+                this._run('readonly', ctx => this._lookup(ctx, route.path, (err, found) => {
+                    if (err) { ctx.setResult(false); return; }
+                    ctx.setResult(true);
+                }), (err, value) => callback(!err && !!value));
+            }
+        }
+
+        function initKernel() {
+            NativeFileSystem.open().then(fs => {
+                SYSTEM.fs = fs;
+                SYSTEM.Buffer = NativeBuffer;
                 SYSTEM.mounted = true;
-                SYSTEM.rootFs = require('fs').getRootFS ? require('fs').getRootFS() : null;
+                SYSTEM.rootFs = SYSTEM.fs;
                 SYSTEM.mountedFolders = {}; // { mountPath: { handle, name, id } }
                 
                 // === 修改时间缓存系统（修复 IndexedDB 等后端不支持 utimes 导致解压后日期丢失）===
@@ -3092,17 +3613,20 @@
                 SYSTEM.fs.mkdir('/mnt', () => {});
                 SYSTEM.fs.mkdir('/mnt/local', () => {});
 
-                // OPFS 通过同一个 BrowserFS 挂载表暴露到 /opfs，失败时不阻塞系统启动。
+                // OPFS 通过系统统一的挂载表暴露到 /opfs，失败时不阻塞系统启动。
                 // 这样 IndexedDB 和 OPFS 可以同时在文件管理器中访问，而不只是二选一。
                 initOPFSBackend(checkSystemFiles);
+            }).catch(error => {
+                console.error('本地文件系统启动失败:', error);
+                if (typeof Notify !== 'undefined') Notify.error('系统启动失败', error.message || '无法初始化持久化文件系统');
             });
         }
 
-        // === FileSystemAccessFS: 将 File System Access API 包装为 BrowserFS 兼容文件系统 ===
+        // === FileSystemAccessFS: 将 File System Access API 包装为系统文件接口 ===
         class FSAStats {
             constructor(isFile, size, mtime) {
                 const isDir = !isFile;
-                // 同时作为属性和函数，兼容 BrowserFS 的两种调用方式
+                // 同时提供可调用的类型检查方法，兼容文件浏览器的检查方式。
                 this.isFile = isFile;
                 this.isDirectory = isDir;
                 this.size = Number.isFinite(Number(size)) ? Number(size) : 0;
@@ -3111,7 +3635,7 @@
                 this.mtime = (mtime && Number(mtime) > 0) ? new Date(Number(mtime)) : null;
                 this.blocks = 1;
                 this.mode = isFile ? 0o666 : (0o777 | 0o40000);
-                // BrowserFS 内部可能调用 stats.isDirectory() 作为函数
+                // 目录状态通过标准 isDirectory() 方法提供。
                 if (!this.isFile) {
                     this.isDirectory = function() { return true; };
                     this.isFile = function() { return false; };
@@ -3247,7 +3771,7 @@
                 return chain;
             }
 
-            // BrowserFS 签名: stat(path, isLstat, cb)
+            // 与文件后端保持一致的 stat 回调签名。
             stat(path, isLstat, cb) {
                 if (typeof isLstat === 'function') { cb = isLstat; isLstat = false; }
                 const parts = this._resolve(path);
@@ -3353,7 +3877,7 @@
                 }).then(() => { this._invalidate(path); cb(null); }).catch(cb);
             }
 
-            // BrowserFS 签名: readFile(path, encoding, flag, cb)
+            // 与文件后端保持一致的 readFile 回调签名。
             readFile(path, encoding, flag, cb) {
                 if (typeof flag === 'function') { cb = flag; flag = undefined; }
                 if (typeof encoding === 'function') { cb = encoding; encoding = null; flag = undefined; }
@@ -3380,7 +3904,7 @@
                 }).catch(cb);
             }
 
-            // BrowserFS 签名: writeFile(path, data, encoding, flag, mode, cb)
+            // 与文件后端保持一致的 writeFile 回调签名。
             writeFile(path, data, encoding, flag, mode, cb) {
                 if (typeof mode === 'function') { cb = mode; mode = undefined; }
                 if (typeof flag === 'function') { cb = flag; flag = undefined; mode = undefined; }
@@ -5439,7 +5963,7 @@
             });
         }
 
-        // BrowserFS 文件夹的侧边栏更新
+        // 文件夹侧边栏更新
                 // 本地挂载文件夹的侧边栏更新
                 // 侧边栏导航到本地子文件夹
                 // 侧边栏导航到本地文件夹根目录
@@ -5912,7 +6436,7 @@
                     } else if (state.viewMode === 'list') {
                         filtered.forEach(file => {
                             const stats = allStats[file] || {};
-                            const isDir = stats.isDirectory;
+                            const isDir = typeof stats.isDirectory === 'function' ? stats.isDirectory() : !!stats.isDirectory;
                             const iconPath = getFileIconPath(file, isDir);
                             const itemPath = state.currentPath + '/' + file;
                             const localMountItem = isDir && isLocalMountedPath(itemPath);
@@ -5950,7 +6474,7 @@
                         gridContainer.className = 'folder-grid-view';
                         filtered.forEach(file => {
                             const stats = allStats[file] || {};
-                            const isDir = stats.isDirectory;
+                            const isDir = typeof stats.isDirectory === 'function' ? stats.isDirectory() : !!stats.isDirectory;
                             const iconPath = getFileIconPath(file, isDir);
                             const fullPath = state.currentPath + '/' + file;
                             const safeFile = escapeAttr(file);
@@ -5999,7 +6523,8 @@
                     const computeTotalSize = () => {
                         let t = 0;
                         filtered.forEach(f => {
-                            if (allStats[f]?.isDirectory) {
+                            const isDir = allStats[f]?.isDirectory;
+                            if (typeof isDir === 'function' ? isDir() : !!isDir) {
                                 t += (getCachedDirSize(state.currentPath + '/' + f) || 0);
                             } else {
                                 t += (allStats[f]?.size || 0);
@@ -6016,7 +6541,8 @@
                         const dirJobs = [];
                         filtered.forEach((file, i) => {
                             const itemPath = state.currentPath + '/' + file;
-                            if (allStats[file]?.isDirectory && !isLocalMountedPath(itemPath)) {
+                            const itemIsDir = allStats[file]?.isDirectory;
+                            if ((typeof itemIsDir === 'function' ? itemIsDir() : !!itemIsDir) && !isLocalMountedPath(itemPath)) {
                                 dirJobs.push({ file: file, index: i });
                             }
                         });
@@ -6300,7 +6826,7 @@
             const state = SYSTEM.folderWindowStates[windowId];
             if (!state) return;
 
-            // 统一使用 BrowserFS API（本地挂载目录已通过 FSA 后端支持标准 fs 操作）
+            // 统一使用系统文件接口（本地挂载目录由 File System Access 后端支持）
             if (type === 'folder') {
                 const name = await SysDialog.prompt({ title: '新建文件夹', icon: 'uiNewFolder', label: '文件夹名称', value: '新建文件夹', okText: '创建', validate: SysDialog.nameValidator('文件夹名称') });
                 if (!name) return;
@@ -8738,7 +9264,7 @@
             });
         }
 
-        // 将 FileSystemDirectoryHandle 挂载到 BrowserFS MountableFileSystem
+        // 将 FileSystemDirectoryHandle 挂载到系统文件空间
         function mountFSA(dirHandle, mountPath, folderId, folderName) {
             return new Promise((resolve, reject) => {
                 FileSystemAccessFS.Create({ handle: dirHandle }, (err, fsa) => {
@@ -8881,14 +9407,14 @@
                 // 导出单个文件到桌面
                 // 导出多个选中文件
                         // 本地文件夹图片查看器（漫画阅读器风格）
-                // 本地挂载文件夹的压缩文件 → 在网页内解压到 BrowserFS 虚拟文件系统
+                // 本地挂载文件夹的压缩文件 → 在网页内解压到系统文件空间
                 async function unmountLocalFolder(folderId) {
             const info = SYSTEM.mountedFolders[folderId] || SYSTEM.localFolders[folderId];
             if (info) {
                 const name = info.name;
                 const mountPath = info.mountPath || ('/mnt/local/' + name);
                 
-                // 从 BrowserFS 卸载
+                // 从系统文件空间卸载
                 try {
                     if (SYSTEM.rootFs && SYSTEM.rootFs.umount) {
                         SYSTEM.rootFs.umount(mountPath);
@@ -10967,7 +11493,7 @@
                         updateStatus('正在从虚拟文件系统读取: ' + fname);
                         SYSTEM.fs.readFile(diskPath, (err, data) => {
                             if (err) { updateStatus('读取镜像失败: ' + err.message, true); return; }
-                            // BrowserFS 返回 Uint8Array/Buffer，转为 ArrayBuffer 供 V86 使用
+                            // 文件系统返回 Uint8Array，转为 ArrayBuffer 供 V86 使用
                             const ab = data.buffer
                                 ? data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength)
                                 : data;
@@ -12697,8 +13223,8 @@
         }
 
         async function clearIndexedDBVolumeForReset() {
-            // BrowserFS 正在使用 JISHENG_OS_V3。直接 deleteDatabase 会被本页自己的连接阻塞，
-            // 因此只删除其数据卷中的所有条目，保留已打开的文件系统容器和 /mnt、/opfs 挂载点。
+            // 直接删除当前数据库会被本页自己的连接阻塞，因此只清空用户数据，
+            // 保留已打开的文件系统容器和 /mnt、/opfs 挂载点。
             let rootEntries = [];
             try { rootEntries = await storageFsReaddir('/'); } catch (err) { throw new Error('无法读取 IndexedDB 根目录：' + (err.message || err)); }
             for (const name of rootEntries) {
