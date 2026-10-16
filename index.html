@@ -112,7 +112,7 @@
         }
 
         /* 确保可滚动元素不受影响 */
-        .content-area, .csv-container, .notepad-area, .editor-main-container, #manga-viewer-*, .panel-content {
+        .content-area, .csv-container, .notepad-area, .edx-body, #manga-viewer-*, .panel-content {
             touch-action: auto;
         }
 
@@ -1861,170 +1861,199 @@
         }
         .window.truly-fullscreen.manga-full .manga-exit-btn { display: flex; }
 
-        /* === 代码编辑器样式 === */
-        .editor-app { display: flex; flex-direction: column; height: 100%; background: var(--glass-surface); backdrop-filter: blur(20px); overflow: hidden; }
-        .editor-toolbar {
-            display: flex; align-items: center; background: rgba(0,0,0,0.20);
-            border-bottom: 1px solid var(--glass-border); padding: 0 8px; height: 40px;
-            flex-shrink: 0; gap: 2px; overflow-x: auto; overflow-y: hidden;
+        /* === HTML 编辑器（v10.6 重做）===
+           与系统设置共用一套视觉语言：同样的按钮 / 分段控件 / 菜单 / 线宽 1.5 的图标。
+           .edx 根节点是 inline-size 容器：按“编辑器自身宽度”而不是视口切换布局，
+           窗口拖窄、贴边半屏、手机全屏都能得到合适的工具栏和视图。 */
+        .editor-app.edx {
+            --line: rgba(255,255,255,.075); --ink: #e9eaf0; --muted: #9a9bab; --acc: var(--accent-blue); --cyan: var(--accent-cyan);
+            --ok: #19c37d; --warn: #f5a524; --danger: #ff6b78; --pane: #0d1117; --bar: rgba(0,0,0,.22);
+            --edx-font: 14px;
+            container-type: inline-size; container-name: edx;
+            position: relative; display: flex; flex-direction: column; flex: 1; min-height: 0; height: 100%;
+            background: var(--glass-surface); backdrop-filter: blur(20px); overflow: hidden; color: var(--ink); font-size: 12.5px;
         }
-        .editor-toolbar-group { display: flex; align-items: center; gap: 1px; }
-        .editor-toolbar-divider { width: 1px; height: 20px; background: var(--glass-border); margin: 0 6px; flex-shrink: 0; }
-        .editor-tb-btn {
-            display: flex; align-items: center; justify-content: center; gap: 5px;
-            padding: 4px 8px; height: 30px; border: none; background: transparent;
-            color: var(--text-muted); border-radius: 6px; cursor: pointer;
-            font-size: 12px; white-space: nowrap; transition: all .15s; flex-shrink: 0;
+        .edx .icon-svg { width: 16px; height: 16px; flex: none; }
+        .edx button { font: inherit; }
+        .edx :where(button, select, input, [role="separator"]):focus-visible { outline: 2px solid var(--cyan); outline-offset: 1px; }
+
+        /* 顶部工具栏 */
+        .edx-bar { display: flex; align-items: center; gap: 4px; height: 44px; padding: 0 8px; flex: none; background: var(--bar); border-bottom: 1px solid var(--line); min-width: 0; }
+        .edx-sep { width: 1px; height: 20px; background: var(--line); margin: 0 4px; flex: none; }
+        .edx-sp { flex: 1; min-width: 4px; }
+        .edx-ib { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 30px; min-width: 30px; padding: 0 7px; border: 0; border-radius: 7px; background: transparent; color: #c9cad4; cursor: pointer; white-space: nowrap; flex: none; transition: background .12s, color .12s; }
+        .edx-ib:hover:not(:disabled) { background: rgba(255,255,255,.07); color: #fff; }
+        .edx-ib:active:not(:disabled) { background: rgba(255,255,255,.1); }
+        .edx-ib:disabled { opacity: .38; cursor: default; }
+        .edx-ib.on { background: rgba(0,120,212,.18); color: #fff; }
+        .edx-ib.danger { color: var(--danger); }
+        .edx-ib.danger:hover:not(:disabled) { background: rgba(255,107,120,.12); color: var(--danger); }
+        .edx-ib .lbl { font-size: 12.5px; }
+        /* 文件按钮：只显示图标（文件名见悬停提示与窗口标题），未保存时图标右上角出现圆点 */
+        .edx-file { display: inline-flex; align-items: center; gap: 3px; height: 30px; padding: 0 5px 0 7px; border: 1px solid var(--line); border-radius: 8px; background: rgba(255,255,255,.035); color: var(--ink); cursor: pointer; flex: none; }
+        .edx-file:hover { background: rgba(255,255,255,.07); }
+        .edx-file .fi { position: relative; display: inline-flex; }
+        .edx-file .fi .icon-svg { color: #e8833a; }
+        .edx-file .dot { position: absolute; top: -2px; right: -3px; width: 7px; height: 7px; border-radius: 50%; background: var(--warn); box-shadow: 0 0 0 2px #1b1b22; display: none; }
+        .edx.dirty .edx-file .dot { display: block; }
+        .edx-file > .icon-svg { width: 13px; height: 13px; color: var(--muted); }
+        .edx-select { height: 30px; padding: 0 26px 0 10px; border: 1px solid var(--line); border-radius: 8px; color: var(--ink); font: inherit; font-size: 12.5px; cursor: pointer; flex: none; color-scheme: dark;
+            background: rgba(255,255,255,.035) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239a9bab' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat right 8px center / 12px; appearance: none; -webkit-appearance: none; }
+        .edx-select:hover { background-color: rgba(255,255,255,.07); }
+        .edx-select option { background: #1d1d27; color: var(--ink); }
+        .edx-seg { display: inline-flex; padding: 2px; gap: 2px; border-radius: 9px; background: rgba(0,0,0,.28); border: 1px solid var(--line); flex: none; }
+        .edx-seg button { display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px; border: 0; border-radius: 7px; background: transparent; color: var(--muted); cursor: pointer; white-space: nowrap; }
+        .edx-seg button:hover { color: var(--ink); }
+        .edx-seg button.on { background: rgba(255,255,255,.12); color: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.3); }
+        .edx-seg button .icon-svg { width: 15px; height: 15px; }
+        .edx-seg.sm button { height: 22px; padding: 0 8px; font-size: 11.5px; }
+        .edx-seg.sm button .icon-svg { width: 13px; height: 13px; }
+
+        /* 主体：代码 | 分割条 | 预览 */
+        .edx-body { flex: 1; min-height: 0; display: flex; position: relative; }
+        .edx[data-dir="v"] .edx-body { flex-direction: column; }
+        .edx-code { position: relative; display: flex; flex-direction: column; min-width: 0; min-height: 0; flex: 1 1 50%; background: #212121; }
+        .edx-code .editor-wrapper { flex: 1; position: relative; overflow: hidden; min-height: 0; }
+        .edx-preview { position: relative; display: flex; flex-direction: column; min-width: 0; min-height: 0; flex: 1 1 50%; background: var(--pane); container-type: inline-size; container-name: edxp; }
+        .edx-split { flex: none; position: relative; z-index: 3; background: var(--line); touch-action: none; }
+        .edx[data-dir="h"] .edx-split { width: 1px; cursor: col-resize; }
+        .edx[data-dir="v"] .edx-split { height: 1px; cursor: row-resize; }
+        .edx-split::before { content: ""; position: absolute; inset: 0 -5px; }              /* 可抓取区 11px，视觉 1px */
+        .edx[data-dir="v"] .edx-split::before { inset: -5px 0; }
+        .edx-split::after { content: ""; position: absolute; left: 50%; top: 50%; width: 4px; height: 32px; margin: -16px 0 0 -2px; border-radius: 2px; background: rgba(255,255,255,.22); opacity: 0; transition: opacity .15s; }
+        .edx[data-dir="v"] .edx-split::after { width: 32px; height: 4px; margin: -2px 0 0 -16px; }
+        .edx-split:hover, .edx-split:focus-visible, .edx.dragging .edx-split { background: var(--acc); }
+        .edx-split:hover::after, .edx.dragging .edx-split::after { opacity: 1; background: #fff; }
+        .edx.dragging, .edx.dragging * { user-select: none !important; }
+        .edx.dragging iframe { pointer-events: none !important; }                             /* 拖拽时 iframe 不抢指针 */
+        .edx[data-view-eff="code"] .edx-preview, .edx[data-view-eff="code"] .edx-split { display: none; }
+        .edx[data-view-eff="preview"] .edx-code, .edx[data-view-eff="preview"] .edx-split { display: none; }
+        .edx[data-view-eff="code"] .edx-code, .edx[data-view-eff="preview"] .edx-preview { flex: 1 1 100% !important; }
+
+
+        /* 查找 / 替换浮层（VS Code 式，固定在代码区右上角） */
+        .edx-find { position: absolute; top: 8px; right: 16px; z-index: 6; display: none; flex-direction: column; gap: 6px; width: min(440px, calc(100% - 32px)); padding: 7px; border-radius: 11px; background: rgba(30,30,40,.97); border: 1px solid rgba(255,255,255,.1); box-shadow: 0 10px 30px rgba(0,0,0,.45); }
+        .edx-find.open { display: flex; }
+        .edx-find-row { display: flex; align-items: center; gap: 4px; min-width: 0; }
+        .edx-find-row.rep { display: none; padding-left: 28px; }
+        .edx-find.rep-open .edx-find-row.rep { display: flex; }
+        .edx-find .tg > .icon-svg { transition: transform .15s; }
+        .edx-find.rep-open .tg > .icon-svg { transform: rotate(90deg); }
+        .edx-field { position: relative; flex: 1; min-width: 0; display: flex; align-items: center; height: 28px; border: 1px solid var(--line); border-radius: 7px; background: rgba(0,0,0,.3); }
+        .edx-field:focus-within { border-color: var(--acc); box-shadow: 0 0 0 1px var(--acc); }
+        .edx .edx-field input:focus-visible { outline: none; }
+        .edx-field.bad { border-color: var(--danger); }
+        .edx-field input { flex: 1; min-width: 0; height: 100%; border: 0; background: transparent; color: var(--ink); padding: 0 8px; font: 12.5px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; outline: none; }
+        .edx-field input::placeholder { color: var(--muted); font-family: inherit; }
+        .edx-field .cnt { color: var(--muted); font-size: 11px; white-space: nowrap; padding: 0 4px; font-variant-numeric: tabular-nums; }
+        .edx-field .cnt.none { color: var(--danger); }
+        .edx-opt { display: inline-grid; place-items: center; width: 22px; height: 22px; margin-right: 2px; border: 1px solid transparent; border-radius: 5px; background: transparent; color: var(--muted); cursor: pointer; flex: none; }
+        .edx-opt:hover { color: var(--ink); background: rgba(255,255,255,.06); }
+        .edx-opt.on { color: #fff; background: rgba(0,120,212,.3); border-color: rgba(0,120,212,.7); }
+        .edx-opt .icon-svg { width: 15px; height: 15px; }
+        .edx-find .edx-ib { height: 26px; min-width: 26px; padding: 0 5px; }
+        .edx-find .edx-ib .icon-svg { width: 15px; height: 15px; }
+
+        /* 预览区 */
+        .edx-pbar { display: flex; align-items: center; gap: 6px; height: 34px; padding: 0 6px 0 12px; flex: none; background: rgba(255,255,255,.025); border-bottom: 1px solid var(--line); min-width: 0; }
+        .edx-pbar .ttl { display: inline-flex; align-items: center; gap: 7px; min-width: 0; color: var(--muted); font-size: 12px; white-space: nowrap; overflow: hidden; }
+        .edx-pbar .ttl b { color: var(--ink); font-weight: 500; }
+        .edx-pbar .st { display: inline-flex; align-items: center; gap: 5px; overflow: hidden; text-overflow: ellipsis; }
+        .edx-pbar .st i { width: 6px; height: 6px; border-radius: 50%; background: var(--ok); flex: none; }
+        .edx-pbar .st.paused i { background: var(--muted); }
+        .edx-pbar .st.stale i { background: var(--warn); }
+        .edx-pbar .edx-ib { height: 26px; min-width: 26px; padding: 0 6px; }
+        .edx-pbar .edx-ib .icon-svg { width: 15px; height: 15px; }
+        .edx-pbar .edx-ib.stale { color: var(--warn); }
+        .edx-badge { min-width: 16px; height: 16px; padding: 0 4px; border-radius: 8px; font-size: 10px; line-height: 16px; font-weight: 600; text-align: center; background: rgba(255,255,255,.14); color: var(--ink); font-style: normal; }
+        .edx-badge.err { background: #d4283a; color: #fff; }
+        .edx-badge:empty { display: none; }
+        .edx-stage { flex: 1; min-height: 0; position: relative; overflow: hidden; background: var(--pane); }
+        .edx-device { position: absolute; left: 0; top: 0; width: 100%; height: 100%; transform-origin: 0 0; background: #fff; }
+        .edx-device iframe { display: block; width: 100%; height: 100%; border: 0; background: #fff; }
+        .edx-stage.framed { background: repeating-linear-gradient(45deg, #0b0e14 0 10px, #0d1118 10px 20px); }
+        .edx-stage.framed .edx-device { box-shadow: 0 0 0 1px rgba(255,255,255,.12), 0 10px 40px rgba(0,0,0,.5); border-radius: 6px; overflow: hidden; }
+        .edx-devlabel { position: absolute; right: 8px; bottom: 6px; z-index: 2; font-size: 10.5px; color: var(--muted); background: rgba(0,0,0,.55); padding: 2px 7px; border-radius: 6px; pointer-events: none; }
+        .edx .editor-preview-loading { position: absolute; top: 0; left: 0; right: 0; height: 2px; z-index: 4; overflow: hidden; }
+        .edx .editor-preview-loading.active::after { content: ''; position: absolute; top: 0; left: -40%; width: 40%; height: 100%; background: var(--cyan); animation: editor-loading-bar .9s ease-in-out infinite; }
+        @keyframes editor-loading-bar { 0% { left: -40% } 100% { left: 100% } }
+
+        /* 预览控制台 */
+        .edx-console { flex: 0 0 32%; min-height: 84px; max-height: 60%; display: none; flex-direction: column; border-top: 1px solid var(--line); background: #0f1218; }
+        .edx-preview.con-open .edx-console { display: flex; }
+        .edx-con-h { display: flex; align-items: center; gap: 6px; height: 30px; padding: 0 6px 0 12px; flex: none; border-bottom: 1px solid var(--line); color: var(--muted); font-size: 12px; }
+        .edx-con-h b { color: var(--ink); font-weight: 500; }
+        .edx-con-h .edx-ib { height: 24px; min-width: 24px; padding: 0 6px; font-size: 11.5px; }
+        .edx-con-list { flex: 1; overflow: auto; font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+        .edx-con-item { display: grid; grid-template-columns: 16px minmax(0,1fr) auto; gap: 8px; align-items: start; padding: 4px 10px; border-bottom: 1px solid rgba(255,255,255,.04); color: #d7d9e0; }
+        .edx-con-item .icon-svg { width: 13px; height: 13px; margin-top: 3px; color: var(--muted); }
+        .edx-con-item pre { margin: 0; white-space: pre-wrap; word-break: break-word; font: inherit; }
+        .edx-con-item.error { background: rgba(255,107,120,.07); color: #ffb3bb; } .edx-con-item.error .icon-svg { color: var(--danger); }
+        .edx-con-item.warn { background: rgba(245,165,36,.07); color: #f5d08b; } .edx-con-item.warn .icon-svg { color: var(--warn); }
+        .edx-con-item a { color: var(--cyan); cursor: pointer; white-space: nowrap; font-size: 11px; text-decoration: none; }
+        .edx-con-item a:hover { text-decoration: underline; }
+        .edx-con-empty { padding: 14px 12px; color: var(--muted); font: 12px Inter, system-ui, sans-serif; }
+
+        /* 状态栏 */
+        .edx-status { display: flex; align-items: center; gap: 2px; height: 26px; padding: 0 6px; flex: none; background: var(--bar); border-top: 1px solid var(--line); color: var(--muted); font-size: 11.5px; min-width: 0; overflow: hidden; }
+        .edx-status .it { display: inline-flex; align-items: center; gap: 5px; height: 20px; padding: 0 7px; border: 0; border-radius: 5px; background: transparent; color: inherit; white-space: nowrap; font-size: 11.5px; }
+        .edx-status button.it { cursor: pointer; }
+        .edx-status button.it:hover { background: rgba(255,255,255,.07); color: var(--ink); }
+        .edx-status .it i { width: 6px; height: 6px; border-radius: 50%; background: var(--ok); }
+        .edx.dirty .edx-status .save i { background: var(--warn); }
+        .edx-status .sp { flex: 1; }
+
+        /* 弹出菜单 */
+        .edx-menu { position: absolute; z-index: 50; min-width: 220px; max-width: min(300px, calc(100% - 16px)); max-height: calc(100% - 60px); overflow-y: auto; padding: 5px; border-radius: 11px; background: rgba(32,32,42,.98); border: 1px solid rgba(255,255,255,.1); box-shadow: 0 14px 40px rgba(0,0,0,.5); animation: edxPop .12s ease-out; }
+        @keyframes edxPop { from { opacity: 0; transform: translateY(-4px); } }
+        .edx-mi { display: grid; grid-template-columns: 18px minmax(0,1fr) auto; align-items: center; gap: 9px; width: 100%; min-height: 32px; padding: 0 10px 0 8px; border: 0; border-radius: 7px; background: transparent; color: var(--ink); text-align: left; cursor: pointer; font-size: 12.5px; }
+        .edx-mi:hover:not(:disabled), .edx-mi:focus-visible { background: rgba(255,255,255,.08); outline: none; }
+        .edx-mi:disabled { opacity: .4; cursor: default; }
+        .edx-mi .icon-svg { width: 15px; height: 15px; color: #c3c5d0; }
+        .edx-mi.danger, .edx-mi.danger .icon-svg { color: var(--danger); }
+        .edx-mi kbd { font: 11px Inter, system-ui, sans-serif; color: var(--muted); white-space: nowrap; }
+        .edx-mi .ck { color: var(--cyan); }
+        .edx-mh { padding: 8px 10px 4px; font-size: 11px; color: var(--muted); word-break: break-all; line-height: 1.45; }
+        .edx-msep { height: 1px; background: var(--line); margin: 5px 4px; }
+        .edx-mrow { display: flex; align-items: center; gap: 6px; padding: 4px 8px 6px; }
+        .edx-mrow .edx-seg { flex: 1; } .edx-mrow .edx-seg button { flex: 1; justify-content: center; }
+        .edx-mrow .val { min-width: 42px; text-align: center; font-variant-numeric: tabular-nums; }
+
+        /* 自适应（容器宽度） */
+        .edx .wide-only { display: none; }
+        @container edx (min-width: 1120px) { .edx .wide-only { display: inline; } }
+        @container edx (max-width: 820px) {
+            .edx-seg.view button .lbl { display: none; }
+            .edx-seg.view button { padding: 0 8px; }
         }
-        .editor-tb-btn:hover { background: var(--glass-border); color: var(--text-main); }
-        .editor-tb-btn:active { transform: scale(.95); }
-        .editor-tb-btn svg { width: 15px; height: 15px; flex-shrink: 0; }
-        .editor-tb-btn.accent { color: #3fb950; }
-        .editor-tb-btn.accent:hover { background: #3fb95020; }
-        .editor-tb-btn.danger { color: #f85149; }
-        .editor-tb-btn.danger:hover { background: #f8514920; }
-        .editor-lang-select {
-            background: #21262d; color: #e6edf3;
-            border: 1px solid var(--glass-border); border-radius: 6px;
-            padding: 3px 8px; font-size: 12px; height: 28px; cursor: pointer; outline: none;
-            color-scheme: dark;
+        @container edx (max-width: 720px) {
+            .edx .mid-hide { display: none !important; }      /* 格式化 / 复制 / 清空 / 导入 / 导出收进“更多”菜单 */
         }
-        .editor-lang-select option {
-            background: #21262d; color: #e6edf3;
+        @container edx (max-width: 640px) {
+            .edx-seg.view button[data-view="split"] { display: none; }
+            .edx-status .hide-narrow { display: none; }
         }
-        .editor-lang-select:hover { border-color: rgba(255,255,255,0.15); }
-        .editor-lang-select:focus { border-color: var(--accent-blue); }
-        .editor-search-bar {
-            display: none; align-items: center; gap: 6px;
-            background: rgba(0,0,0,0.20); border-bottom: 1px solid var(--glass-border);
-            padding: 4px 12px; height: 36px; flex-shrink: 0;
+        @container edx (max-width: 470px) {
+            .edx-bar { gap: 2px; padding: 0 6px; }
+            .edx .narrow-hide { display: none !important; }
+            .edx-select { max-width: 84px; padding-left: 8px; }
+            .edx-bar .edx-sep { display: none; }
+            .edx-find { right: 8px; width: calc(100% - 16px); }
+            .edx-find-row.rep { padding-left: 0; }
+            .edx-pbar .ttl .st { display: none; }
         }
-        .editor-search-bar.open { display: flex; }
-        .editor-search-seg { display: flex; align-items: center; gap: 4px; }
-        .editor-search-seg-label { font-size: 11px; color: var(--text-muted); flex-shrink: 0; }
-        .editor-search-input-wrap { position: relative; display: flex; align-items: center; }
-        .editor-search-input {
-            width: 180px; background: rgba(255,255,255,0.06); color: var(--text-main);
-            border: 1px solid var(--glass-border); border-radius: 5px;
-            padding: 3px 40px 3px 8px; font-size: 12px; outline: none; font-family: inherit; height: 26px;
-        }
-        .editor-search-input:focus { border-color: var(--accent-blue); }
-        .editor-search-input::placeholder { color: var(--text-muted); }
-        .editor-search-count {
-            position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
-            font-size: 10px; color: var(--text-muted); pointer-events: none; white-space: nowrap;
-        }
-        .editor-replace-input {
-            width: 160px; background: rgba(255,255,255,0.06); color: var(--text-main);
-            border: 1px solid var(--glass-border); border-radius: 5px;
-            padding: 3px 8px; font-size: 12px; outline: none; font-family: inherit; height: 26px;
-        }
-        .editor-replace-input:focus { border-color: var(--accent-blue); }
-        .editor-replace-input::placeholder { color: var(--text-muted); }
-        .editor-s-btn {
-            display: flex; align-items: center; justify-content: center;
-            width: 24px; height: 24px; border: none; background: transparent;
-            color: var(--text-muted); border-radius: 4px; cursor: pointer;
-            transition: all .15s; flex-shrink: 0;
-        }
-        .editor-s-btn:hover { background: var(--glass-border); color: var(--text-main); }
-        .editor-s-btn svg { width: 12px; height: 12px; }
-        .editor-s-toggle {
-            display: flex; align-items: center; justify-content: center;
-            padding: 1px 5px; height: 22px; border: 1px solid var(--glass-border);
-            background: transparent; color: var(--text-muted);
-            border-radius: 3px; cursor: pointer; font-size: 10px;
-            transition: all .15s; flex-shrink: 0; font-weight: 600;
-        }
-        .editor-s-toggle:hover { border-color: var(--text-muted); color: var(--text-main); }
-        .editor-s-toggle.active { border-color: var(--accent-blue); color: var(--accent-blue); background: rgba(0,120,212,0.12); }
-        .editor-search-sep { width: 1px; height: 18px; background: var(--glass-border); flex-shrink: 0; }
-        .editor-main-container { display: flex; flex: 1; overflow: hidden; }
-        .editor-sidebar {
-            width: 44px; background: rgba(0,0,0,0.20); border-right: 1px solid var(--glass-border);
-            display: flex; flex-direction: column; align-items: center; padding: 8px 0; gap: 4px; flex-shrink: 0;
-        }
-        .editor-side-btn {
-            width: 34px; height: 34px; border: none; background: transparent;
-            color: var(--text-muted); border-radius: 8px; cursor: pointer;
-            display: flex; align-items: center; justify-content: center;
-            transition: all .15s; position: relative;
-        }
-        .editor-side-btn:hover { background: var(--glass-border); color: var(--text-main); }
-        .editor-side-btn.active { color: var(--accent-blue); background: rgba(0,120,212,0.12); }
-        .editor-side-btn.active::before {
-            content: ''; position: absolute; left: -1px; top: 6px; bottom: 6px;
-            width: 2px; background: var(--accent-blue); border-radius: 1px;
-        }
-        .editor-side-btn svg { width: 18px; height: 18px; }
-        .editor-sidebar-spacer { flex: 1; }
-        .editor-section { flex: 1; display: flex; flex-direction: column; min-width: 0; }
-        .editor-wrapper { flex: 1; position: relative; overflow: hidden; }
-        .editor-resizer {
-            width: 5px; cursor: col-resize; background: var(--glass-border);
-            transition: background .15s; flex-shrink: 0; position: relative;
-        }
-        .editor-resizer:hover, .editor-resizer.dragging { background: var(--accent-blue); }
-        .editor-resizer::before {
-            content: ''; position: absolute; top: 0; bottom: 0; left: -4px; right: -4px; z-index: 10;
-        }
-        .editor-preview-section {
-            display: flex; flex-direction: column; width: 45%; min-width: 120px; background: #0d1117;
-        }
-        .editor-preview-header {
-            display: none;
-        }
-        .editor-preview-title { font-size: 12px; color: var(--text-muted); display: flex; align-items: center; gap: 6px; }
-        .editor-preview-title svg { width: 14px; height: 14px; }
-        .editor-preview-actions { display: flex; gap: 2px; }
-        .editor-preview-btn {
-            width: 28px; height: 28px; border: none; background: transparent;
-            color: var(--text-muted); border-radius: 6px; cursor: pointer;
-            display: flex; align-items: center; justify-content: center; transition: all .15s;
-        }
-        .editor-preview-btn:hover { background: var(--glass-border); color: var(--text-main); }
-        .editor-preview-btn svg { width: 14px; height: 14px; }
-        /* 预览标题栏移到主工具栏 */
-        .editor-toolbar {
-            display: flex; align-items: center; background: rgba(0,0,0,0.20);
-            border-bottom: 1px solid var(--glass-border); padding: 0 8px; height: 40px;
-            flex-shrink: 0; gap: 2px; overflow-x: auto; overflow-y: hidden;
-        }
-        .editor-toolbar-left {
-            display: flex; align-items: center; gap: 2px; flex: 1;
-        }
-        .editor-toolbar-right {
-            display: flex; align-items: center; gap: 8px;
-            padding-left: 12px; border-left: 1px solid var(--glass-border);
-        }
-        .editor-preview-frame-wrapper { flex: 1; position: relative; background: #0d1117; }
-        .editor-preview-frame-wrapper iframe { width: 100%; height: 100%; border: none; background: #0d1117; }
-        .editor-preview-loading {
-            position: absolute; top: 0; left: 0; right: 0; height: 2px;
-            background: transparent; z-index: 10; overflow: hidden;
-        }
-        .editor-preview-loading.active::after {
-            content: ''; position: absolute; top: 0; left: -50%; width: 50%; height: 100%;
-            background: var(--accent-blue); animation: editor-loading-bar 1s ease-in-out infinite;
-        }
-        @keyframes editor-loading-bar { 0% { left: -50% } 100% { left: 100% } }
-        .editor-status-bar {
-            display: flex; align-items: center; justify-content: space-between;
-            height: 24px; background: rgba(0,0,0,0.20); border-top: 1px solid var(--glass-border);
-            padding: 0 12px; font-size: 11px; color: var(--text-muted); flex-shrink: 0;
-        }
-        .editor-status-left, .editor-status-right { display: flex; align-items: center; gap: 14px; }
-        .editor-status-item { display: flex; align-items: center; gap: 4px; }
-        .editor-status-dot { width: 7px; height: 7px; border-radius: 50%; background: #3fb950; }
+
+        /* 预览区自身变窄时（分割条拖到右侧）收起次要控件，按钮不再溢出 */
+        @container edxp (max-width: 360px) { .edx-pbar .ttl .st { display: none; } }
+        @container edxp (max-width: 290px) { .edx-pbar .ttl { display: none; } .edx-pbar { padding-left: 6px; } }
+        @container edxp (max-width: 230px) { .edx-pbar [data-r="device"] { display: none; } }
         .editor-cm-search-highlight { background: rgba(210, 153, 34, .35) !important; }
         .editor-cm-search-current { background: rgba(210, 153, 34, .8) !important; outline: 1px solid #d29922; }
-        
-        /* CodeMirror 主题覆盖 */
-        /* 背景/文字色不再强制覆盖，使用 material-darker 主题默认配色 */
+        /* CodeMirror 主题覆盖：语法配色沿用 material-darker；字号跟随编辑器设置 */
         .editor-app .CodeMirror {
             height: 100% !important;
             font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'SF Mono', 'Consolas', 'Monaco', monospace !important;
-            font-size: 14px !important; line-height: 1.6 !important;
+            font-size: var(--edx-font, 14px) !important; line-height: 1.6 !important;
         }
         /* 修复：只允许"代码文本"可选中，不能用 .CodeMirror * 通配。
            移动端 CodeMirror 是 contenteditable 模式，行号 .CodeMirror-gutter-wrapper
@@ -2078,12 +2107,6 @@
         .no-select { user-select: none !important; -webkit-user-select: none !important; }
         .no-select iframe { pointer-events: none !important; }
         
-        @media(max-width:768px) {
-            .editor-preview-section, .editor-resizer { display: none; }
-            .editor-tb-btn span { display: none; }
-            .editor-search-input { width: 120px; }
-            .editor-replace-input { width: 100px; }
-        }
 
         /* === Aero Peek 系统 === */
 
@@ -6414,6 +6437,32 @@
             stxFolderSync: '<path d="M9 20H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H20a2 2 0 0 1 2 2v.5"/><path d="M12 10v4h4"/><path d="m12 14 1.535-1.605a5 5 0 0 1 8 1.5"/><path d="M22 22v-4h-4"/><path d="m22 18-1.535 1.605a5 5 0 0 1-8-1.5"/>',
             stxLock: '<rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',
             stxArrowRight: '<path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>',
+            // HTML 编辑器（Lucide，线宽沿用系统 1.5）
+            edxUndo: '<path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5a5.5 5.5 0 0 1-5.5 5.5H11"/>',
+            edxRedo: '<path d="m15 14 5-5-5-5"/><path d="M20 9H9.5A5.5 5.5 0 0 0 4 14.5A5.5 5.5 0 0 0 9.5 20H13"/>',
+            edxCode: '<path d="m18 16 4-4-4-4"/><path d="m6 8-4 4 4 4"/><path d="m14.5 4-5 16"/>',
+            edxColumns: '<rect width="18" height="18" x="3" y="3" rx="2"/><path d="M12 3v18"/>',
+            edxRows: '<rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 12h18"/>',
+            edxMore: '<circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/>',
+            edxSave: '<path d="M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 .6 1.4V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M17 21v-7a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v7"/><path d="M7 3v4a1 1 0 0 0 1 1h7"/>',
+            edxFilePlus: '<path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z"/><path d="M14 2v5a1 1 0 0 0 1 1h5"/><path d="M9 15h6"/><path d="M12 18v-6"/>',
+            edxFileUp: '<path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z"/><path d="M14 2v5a1 1 0 0 0 1 1h5"/><path d="M12 12v6"/><path d="m15 15-3-3-3 3"/>',
+            edxFileDown: '<path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z"/><path d="M14 2v5a1 1 0 0 0 1 1h5"/><path d="M12 18v-6"/><path d="m9 15 3 3 3-3"/>',
+            edxTerminal: '<path d="m7 11 2-2-2-2"/><path d="M11 13h4"/><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/>',
+            edxMonitor: '<rect width="20" height="14" x="2" y="3" rx="2"/><line x1="8" x2="16" y1="21" y2="21"/><line x1="12" x2="12" y1="17" y2="21"/>',
+            edxTablet: '<rect width="16" height="20" x="4" y="2" rx="2" ry="2"/><line x1="12" x2="12.01" y1="18" y2="18"/>',
+            edxPhone: '<rect width="14" height="20" x="5" y="2" rx="2" ry="2"/><path d="M12 18h.01"/>',
+            edxChevDown: '<path d="m6 9 6 6 6-6"/>',
+            edxChevUp: '<path d="m18 15-6-6-6 6"/>',
+            edxReplace: '<path d="M14 4a1 1 0 0 1 1-1"/><path d="M15 10a1 1 0 0 1-1-1"/><path d="M21 4a1 1 0 0 0-1-1"/><path d="M21 9a1 1 0 0 1-1 1"/><path d="m3 7 3 3 3-3"/><path d="M6 10V5a2 2 0 0 1 2-2h2"/><rect x="3" y="14" width="7" height="7" rx="1"/>',
+            edxReplaceAll: '<path d="M14 14a1 1 0 0 1 1 1v5a1 1 0 0 1-1 1"/><path d="M14 4a1 1 0 0 1 1-1"/><path d="M15 10a1 1 0 0 1-1-1"/><path d="M19 14a1 1 0 0 1 1 1v5a1 1 0 0 1-1 1"/><path d="M21 4a1 1 0 0 0-1-1"/><path d="M21 9a1 1 0 0 1-1 1"/><path d="m3 7 3 3 3-3"/><path d="M6 10V5a2 2 0 0 1 2-2h2"/><rect x="3" y="14" width="7" height="7" rx="1"/>',
+            edxCase: '<path d="m2 16 4.039-9.69a.5.5 0 0 1 .923 0L11 16"/><path d="M22 9v7"/><path d="M3.304 13h6.392"/><circle cx="18.5" cy="12.5" r="3.5"/>',
+            edxWord: '<circle cx="7" cy="12" r="3"/><path d="M10 9v6"/><circle cx="17" cy="12" r="3"/><path d="M14 7v8"/><path d="M22 17v1c0 .5-.5 1-1 1H3c-.5 0-1-.5-1-1v-1"/>',
+            edxRegex: '<path d="M17 3v10"/><path d="m12.67 5.5 8.66 5"/><path d="m12.67 10.5 8.66-5"/><path d="M9 17a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v2a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2v-2z"/>',
+            edxKeyboard: '<path d="M10 8h.01"/><path d="M12 12h.01"/><path d="M14 8h.01"/><path d="M16 12h.01"/><path d="M18 8h.01"/><path d="M6 8h.01"/><path d="M7 16h10"/><path d="M8 12h.01"/><rect width="20" height="16" x="2" y="4" rx="2"/>',
+            edxMinus: '<path d="M5 12h14"/>',
+            edxPlus: '<path d="M5 12h14"/><path d="M12 5v14"/>',
+            edxWand: '<path d="m21.64 3.64-1.28-1.28a1.21 1.21 0 0 0-1.72 0L2.36 18.64a1.21 1.21 0 0 0 0 1.72l1.28 1.28a1.2 1.2 0 0 0 1.72 0L21.64 5.36a1.2 1.2 0 0 0 0-1.72"/><path d="m14 7 3 3"/><path d="M5 6v4"/><path d="M19 14v4"/><path d="M10 2v2"/><path d="M7 8H3"/><path d="M21 16h-4"/><path d="M11 3H9"/>',
         };
         // 返回图标内部 path 片段（兼容 <svg class="icon-svg" viewBox="0 0 24 24">${iconBody(name)}</svg> 模式）
         function iconBody(name){ return ICONS[name] || ICONS.fileGeneric; }
@@ -12345,147 +12394,114 @@
         }
 
         function openCodeEditor(initialContent = '', filename = '未命名.html', saveDir = null) {
-            const winId = createWindow({
+            const P = SYSTEM.idCounter + 1;     // createWindow 即将分配的窗口 id
+            const ib = (r, ic, title, cls = '', lbl = '') =>
+                `<button type="button" class="edx-ib ${cls}" data-r="${r}" title="${title}" aria-label="${title.replace(/（.*|\s*\(.*/, '')}">${icon(ic)}${lbl ? `<span class="lbl ${cls.includes('lbl-wide') ? 'wide-only' : ''}">${lbl}</span>` : ''}</button>`;
+            createWindow({
                 title: 'HTML编辑器',
                 winType: 'editor',
                 iconHtml: icon('appCode','sm'),
-                width: 1000, height: 650,
+                width: 1140, height: 680,
                 content: `
-                    <div class="editor-app" id="editor-app-${SYSTEM.idCounter+1}">
-                        <input type="file" id="editor-file-input-${SYSTEM.idCounter+1}" style="display:none">
-                        <div class="editor-toolbar">
-                            <div class="editor-toolbar-left">
-                                <div class="editor-toolbar-group">
-                                    <button class="editor-tb-btn" id="editor-format-${SYSTEM.idCounter+1}" title="格式化 (Ctrl+Shift+F)">
-                                        ${icon('editorFormat')}<span>格式化</span>
-                                    </button>
-                                </div>
-                                <div class="editor-toolbar-divider"></div>
-                                <div class="editor-toolbar-group">
-                                    <button class="editor-tb-btn" id="editor-undo-${SYSTEM.idCounter+1}" title="撤销 (Ctrl+Z)">
-                                        ${icon('uiUndo')}<span>撤销</span>
-                                    </button>
-                                    <button class="editor-tb-btn" id="editor-redo-${SYSTEM.idCounter+1}" title="重做 (Ctrl+Y)">
-                                        ${icon('uiRedo')}<span>重做</span>
-                                    </button>
-                                </div>
-                                <div class="editor-toolbar-divider"></div>
-                                <div class="editor-toolbar-group">
-                                    <button class="editor-tb-btn" id="editor-search-${SYSTEM.idCounter+1}" title="查找与替换 (Ctrl+F)">
-                                        ${icon('uiSearch')}<span>查找</span>
-                                    </button>
-                                </div>
-                                <div class="editor-toolbar-divider"></div>
-                                <div class="editor-toolbar-group">
-                                    <button class="editor-tb-btn" id="editor-copyall-${SYSTEM.idCounter+1}" title="复制全部内容到剪贴板">
-                                        ${icon('uiCopy', 'stroke-2')}<span>复制全部</span>
-                                    </button>
-                                </div>
-                                <div class="editor-toolbar-divider"></div>
-                                <div class="editor-toolbar-group">
-                                    <select class="editor-lang-select" id="editor-lang-${SYSTEM.idCounter+1}" title="语言模式">
-                                        <option value="htmlmixed">HTML</option>
-                                        <option value="css">CSS</option>
-                                        <option value="javascript">JavaScript</option>
-                                        <option value="markdown">Markdown</option>
-                                        <option value="application/json">JSON</option>
-                                    </select>
-                                    <select class="editor-lang-select" id="editor-inputmode-${SYSTEM.idCounter+1}" title="CodeMirror 输入模式（只影响本编辑器，不改变系统其它部分）&#10;自动：跟随浏览器 UA（手机浏览器=手机模式，电脑/“电脑版网站”=电脑模式）&#10;电脑 (textarea)：系统菜单可全选/复制全文，但触屏不能拖拽选字&#10;手机 (contenteditable)：可长按拖拽选字；系统全选只能选到已渲染部分（工具栏“复制全部”不受影响）">
-                                        <option value="auto">模式: 自动</option>
-                                        <option value="textarea">模式: 电脑</option>
-                                        <option value="contenteditable">模式: 手机</option>
-                                    </select>
-                                </div>
-                                <div class="editor-toolbar-divider"></div>
-                                <div class="editor-toolbar-group">
-                                    <button class="editor-tb-btn danger" id="editor-clear-${SYSTEM.idCounter+1}" title="清空">
-                                        ${icon('uiDelete')}<span>清空</span>
-                                    </button>
-                                </div>
-                                <div class="editor-toolbar-divider"></div>
-                                <div class="editor-toolbar-group">
-                                    <button class="editor-tb-btn" id="editor-import-${SYSTEM.idCounter+1}" title="导入文件">
-                                        ${icon('uiDownload')}<span>导入</span>
-                                    </button>
-                                    <button class="editor-tb-btn" id="editor-export-${SYSTEM.idCounter+1}" title="导出文件">
-                                        ${icon('uiUpload')}<span>导出</span>
-                                    </button>
-                                </div>
+                    <div class="editor-app edx" id="editor-app-${P}" data-dir="h" data-view-eff="split">
+                        <input type="file" data-r="fileInput" style="display:none">
+                        <header class="edx-bar" role="toolbar" aria-label="编辑器工具栏">
+                            <button type="button" class="edx-file" data-r="fileBtn" aria-haspopup="menu" aria-label="文件" title="文件"><span class="fi">${icon('stxFileCode')}<i class="dot"></i></span>${icon('edxChevDown')}</button>
+                            <span class="edx-sep narrow-hide"></span>
+                            ${ib('undo', 'edxUndo', '撤销 (Ctrl+Z)')}
+                            ${ib('redo', 'edxRedo', '重做 (Ctrl+Y)', 'narrow-hide')}
+                            <span class="edx-sep"></span>
+                            ${ib('findBtn', 'stxSearch', '查找与替换 (Ctrl+F)', 'lbl-wide', '查找')}
+                            ${ib('format', 'edxWand', '格式化 (Ctrl+Shift+F)', 'mid-hide lbl-wide', '格式化')}
+                            ${ib('copy', 'stxCopy', '复制全部内容', 'mid-hide lbl-wide', '复制全部')}
+                            <span class="edx-sep mid-hide"></span>
+                            ${ib('clear', 'stxTrash2', '清空（Ctrl+Z 可撤销）', 'mid-hide lbl-wide danger', '清空')}
+                            <span class="edx-sep mid-hide"></span>
+                            ${ib('import', 'edxFileUp', '导入文件 (Ctrl+O)', 'mid-hide lbl-wide', '导入')}
+                            ${ib('export', 'edxFileDown', '导出文件 (Ctrl+Shift+S)', 'mid-hide lbl-wide', '导出')}
+                            <span class="edx-sp"></span>
+                            <select class="edx-select" data-r="lang" title="语言" aria-label="语言">
+                                <option value="htmlmixed">HTML</option>
+                                <option value="css">CSS</option>
+                                <option value="javascript">JavaScript</option>
+                                <option value="markdown">Markdown</option>
+                                <option value="application/json">JSON</option>
+                                <option value="xml">XML / SVG</option>
+                            </select>
+                            <div class="edx-seg view" role="radiogroup" aria-label="视图">
+                                <button type="button" data-view="code" role="radio" title="只看代码">${icon('edxCode')}<span class="lbl">代码</span></button>
+                                <button type="button" data-view="split" role="radio" title="代码与预览并排">${icon('edxColumns')}<span class="lbl">分屏</span></button>
+                                <button type="button" data-view="preview" role="radio" title="只看预览">${icon('stxEye')}<span class="lbl">预览</span></button>
                             </div>
-                            <div class="editor-toolbar-right">
-                                <div class="editor-preview-actions">
-                                    <button class="editor-preview-btn" id="editor-refresh-preview-${SYSTEM.idCounter+1}" title="刷新预览">
-                                        ${icon('editorRefresh')}
-                                    </button>
-                                    <button class="editor-preview-btn" id="editor-open-new-${SYSTEM.idCounter+1}" title="在新窗口打开">
-                                        ${icon('editorOpen')}
-                                    </button>
+                            ${ib('more', 'edxMore', '更多选项')}
+                            <span class="edx-sep"></span>
+                            ${ib('openNew', 'stxExternalLink', '在浏览器新标签页打开预览')}
+                        </header>
+                        <div class="edx-body" data-r="body">
+                            <section class="edx-code" data-r="code" aria-label="代码">
+                                <div class="edx-find" data-r="find" role="search">
+                                    <div class="edx-find-row">
+                                        <button type="button" class="edx-ib tg" data-r="findTg" title="展开替换 (Ctrl+H)">${icon('stxChevronRight')}</button>
+                                        <div class="edx-field" data-r="findField">
+                                            <input type="text" data-r="findInput" placeholder="查找" spellcheck="false" autocomplete="off" aria-label="查找">
+                                            <span class="cnt" data-r="findCount"></span>
+                                            <button type="button" class="edx-opt" data-opt="caseSensitive" title="区分大小写">${icon('edxCase')}</button>
+                                            <button type="button" class="edx-opt" data-opt="wholeWord" title="全词匹配">${icon('edxWord')}</button>
+                                            <button type="button" class="edx-opt" data-opt="regex" title="正则表达式">${icon('edxRegex')}</button>
+                                        </div>
+                                        <button type="button" class="edx-ib" data-r="findPrev" title="上一个 (Shift+Enter)">${icon('edxChevUp')}</button>
+                                        <button type="button" class="edx-ib" data-r="findNext" title="下一个 (Enter)">${icon('edxChevDown')}</button>
+                                        <button type="button" class="edx-ib" data-r="findClose" title="关闭 (Esc)">${icon('stxX')}</button>
+                                    </div>
+                                    <div class="edx-find-row rep">
+                                        <div class="edx-field"><input type="text" data-r="repInput" placeholder="替换为" spellcheck="false" autocomplete="off" aria-label="替换为"></div>
+                                        <button type="button" class="edx-ib" data-r="repOne" title="替换当前 (Enter)">${icon('edxReplace')}</button>
+                                        <button type="button" class="edx-ib" data-r="repAll" title="全部替换 (Ctrl+Alt+Enter)">${icon('edxReplaceAll')}</button>
+                                    </div>
                                 </div>
-                            </div>
+                                <div class="editor-wrapper"><textarea data-r="ta"></textarea></div>
+                            </section>
+                            <div class="edx-split" data-r="split" role="separator" tabindex="0" aria-orientation="vertical" aria-valuemin="0" aria-valuemax="100" aria-label="调整代码与预览的比例" title="拖动调整比例 · 双击恢复均分"></div>
+                            <section class="edx-preview" data-r="preview" aria-label="预览">
+                                <div class="edx-pbar">
+                                    <span class="ttl"><b data-r="pTitle">预览</b><span class="st" data-r="pState"><i></i><span></span></span></span>
+                                    <span class="edx-sp"></span>
+                                    <div class="edx-seg sm" data-r="device" role="radiogroup" aria-label="预览尺寸">
+                                        <button type="button" data-dev="auto" title="自适应：铺满预览区">${icon('edxMonitor')}</button>
+                                        <button type="button" data-dev="768" title="平板宽度 768px">${icon('edxTablet')}</button>
+                                        <button type="button" data-dev="375" title="手机宽度 375px">${icon('edxPhone')}</button>
+                                    </div>
+                                    <button type="button" class="edx-ib" data-r="conBtn" title="控制台：页面里的 console 输出与报错">${icon('edxTerminal')}<em class="edx-badge" data-r="conBadge"></em></button>
+                                    <button type="button" class="edx-ib" data-r="refresh" title="刷新预览 (Ctrl+Enter)">${icon('stxRefreshCw')}</button>
+                                </div>
+                                <div class="edx-stage" data-r="stage">
+                                    <div class="editor-preview-loading" data-r="loading"></div>
+                                    <div class="edx-device" data-r="deviceBox">
+                                        <!-- 注意：故意不设 sandbox 限制以保证最佳性能和兼容性，请勿添加 -->
+                                        <iframe data-r="frame" title="预览"></iframe>
+                                    </div>
+                                    <span class="edx-devlabel" data-r="devLabel" hidden></span>
+                                </div>
+                                <div class="edx-console" aria-label="控制台">
+                                    <div class="edx-con-h"><b>控制台</b><span data-r="conSum"></span><span class="edx-sp"></span>
+                                        <button type="button" class="edx-ib" data-r="conClear" title="清空控制台">${icon('stxTrash2')}</button>
+                                        <button type="button" class="edx-ib" data-r="conClose" title="收起">${icon('stxX')}</button>
+                                    </div>
+                                    <div class="edx-con-list" data-r="conList" role="log"></div>
+                                </div>
+                            </section>
                         </div>
-                        <div class="editor-search-bar" id="editor-search-bar-${SYSTEM.idCounter+1}">
-                            <span class="editor-search-seg-label">查找</span>
-                            <div class="editor-search-input-wrap">
-                                <input type="text" class="editor-search-input" id="editor-search-input-${SYSTEM.idCounter+1}" placeholder="搜索..." spellcheck="false">
-                                <span class="editor-search-count" id="editor-search-count-${SYSTEM.idCounter+1}"></span>
-                            </div>
-                            <div class="editor-search-seg">
-                                <button class="editor-s-toggle" id="editor-btn-case-${SYSTEM.idCounter+1}" title="区分大小写">Aa</button>
-                                <button class="editor-s-toggle" id="editor-btn-word-${SYSTEM.idCounter+1}" title="全词匹配">W</button>
-                                <button class="editor-s-toggle" id="editor-btn-regex-${SYSTEM.idCounter+1}" title="正则表达式">.*</button>
-                            </div>
-                            <div class="editor-search-seg">
-                                <button class="editor-s-btn" id="editor-search-prev-${SYSTEM.idCounter+1}" title="上一个 (Shift+Enter)">
-                                    ${icon('editorChevronUp')}
-                                </button>
-                                <button class="editor-s-btn" id="editor-search-next-${SYSTEM.idCounter+1}" title="下一个 (Enter)">
-                                    ${icon('editorChevronDown')}
-                                </button>
-                            </div>
-                            <div class="editor-search-sep"></div>
-                            <span class="editor-search-seg-label">替换</span>
-                            <input type="text" class="editor-replace-input" id="editor-replace-input-${SYSTEM.idCounter+1}" placeholder="替换为..." spellcheck="false">
-                            <div class="editor-search-seg">
-                                <button class="editor-s-btn" id="editor-replace-current-${SYSTEM.idCounter+1}" title="替换当前 (Enter)">
-                                    ${icon('editorReplace')}
-                                </button>
-                                <button class="editor-s-btn" id="editor-replace-all-${SYSTEM.idCounter+1}" title="替换全部">
-                                    ${icon('editorReplaceAll')}
-                                </button>
-                            </div>
-                            <div style="flex:1"></div>
-                            <button class="editor-s-btn" id="editor-search-close-${SYSTEM.idCounter+1}" title="关闭 (Esc)">
-                                ${icon('uiClose')}
-                            </button>
-                        </div>
-                        <div class="editor-main-container">
-                            <div class="editor-section">
-                                <div class="editor-wrapper">
-                                    <textarea id="editor-textarea-${SYSTEM.idCounter+1}"></textarea>
-                                </div>
-                            </div>
-                            <div class="editor-resizer" id="editor-resizer-${SYSTEM.idCounter+1}"></div>
-                            <div class="editor-preview-section" id="editor-preview-section-${SYSTEM.idCounter+1}">
-                                <div class="editor-preview-loading" id="editor-preview-loading-${SYSTEM.idCounter+1}"></div>
-                                <div class="editor-preview-frame-wrapper">
-                                    <!-- 注意：故意不设 sandbox 限制以保证最佳性能和兼容性，请勿添加 -->
-                                    <iframe id="editor-preview-frame-${SYSTEM.idCounter+1}"></iframe>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="editor-status-bar">
-                            <div class="editor-status-left">
-                                <div class="editor-status-item" id="editor-status-cursor-${SYSTEM.idCounter+1}">行 1, 列 1</div>
-                                <div class="editor-status-item" id="editor-status-selection-${SYSTEM.idCounter+1}"></div>
-                            </div>
-                            <div class="editor-status-right">
-                                <div class="editor-status-item" id="editor-status-lines-${SYSTEM.idCounter+1}">0 行</div>
-                                <div class="editor-status-item" id="editor-status-chars-${SYSTEM.idCounter+1}">0 字符</div>
-                                <div class="editor-status-item" id="editor-status-lang-${SYSTEM.idCounter+1}">HTML</div>
-                                <div class="editor-status-item" id="editor-status-input-${SYSTEM.idCounter+1}" title="CodeMirror 输入模式"></div>
-                                <div class="editor-status-item">UTF-8</div>
-                            </div>
-                        </div>
+                        <footer class="edx-status">
+                            <button type="button" class="it" data-r="stCursor" title="跳转到行 (Ctrl+G)">行 1, 列 1</button>
+                            <span class="it" data-r="stSel"></span>
+                            <span class="sp"></span>
+                            <span class="it save" data-r="stSave"><i></i><span></span></span>
+                            <span class="it hide-narrow" data-r="stCount"></span>
+                            <button type="button" class="it" data-r="stLang" title="切换语言">HTML</button>
+                            <span class="it hide-narrow" title="缩进使用 2 个空格（Tab 键同样插入空格）">空格: 2</span>
+                            <span class="it hide-narrow">UTF-8</span>
+                            <button type="button" class="it hide-narrow" data-r="stInput"></button>
+                        </footer>
                     </div>
                 `,
                 onInit: (w, id) => {
@@ -12494,39 +12510,66 @@
             });
         }
 
+        // 编辑器偏好（新开窗口沿用上一次的选择）
+        const EDX_PREFS_KEY = 'JISHENG_OS_EDITOR_PREFS';
+        const EDX_PREF_DEFAULTS = { view: 'split', dir: 'h', ratio: 0.5, wrap: true, auto: true, font: 14, device: 'auto' };
+        function readEditorPrefs() {
+            let p = {};
+            try { p = JSON.parse(localStorage.getItem(EDX_PREFS_KEY) || '{}') || {}; } catch (e) {}
+            const r = Object.assign({}, EDX_PREF_DEFAULTS, p);
+            if (!['code', 'split', 'preview'].includes(r.view)) r.view = 'split';
+            if (!['h', 'v'].includes(r.dir)) r.dir = 'h';
+            if (!['auto', '768', '375'].includes(String(r.device))) r.device = 'auto';
+            r.device = String(r.device);
+            r.ratio = Math.min(0.9, Math.max(0.1, +r.ratio || 0.5));
+            r.font = Math.min(24, Math.max(10, Math.round(+r.font || 14)));
+            return r;
+        }
         function initCodeEditorWindow(winId, initialContent, filename, saveDir) {
+            const root = document.getElementById(`editor-app-${winId}`);
+            const winEl = document.getElementById(`win-${winId}`);
+            if (!root) return;
+            const $ = r => root.querySelector(`[data-r="${r}"]`);
+            const prefs = readEditorPrefs();
+            const savePrefs = () => { try { localStorage.setItem(EDX_PREFS_KEY, JSON.stringify(prefs)); } catch (e) {} };
+
             let editor = null;
             // 当前文件保存目录：来源目录优先，否则桌面
             let editorSaveDir = saveDir || SYSTEM.desktopPath;
-            // 当前对应的虚拟文件路径：从虚拟桌面打开 / 导入 / 导出 / Ctrl+S 后有值；空白新建或从现实设备导入时为 null
+            // 当前对应的虚拟文件路径：从虚拟桌面打开 / 导出 / 保存后有值；空白新建或从现实设备导入时为 null
             let editorFsPath = saveDir ? editorSaveDir + '/' + filename : null;
-            if (editorFsPath) setEditorTitle();
+            let cleanGen = 0, lastSavedAt = 0;
             const sState = { query: '', currentIndex: -1, matches: [], markers: [], caseSensitive: false, wholeWord: false, regex: false };
-            let _previewBlobUrl = null;
-            let _previewLoadingTimer = null;
-            let _previewDebounceTimer = null;
-            
-            const textarea = document.getElementById(`editor-textarea-${winId}`);
+            let _previewBlobUrl = null, _previewLoadingTimer = null, _previewDebounceTimer = null;
+            let previewStale = false, previewGen = 0, previewLineOffset = null;
+            let narrowPick = null;           // 窗口太窄放不下分屏时，用户临时选的单栏（不覆盖“分屏”偏好）
+            let rafStatus = 0, rafLayout = 0;
+            const conEntries = [];
+
+            const textarea = $('ta');
             // 注意：刷新预览时会整个换掉这个 iframe，所以必须是 let
-            let previewFrame = document.getElementById(`editor-preview-frame-${winId}`);
-            const previewLoading = document.getElementById(`editor-preview-loading-${winId}`);
-            const searchBar = document.getElementById(`editor-search-bar-${winId}`);
-            const searchInput = document.getElementById(`editor-search-input-${winId}`);
-            const replaceInput = document.getElementById(`editor-replace-input-${winId}`);
-            const searchCount = document.getElementById(`editor-search-count-${winId}`);
-            const langSelect = document.getElementById(`editor-lang-${winId}`);
-            const fileInput = document.getElementById(`editor-file-input-${winId}`);
-            
+            let previewFrame = $('frame');
+            const previewLoading = $('loading');
+            const body = $('body'), codePane = $('code'), previewPane = $('preview'), splitter = $('split');
+            const stage = $('stage'), deviceBox = $('deviceBox'), devLabel = $('devLabel');
+            const findBox = $('find'), searchInput = $('findInput'), replaceInput = $('repInput'), searchCount = $('findCount'), findField = $('findField');
+            const langSelect = $('lang');
+            const fileInput = $('fileInput');
+
+            const LANG_NAMES = { 'htmlmixed': 'HTML', 'css': 'CSS', 'javascript': 'JavaScript', 'markdown': 'Markdown', 'application/json': 'JSON', 'xml': 'XML / SVG' };
+            const langByExt = { 'html': 'htmlmixed', 'htm': 'htmlmixed', 'css': 'css', 'js': 'javascript', 'mjs': 'javascript', 'json': 'application/json', 'md': 'markdown', 'markdown': 'markdown', 'xml': 'xml', 'svg': 'xml', 'txt': 'htmlmixed' };
+            const extByLang = { 'htmlmixed': '.html', 'css': '.css', 'javascript': '.js', 'markdown': '.md', 'application/json': '.json', 'xml': '.xml' };
+            const curLang = () => langSelect.value;
+
             // ===== CodeMirror 输入模式（只影响本编辑器，navigator.userAgent 与系统其它部分一律不动）=====
-            // CodeMirror 5 只在一处“看 UA”：codemirror.js 第 7793 行
-            //     option("inputStyle", mobile ? "contenteditable" : "textarea")   // mobile 来自 /Android/.test(userAgent) 等
-            // 这就是“手机模式全选只能选一段 / 切成电脑版网站就正常”的全部原因。这里把这个选择权交给用户：
+            // CodeMirror 5 只在一处“看 UA”：option("inputStyle", mobile ? "contenteditable" : "textarea")。
+            // 这就是“手机模式全选只能选一段 / 切成电脑版网站就正常”的全部原因。这里把选择权交给用户：
             //     auto            = 跟随浏览器 UA（CodeMirror 默认行为）
-            //     textarea        = 让 CodeMirror 按“电脑浏览器”工作：系统菜单可全选/复制全文，但触屏不能拖拽选字
-            //     contenteditable = 让 CodeMirror 按“手机浏览器”工作：可长按拖拽选字，系统全选只到已渲染部分
-            // 选择保存在 localStorage，新开的编辑器窗口沿用；工具栏“复制全部”两种模式下都可用。
+            //     textarea        = 按“电脑浏览器”工作：系统菜单可全选/复制全文，但触屏不能拖拽选字
+            //     contenteditable = 按“手机浏览器”工作：可长按拖拽选字，系统全选只到已渲染部分
+            // 选择保存在 localStorage，新开的编辑器窗口沿用；“复制全部”两种模式下都可用。
             const EDITOR_INPUT_MODE_KEY = 'JISHENG_OS_EDITOR_INPUT_MODE';
-            const INPUT_MODE_NAMES = { textarea: '电脑模式 (textarea)', contenteditable: '手机模式 (contenteditable)' };
+            const INPUT_MODE_SHORT = { textarea: '电脑', contenteditable: '手机' };
             function readInputModePref() {
                 try {
                     const v = localStorage.getItem(EDITOR_INPUT_MODE_KEY);
@@ -12537,8 +12580,29 @@
             function resolveInputStyle(pref) { return pref === 'auto' ? CodeMirror.defaults.inputStyle : pref; }
             let inputModePref = readInputModePref();
             let offMobileSelectAll = () => {};
-            const inputModeSelect = document.getElementById(`editor-inputmode-${winId}`);
-            if (inputModeSelect) inputModeSelect.value = inputModePref;
+
+            function keymap() {
+                const km = {};
+                const bind = (keys, fn) => keys.forEach(k => { km['Ctrl-' + k] = fn; km['Cmd-' + k] = fn; });
+                bind(['F'], () => openFind(false));
+                bind(['H'], () => openFind(true));
+                bind(['S'], () => saveEditorToFile());
+                bind(['Shift-S'], () => exportEditorFile('saveas'));
+                bind(['O'], () => importEditorFile());
+                bind(['Enter'], () => updateEditorPreview());
+                bind(['Shift-F'], () => formatEditorCode());
+                bind(['/'], cm => cm.execCommand('toggleComment'));
+                bind(['G'], cm => cm.execCommand('jumpToLine'));
+                bind(['='], () => setFont(prefs.font + 1));
+                bind(['-'], () => setFont(prefs.font - 1));
+                km['Alt-Z'] = () => setWrap(!prefs.wrap);
+                km['F3'] = () => editorSearchNext();
+                km['Shift-F3'] = () => editorSearchPrev();
+                km['Tab'] = cm => { if (cm.somethingSelected()) cm.indentSelection('add'); else cm.replaceSelection('  ', 'end'); };
+                km['Shift-Tab'] = cm => cm.indentSelection('subtract');
+                km['Esc'] = () => { if (findBox.classList.contains('open')) closeFind(); else return CodeMirror.Pass; };
+                return CodeMirror.normalizeKeyMap(km);
+            }
 
             function createEditorInstance(inputStyle) {
                 const cm = CodeMirror.fromTextArea(textarea, {
@@ -12546,7 +12610,8 @@
                     theme: 'material-darker',
                     inputStyle: inputStyle,
                     lineNumbers: true,
-                    lineWrapping: true,
+                    lineWrapping: prefs.wrap,
+                    indentUnit: 2, tabSize: 2, indentWithTabs: false,
                     gutters: ['CodeMirror-linenumbers'],
                     matchBrackets: true,
                     autoCloseBrackets: true,
@@ -12554,36 +12619,24 @@
                     autoCloseTags: true,
                     styleActiveLine: true,
                     showTrailingSpace: true,
-                    extraKeys: {
-                        'Ctrl-F': () => toggleEditorSearchBar(true),
-                        'Ctrl-H': () => { toggleEditorSearchBar(true); setTimeout(() => replaceInput.focus(), 50); },
-                        'Ctrl-Enter': updateEditorPreview,
-                        'Ctrl-S': (e) => { e.preventDefault(); saveEditorToFile(); },
-                        'Ctrl-Shift-F': formatEditorCode,
-                        'F3': (e) => { e.preventDefault(); editorSearchNext(); }
-                    }
+                    extraKeys: keymap()
                 });
-                // 编辑器事件
-                cm.on('cursorActivity', updateEditorStatusBar);
-                cm.on('change', () => {
-                    updateEditorStatusBar();
-                    scheduleEditorPreview();
+                cm.on('cursorActivity', scheduleStatus);
+                cm.on('change', () => { scheduleStatus(); onDocChanged(); });
+                // 把文件拖进编辑区 = 打开该文件（而不是把内容插到鼠标位置）
+                cm.on('drop', (c, e) => {
+                    const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+                    if (!f) return;
+                    e.preventDefault();
+                    openDeviceFile(f);
                 });
                 // 手机模式(contenteditable)下修复系统“全选”只能选到已渲染一段的问题；电脑模式(textarea)下该函数为空操作
                 offMobileSelectAll = fixMobileSelectAll(cm, '.editor-app');
                 return cm;
             }
 
-            function updateInputModeStatus() {
-                const el = document.getElementById(`editor-status-input-${winId}`);
-                if (!el || !editor) return;
-                const style = editor.options.inputStyle;
-                el.textContent = (INPUT_MODE_NAMES[style] || style) + (inputModePref === 'auto' ? ' · 自动' : '');
-                el.title = 'CodeMirror 输入模式：' + (inputModePref === 'auto' ? '自动（跟随浏览器 UA）' : '手动指定') + '\n当前 UA：' + navigator.userAgent;
-            }
-
-            // 切换输入模式。CodeMirror 不允许在运行中修改 inputStyle（源码第 7794 行直接 throw），
-            // 因此在原位重建实例，并保留内容、光标/选区、滚动位置、撤销历史、语言模式与折叠。
+            // 切换输入模式。CodeMirror 不允许在运行中修改 inputStyle（会直接 throw），
+            // 因此在原位重建实例，并保留内容、光标/选区、滚动位置、撤销历史、语言模式与“是否已保存”。
             function switchEditorInputMode(pref) {
                 const target = resolveInputStyle(pref);
                 inputModePref = pref;
@@ -12591,114 +12644,390 @@
                     if (pref === 'auto') localStorage.removeItem(EDITOR_INPUT_MODE_KEY);
                     else localStorage.setItem(EDITOR_INPUT_MODE_KEY, pref);
                 } catch (e) {}
-                const label = `输入模式：${INPUT_MODE_NAMES[target] || target}${pref === 'auto' ? '（自动）' : ''}`;
-                if (editor.options.inputStyle === target) { updateInputModeStatus(); Notify.info(label); return; }
+                const label = `输入方式：${INPUT_MODE_SHORT[target] || target}模式${pref === 'auto' ? '（自动）' : ''}`;
+                if (editor.options.inputStyle === target) { updateStatusBar(); Notify.info(label); return; }
 
+                const wasDirty = isDirty();
                 const value = editor.getValue();
                 const selections = editor.listSelections();
                 const scroll = editor.getScrollInfo();
-                const topLine = editor.lineAtHeight(scroll.top, 'local');   // 按“首行”而不是像素恢复滚动位置，两种模型行高测量略有差异
+                const topLine = editor.lineAtHeight(scroll.top, 'local');   // 按“首行”恢复滚动位置，两种模型行高测量略有差异
                 const history = editor.getHistory();
                 const mode = editor.getOption('mode');
                 clearEditorHighlights();
                 try { offMobileSelectAll(); } catch (e) {}
-                editor.toTextArea();                                   // 还原 textarea（内容已写回）
+                editor.toTextArea();
                 editor = createEditorInstance(target);
                 if (editor.getValue() !== value) editor.setValue(value);
                 editor.setOption('mode', mode);
                 try { editor.setHistory(history); } catch (e) {}
+                cleanGen = wasDirty ? -1 : editor.changeGeneration(true);
                 try { editor.setSelections(selections, null, { scroll: false }); } catch (e) { editor.setCursor({ line: 0, ch: 0 }); }
                 editor.refresh();
                 editor.scrollTo(scroll.left, editor.heightAtLine(topLine, 'local'));
-                updateEditorStatusBar();
-                updateInputModeStatus();
+                updateStatusBar(); updateDirty();
                 if (sState.query) performEditorSearch();
                 Notify.info(label);
             }
 
-            // 初始化 CodeMirror
-            editor = createEditorInstance(resolveInputStyle(inputModePref));
-
-            if (initialContent) {
-                editor.setValue(initialContent);
-            } else {
-                editor.setValue('');
+            // ===== 文件状态：是否有未保存修改 =====
+            const isDirty = () => !!editor && !editor.isClean(cleanGen);
+            function markClean() { cleanGen = editor.changeGeneration(true); updateDirty(); }
+            function setEditorTitle() {
+                const t = document.querySelector(`#win-${winId} .window-title-text`);
+                const named = editorFsPath || filename !== '未命名.html';
+                if (t) t.textContent = (isDirty() ? '● ' : '') + (named ? `HTML编辑器 - ${filename}` : 'HTML编辑器');
+            }
+            function updateDirty() {
+                const d = isDirty();
+                root.classList.toggle('dirty', d);
+                $('fileBtn').title = `文件：${filename}\n` + (editorFsPath ? `位置：${editorFsPath}` : '尚未保存到虚拟磁盘') + (d ? '\n有未保存的修改' : '');
+                const s = $('stSave');
+                const t = s.querySelector('span');
+                if (d) t.textContent = '未保存';
+                else if (!editorFsPath) t.textContent = editor && editor.getValue() ? '未存入磁盘' : '新文件';
+                else t.textContent = lastSavedAt ? '已保存 ' + new Date(lastSavedAt).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', hour12: false }) : '已保存';
+                s.title = d ? '按 Ctrl+S 保存' : (editorFsPath || '');
+                setEditorTitle();
             }
 
-            // 根据打开文件的扩展名自动选择语言模式与高亮
-            (function applyModeByExt() {
-                const ext = (filename || '').split('.').pop().toLowerCase();
-                const extMap = { 'html': 'htmlmixed', 'htm': 'htmlmixed', 'css': 'css', 'js': 'javascript', 'mjs': 'javascript', 'json': 'application/json', 'md': 'markdown', 'markdown': 'markdown', 'xml': 'xml', 'svg': 'xml' };
-                const mode = extMap[ext];
-                if (mode) {
-                    editor.setOption('mode', mode);
-                    if (langSelect) {
-                        // langSelect 选项里可能没有 xml，做存在性判断
-                        const has = Array.from(langSelect.options).some(o => o.value === mode);
-                        if (has) langSelect.value = mode;
-                    }
-                    const names = { 'htmlmixed': 'HTML', 'css': 'CSS', 'javascript': 'JavaScript', 'markdown': 'Markdown', 'application/json': 'JSON', 'xml': 'XML' };
-                    const langEl = document.getElementById(`editor-status-lang-${winId}`);
-                    if (langEl) langEl.textContent = names[mode] || mode;
+            function onDocChanged() {
+                updateDirty();
+                if (sState.query && findBox.classList.contains('open')) { clearTimeout(onDocChanged._t); onDocChanged._t = setTimeout(performEditorSearch, 120); }
+                if (prefs.auto) scheduleEditorPreview();
+                else { previewStale = true; updatePreviewHeader(); }
+            }
+
+            // ===== 状态栏 =====
+            function scheduleStatus() { if (!rafStatus) rafStatus = requestAnimationFrame(() => { rafStatus = 0; updateStatusBar(); }); }
+            function updateStatusBar() {
+                if (!editor) return;
+                const c = editor.getCursor();
+                $('stCursor').textContent = `行 ${c.line + 1}, 列 ${c.ch + 1}`;
+                const sels = editor.getSelections().filter(Boolean);
+                const sel = sels.join('');
+                $('stSel').textContent = sel ? `已选 ${sel.length.toLocaleString()} 字符` + (sel.includes('\n') ? ` · ${sel.split('\n').length} 行` : '') : '';
+                $('stCount').textContent = `${editor.lineCount().toLocaleString()} 行 · ${editor.getValue().length.toLocaleString()} 字符`;
+                $('stLang').textContent = LANG_NAMES[curLang()] || curLang();
+                const style = editor.options.inputStyle;
+                $('stInput').textContent = '输入: ' + (INPUT_MODE_SHORT[style] || style) + (inputModePref === 'auto' ? ' · 自动' : '');
+                $('stInput').title = 'CodeMirror 输入方式：' + (inputModePref === 'auto' ? '自动（跟随浏览器 UA）' : '手动指定') + '\n电脑：系统菜单可全选/复制全文，触屏不能拖拽选字\n手机：可长按拖拽选字，系统全选只到已渲染部分\n当前 UA：' + navigator.userAgent;
+                $('undo').disabled = !editor.historySize().undo;
+                $('redo').disabled = !editor.historySize().redo;
+                $('format').disabled = curLang() === 'markdown';
+            }
+
+            // ===== 视图：代码 / 分屏 / 预览，分屏方向与比例 =====
+            const MIN = { h: [200, 160], v: [90, 80] };          // [代码区最小, 预览区最小]（像素）
+            function splitFits() {
+                return prefs.dir === 'h' ? root.clientWidth >= 640 : body.clientHeight >= 300;
+            }
+            function effView() {
+                if (prefs.view !== 'split') return prefs.view;
+                return splitFits() ? 'split' : (narrowPick || 'code');
+            }
+            function clampRatio(r) {
+                const size = prefs.dir === 'h' ? body.clientWidth : body.clientHeight;
+                if (!size) return r;
+                const [a, b] = MIN[prefs.dir];
+                const lo = Math.min(0.45, a / size), hi = Math.max(0.55, 1 - b / size);
+                return Math.min(hi, Math.max(lo, r));
+            }
+            function applyLayout() {
+                const v = effView();
+                const changed = root.dataset.viewEff !== v || root.dataset.dir !== prefs.dir;
+                root.dataset.viewEff = v;
+                root.dataset.dir = prefs.dir;
+                splitter.setAttribute('aria-orientation', prefs.dir === 'h' ? 'vertical' : 'horizontal');
+                root.querySelectorAll('.edx-seg.view button').forEach(b => {
+                    const on = b.dataset.view === v;
+                    b.classList.toggle('on', on); b.setAttribute('aria-checked', on);
+                });
+                if (v === 'split') {
+                    // 比例存的是百分比：窗口怎么缩放，分割条都停在相对位置，不会出现“只能最大/最小”
+                    const r = clampRatio(prefs.ratio);
+                    codePane.style.flex = `0 0 ${(r * 100).toFixed(3)}%`;
+                    previewPane.style.flex = '1 1 0';
+                    splitter.setAttribute('aria-valuenow', Math.round(r * 100));
+                } else {
+                    codePane.style.flex = ''; previewPane.style.flex = '';
                 }
+                layoutDevice();
+                if (changed && v !== 'code' && previewStale && (prefs.auto || previewGen === 0)) updateEditorPreview();
+            }
+            function scheduleLayout() {
+                if (rafLayout) return;
+                rafLayout = requestAnimationFrame(() => { rafLayout = 0; applyLayout(); if (editor) editor.refresh(); });
+            }
+            function setView(v) {
+                if (prefs.view === 'split' && v !== 'split' && !splitFits()) narrowPick = v;
+                else { prefs.view = v; narrowPick = null; savePrefs(); }
+                applyLayout();
+                if (editor) editor.refresh();
+                if (effView() !== 'preview' && editor) editor.focus();
+            }
+            function setDir(d) { prefs.dir = d; savePrefs(); applyLayout(); if (editor) editor.refresh(); }
+
+            // 分割条：Pointer Events（鼠标 / 触屏 / 手写笔通用）+ setPointerCapture；双击恢复均分；键盘方向键微调
+            (function initSplitter() {
+                let dragging = false;
+                const posToRatio = e => {
+                    const rc = body.getBoundingClientRect();
+                    return prefs.dir === 'h' ? (e.clientX - rc.left) / rc.width : (e.clientY - rc.top) / rc.height;
+                };
+                splitter.addEventListener('pointerdown', e => {
+                    if (e.button !== 0) return;
+                    e.preventDefault();
+                    dragging = true;
+                    try { splitter.setPointerCapture(e.pointerId); } catch (_) {}
+                    root.classList.add('dragging');
+                });
+                splitter.addEventListener('pointermove', e => {
+                    if (!dragging) return;
+                    prefs.ratio = clampRatio(posToRatio(e));
+                    scheduleLayout();
+                });
+                const end = e => {
+                    if (!dragging) return;
+                    dragging = false;
+                    try { splitter.releasePointerCapture(e.pointerId); } catch (_) {}
+                    root.classList.remove('dragging');
+                    savePrefs();
+                    if (editor) editor.refresh();
+                };
+                splitter.addEventListener('pointerup', end);
+                splitter.addEventListener('pointercancel', end);
+                splitter.addEventListener('lostpointercapture', end);
+                splitter.addEventListener('dblclick', () => { prefs.ratio = 0.5; savePrefs(); applyLayout(); editor.refresh(); });
+                splitter.addEventListener('keydown', e => {
+                    const step = e.shiftKey ? 0.1 : 0.02;
+                    const back = prefs.dir === 'h' ? 'ArrowLeft' : 'ArrowUp', fwd = prefs.dir === 'h' ? 'ArrowRight' : 'ArrowDown';
+                    let r = clampRatio(prefs.ratio);
+                    if (e.key === back) r -= step;
+                    else if (e.key === fwd) r += step;
+                    else if (e.key === 'Home') r = 0;
+                    else if (e.key === 'End') r = 1;
+                    else if (e.key === 'Enter') r = 0.5;
+                    else return;
+                    e.preventDefault();
+                    prefs.ratio = clampRatio(r); savePrefs(); applyLayout(); editor.refresh();
+                });
             })();
-            
-            // 更新预览（Markdown 模式下渲染为真正的 HTML 预览，而不是把原文当 HTML 塞进去）
-            //
+
+            // ===== 预览 =====
+            // 预览尺寸：自适应 / 平板 768 / 手机 375。预览区比设备窄时等比缩小显示，页面本身仍按设备宽度排版
+            function layoutDevice() {
+                const dev = prefs.device;
+                root.querySelectorAll('[data-r="device"] button').forEach(b => {
+                    const on = b.dataset.dev === dev; b.classList.toggle('on', on); b.setAttribute('aria-checked', on);
+                });
+                if (dev === 'auto') {
+                    stage.classList.remove('framed');
+                    deviceBox.style.cssText = '';
+                    devLabel.hidden = true;
+                    return;
+                }
+                const W = stage.clientWidth, H = stage.clientHeight;
+                if (!W || !H) return;
+                const devW = +dev, pad = 12;
+                const s = Math.min(1, (W - pad * 2) / devW);
+                const h = (H - pad * 2) / s;
+                stage.classList.add('framed');
+                deviceBox.style.cssText = `width:${devW}px;height:${h}px;left:${Math.max(pad, (W - devW * s) / 2)}px;top:${pad}px;transform:scale(${s})`;
+                devLabel.hidden = false;
+                devLabel.textContent = `${devW} × ${Math.round(h)}` + (s < 0.999 ? ` · ${Math.round(s * 100)}%` : '');
+            }
+            function setDevice(d) { prefs.device = d; savePrefs(); layoutDevice(); }
+
+            function previewKind() {
+                return { markdown: 'Markdown 渲染', javascript: 'JavaScript 运行', css: 'CSS 示例页', 'application/json': 'JSON 视图' }[curLang()] || '';
+            }
+            function updatePreviewHeader() {
+                const st = $('pState');
+                const k = previewKind();
+                $('pTitle').textContent = k ? '预览 · ' + k : '预览';
+                st.classList.toggle('paused', !prefs.auto && !previewStale);
+                st.classList.toggle('stale', !prefs.auto && previewStale);
+                st.querySelector('span').textContent = prefs.auto ? '实时' : (previewStale ? '有修改未预览' : '手动刷新');
+                st.title = prefs.auto ? '输入停顿约 0.5 秒后自动刷新（可在“更多”里关闭）' : '自动刷新已关闭：按 Ctrl+Enter 或点击刷新按钮';
+                $('refresh').classList.toggle('stale', !prefs.auto && previewStale);
+            }
+
+            const escHtml = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+            const CSS_SAMPLE = `<header class="header"><nav class="nav"><a href="#">首页</a> <a href="#">文档</a> <a href="#">关于</a></nav></header>
+<main class="container"><h1>一级标题 Heading 1</h1><h2>二级标题</h2><h3>三级标题</h3>
+<p>这是一段示例文字，包含<a href="#">链接</a>、<strong>加粗</strong>、<em>强调</em>和 <code>code</code>。</p>
+<blockquote>引用文本 blockquote</blockquote><ul><li>列表项一</li><li>列表项二</li></ul><ol><li>有序一</li><li>有序二</li></ol>
+<p><button class="btn">按钮</button> <button class="btn btn-primary primary">主按钮</button> <input type="text" placeholder="输入框"> <select><option>选项</option></select> <label><input type="checkbox"> 复选</label></p>
+<div class="card box"><h3>.card / .box</h3><p>卡片内容</p></div>
+<table><thead><tr><th>表头</th><th>表头</th></tr></thead><tbody><tr><td>单元格</td><td>单元格</td></tr></tbody></table></main>
+<footer class="footer">页脚 footer</footer>`;
+            // 按语言组装预览文档；offset = 编辑器第 1 行在预览文档中前面多出的行数（用于把报错行号对回编辑器）
+            function buildPreview(code) {
+                const lang = curLang();
+                if (lang === 'markdown') return { html: buildMarkdownPreviewDoc(code), offset: null };
+                // JavaScript：先写入空白页骨架（不关闭文档），再以 <script> 元素插入代码。
+                // 这样各浏览器报告的行号都从代码第 1 行算起，且 DOMContentLoaded / load 仍会在之后正常触发。
+                if (lang === 'javascript') return {
+                    html: '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{font:14px/1.6 system-ui,sans-serif;margin:16px;color:#222}</style></head><body>',
+                    script: code, offset: 0
+                };
+                if (lang === 'css') return {
+                    html: '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>\n' + code.replace(/<\/style/gi, '<\\/style') + '\n</style></head><body>' + CSS_SAMPLE + '</body></html>',
+                    offset: null
+                };
+                if (lang === 'application/json') {
+                    let out;
+                    try { out = '<pre class="ok">' + escHtml(JSON.stringify(JSON.parse(code || 'null'), null, 2)) + '</pre>'; }
+                    catch (e) { out = '<div class="err">JSON 解析失败：' + escHtml(e.message) + '</div>'; }
+                    return { html: '<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{margin:0;background:#0d1117;color:#c9d1d9;font:13px/1.55 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}pre{margin:0;padding:14px 16px;white-space:pre-wrap;word-break:break-word}.err{margin:14px;padding:10px 12px;border-radius:8px;background:rgba(255,107,120,.12);color:#ff9aa5}</style></head><body>' + out + '</body></html>', offset: null };
+                }
+                // HTML 页面不给“定位到行”：Chrome 对 document.write 写入的脚本报告的是“相对 <script> 标签”的行号，Firefox 是绝对行号，无法可靠换算
+                return { html: code || '<html><body style="margin:0;background:#0d1117;"></body></html>', offset: null };
+            }
+
+            // 独立页面（新标签页 / blob 兜底）：把 JS 模式的脚本拼回 HTML
+            function standaloneHtml(built) {
+                return built.script === undefined ? built.html
+                    : built.html + '<script>\n' + built.script.replace(/<\/script/gi, '<\\/script') + '\n<\/script></body></html>';
+            }
+            // 更新预览
             // 【关键】每次刷新都换一个全新的 iframe，而不是往同一个 iframe 里反复 document.write。
             // document.open() 只会清空"文档"，不会重置 iframe 的 window（全局对象）：
-            // 上一次预览声明过的顶层 const / let / class、注册过的自定义元素、计时器、
-            // 监听器全都还在。于是复杂页面（比如 JISHENG OS 自己）第二次刷新时第一行就抛
-            // "Identifier 'SYSTEM' has already been declared"，整个脚本中断 —— 表现就是
-            // 刷新一次变黑屏，而且之后怎么刷都还是黑的。
-            // cloneNode 换掉 iframe 可以拿到一个全新的浏览上下文，全局作用域彻底干净。
+            // 上一次预览声明过的顶层 const / let / class、注册过的自定义元素、计时器、监听器全都还在。
+            // 于是复杂页面（比如 JISHENG OS 自己）第二次刷新时第一行就抛 "Identifier 'SYSTEM' has already been declared"，
+            // 整个脚本中断 —— 表现就是刷新一次变黑屏。cloneNode 换掉 iframe 可以拿到一个全新的浏览上下文。
             function updateEditorPreview() {
                 if (_previewDebounceTimer) { clearTimeout(_previewDebounceTimer); _previewDebounceTimer = null; }
+                if (!editor) return;
+                previewStale = false;
+                updatePreviewHeader();
+                // 只看代码时不必真的渲染（切回预览时会补一次）
+                if (effView() === 'code') { previewStale = true; return; }
                 const code = editor.getValue();
                 previewLoading.classList.add('active');
-                const isMarkdownMode = langSelect && langSelect.value === 'markdown';
-                const htmlContent = isMarkdownMode
-                    ? buildMarkdownPreviewDoc(code)
-                    : (code || '<html><body style="margin:0;background:#0d1117;"></body></html>');
+                const built = buildPreview(code);
+                previewLineOffset = built.offset;
 
-                // 用一个干净的 iframe 顶掉旧的（同时也就卸载了旧页面的脚本/定时器/监听器）
                 const fresh = previewFrame.cloneNode(false);
                 fresh.removeAttribute('src');
                 fresh.removeAttribute('srcdoc');
                 previewFrame.replaceWith(fresh);
                 previewFrame = fresh;
-
-                // 旧的 blob URL 这时才可以安全释放
                 if (_previewBlobUrl) { URL.revokeObjectURL(_previewBlobUrl); _previewBlobUrl = null; }
 
-                try {
-                    const doc = previewFrame.contentDocument || (previewFrame.contentWindow && previewFrame.contentWindow.document);
-                    if (!doc) throw new Error('no doc');
+                const gen = ++previewGen;
+                clearConsole(true);
+                let doc = null;
+                try { doc = previewFrame.contentDocument || (previewFrame.contentWindow && previewFrame.contentWindow.document); } catch (e) { doc = null; }
+                if (doc) {
                     doc.open();
-                    doc.write(htmlContent);
-                    doc.close();
-                } catch (e) {
-                    // 兜底：某些环境（跨源策略等）拿不到 contentDocument，改用 blob URL
-                    _previewBlobUrl = URL.createObjectURL(new Blob([htmlContent], { type: 'text/html' }));
+                    // document.open() 之后 window 对象保持不变：在写入页面脚本之前挂上控制台捕获
+                    try { hookPreviewConsole(previewFrame.contentWindow, gen); } catch (e) {}
+                    // Chrome 会把页面脚本的语法错误从 document.write 里重新抛出来：记到控制台即可，不能当成“写入失败”再渲染一遍
+                    try {
+                        doc.write(built.html);
+                        if (built.script !== undefined) {
+                            const sc = doc.createElement('script');
+                            sc.textContent = built.script;
+                            (doc.body || doc.documentElement).appendChild(sc);
+                        }
+                    } catch (e) {
+                        const m = String(e && e.message || e).replace(/^Failed to execute '\w+' on '\w+': /, '');
+                        if (gen === previewGen && !conEntries.some(x => x.level === 'error' && x.text.includes(m))) pushConsole('error', m);
+                    }
+                    try { doc.close(); } catch (e) {}
+                } else {
+                    // 兜底：某些环境（跨源策略等）拿不到 contentDocument，改用 blob URL（此时无法捕获控制台）
+                    _previewBlobUrl = URL.createObjectURL(new Blob([standaloneHtml(built)], { type: 'text/html' }));
                     previewFrame.src = _previewBlobUrl;
                 }
                 if (_previewLoadingTimer) clearTimeout(_previewLoadingTimer);
-                _previewLoadingTimer = setTimeout(() => {
-                    previewLoading.classList.remove('active');
-                    _previewLoadingTimer = null;
-                }, 500);
+                _previewLoadingTimer = setTimeout(() => { previewLoading.classList.remove('active'); _previewLoadingTimer = null; }, 450);
             }
-
-            // 输入时的自动预览：防抖 450ms。
-            // 每敲一个字就重建一次 iframe + 重跑整个页面脚本是扛不住的（手动点刷新 / Ctrl+Enter 仍然立即生效）。
+            // 输入时的自动预览：防抖 450ms（手动刷新 / Ctrl+Enter 立即生效）
             function scheduleEditorPreview() {
                 if (_previewDebounceTimer) clearTimeout(_previewDebounceTimer);
-                _previewDebounceTimer = setTimeout(() => {
-                    _previewDebounceTimer = null;
-                    updateEditorPreview();
-                }, 450);
+                _previewDebounceTimer = setTimeout(() => { _previewDebounceTimer = null; updateEditorPreview(); }, 450);
             }
-            
+
+            // ===== 预览控制台 =====
+            function fmtArg(a, w) {
+                try {
+                    if (typeof a === 'string') return a;
+                    if (a === undefined) return 'undefined';
+                    if (typeof a === 'function') return String(a).slice(0, 200);
+                    if (a && typeof a === 'object') {
+                        if (a.nodeType === 1) return '<' + a.tagName.toLowerCase() + (a.id ? '#' + a.id : '') + '>';
+                        if (w && a instanceof w.Error || a instanceof Error || (a.stack && a.message)) return a.stack || String(a);
+                        const s = JSON.stringify(a, null, 1);
+                        return s === undefined ? String(a) : s.replace(/\n\s*/g, ' ');
+                    }
+                    return String(a);
+                } catch (e) { return String(a); }
+            }
+            function hookPreviewConsole(w, gen) {
+                if (!w || !w.console) return;
+                ['log', 'info', 'warn', 'error', 'debug'].forEach(level => {
+                    const orig = w.console[level];
+                    w.console[level] = function (...args) {
+                        if (gen === previewGen) pushConsole(level === 'debug' ? 'log' : level, args.map(a => fmtArg(a, w)).join(' '));
+                        try { if (orig) orig.apply(w.console, args); } catch (e) {}
+                    };
+                });
+                w.addEventListener('error', e => {
+                    if (gen !== previewGen) return;
+                    if (e.message) pushConsole('error', String(e.message).replace(/Failed to execute '\w+' on '\w+': /, ''), e.lineno);
+                    else if (e.target && e.target !== w && e.target.tagName) pushConsole('warn', '资源加载失败：' + (e.target.src || e.target.href || '<' + e.target.tagName.toLowerCase() + '>'));
+                }, true);
+                w.addEventListener('unhandledrejection', e => { if (gen === previewGen) pushConsole('error', 'Uncaught (in promise) ' + fmtArg(e.reason, w)); });
+            }
+            const CON_ICON = { error: 'stxCircleX', warn: 'stxTriangleAlert', info: 'stxInfo', log: 'stxChevronRight' };
+            function pushConsole(level, msg, line) {
+                if (conEntries.length >= 500) return;
+                const text = String(msg).slice(0, 4000);
+                const last = conEntries[conEntries.length - 1];
+                if (last && last.level === level && last.text === text && last.line === line) { last.n++; renderConsole(); return; }
+                conEntries.push({ level, text, line, n: 1 });
+                renderConsole();
+            }
+            function clearConsole(silent) { conEntries.length = 0; renderConsole(); if (!silent) Notify.info('控制台已清空'); }
+            function renderConsole() {
+                const errs = conEntries.filter(e => e.level === 'error').reduce((s, e) => s + e.n, 0);
+                const warns = conEntries.filter(e => e.level === 'warn').reduce((s, e) => s + e.n, 0);
+                const total = conEntries.reduce((s, e) => s + e.n, 0);
+                const badge = $('conBadge');
+                badge.textContent = errs ? String(errs) : (total ? String(Math.min(total, 99)) : '');
+                badge.classList.toggle('err', !!errs);
+                $('conBtn').title = '控制台' + (total ? `：${errs} 个错误，${warns} 个警告，共 ${total} 条` : '：暂无输出');
+                $('conSum').textContent = total ? `${errs} 错误 · ${warns} 警告 · ${total} 条` : '';
+                if (!previewPane.classList.contains('con-open')) return;
+                const list = $('conList');
+                const lines = editor ? editor.lineCount() : 0;
+                list.innerHTML = conEntries.length ? conEntries.map((e, i) => {
+                    const ln = (previewLineOffset !== null && e.line) ? e.line - previewLineOffset : 0;
+                    const link = ln > 0 && ln <= lines ? `<a data-line="${ln}" title="在编辑器中定位">第 ${ln} 行</a>` : '';
+                    return `<div class="edx-con-item ${e.level}">${icon(CON_ICON[e.level] || 'stxChevronRight')}<pre>${escHtml(e.text)}${e.n > 1 ? ` <span class="edx-badge">${e.n}</span>` : ''}</pre>${link}</div>`;
+                }).join('') : '<div class="edx-con-empty">暂无输出。预览页面里的 console.log / 报错会显示在这里。</div>';
+                list.scrollTop = list.scrollHeight;
+            }
+            function toggleConsole(force) {
+                const open = force === undefined ? !previewPane.classList.contains('con-open') : force;
+                previewPane.classList.toggle('con-open', open);
+                $('conBtn').classList.toggle('on', open);
+                renderConsole();
+                layoutDevice();
+            }
+            function gotoLine(ln) {
+                if (effView() === 'preview') setView('code');
+                editor.focus();
+                editor.setCursor({ line: ln - 1, ch: 0 });
+                editor.scrollIntoView({ line: ln - 1, ch: 0 }, 80);
+                const h = editor.addLineClass(ln - 1, 'background', 'CodeMirror-selected');
+                setTimeout(() => { try { editor.removeLineClass(h, 'background', 'CodeMirror-selected'); } catch (e) {} }, 1200);
+            }
+
+            // ===== 编辑操作 =====
             // 复制全部（不依赖系统选区；HTTPS 下走 Clipboard API，否则退回 execCommand('copy')）
             async function copyAllEditorText() {
                 const text = editor.getValue();
@@ -12714,9 +13043,7 @@
                         ta.setAttribute('readonly', '');
                         ta.style.cssText = 'position:fixed;top:0;left:0;width:2px;height:2px;opacity:0;';
                         document.body.appendChild(ta);
-                        ta.focus();
-                        ta.select();
-                        ta.setSelectionRange(0, text.length);
+                        ta.focus(); ta.select(); ta.setSelectionRange(0, text.length);
                         ok = document.execCommand('copy');
                         document.body.removeChild(ta);
                         editor.focus();
@@ -12726,10 +13053,12 @@
                 else Notify.error('复制失败，请长按编辑区用系统菜单复制');
             }
 
-            // 格式化代码
+            // 格式化：作为一次普通编辑写入（Ctrl+Z 可撤销），并尽量保持光标所在行与滚动位置
             function formatEditorCode() {
                 const code = editor.getValue();
-                const lang = langSelect.value;
+                const lang = curLang();
+                if (lang === 'markdown') { Notify.info('Markdown 不需要格式化'); return; }
+                if (!code.trim()) { Notify.info('没有可格式化的内容'); return; }
                 let fmt = code;
                 try {
                     if (lang === 'htmlmixed' || lang === 'xml') {
@@ -12739,141 +13068,144 @@
                     } else if (lang === 'javascript' || lang === 'application/json') {
                         fmt = js_beautify(code, { indent_size: 2, end_with_newline: true });
                     }
-                    const c = editor.getCursor();
-                    editor.setValue(fmt);
-                    editor.setCursor(c);
-                    Notify.success('代码已格式化');
-                } catch (e) {
-                    Notify.error('格式化失败');
-                }
+                } catch (e) { Notify.error('格式化失败', e.message); return; }
+                if (fmt === code) { Notify.info('代码格式已经规范'); return; }
+                const c = editor.getCursor();
+                const top = editor.getScrollInfo().top;
+                editor.operation(() => {
+                    editor.replaceRange(fmt, CodeMirror.Pos(0, 0), CodeMirror.Pos(editor.lastLine()), '+format');
+                    editor.setCursor({ line: Math.min(c.line, editor.lastLine()), ch: 0 });
+                });
+                editor.scrollTo(null, top);
+                editor.focus();
+                Notify.success('已格式化', 'Ctrl+Z 可撤销');
             }
-            
-            // 搜索功能
-            function toggleEditorSearchBar(show) {
-                if (show) {
-                    searchBar.classList.add('open');
-                    searchInput.focus();
-                    if (editor.getSelection()) searchInput.value = editor.getSelection();
-                    performEditorSearch();
-                } else {
-                    searchBar.classList.remove('open');
-                    clearEditorHighlights();
-                    sState.query = '';
-                    sState.currentIndex = -1;
-                    sState.matches = [];
-                    searchCount.textContent = '';
-                    editor.focus();
-                    editor.refresh();
-                }
+            function clearEditor() {
+                if (!editor.getValue()) return;
+                editor.setValue('');
+                editor.focus();
+                Notify.info('已清空', 'Ctrl+Z 可撤销');
             }
-            
+            function setWrap(v) { prefs.wrap = v; savePrefs(); editor.setOption('lineWrapping', v); Notify.info(v ? '自动换行：开' : '自动换行：关'); }
+            function setFont(px) {
+                px = Math.min(24, Math.max(10, px));
+                if (px === prefs.font) return;
+                prefs.font = px; savePrefs();
+                root.style.setProperty('--edx-font', px + 'px');
+                editor.refresh();
+                const v = root.querySelector('.edx-menu [data-fontval]');
+                if (v) v.textContent = px + 'px';
+            }
+            function setAuto(v) {
+                prefs.auto = v; savePrefs();
+                if (v && previewStale) updateEditorPreview();
+                updatePreviewHeader();
+            }
+            function applyLang(notify) {
+                const mode = curLang();
+                editor.setOption('mode', mode);
+                updateStatusBar();
+                if (notify) Notify.info(`语言：${LANG_NAMES[mode] || mode}`);
+                if (mode === 'javascript' && !previewPane.classList.contains('con-open')) toggleConsole(true);
+                updateEditorPreview();
+            }
+
+            // ===== 查找 / 替换 =====
+            function openFind(withReplace) {
+                findBox.classList.add('open');
+                if (withReplace) findBox.classList.add('rep-open');
+                const sel = editor.getSelection();
+                if (sel && !sel.includes('\n')) searchInput.value = sel;
+                (withReplace && searchInput.value ? replaceInput : searchInput).focus();
+                searchInput.select();
+                performEditorSearch();
+            }
+            function closeFind() {
+                findBox.classList.remove('open');
+                clearEditorHighlights();
+                sState.query = ''; sState.currentIndex = -1; sState.matches = [];
+                searchCount.textContent = '';
+                editor.focus();
+            }
             function performEditorSearch() {
                 const raw = searchInput.value;
                 sState.query = raw;
                 clearEditorHighlights();
                 sState.matches = [];
                 sState.currentIndex = -1;
+                findField.classList.remove('bad');
+                searchCount.classList.remove('none');
                 if (!raw) { searchCount.textContent = ''; return; }
-                
-                let searchQuery;
+                let q;
                 const cf = !sState.caseSensitive;
                 if (sState.regex) {
-                    try { searchQuery = new RegExp(raw, cf ? 'gi' : 'g'); } catch (e) { searchCount.textContent = '无效正则'; return; }
+                    try { q = new RegExp(raw, cf ? 'gi' : 'g'); } catch (e) { searchCount.textContent = '正则无效'; findField.classList.add('bad'); return; }
                 } else if (sState.wholeWord) {
                     const esc = raw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-                    searchQuery = new RegExp('\\b' + esc + '\\b', cf ? 'gi' : 'g');
-                } else {
-                    searchQuery = raw;
-                }
-                
-                const cursor = editor.getSearchCursor(searchQuery, CodeMirror.Pos(0, 0), { caseFold: cf && !sState.regex });
-                while (cursor.findNext()) {
+                    q = new RegExp('\\b' + esc + '\\b', cf ? 'gi' : 'g');
+                } else q = raw;
+                const cursor = editor.getSearchCursor(q, CodeMirror.Pos(0, 0), { caseFold: cf && !sState.regex });
+                let guard = 0;
+                while (cursor.findNext() && guard++ < 20000) {
+                    if (cursor.from().line === cursor.to().line && cursor.from().ch === cursor.to().ch) continue;   // 跳过空匹配
                     sState.matches.push({ from: cursor.from(), to: cursor.to() });
-                    sState.markers.push(editor.markText(cursor.from(), cursor.to(), { className: 'editor-cm-search-highlight' }));
                 }
-                
-                if (!sState.matches.length) { searchCount.textContent = '无结果'; return; }
-                
-                const cur = editor.getCursor();
+                if (!sState.matches.length) { searchCount.textContent = '无结果'; searchCount.classList.add('none'); return; }
+                editor.operation(() => sState.matches.forEach(m => sState.markers.push(editor.markText(m.from, m.to, { className: 'editor-cm-search-highlight' }))));
+                const cur = editor.getCursor('from');
                 let nearest = 0;
                 for (let i = 0; i < sState.matches.length; i++) {
                     const m = sState.matches[i];
                     if (m.from.line > cur.line || (m.from.line === cur.line && m.from.ch >= cur.ch)) { nearest = i; break; }
                     nearest = i;
                 }
-                goToEditorMatch(nearest);
+                goToEditorMatch(nearest, true);
             }
-            
-            function goToEditorMatch(idx) {
+            let curMarker = null;
+            function goToEditorMatch(idx, keepFocus) {
                 if (!sState.matches.length) return;
-                sState.markers.forEach(m => m.clear());
-                sState.markers = [];
-                sState.matches.forEach((m, i) => {
-                    sState.markers.push(editor.markText(m.from, m.to, { className: i === idx ? 'editor-cm-search-current' : 'editor-cm-search-highlight' }));
-                });
+                if (curMarker) { curMarker.clear(); curMarker = null; }
                 sState.currentIndex = idx;
                 const m = sState.matches[idx];
+                curMarker = editor.markText(m.from, m.to, { className: 'editor-cm-search-current' });
                 editor.scrollIntoView({ from: m.from, to: m.to }, 80);
-                editor.setCursor(m.to);
+                editor.setSelection(m.from, m.to, { scroll: false });
                 searchCount.textContent = `${idx + 1} / ${sState.matches.length}`;
             }
-            
             function editorSearchNext() {
+                if (!findBox.classList.contains('open')) { openFind(false); return; }
                 if (!sState.matches.length) { if (searchInput.value) performEditorSearch(); return; }
                 goToEditorMatch((sState.currentIndex + 1) % sState.matches.length);
             }
-            
             function editorSearchPrev() {
                 if (!sState.matches.length) { if (searchInput.value) performEditorSearch(); return; }
                 goToEditorMatch((sState.currentIndex - 1 + sState.matches.length) % sState.matches.length);
             }
-            
-            function clearEditorHighlights() { sState.markers.forEach(m => m.clear()); sState.markers = []; }
-            
+            function clearEditorHighlights() {
+                sState.markers.forEach(m => m.clear()); sState.markers = [];
+                if (curMarker) { curMarker.clear(); curMarker = null; }
+            }
             function replaceEditorCurrent() {
                 if (!sState.matches.length || sState.currentIndex < 0) return;
-                const rv = replaceInput.value;
                 const m = sState.matches[sState.currentIndex];
-                editor.setSelection(m.from, m.to);
-                editor.replaceSelection(rv);
-                Notify.success('已替换 1 处');
-                setTimeout(() => performEditorSearch(), 50);
+                const idx = sState.currentIndex;
+                editor.replaceRange(replaceInput.value, m.from, m.to, '+replace');
+                performEditorSearch();
+                if (sState.matches.length) goToEditorMatch(Math.min(idx, sState.matches.length - 1));
             }
-            
             function replaceEditorAll() {
                 if (!sState.matches.length) return;
                 const rv = replaceInput.value;
                 const cnt = sState.matches.length;
-                for (let i = sState.matches.length - 1; i >= 0; i--) {
-                    const m = sState.matches[i];
-                    editor.replaceRange(rv, m.from, m.to);
-                }
-                Notify.success(`已替换 ${cnt} 处`);
-                setTimeout(() => performEditorSearch(), 50);
+                editor.operation(() => {
+                    for (let i = sState.matches.length - 1; i >= 0; i--) editor.replaceRange(rv, sState.matches[i].from, sState.matches[i].to, '+replace');
+                });
+                Notify.success(`已替换 ${cnt} 处`, 'Ctrl+Z 可一次撤销');
+                performEditorSearch();
             }
-            
-            // 更新状态栏
-            function updateEditorStatusBar() {
-                const c = editor.getCursor();
-                document.getElementById(`editor-status-cursor-${winId}`).textContent = `行 ${c.line + 1}, 列 ${c.ch + 1}`;
-                document.getElementById(`editor-status-lines-${winId}`).textContent = `${editor.lineCount()} 行`;
-                document.getElementById(`editor-status-chars-${winId}`).textContent = `${editor.getValue().length.toLocaleString()} 字符`;
-                const sel = editor.getSelection();
-                document.getElementById(`editor-status-selection-${winId}`).textContent = sel ? `已选 ${sel.length} 字符` : '';
-            }
-            
-            // ===== 保存 / 导入 / 导出（v7：导入、导出都可在「虚拟桌面」与「现实设备」之间选择，文件名可自定义，弹窗为系统风格）=====
-            const EXPORT_TARGET_KEY = 'JISHENG_OS_EDITOR_EXPORT_TARGET';
-            const langByExt = { 'html': 'htmlmixed', 'htm': 'htmlmixed', 'css': 'css', 'js': 'javascript', 'json': 'application/json', 'md': 'markdown', 'xml': 'xml', 'txt': 'htmlmixed' };
-            const langNames = { 'htmlmixed': 'HTML', 'css': 'CSS', 'javascript': 'JavaScript', 'markdown': 'Markdown', 'application/json': 'JSON' };
-            const extByLang = { 'htmlmixed': '.html', 'css': '.css', 'javascript': '.js', 'markdown': '.md', 'application/json': '.json' };
 
-            // 窗口标题跟随当前虚拟文件名
-            function setEditorTitle() {
-                const t = document.querySelector(`#win-${winId} .window-title-text`);
-                if (t) t.textContent = editorFsPath ? `HTML编辑器 - ${filename}` : 'HTML编辑器';
-            }
-            // 刷新桌面 + 所有正打开该目录的文件夹窗口
+            // ===== 保存 / 导入 / 导出（导出可选 虚拟桌面 / 原目录 / 现实设备，文件名可自定义，弹窗为系统风格）=====
+            const EXPORT_TARGET_KEY = 'JISHENG_OS_EDITOR_EXPORT_TARGET';
             function refreshDirViews(dir) {
                 refreshDesktop();
                 Object.keys(SYSTEM.folderWindowStates || {}).forEach(wId => {
@@ -12881,62 +13213,75 @@
                     if (st && st.currentPath === dir) { st.fileStats = {}; renderFolderContent(wId); }
                 });
             }
-            // 把文本载入编辑器，并按扩展名切换语言
+            // 把文本作为“新打开的文件”载入：按扩展名切换语言，清空撤销历史，标记为已保存
             function loadTextIntoEditor(text, name) {
                 const ext = (name.split('.').pop() || '').toLowerCase();
-                const lang = langByExt[ext] || 'htmlmixed';
+                langSelect.value = langByExt[ext] || 'htmlmixed';
+                editor.setOption('mode', curLang());
                 editor.setValue(text);
-                editor.setOption('mode', lang);
-                langSelect.value = lang;
-                const langStatus = document.getElementById(`editor-status-lang-${winId}`);
-                if (langStatus) langStatus.textContent = langNames[lang] || lang;
+                editor.clearHistory();
+                editor.setCursor({ line: 0, ch: 0 });
+                markClean();
+                updateStatusBar();
+                if (curLang() === 'javascript' && !previewPane.classList.contains('con-open')) toggleConsole(true);
+                updateEditorPreview();
             }
             const fsStat = path => new Promise(res => SYSTEM.fs.stat(path, (err, st) => res(err ? null : st)));
             const dirLabel = dir => dir === SYSTEM.desktopPath ? '虚拟桌面' : dir;
-            // 保存到当前虚拟文件（Ctrl+S）
+            // 保存（Ctrl+S）：已对应虚拟文件 → 直接写回；否则走“另存为”
             function saveEditorToFile() {
-                if (!SYSTEM.mounted) {
-                    Notify.error('文件系统未就绪');
-                    return;
-                }
-                // 保存回来源目录（而非固定桌面），并刷新该目录已打开的文件夹窗口
-                const path = editorSaveDir + '/' + filename;
+                if (!editorFsPath) { exportEditorFile('save'); return; }
+                if (!SYSTEM.mounted) { Notify.error('文件系统未就绪'); return; }
+                const path = editorFsPath;
                 SYSTEM.fs.writeFile(path, editor.getValue(), 'utf8', err => {
-                    if (err) Notify.error('保存失败', err.message);
-                    else {
-                        editorFsPath = path;
-                        setEditorTitle();
-                        refreshDirViews(editorSaveDir);
-                        Notify.success('保存成功', `文件已保存为 "${filename}"`);
-                    }
+                    if (err) { Notify.error('保存失败', err.message); return; }
+                    lastSavedAt = Date.now();
+                    markClean();
+                    refreshDirViews(editorSaveDir);
+                    Notify.success('已保存', filename);
                 });
             }
-            
-            // 导入文件：直接打开系统文件选择器，从手机 / 电脑的存储中选文件。
-            // （不再弹"虚拟桌面 / 现实设备"选择框 —— 虚拟桌面上的文件双击就能用编辑器打开，
-            //   这里的"导入"只负责从真实设备拿文件。）
+            function openDeviceFile(f) {
+                const reader = new FileReader();
+                reader.onload = e => {
+                    filename = f.name;
+                    editorFsPath = null;       // 来自现实设备，尚未对应任何虚拟文件
+                    lastSavedAt = 0;
+                    loadTextIntoEditor(e.target.result, f.name);
+                    Notify.success('已导入', f.name);
+                };
+                reader.onerror = () => Notify.error('读取失败', f.name);
+                reader.readAsText(f);
+            }
+            // 导入：直接打开系统文件选择器，从手机 / 电脑的存储中选文件（虚拟桌面上的文件双击即可用编辑器打开）
             function importEditorFile() {
-                fileInput.onchange = function() {
+                fileInput.onchange = function () {
                     const f = this.files[0];
-                    if (!f) return;
-                    const reader = new FileReader();
-                    reader.onload = e => {
-                        loadTextIntoEditor(e.target.result, f.name);
-                        filename = f.name;
-                        editorFsPath = null;       // 来自现实设备，尚未对应任何虚拟文件
-                        setEditorTitle();
-                        Notify.success('已导入', f.name);
-                    };
-                    reader.readAsText(f);
                     this.value = '';
+                    if (f) openDeviceFile(f);
                 };
                 fileInput.click();
             }
-
-            // 导出文件：文件名可自定义；目标可选 虚拟桌面 / 原目录（从子目录打开时）/ 现实设备
-            async function exportEditorFile() {
+            function downloadToDevice(name, code) {
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(new Blob([code], { type: 'text/plain;charset=utf-8' }));
+                a.download = name;
+                a.click();
+                setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+            }
+            function quickDownload() {
+                const name = (filename && filename !== '未命名.html') ? filename : ('未命名' + (extByLang[curLang()] || '.txt'));
+                downloadToDevice(name, editor.getValue());
+                if (!editorFsPath) markClean();
+                Notify.success('已下载到设备', name);
+            }
+            // 导出 / 另存为 / 新文件首次保存：同一个对话框，文件名可自定义；目标可选 虚拟桌面 / 原目录（从子目录打开时）/ 现实设备
+            // kind: 'export'（工具栏“导出”，沿用旧文案）| 'saveas'（另存为）| 'save'（新文件按 Ctrl+S）
+            async function exportEditorFile(kind) {
+                if (kind !== 'save' && kind !== 'saveas') kind = 'export';
+                const W = { export: ['导出文件', '导出', '导出到', '已导出到'], saveas: ['另存为', '保存', '保存到', '已保存到'], save: ['保存文件', '保存', '保存到', '已保存到'] }[kind];
                 const code = editor.getValue();
-                const defaultName = (filename && filename !== '未命名.html') ? filename : ('未命名' + (extByLang[langSelect.value] || '.txt'));
+                let defaultName = (filename && filename !== '未命名.html') ? filename : ('未命名' + (extByLang[curLang()] || '.txt'));
                 const targets = [
                     { value: 'desktop', icon: 'uiMenuFolder', label: '虚拟桌面', desc: `写入 JISHENG OS 桌面（${SYSTEM.desktopPath}），桌面图标和文件管理器里都能看到` }
                 ];
@@ -12945,15 +13290,16 @@
                 }
                 targets.push({ value: 'device', icon: 'uiDownload', label: '现实设备', desc: '通过浏览器下载到手机 / 电脑' });
                 let lastTarget = localStorage.getItem(EXPORT_TARGET_KEY) || 'desktop';
+                if (editorFsPath && editorSaveDir !== SYSTEM.desktopPath) lastTarget = 'source';
                 if (!targets.some(t => t.value === lastTarget)) lastTarget = 'desktop';
 
                 const r = await SysDialog.form({
-                    title: '导出文件',
+                    title: W[0],
                     icon: 'uiUpload',
-                    okText: '导出',
+                    okText: W[1],
                     fields: [
                         { type: 'text', name: 'name', label: '文件名', value: defaultName, placeholder: '例如 index.html' },
-                        { type: 'radio', name: 'target', label: '导出到', value: lastTarget, options: targets }
+                        { type: 'radio', name: 'target', label: W[2], value: lastTarget, options: targets }
                     ],
                     validate: v => SysDialog.nameValidator('文件名')(v.name)
                 });
@@ -12962,177 +13308,256 @@
                 localStorage.setItem(EXPORT_TARGET_KEY, r.target);
 
                 if (r.target === 'device') {
-                    const a = document.createElement('a');
-                    a.href = URL.createObjectURL(new Blob([code], { type: 'text/plain;charset=utf-8' }));
-                    a.download = name;
-                    a.click();
-                    setTimeout(() => URL.revokeObjectURL(a.href), 10000);
-                    Notify.success('已导出到现实设备', name);
+                    downloadToDevice(name, code);
+                    if (!editorFsPath) { filename = name; markClean(); }
+                    Notify.success(kind === 'export' ? '已导出到现实设备' : '已下载到设备', name);
                     return;
                 }
-
                 if (!SYSTEM.mounted) { Notify.error('文件系统未就绪'); return; }
                 const dir = r.target === 'source' ? editorSaveDir : SYSTEM.desktopPath;
                 const path = dir + '/' + name;
                 const existing = await fsStat(path);
-                if (existing && existing.isDirectory()) { Notify.error('导出失败', `"${name}" 是一个文件夹`); return; }
+                if (existing && existing.isDirectory()) { Notify.error('保存失败', `"${name}" 是一个文件夹`); return; }
                 if (existing && path !== editorFsPath) {
                     const overwrite = await SysDialog.confirm({ title: '文件已存在', icon: 'uiWarning', danger: true, okText: '覆盖', message: `${dirLabel(dir)}上已有 "${name}"，是否覆盖？` });
                     if (!overwrite) return;
                 }
                 SYSTEM.fs.writeFile(path, code, 'utf8', err => {
-                    if (err) { Notify.error('导出失败', err.message); return; }
+                    if (err) { Notify.error('保存失败', err.message); return; }
                     filename = name;
                     editorSaveDir = dir;
-                    editorFsPath = path;               // 导出后它就是当前文件：之后 Ctrl+S 直接写回
-                    setEditorTitle();
+                    editorFsPath = path;               // 之后 Ctrl+S 直接写回
+                    lastSavedAt = Date.now();
+                    markClean();
                     refreshDirViews(dir);
-                    Notify.success('已导出到' + dirLabel(dir), name);
+                    Notify.success(W[3] + dirLabel(dir), name);
                 });
             }
-            
-            // 在新窗口打开
             function openEditorInNewWindow() {
-                const isMarkdownMode = langSelect && langSelect.value === 'markdown';
-                const content = isMarkdownMode ? buildMarkdownPreviewDoc(editor.getValue()) : editor.getValue();
+                const content = standaloneHtml(buildPreview(editor.getValue()));
                 const url = URL.createObjectURL(new Blob([content], { type: 'text/html' }));
                 window.open(url, '_blank');
                 setTimeout(() => URL.revokeObjectURL(url), 10000);
             }
-            
-            // 初始化分割线拖拽
-            function initEditorResizer() {
-                const resizer = document.getElementById(`editor-resizer-${winId}`);
-                const editorSection = resizer.previousElementSibling;
-                const previewSection = document.getElementById(`editor-preview-section-${winId}`);
-                const container = resizer.parentElement;
-                
-                resizer.addEventListener('mousedown', function(e) {
-                    e.preventDefault();
-                    const startX = e.clientX;
-                    const containerW = container.offsetWidth;
-                    const startEditorW = editorSection.offsetWidth;
-                    const startPreviewW = previewSection.offsetWidth;
-                    
-                    resizer.classList.add('dragging');
-                    document.body.classList.add('no-select');
-                    
-                    function onMove(e) {
-                        const dx = e.clientX - startX;
-                        const available = containerW - 5;
-                        let newEditorW = startEditorW + dx;
-                        let newPreviewW = startPreviewW - dx;
-                        
-                        const minEditor = 200;
-                        const minPreview = 120;
-                        if (newEditorW < minEditor) { newEditorW = minEditor; newPreviewW = available - minEditor; }
-                        if (newPreviewW < minPreview) { newPreviewW = minPreview; newEditorW = available - minPreview; }
-                        
-                        editorSection.style.flex = 'none';
-                        editorSection.style.width = newEditorW + 'px';
-                        previewSection.style.width = newPreviewW + 'px';
-                    }
-                    
-                    function onUp() {
-                        resizer.classList.remove('dragging');
-                        document.body.classList.remove('no-select');
-                        document.removeEventListener('mousemove', onMove);
-                        document.removeEventListener('mouseup', onUp);
-                        editor.refresh();
-                    }
-                    
-                    document.addEventListener('mousemove', onMove);
-                    document.addEventListener('mouseup', onUp);
-                });
-            }
-            
-            // 绑定事件
-            document.getElementById(`editor-format-${winId}`).onclick = formatEditorCode;
-            document.getElementById(`editor-undo-${winId}`).onclick = () => editor.execCommand('undo');
-            document.getElementById(`editor-redo-${winId}`).onclick = () => editor.execCommand('redo');
-            document.getElementById(`editor-search-${winId}`).onclick = () => toggleEditorSearchBar(true);
-            document.getElementById(`editor-copyall-${winId}`).onclick = copyAllEditorText;
-            document.getElementById(`editor-clear-${winId}`).onclick = () => { if (editor.getValue()) { editor.setValue(''); Notify.info('已清空'); } };
-            document.getElementById(`editor-import-${winId}`).onclick = importEditorFile;
-            document.getElementById(`editor-export-${winId}`).onclick = exportEditorFile;
-            document.getElementById(`editor-refresh-preview-${winId}`).onclick = updateEditorPreview;
-            document.getElementById(`editor-open-new-${winId}`).onclick = openEditorInNewWindow;
-            
-            // 搜索栏事件
-            document.getElementById(`editor-search-close-${winId}`).onclick = () => toggleEditorSearchBar(false);
-            document.getElementById(`editor-search-next-${winId}`).onclick = editorSearchNext;
-            document.getElementById(`editor-search-prev-${winId}`).onclick = editorSearchPrev;
-            document.getElementById(`editor-replace-current-${winId}`).onclick = replaceEditorCurrent;
-            document.getElementById(`editor-replace-all-${winId}`).onclick = replaceEditorAll;
-            
-            // 搜索选项切换
-            document.getElementById(`editor-btn-case-${winId}`).onclick = function() {
-                sState.caseSensitive = !sState.caseSensitive;
-                this.classList.toggle('active', sState.caseSensitive);
-                if (sState.query) performEditorSearch();
-            };
-            document.getElementById(`editor-btn-word-${winId}`).onclick = function() {
-                sState.wholeWord = !sState.wholeWord;
-                this.classList.toggle('active', sState.wholeWord);
-                if (sState.query) performEditorSearch();
-            };
-            document.getElementById(`editor-btn-regex-${winId}`).onclick = function() {
-                sState.regex = !sState.regex;
-                this.classList.toggle('active', sState.regex);
-                if (sState.query) performEditorSearch();
-            };
-            
-            // 输入模式切换（自动 / 电脑 / 手机）
-            if (inputModeSelect) inputModeSelect.onchange = function() { switchEditorInputMode(this.value); };
 
-            // 语言切换
-            langSelect.onchange = function() {
-                editor.setOption('mode', this.value);
-                const names = { 'htmlmixed': 'HTML', 'css': 'CSS', 'javascript': 'JavaScript', 'markdown': 'Markdown', 'application/json': 'JSON' };
-                document.getElementById(`editor-status-lang-${winId}`).textContent = names[this.value] || this.value;
-                Notify.info(`语言: ${names[this.value] || this.value}`);
-                // 切换语言后立即刷新预览（如切到/切出 Markdown 渲染模式）
-                updateEditorPreview();
-            };
-            
-            // 搜索输入事件
+            // ===== 弹出菜单 =====
+            let menuEl = null, menuAnchor = null;
+            function closeMenu(refocus) {
+                if (!menuEl) return;
+                menuEl.remove(); menuEl = null;
+                document.removeEventListener('pointerdown', onDocDown, true);
+                if (menuAnchor) { menuAnchor.setAttribute('aria-expanded', 'false'); if (refocus) menuAnchor.focus(); }
+                menuAnchor = null;
+            }
+            function onDocDown(e) { if (menuEl && !menuEl.contains(e.target) && !(menuAnchor && menuAnchor.contains(e.target))) closeMenu(); }
+            // items: {label, icon, kbd, on(勾选), danger, disabled, act} | {sep:1} | {head:'..'} | {row: html, bind(el)}
+            function openMenu(anchor, items, alignRight) {
+                if (menuEl && menuAnchor === anchor) { closeMenu(); return; }
+                closeMenu();
+                const m = document.createElement('div');
+                m.className = 'edx-menu'; m.setAttribute('role', 'menu');
+                items.forEach(it => {
+                    if (!it) return;
+                    if (it.sep) { m.insertAdjacentHTML('beforeend', '<div class="edx-msep"></div>'); return; }
+                    if (it.head) { const h = document.createElement('div'); h.className = 'edx-mh'; h.textContent = it.head; m.appendChild(h); return; }
+                    if (it.row) { const d = document.createElement('div'); d.className = 'edx-mrow'; d.innerHTML = it.row; m.appendChild(d); it.bind && it.bind(d); return; }
+                    const b = document.createElement('button');
+                    b.type = 'button'; b.className = 'edx-mi' + (it.danger ? ' danger' : '');
+                    b.setAttribute('role', it.on !== undefined ? 'menuitemcheckbox' : 'menuitem');
+                    if (it.on !== undefined) b.setAttribute('aria-checked', !!it.on);
+                    b.disabled = !!it.disabled;
+                    if (it.title) b.title = it.title;
+                    b.innerHTML = (it.on !== undefined ? (it.on ? icon('stxCheck', 'ck') : '<span></span>') : (it.icon ? icon(it.icon) : '<span></span>')) +
+                        `<span>${it.label}</span>` + (it.kbd ? `<kbd>${it.kbd}</kbd>` : '<span></span>');
+                    b.onclick = () => { closeMenu(); it.act(); };
+                    m.appendChild(b);
+                });
+                root.appendChild(m);
+                const rr = root.getBoundingClientRect(), ar = anchor.getBoundingClientRect();
+                const below = ar.bottom - rr.top + 4;
+                const up = below + m.offsetHeight > rr.height - 6 && ar.top - rr.top > m.offsetHeight;
+                m.style.top = (up ? ar.top - rr.top - m.offsetHeight - 4 : below) + 'px';
+                let left = alignRight ? ar.right - rr.left - m.offsetWidth : ar.left - rr.left;
+                m.style.left = Math.max(8, Math.min(left, rr.width - m.offsetWidth - 8)) + 'px';
+                menuEl = m; menuAnchor = anchor;
+                anchor.setAttribute('aria-expanded', 'true');
+                document.addEventListener('pointerdown', onDocDown, true);
+                m.addEventListener('keydown', e => {
+                    const btns = [...m.querySelectorAll('button:not(:disabled)')];
+                    const i = btns.indexOf(document.activeElement);
+                    if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); closeMenu(true); }
+                    else if (e.key === 'ArrowDown') { e.preventDefault(); btns[(i + 1) % btns.length].focus(); }
+                    else if (e.key === 'ArrowUp') { e.preventDefault(); btns[(i - 1 + btns.length) % btns.length].focus(); }
+                    else if (e.key === 'Tab') closeMenu();
+                });
+                const first = m.querySelector('.edx-mi:not(:disabled)');
+                if (first && anchor.matches(':focus-visible')) first.focus();
+            }
+            const narrow = () => root.clientWidth <= 720;     // 与 CSS 中 .mid-hide 的断点一致
+            function fileMenu() {
+                openMenu($('fileBtn'), [
+                    { head: editorFsPath ? '位置：' + editorFsPath : '尚未保存到虚拟磁盘' },
+                    { icon: 'edxSave', label: editorFsPath ? '保存' : '保存…', kbd: 'Ctrl+S', act: saveEditorToFile },
+                    { icon: 'stxUpload', label: '另存为…', kbd: 'Ctrl+Shift+S', act: () => exportEditorFile('saveas') },
+                    { icon: 'edxFileDown', label: '下载到设备', title: '直接用浏览器下载当前内容', act: quickDownload },
+                    { sep: 1 },
+                    { icon: 'edxFileUp', label: '导入文件…', kbd: 'Ctrl+O', act: importEditorFile },
+                    { icon: 'edxFilePlus', label: '新建编辑器窗口', act: () => openCodeEditor() },
+                    { sep: 1 },
+                    { icon: 'stxExternalLink', label: '在浏览器新标签页预览', act: openEditorInNewWindow }
+                ]);
+            }
+            const segRow = (opts, cur, attr) => `<div class="edx-seg sm">${opts.map(([v, l, t]) => `<button type="button" data-${attr}="${v}" class="${String(cur) === String(v) ? 'on' : ''}" ${t ? `title="${t}"` : ''}>${l}</button>`).join('')}</div>`;
+            function moreMenu() {
+                const items = [];
+                if (narrow()) items.push(
+                    { icon: 'edxWand', label: '格式化', kbd: 'Ctrl+Shift+F', disabled: curLang() === 'markdown', act: formatEditorCode },
+                    { icon: 'stxCopy', label: '复制全部', act: copyAllEditorText },
+                    { icon: 'edxRedo', label: '重做', kbd: 'Ctrl+Y', disabled: !editor.historySize().redo, act: () => editor.execCommand('redo') },
+                    { icon: 'stxTrash2', label: '清空', danger: true, disabled: !editor.getValue(), act: clearEditor },
+                    { sep: 1 },
+                    { icon: 'edxFileUp', label: '导入', kbd: 'Ctrl+O', act: importEditorFile },
+                    { icon: 'edxFileDown', label: '导出', act: () => exportEditorFile('export') },
+                    { sep: 1 });
+                items.push(
+                    { head: '编辑器' },
+                    { label: '自动换行', kbd: 'Alt+Z', on: prefs.wrap, act: () => setWrap(!prefs.wrap) },
+                    { row: `<span style="flex:1;padding-left:2px">字号</span><button type="button" class="edx-ib" data-f="-1" title="缩小 (Ctrl+-)">${icon('edxMinus')}</button><span class="val" data-fontval>${prefs.font}px</span><button type="button" class="edx-ib" data-f="1" title="放大 (Ctrl+=)">${icon('edxPlus')}</button>`,
+                      bind: d => d.querySelectorAll('[data-f]').forEach(b => b.onclick = () => setFont(prefs.font + +b.dataset.f)) },
+                    { row: `<span style="padding-left:2px;white-space:nowrap">输入方式</span>` + segRow([['auto', '自动', '跟随浏览器'], ['textarea', '电脑', '系统菜单可全选/复制全文，触屏不能拖拽选字'], ['contenteditable', '手机', '可长按拖拽选字，系统全选只到已渲染部分']], inputModePref, 'im'),
+                      bind: d => d.querySelectorAll('[data-im]').forEach(b => b.onclick = () => { closeMenu(); switchEditorInputMode(b.dataset.im); }) },
+                    { head: '预览' },
+                    { label: '自动刷新预览', on: prefs.auto, act: () => setAuto(!prefs.auto) },
+                    { row: `<span style="padding-left:2px;white-space:nowrap">分屏方向</span>` + segRow([['h', icon('edxColumns') + '左右'], ['v', icon('edxRows') + '上下']], prefs.dir, 'dir'),
+                      bind: d => d.querySelectorAll('[data-dir]').forEach(b => b.onclick = () => { closeMenu(); setDir(b.dataset.dir); }) },
+                    { sep: 1 },
+                    { icon: 'edxKeyboard', label: '键盘快捷键', act: showShortcuts });
+                openMenu($('more'), items, true);
+            }
+            function langMenu(anchor) {
+                openMenu(anchor, Object.keys(LANG_NAMES).map(k => ({ label: LANG_NAMES[k], on: curLang() === k, act: () => { langSelect.value = k; applyLang(true); } })), true);
+            }
+            function inputMenu(anchor) {
+                const items = [['auto', '自动（跟随浏览器）'], ['textarea', '电脑模式'], ['contenteditable', '手机模式']];
+                openMenu(anchor, [{ head: '输入方式' }, ...items.map(([v, l]) => ({ label: l, on: inputModePref === v, act: () => switchEditorInputMode(v) }))], true);
+            }
+            function showShortcuts() {
+                SysDialog.alert({ title: '键盘快捷键', icon: 'edxKeyboard', message: [
+                    'Ctrl+S　保存　　Ctrl+Shift+S　另存为　　Ctrl+O　导入',
+                    'Ctrl+F　查找　　Ctrl+H　替换　　F3 / Shift+F3　下一个 / 上一个',
+                    'Ctrl+Enter　刷新预览　　Ctrl+Shift+F　格式化',
+                    'Ctrl+/　注释 / 取消注释　　Ctrl+G　跳转到行',
+                    'Tab / Shift+Tab　缩进 / 减少缩进　　Alt+Z　自动换行',
+                    'Ctrl+= / Ctrl+-　字号　　Ctrl+Z / Ctrl+Y　撤销 / 重做',
+                    '分割条：拖动调整，双击恢复均分，聚焦后可用方向键微调',
+                    'macOS 上 Ctrl 均可换成 ⌘'
+                ].join('\n') });
+            }
+
+            // ===== 绑定事件 =====
+            $('fileBtn').onclick = fileMenu;
+            $('more').onclick = moreMenu;
+            $('undo').onclick = () => { editor.execCommand('undo'); editor.focus(); };
+            $('redo').onclick = () => { editor.execCommand('redo'); editor.focus(); };
+            $('findBtn').onclick = () => findBox.classList.contains('open') ? closeFind() : openFind(false);
+            $('format').onclick = formatEditorCode;
+            $('copy').onclick = copyAllEditorText;
+            $('clear').onclick = clearEditor;
+            $('import').onclick = importEditorFile;
+            $('export').onclick = () => exportEditorFile('export');
+            $('refresh').onclick = updateEditorPreview;
+            $('openNew').onclick = openEditorInNewWindow;
+            $('conBtn').onclick = () => toggleConsole();
+            $('conClose').onclick = () => toggleConsole(false);
+            $('conClear').onclick = () => clearConsole();
+            $('conList').addEventListener('click', e => { const a = e.target.closest('a[data-line]'); if (a) gotoLine(+a.dataset.line); });
+            $('stCursor').onclick = () => { editor.focus(); editor.execCommand('jumpToLine'); };
+            $('stLang').onclick = e => langMenu(e.currentTarget);
+            $('stInput').onclick = e => inputMenu(e.currentTarget);
+            root.querySelectorAll('.edx-seg.view button').forEach(b => b.onclick = () => setView(b.dataset.view));
+            root.querySelectorAll('[data-r="device"] button').forEach(b => b.onclick = () => setDevice(b.dataset.dev));
+            langSelect.onchange = () => applyLang(true);
+
+            $('findTg').onclick = () => { findBox.classList.toggle('rep-open'); (findBox.classList.contains('rep-open') ? replaceInput : searchInput).focus(); };
+            $('findClose').onclick = closeFind;
+            $('findNext').onclick = editorSearchNext;
+            $('findPrev').onclick = editorSearchPrev;
+            $('repOne').onclick = replaceEditorCurrent;
+            $('repAll').onclick = replaceEditorAll;
+            root.querySelectorAll('.edx-opt').forEach(b => b.onclick = () => {
+                const k = b.dataset.opt;
+                sState[k] = !sState[k];
+                b.classList.toggle('on', sState[k]);
+                b.setAttribute('aria-pressed', sState[k]);
+                performEditorSearch();
+                searchInput.focus();
+            });
             searchInput.addEventListener('input', performEditorSearch);
             searchInput.addEventListener('keydown', e => {
-                if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); editorSearchNext(); }
-                else if (e.key === 'Enter' && e.shiftKey) { e.preventDefault(); editorSearchPrev(); }
-                else if (e.key === 'Escape') toggleEditorSearchBar(false);
+                if (e.key === 'Enter') { e.preventDefault(); e.shiftKey ? editorSearchPrev() : editorSearchNext(); }
+                else if (e.key === 'Escape') { e.preventDefault(); closeFind(); }
             });
             replaceInput.addEventListener('keydown', e => {
-                if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); replaceEditorCurrent(); }
-                else if (e.key === 'Enter' && e.shiftKey) { e.preventDefault(); replaceEditorAll(); }
-                else if (e.key === 'Escape') toggleEditorSearchBar(false);
+                if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && e.altKey) { e.preventDefault(); replaceEditorAll(); }
+                else if (e.key === 'Enter') { e.preventDefault(); replaceEditorCurrent(); }
+                else if (e.key === 'Escape') { e.preventDefault(); closeFind(); }
             });
-            
-            // （编辑器事件 cursorActivity / change 已在 createEditorInstance 内绑定，切换输入模式重建实例时会自动重新绑定）
+            // 焦点不在代码区（工具栏、查找框、预览区按钮等）时，常用快捷键依然有效
+            root.addEventListener('keydown', e => {
+                if (e.defaultPrevented || !(e.ctrlKey || e.metaKey) || e.altKey) return;
+                if (e.target.closest && e.target.closest('.CodeMirror')) return;
+                const k = e.key.toLowerCase();
+                const map = { s: () => (e.shiftKey ? exportEditorFile('saveas') : saveEditorToFile()), o: importEditorFile, enter: updateEditorPreview,
+                              f: () => (e.shiftKey ? formatEditorCode() : openFind(false)), h: () => openFind(true) };
+                if (map[k]) { e.preventDefault(); map[k](); }
+            });
 
-            // 初始化
-            initEditorResizer();
-            updateEditorStatusBar();
-            updateInputModeStatus();
+            // ===== 初始化 =====
+            root.style.setProperty('--edx-font', prefs.font + 'px');
+            editor = createEditorInstance(resolveInputStyle(inputModePref));
+            {
+                const ext = (filename || '').split('.').pop().toLowerCase();
+                if (langByExt[ext]) langSelect.value = langByExt[ext];
+                editor.setOption('mode', curLang());
+            }
+            editor.setValue(initialContent || '');
+            editor.clearHistory();
+            editor.setCursor({ line: 0, ch: 0 });
+            cleanGen = editor.changeGeneration(true);
+            if (curLang() === 'javascript') previewPane.classList.add('con-open'), $('conBtn').classList.add('on');
+            applyLayout();
+            updateStatusBar();
+            updateDirty();
+            updatePreviewHeader();
+            renderConsole();
             updateEditorPreview();
-            
-            // 窗口销毁时清理
-            const winEl = document.getElementById(`win-${winId}`);
+            if (!initialContent) setTimeout(() => editor.focus(), 60);
+
+            // 窗口 / 容器尺寸变化：比例布局自动适配，这里只需重算“是否放得下分屏”、设备缩放并刷新 CodeMirror
+            const ro = new ResizeObserver(scheduleLayout);
+            ro.observe(root);
+            ro.observe(stage);
+
             if (winEl) {
-                winEl.onDestroy = () => {
+                const cleanupEditor = () => {
                     if (_previewLoadingTimer) clearTimeout(_previewLoadingTimer);
                     if (_previewDebounceTimer) { clearTimeout(_previewDebounceTimer); _previewDebounceTimer = null; }
                     if (_previewBlobUrl) { URL.revokeObjectURL(_previewBlobUrl); _previewBlobUrl = null; }
-                    previewFrame.src = 'about:blank';
-                    if (editor) editor.toTextArea();
+                    if (rafStatus) cancelAnimationFrame(rafStatus);
+                    if (rafLayout) cancelAnimationFrame(rafLayout);
+                    try { ro.disconnect(); } catch (e) {}
+                    closeMenu();
+                    previewGen++;
+                    try { previewFrame.src = 'about:blank'; } catch (e) {}
+                    if (editor) { try { editor.toTextArea(); } catch (e) {} editor = null; }
                 };
-                // closeWin() 实际调用的是 element.cleanup()（onDestroy 挂在 element 上不会被调用），
-                // 在这里解除全选修复的 document 监听，并顺带执行上面的清理。
+                winEl.onDestroy = cleanupEditor;
+                // closeWin() 实际调用的是 element.cleanup()：在这里解除全选修复的 document 监听，并执行上面的清理
                 const prevCleanup = winEl.cleanup;
                 winEl.cleanup = () => {
                     try { if (typeof prevCleanup === 'function') prevCleanup(); } catch (e) {}
                     try { offMobileSelectAll(); } catch (e) {}
-                    try { winEl.onDestroy(); } catch (e) {}
+                    try { cleanupEditor(); } catch (e) {}
                 };
             }
         }
