@@ -11305,6 +11305,17 @@
             return { rows, delim };
         }
 
+        // 「首行表头」全局开关：在任意 CSV 里点一次，之后打开的所有 CSV 都按这个设置；已打开的 CSV 窗口同步切换。
+        // localStorage 存 '1' / '0'；从没点过时按文件自动判断（首行全是数字就不当表头）。
+        const CSV_HEADER_KEY = 'JSOS_CSV_HEADER';
+        function csvHeaderGet() {
+            try { const v = localStorage.getItem(CSV_HEADER_KEY); return v === '1' ? true : v === '0' ? false : undefined; } catch (e) { return undefined; }
+        }
+        function csvHeaderSet(val) {
+            try { localStorage.setItem(CSV_HEADER_KEY, val ? '1' : '0'); } catch (e) {}
+            window.dispatchEvent(new CustomEvent('jsos-csv-header', { detail: !!val }));
+        }
+
         function openCSVViewer(content = '', filename = '未命名.csv', saveDir = null) {
             const dir = (saveDir || SYSTEM.desktopPath).replace(/\/$/, '');
             const PAGE = 1000;
@@ -11319,7 +11330,7 @@
                             <button class="npx-btn on" data-act="table" title="表格视图">${icon('uiTable')}<span class="lbl">表格</span></button>
                             <button class="npx-btn" data-act="source" title="编辑源码">${icon('uiCode')}<span class="lbl">源码</span></button>
                             <span class="npx-sep"></span>
-                            <button class="npx-btn on" data-act="header" title="把第一行当作表头">${icon('uiPanelTop')}<span class="lbl">首行表头</span></button>
+                            <button class="npx-btn on" data-act="header" title="把第一行当作表头（对所有 CSV 文件生效）">${icon('uiPanelTop')}<span class="lbl">首行表头</span></button>
                             <label class="csvx-search" title="筛选行 (Ctrl+F)">${icon('uiSearch')}<input type="search" placeholder="筛选…" spellcheck="false"></label>
                             <span class="npx-sp"></span>
                             <span class="npx-status"><i></i><span class="main"></span></span>
@@ -11430,7 +11441,15 @@
                     };
                     btn('table').onclick = () => setMode('table');
                     btn('source').onclick = () => setMode('source');
-                    btn('header').onclick = () => { st.header = !st.header; st.sort = null; btn('header').classList.toggle('on', st.header); reparse(); render(); };
+                    const applyHeader = on => {
+                        if (on === st.header) return;
+                        st.header = on; st.sort = null;
+                        btn('header').classList.toggle('on', st.header);
+                        reparse(); render();
+                    };
+                    btn('header').onclick = () => csvHeaderSet(!st.header);   // 全局：记住选择，并通知所有 CSV 窗口
+                    const onHeaderPref = e => applyHeader(e.detail);
+                    window.addEventListener('jsos-csv-header', onHeaderPref);
                     btn('save').onclick = save;
                     let ft = 0;
                     search.addEventListener('input', () => { clearTimeout(ft); ft = setTimeout(() => { st.filter = search.value; st.shown = PAGE; render(); }, 120); });
@@ -11451,10 +11470,13 @@
                         else if (k === 'f' && st.mode === 'table') { e.preventDefault(); search.focus(); search.select(); }
                     };
                     document.addEventListener('keydown', onKey);
-                    w.cleanup = () => document.removeEventListener('keydown', onKey);
+                    w.cleanup = () => { document.removeEventListener('keydown', onKey); window.removeEventListener('jsos-csv-header', onHeaderPref); };
                     reparse();
-                    // 首行像数据（整行都是数字）时默认不当表头
-                    if (st.parsed.rows.length && st.parsed.rows[0].every(v => v.trim() !== '' && isNum(v))) { st.header = false; btn('header').classList.remove('on'); reparse(); }
+                    // 优先用全局设置；从没设置过时自动判断：首行像数据（整行都是数字）就不当表头
+                    const savedHeader = csvHeaderGet();
+                    const autoHeader = !(st.parsed.rows.length && st.parsed.rows[0].every(v => v.trim() !== '' && isNum(v)));
+                    const wantHeader = savedHeader !== undefined ? savedHeader : autoHeader;
+                    if (wantHeader !== st.header) { st.header = wantHeader; btn('header').classList.toggle('on', st.header); reparse(); }
                     render(); setDirty();
                 }
             });
@@ -16080,5 +16102,5 @@
         console.log('7z引擎状态:', ok ? '就绪' : '失败');
     });
     </script>
-</body>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a4bd82afebad8469',t:'MTc5MjIyMTMwOQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
