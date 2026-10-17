@@ -3140,11 +3140,211 @@
             }
         }
 
+        // ======================== JISHENG FS 引擎 ========================
+        // 直接读写现有的 JISHENG_OS_V3 卷（与 BrowserFS 相同的 v3 格式：inode = 30 字节头 + ASCII id，
+        // 目录 = JSON {名字: inode 键}，文件 = ArrayBuffer）。不升级数据库版本、不改数据格式，
+        // 回退到旧版本（包括 BrowserFS 版）可以直接读取这里写入的所有数据。
+        //
+        // 与上一版相比：
+        //  · 目录缓存（路径 → inode + 目录索引 + 索引原始字节），读写事务也使用：
+        //    新建/写入一个文件不再从根目录逐级读取、解析目录索引，只做一次与写入并行的校验读取——
+        //    把用到的目录索引从磁盘读出来与缓存逐字节比较，不一致（其他标签页或旧版本改过）就回滚、
+        //    丢弃缓存并从磁盘重做一次。因此即使同时开着旧版本标签页，也不会用旧索引覆盖别人写入的文件。
+        //  · 只读事务直接用缓存，不做校验：其他新版标签页写入时通过 BroadcastChannel 通知清缓存，
+        //    切回本标签页时也会清缓存；多标签页同时操作时列表可能短暂不是最新，数据不受影响。
+        //  · 一个事务里可以执行多步操作（_batch / _rmTree / _copyTree / _mkdirp / _du），
+        //    同一目录的索引只解析、只写回一次。
+        //  · 每次提交后发出变更事件：同步钩子（文件夹大小缓存等）+ 异步监听器 + BroadcastChannel 跨标签页。
+        class JfsRetry extends Error {}
+        const JFS_TEXT_ENCODER = new TextEncoder();
+        const JFS_TEXT_DECODER = new TextDecoder();
+
+        class JfsTx {
+            constructor(fs, mode, fresh) {
+                this.fs = fs;
+                this.mode = mode;
+                this.tx = fs._db.transaction(fs._storeName, mode);
+                this.store = this.tx.objectStore(fs._storeName);
+                this.useCache = !fresh;
+                this.checks = [];           // 读写事务里用到的缓存目录：提交前与磁盘比对
+                this.dirs = new Map();      // 本事务里加载过的目录：path -> { key, inode, listing, own, dirty, inodeDirty }
+                this.loading = new Map();   // 正在加载的目录（并发查找同一目录时只读一次）
+                this.purged = [];           // 提交后要从缓存里清掉整棵子树的路径
+                this.stale = [];            // 提交后要从缓存里清掉的单个路径
+                this.changes = [];          // 提交后要发出的变更
+                this.writes = 0;
+            }
+            get(key) {
+                return new Promise((resolve, reject) => {
+                    let request;
+                    try { request = this.store.get(key); } catch (error) { reject(error); return; }
+                    request.onsuccess = () => resolve(request.result);
+                    request.onerror = () => reject(request.error || new Error('IndexedDB 读取失败'));
+                });
+            }
+            put(value, key) { this.store.put(value, key); this.writes++; }
+            del(key) { this.store.delete(key); this.writes++; }
+            async inode(key) { return NativeFileSystem._parseInode(await this.get(key)); }
+            async listingOf(inode, path) { return (await this.listingRaw(inode, path)).listing; }
+            async listingRaw(inode, path) {
+                const raw = await this.get(inode.id);
+                let listing = null;
+                try { listing = JSON.parse(JFS_TEXT_DECODER.decode(NativeFileSystem._bytes(raw))); } catch (_) {}
+                if (!listing || typeof listing !== 'object' || Array.isArray(listing)) throw new Error('目录索引损坏: ' + path);
+                return { listing, raw };
+            }
+            dir(path) {
+                const known = this.dirs.get(path);
+                if (known) return Promise.resolve(known);
+                if (this.useCache) {
+                    const cached = this.fs._cacheGet(path);
+                    if (cached && cached.raw) {
+                        const rec = { key: cached.key, inode: cached.inode, listing: cached.listing, raw: cached.raw, own: false, dirty: false, inodeDirty: false, fromCache: true };
+                        this.dirs.set(path, rec);
+                        if (this.mode === 'readwrite') {
+                            // 校验读取与后续写入在同一事务里按顺序执行，不增加串行等待。
+                            const request = this.get(cached.inode.id);
+                            request.catch(() => {});
+                            this.checks.push({ raw: cached.raw, request });
+                        }
+                        return Promise.resolve(rec);
+                    }
+                }
+                let pending = this.loading.get(path);
+                if (!pending) {
+                    pending = this._loadDir(path);
+                    this.loading.set(path, pending);
+                    const clear = () => { if (this.loading.get(path) === pending) this.loading.delete(path); };
+                    pending.then(clear, clear);
+                }
+                return pending;
+            }
+            async _loadDir(path) {
+                let key, inode;
+                if (path === '/') {
+                    key = '/';
+                    inode = await this.inode('/');
+                    if (!inode) throw this.fs._error('ENOENT', '/');
+                } else {
+                    const parent = await this.dir(this.fs._parent(path));
+                    key = this.fs._entryKey(parent.listing, path.slice(path.lastIndexOf('/') + 1));
+                    if (!key) throw this.fs._error('ENOENT', path);
+                    inode = await this.inode(key);
+                    if (!inode) throw this.fs._error('ENOENT', path);
+                }
+                if ((inode.mode & 0xF000) !== 0x4000) throw this.fs._error('ENOTDIR', path);
+                const { listing, raw } = await this.listingRaw(inode, path);
+                const existing = this.dirs.get(path);
+                if (existing) return existing;
+                // 从磁盘解析出来的目录是本事务独有的对象，可以直接修改；来自缓存的目录修改前要先复制（见 own）。
+                const rec = { key, inode, listing, raw, own: this.mode === 'readwrite', dirty: false, inodeDirty: false };
+                this.dirs.set(path, rec);
+                return rec;
+            }
+            // 与旧实现一致：找不到时报告调用者请求的完整路径。
+            async dirAt(path) {
+                try { return await this.dir(path); }
+                catch (error) { if (error && error.code === 'ENOENT') throw this.fs._error('ENOENT', path); throw error; }
+            }
+            async nodeAt(path) {
+                if (path === '/') { const root = await this.dirAt('/'); return { key: '/', inode: root.inode }; }
+                const known = this.dirs.get(path);
+                if (known) return { key: known.key, inode: known.inode };
+                const parent = await this.dirAt(this.fs._parent(path)).catch(error => {
+                    if (error && error.code === 'ENOENT') throw this.fs._error('ENOENT', path);
+                    throw error;
+                });
+                const key = this.fs._entryKey(parent.listing, path.slice(path.lastIndexOf('/') + 1));
+                if (!key) throw this.fs._error('ENOENT', path);
+                if (this.useCache && this.mode === 'readonly') {
+                    const cached = this.fs._cacheGet(path);
+                    if (cached && cached.key === key) return { key, inode: cached.inode };
+                }
+                const inode = await this.inode(key);
+                if (!inode) throw this.fs._error('ENOENT', path);
+                return { key, inode };
+            }
+            // 修改目录前先复制一份（写时复制），事务失败时缓存里的对象不会被污染。
+            own(rec) {
+                if (!rec.own) {
+                    rec.listing = NativeFileSystem._cloneListing(rec.listing);
+                    rec.inode = Object.assign({}, rec.inode);
+                    rec.own = true;
+                }
+                return rec;
+            }
+            // 与旧版 _writeParent 相同：目录内容变化时把目录的 atime/mtime 设为当前时间。
+            touch(rec) {
+                this.own(rec);
+                const now = Date.now();
+                rec.inode.atime = now;
+                rec.inode.mtime = now;
+                rec.dirty = true;
+            }
+            async checksValid() {
+                try {
+                    for (const check of this.checks) if (!NativeFileSystem._sameBytes(await check.request, check.raw)) return false;
+                } catch (_) {}
+                return true;
+            }
+            dropDirs(path) {
+                const prefix = path === '/' ? '/' : path + '/';
+                for (const p of Array.from(this.dirs.keys())) if (p === path || p.startsWith(prefix)) this.dirs.delete(p);
+                this.purged.push(path);
+            }
+            rekeyDirs(from, to) {
+                const prefix = from + '/';
+                const moved = [];
+                for (const [p, rec] of Array.from(this.dirs.entries())) {
+                    if (p === from || p.startsWith(prefix)) { moved.push([to + p.slice(from.length), rec]); this.dirs.delete(p); }
+                }
+                moved.forEach(([p, rec]) => this.dirs.set(p, rec));
+                this.purged.push(from);
+            }
+            flush() {
+                for (const rec of this.dirs.values()) {
+                    if (rec.dirty) {
+                        rec.raw = JFS_TEXT_ENCODER.encode(JSON.stringify(rec.listing)).buffer;
+                        this.put(rec.raw, rec.inode.id);
+                    }
+                    if (rec.dirty || rec.inodeDirty) this.put(NativeFileSystem._serializeInode(rec.inode), rec.key);
+                }
+            }
+        }
+
         class NativeFileSystem {
             constructor(db) {
                 this._db = db;
                 this._storeName = 'JISHENG_OS_V3';
                 this._mounts = new Map();
+                this._dirCache = new Map();      // path -> { key, inode, listing, n }
+                this._dirCacheEntries = 0;
+                this._dirCacheMaxDirs = 3000;
+                this._dirCacheMaxEntries = 200000;
+                this._hooks = new Set();         // 同步钩子：提交后立即调用（先于回调）
+                this._watchers = new Set();      // 异步监听器：同一轮里的变更合并后调用
+                this._eventQueue = [];
+                this._eventTimer = 0;
+                this._closed = false;
+                db.onversionchange = () => {
+                    // 其他标签页要删除或升级这个数据库：主动让出连接，避免把对方卡住。
+                    try { db.close(); } catch (_) {}
+                    this._closed = true;
+                    this._dirCache.clear();
+                    if (typeof Notify !== 'undefined') Notify.warning('文件存储已在其他标签页被重置', '请刷新本页面后继续使用');
+                };
+                // 旧版本（不认识代际号）在别的标签页写入时不会通知我们：切回本标签页时丢掉目录缓存，
+                // 之后的读取重新从磁盘加载。代价只是下一次读取多几次 IndexedDB 访问。
+                try {
+                    const drop = () => this._cacheClear();
+                    window.addEventListener('focus', drop);
+                    window.addEventListener('pageshow', drop);
+                    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') drop(); });
+                } catch (_) {}
+                try {
+                    this._channel = typeof BroadcastChannel === 'function' ? new BroadcastChannel('JISHENG_FS') : null;
+                    if (this._channel) this._channel.onmessage = e => this._onRemote(e && e.data);
+                } catch (_) { this._channel = null; }
             }
             static _bytes(value) {
                 if (value instanceof ArrayBuffer) return new Uint8Array(value);
@@ -3178,6 +3378,21 @@
                 for (let i = 0; i < id.length; i++) bytes[30 + i] = id.charCodeAt(i) & 0x7F;
                 return bytes.buffer;
             }
+            static _cloneListing(listing) {
+                const out = {};
+                for (const name of Object.keys(listing)) {
+                    // 只有 "__proto__" 不能直接赋值（会改原型），其余用普通赋值更快
+                    if (name === '__proto__') Object.defineProperty(out, name, { value: listing[name], enumerable: true, configurable: true, writable: true });
+                    else out[name] = listing[name];
+                }
+                return out;
+            }
+            static _sameBytes(a, b) {
+                const x = NativeFileSystem._bytes(a), y = NativeFileSystem._bytes(b);
+                if (!x || !y || x.length !== y.length) return false;
+                for (let i = 0; i < x.length; i++) if (x[i] !== y[i]) return false;
+                return true;
+            }
             static _newId() {
                 try {
                     if (window.crypto && typeof window.crypto.randomUUID === 'function') return 'js-' + window.crypto.randomUUID();
@@ -3188,6 +3403,27 @@
                     }
                 } catch (_) {}
                 return 'js-' + Date.now().toString(16) + '-' + Math.random().toString(16).slice(2) + Math.random().toString(16).slice(2);
+            }
+            // 把写入数据转成 Uint8Array；尽量不复制（字符串编码本身就是新数组）。
+            static _toBytes(data, encoding) {
+                if (typeof data === 'string') return { bytes: NativeBuffer.from(data, typeof encoding === 'string' ? encoding : 'utf8'), fresh: true };
+                if (data instanceof ArrayBuffer) return { bytes: new Uint8Array(data), fresh: false };
+                if (ArrayBuffer.isView(data)) return { bytes: new Uint8Array(data.buffer, data.byteOffset, data.byteLength), fresh: false };
+                if (data && typeof data.length === 'number') return { bytes: NativeBuffer.from(data), fresh: true };
+                return { bytes: new Uint8Array(0), fresh: true };
+            }
+            // 得到可以直接存进 IndexedDB 的 ArrayBuffer。copy=false 时只要视图覆盖整个缓冲区就不复制
+            // （IndexedDB 在 put 时本来就会做一次结构化克隆）。
+            static _content(data, encoding, copy) {
+                const { bytes, fresh } = NativeFileSystem._toBytes(data, encoding);
+                const whole = bytes.byteOffset === 0 && bytes.byteLength === bytes.buffer.byteLength;
+                const buffer = whole && (fresh || !copy) ? bytes.buffer : bytes.slice().buffer;
+                return { buffer, size: bytes.byteLength };
+            }
+            static _fromStored(raw) {
+                if (raw instanceof ArrayBuffer) return new NativeBuffer(raw);
+                if (ArrayBuffer.isView(raw)) return new NativeBuffer(raw.buffer, raw.byteOffset, raw.byteLength);
+                return null;
             }
             static open() {
                 if (!window.indexedDB) return Promise.reject(new Error('此浏览器不支持 IndexedDB，无法启动持久化文件系统'));
@@ -3207,11 +3443,15 @@
                         });
                     };
                     request.onerror = () => reject(request.error || new Error('无法打开本地文件存储'));
-                    request.onblocked = () => reject(new Error('旧文件卷正被其他标签页占用，请关闭其他系统标签页后重试'));
+                    // blocked 不是失败：其他标签页释放连接后请求会继续完成，所以这里只提示、不中断启动。
+                    request.onblocked = () => {
+                        console.warn('JISHENG FS：文件存储正被其他标签页占用，等待对方释放…');
+                        if (typeof Notify !== 'undefined') Notify.warning('正在等待文件存储', '其他 JISHENG OS 标签页正在重置或升级存储，请关闭它们');
+                    };
                 });
             }
             _error(code, path) {
-                const messages = { ENOENT: 'No such file or directory', EEXIST: 'File already exists', ENOTDIR: 'Not a directory', EISDIR: 'Is a directory', ENOTEMPTY: 'Directory not empty', EXDEV: 'Cross-device operation not permitted', EINVAL: 'Invalid argument', EBUSY: 'Resource busy', EFBIG: 'File too large' };
+                const messages = { ENOENT: 'No such file or directory', EEXIST: 'File already exists', ENOTDIR: 'Not a directory', EISDIR: 'Is a directory', ENOTEMPTY: 'Directory not empty', EXDEV: 'Cross-device operation not permitted', EINVAL: 'Invalid argument', EBUSY: 'Resource busy', EFBIG: 'File too large', ENOTSUP: 'Operation not supported', EACCES: 'Permission denied', ENOSPC: 'No space left on device' };
                 const error = new Error((messages[code] || 'Filesystem error') + ': ' + path);
                 error.code = code;
                 error.path = path;
@@ -3231,6 +3471,7 @@
                 const index = path.lastIndexOf('/');
                 return index <= 0 ? '/' : path.slice(0, index);
             }
+            _base(path) { return path.slice(path.lastIndexOf('/') + 1); }
             _route(path) {
                 const normalized = this._normalize(path);
                 let best = null;
@@ -3241,141 +3482,208 @@
                 }
                 return best || { mountPath: null, backend: null, path: normalized };
             }
-            _run(mode, work, callback) {
-                const cb = typeof callback === 'function' ? callback : function() {};
-                let tx;
-                let value;
-                let failure = null;
-                let completed = false;
-                const finish = (err, result) => {
-                    if (completed) return;
-                    completed = true;
-                    cb(err || null, result);
-                };
-                try { tx = this._db.transaction(this._storeName, mode); }
-                catch (error) { finish(error); return; }
-                tx.oncomplete = () => finish(failure, value);
-                tx.onerror = () => { if (!failure) failure = tx.error || new Error('本地文件存储事务失败'); };
-                tx.onabort = () => finish(failure || tx.error || new Error('本地文件存储事务已中止'));
-                const store = tx.objectStore(this._storeName);
-                const fail = error => {
-                    if (failure) return;
-                    failure = error instanceof Error ? error : new Error(String(error || 'Filesystem error'));
-                    try { tx.abort(); } catch (_) { finish(failure); }
-                };
-                const get = (key, done) => {
-                    let request;
-                    try { request = store.get(key); }
-                    catch (error) { fail(error); return; }
-                    request.onsuccess = () => {
-                        try { done(null, request.result); } catch (error) { fail(error); }
-                    };
-                    request.onerror = () => fail(request.error || new Error('IndexedDB 读取失败'));
-                };
-                const put = (valueToStore, key) => {
-                    try { store.put(valueToStore, key); } catch (error) { fail(error); }
-                };
-                const del = key => {
-                    try { store.delete(key); } catch (error) { fail(error); }
-                };
-                const setResult = result => { value = result; };
-                try { work({ store, get, put, del, fail, setResult, fs: this }); }
-                catch (error) { fail(error); }
-            }
-            _ensureRoot() {
-                return new Promise((resolve, reject) => {
-                    this._run('readwrite', ({ get, put, setResult, fail }) => {
-                        get('/', (err, raw) => {
-                            if (err) { fail(err); return; }
-                            if (raw !== undefined) {
-                                if (!NativeFileSystem._parseInode(raw)) { fail(new Error('现有文件卷根目录格式无效，未修改原数据')); return; }
-                                setResult(true);
-                                return;
-                            }
-                            const now = Date.now();
-                            const inode = { id: NativeFileSystem._newId(), size: 4096, mode: 0x41FF, atime: now, mtime: now, ctime: now };
-                            put(new TextEncoder().encode('{}').buffer, inode.id);
-                            put(NativeFileSystem._serializeInode(inode), '/');
-                            setResult(true);
-                        });
-                    }, err => err ? reject(err) : resolve());
-                });
-            }
-            _lookup(ctx, path, callback) {
-                const parts = path === '/' ? [] : path.slice(1).split('/');
-                ctx.get('/', (err, raw) => {
-                    if (err) { callback(err); return; }
-                    let inode = NativeFileSystem._parseInode(raw);
-                    if (!inode) { callback(this._error('ENOENT', '/')); return; }
-                    const walk = (index, key) => {
-                        if (index >= parts.length) { callback(null, { key, inode }); return; }
-                        if ((inode.mode & 0xF000) !== 0x4000) { callback(this._error('ENOTDIR', '/' + parts.slice(0, index).join('/'))); return; }
-                        ctx.get(inode.id, (listingErr, rawListing) => {
-                            if (listingErr) { callback(listingErr); return; }
-                            let listing;
-                            try { listing = JSON.parse(new TextDecoder().decode(NativeFileSystem._bytes(rawListing))); }
-                            catch (_) { callback(new Error('目录索引损坏: ' + path)); return; }
-                            const childName = parts[index];
-                            const childKey = listing && this._entryKey(listing, childName);
-                            if (!childKey) { callback(this._error('ENOENT', path)); return; }
-                            ctx.get(childKey, (childErr, childRaw) => {
-                                if (childErr) { callback(childErr); return; }
-                                inode = NativeFileSystem._parseInode(childRaw);
-                                if (!inode) { callback(this._error('ENOENT', path)); return; }
-                                walk(index + 1, childKey);
-                            });
-                        });
-                    };
-                    walk(0, '/');
-                });
-            }
-            _listing(ctx, inode, path, callback) {
-                ctx.get(inode.id, (err, raw) => {
-                    if (err) { callback(err); return; }
-                    try {
-                        const listing = JSON.parse(new TextDecoder().decode(NativeFileSystem._bytes(raw)));
-                        if (!listing || typeof listing !== 'object' || Array.isArray(listing)) throw new Error('invalid listing');
-                        callback(null, listing);
-                    } catch (_) { callback(new Error('目录索引损坏: ' + path)); }
-                });
-            }
-            _parentInfo(ctx, path, callback) {
-                if (path === '/') { callback(this._error('EINVAL', path)); return; }
-                const parentPath = this._parent(path);
-                const name = path.slice(path.lastIndexOf('/') + 1);
-                this._lookup(ctx, parentPath, (err, parent) => {
-                    if (err) { callback(err); return; }
-                    if ((parent.inode.mode & 0xF000) !== 0x4000) { callback(this._error('ENOTDIR', parentPath)); return; }
-                    this._listing(ctx, parent.inode, parentPath, (listingErr, listing) => {
-                        if (listingErr) { callback(listingErr); return; }
-                        callback(null, { parentPath, parentKey: parent.key, parentInode: parent.inode, name, listing });
-                    });
-                });
+            // 路径本身及其子树里都没有挂载点 → 可以完全在 IndexedDB 引擎内部处理。
+            _isNativeTree(path) {
+                const normalized = this._normalize(path);
+                if (this._route(normalized).backend) return false;
+                const prefix = normalized === '/' ? '/' : normalized + '/';
+                for (const mountPath of this._mounts.keys()) if (mountPath.startsWith(prefix)) return false;
+                return true;
             }
             _hasEntry(listing, name) { return Object.prototype.hasOwnProperty.call(listing, name); }
             _entryKey(listing, name) { return this._hasEntry(listing, name) ? listing[name] : null; }
             _setEntry(listing, name, key) {
                 Object.defineProperty(listing, name, { value: key, enumerable: true, configurable: true, writable: true });
             }
-            _writeParent(ctx, info) {
-                const now = Date.now();
-                info.parentInode.atime = now;
-                info.parentInode.mtime = now;
-                ctx.put(new TextEncoder().encode(JSON.stringify(info.listing)).buffer, info.parentInode.id);
-                ctx.put(NativeFileSystem._serializeInode(info.parentInode), info.parentKey);
-            }
             _newInode(kind, id, size = 0) {
                 const now = Date.now();
                 return { id, size, mode: kind === 'dir' ? 0x41FF : 0x81B6, atime: now, mtime: now, ctime: now };
             }
-            _mountedCall(method, route, args) {
+            static _isDir(inode) { return (inode.mode & 0xF000) === 0x4000; }
+
+            // ---------- 目录缓存（LRU） ----------
+            _cacheGet(path) {
+                const value = this._dirCache.get(path);
+                if (value) { this._dirCache.delete(path); this._dirCache.set(path, value); }
+                return value;
+            }
+            _cacheSet(path, rec) {
+                const old = this._dirCache.get(path);
+                if (old) { this._dirCacheEntries -= old.n; this._dirCache.delete(path); }
+                const n = Object.keys(rec.listing).length;
+                this._dirCache.set(path, { key: rec.key, inode: rec.inode, listing: rec.listing, raw: rec.raw, n });
+                this._dirCacheEntries += n;
+                while (this._dirCache.size > this._dirCacheMaxDirs || this._dirCacheEntries > this._dirCacheMaxEntries) {
+                    const oldest = this._dirCache.keys().next();
+                    if (oldest.done) break;
+                    this._dirCacheEntries -= this._dirCache.get(oldest.value).n;
+                    this._dirCache.delete(oldest.value);
+                }
+            }
+            _cacheDelete(path) {
+                const old = this._dirCache.get(path);
+                if (old) { this._dirCacheEntries -= old.n; this._dirCache.delete(path); }
+            }
+            _cachePurge(path) {
+                const prefix = path === '/' ? '/' : path + '/';
+                for (const p of Array.from(this._dirCache.keys())) if (p === path || p.startsWith(prefix)) this._cacheDelete(p);
+            }
+            _cacheClear() { this._dirCache.clear(); this._dirCacheEntries = 0; }
+
+            // ---------- 事务 ----------
+            // work(t) 是 async 函数，只能 await IndexedDB 请求（t.get 等），不能 await 其他异步操作，
+            // 否则事务会自动提交。读写事务在 work 返回后统一写回目录并递增代际号。
+            _tx(mode, work, fresh) {
+                return new Promise((resolve, reject) => {
+                    if (this._closed) { reject(new Error('文件存储连接已关闭（其他标签页重置了存储），请刷新页面')); return; }
+                    let t;
+                    try { t = new JfsTx(this, mode, fresh); } catch (error) { reject(error); return; }
+                    let result, failure = null;
+                    t.tx.oncomplete = () => {
+                        if (failure) { reject(failure); return; }
+                        this._commit(t);
+                        resolve(result);
+                    };
+                    t.tx.onerror = () => { if (!failure) failure = t.tx.error || new Error('本地文件存储事务失败'); };
+                    t.tx.onabort = () => {
+                        this._cacheClear();
+                        // 缓存与磁盘不一致：已回滚，从磁盘重新读取再做一次（只重试一次）。
+                        if (failure instanceof JfsRetry) { resolve(this._tx(mode, work, true)); return; }
+                        reject(failure || t.tx.error || new Error('本地文件存储事务已中止'));
+                    };
+                    (async () => {
+                        try { result = await work(t); }
+                        catch (error) {
+                            // 失败也可能是缓存过期造成的（例如别的标签页刚建的文件夹在缓存里还没有）：先校验再报告。
+                            if (mode === 'readwrite' && !(await t.checksValid())) throw new JfsRetry('目录缓存已过期');
+                            throw error;
+                        }
+                        if (mode === 'readwrite') {
+                            t.flush();
+                            if (!(await t.checksValid())) throw new JfsRetry('目录缓存已过期');
+                        }
+                    })().catch(error => {
+                        failure = error instanceof Error ? error : new Error(String(error || 'Filesystem error'));
+                        // 只读事务不需要回滚，正常结束即可（oncomplete 里 reject）；读写事务必须回滚。
+                        if (mode === 'readwrite') { try { t.tx.abort(); } catch (_) {} }
+                    });
+                });
+            }
+            _commit(t) {
+                t.purged.forEach(p => this._cachePurge(p));
+                t.stale.forEach(p => this._cacheDelete(p));
+                for (const [path, rec] of t.dirs) {
+                    // 只读事务里取自缓存的目录不写回：它可能比这期间提交的写入更旧，写回会把新缓存覆盖掉。
+                    // （从磁盘读到的目录可以写回：IndexedDB 保证它的完成顺序与读到的数据一致。）
+                    if (t.mode === 'readonly' && rec.fromCache) continue;
+                    this._cacheSet(path, rec);
+                }
+                if (t.changes.length) this._emit(t.changes);
+            }
+            _ensureRoot() {
+                return this._tx('readwrite', async t => {
+                    const raw = await t.get('/');
+                    if (raw !== undefined) {
+                        if (!NativeFileSystem._parseInode(raw)) throw new Error('现有文件卷根目录格式无效，未修改原数据');
+                        return true;
+                    }
+                    const now = Date.now();
+                    const inode = { id: NativeFileSystem._newId(), size: 4096, mode: 0x41FF, atime: now, mtime: now, ctime: now };
+                    t.put(JFS_TEXT_ENCODER.encode('{}').buffer, inode.id);
+                    t.put(NativeFileSystem._serializeInode(inode), '/');
+                    return true;
+                });
+            }
+            static _done(promise, callback, map) {
+                const cb = typeof callback === 'function' ? callback : function() {};
+                promise.then(value => cb(null, map ? map(value) : value), error => cb(error));
+            }
+
+            // ---------- 变更事件 ----------
+            // change: { type: 'create'|'change'|'delete'|'mkdir'|'rmdir'|'rename'|'utimes', path, oldPath? }
+            onCommit(hook) { this._hooks.add(hook); return () => this._hooks.delete(hook); }
+            watch(listener) { this._watchers.add(listener); return () => this._watchers.delete(listener); }
+            _affectedDirs(changes) {
+                const dirs = new Set();
+                for (const c of changes) {
+                    [c.path, c.oldPath].forEach(p => {
+                        if (!p) return;
+                        const parent = this._parent(p);
+                        if (parent) dirs.add(parent);
+                        if (c.type === 'rmdir' || c.type === 'rename' || c.type === 'utimes') dirs.add(p);
+                    });
+                }
+                return dirs;
+            }
+            _emit(changes, remote) {
+                const event = { changes, dirs: this._affectedDirs(changes), time: Date.now(), remote: !!remote };
+                for (const hook of this._hooks) { try { hook(event); } catch (error) { console.warn('JISHENG FS 钩子出错:', error); } }
+                this._eventQueue.push(event);
+                if (!this._eventTimer) this._eventTimer = setTimeout(() => this._dispatch(), 0);
+            }
+            _dispatch() {
+                this._eventTimer = 0;
+                const events = this._eventQueue;
+                this._eventQueue = [];
+                const local = events.filter(e => !e.remote);
+                if (local.length && this._channel) {
+                    let changes = [];
+                    local.forEach(e => { changes = changes.concat(e.changes); });
+                    // 变更太多时只发受影响的目录，避免消息过大。
+                    const message = changes.length > 500
+                        ? { dirs: Array.from(this._affectedDirs(changes)), many: changes.length }
+                        : { changes };
+                    try { this._channel.postMessage(message); } catch (_) {}
+                }
+                for (const event of events) {
+                    for (const listener of this._watchers) { try { listener(event); } catch (error) { console.warn('JISHENG FS 监听器出错:', error); } }
+                }
+            }
+            _onRemote(message) {
+                if (!message) return;
+                // 别的标签页写入过：代际号已变，下次事务会自动丢弃缓存；这里提前清掉，减少一次失效判断。
+                this._cacheClear();
+                if (Array.isArray(message.changes)) { this._emit(message.changes, true); return; }
+                if (Array.isArray(message.dirs)) {
+                    const changes = message.dirs.map(dir => ({ type: 'change', path: dir === '/' ? '/' : dir + '/*' }));
+                    const event = { changes, dirs: new Set(message.dirs), time: Date.now(), remote: true };
+                    for (const hook of this._hooks) { try { hook(event); } catch (_) {} }
+                    this._eventQueue.push(event);
+                    if (!this._eventTimer) this._eventTimer = setTimeout(() => this._dispatch(), 0);
+                }
+            }
+
+            // ---------- 挂载 ----------
+            static _fsaErrorCode(error, method) {
+                if (!error || typeof error.code === 'string') return null;
+                switch (error.name) {
+                    case 'NotFoundError': return 'ENOENT';
+                    case 'TypeMismatchError': return method === 'readFile' || method === 'writeFile' || method === 'unlink' ? 'EISDIR' : 'ENOTDIR';
+                    case 'InvalidModificationError': return 'ENOTEMPTY';
+                    case 'NoModificationAllowedError': return 'EBUSY';
+                    case 'NotAllowedError': case 'SecurityError': return 'EACCES';
+                    case 'QuotaExceededError': return 'ENOSPC';
+                    default: return null;
+                }
+            }
+            _mountedCall(method, route, args, change) {
+                const callback = typeof args[args.length - 1] === 'function' ? args[args.length - 1] : null;
                 const fn = route.backend && route.backend[method];
                 if (typeof fn !== 'function') {
-                    const callback = args[args.length - 1];
-                    if (typeof callback === 'function') callback(null);
+                    // 后端不支持这个操作时如实报告，而不是假装成功。
+                    if (callback) callback(this._error('ENOTSUP', (route.mountPath || '') + route.path));
                     return;
                 }
-                return fn.apply(route.backend, [route.path].concat(args));
+                const wrapped = (err, ...rest) => {
+                    if (err) {
+                        const code = NativeFileSystem._fsaErrorCode(err, method);
+                        if (code) { try { Object.defineProperty(err, 'code', { value: code, configurable: true }); } catch (_) {} }
+                    } else if (change) this._emit([change]);
+                    if (callback) callback(err, ...rest);
+                };
+                // 路由层总是把回调放在最后一个参数位置（可能是 undefined），统一替换成包装后的回调。
+                const callArgs = args.slice(0, -1).concat([wrapped]);
+                return fn.apply(route.backend, [route.path].concat(callArgs));
             }
             mount(path, backend) {
                 const mountPath = this._normalize(path);
@@ -3392,207 +3700,431 @@
                 const directory = (inode.mode & 0xF000) === 0x4000;
                 return new NativeStats({ kind: directory ? 'dir' : 'file', size: inode.size, atime: inode.atime, mtime: inode.mtime, ctime: inode.ctime });
             }
-            // 性能：同一轮事件循环里对同一目录发起的多个 stat（列目录、渲染桌面、复制/删除/压缩文件夹都会这样做）
-            // 合并成一个只读事务：目录索引只解析一次，再按 key 逐个取 inode。
-            // 以前每个 stat 都是独立事务并从根目录重新解析整份父目录索引，1500 个文件的文件夹要 O(n²)、约 2 秒。
-            // 合并后的事务创建得比原调用晚，只会看到更新的数据，不会读到旧数据。
+
+            // ---------- 基本操作（事务内） ----------
+            async _opMkdir(t, path) {
+                if (path === '/') throw this._error('EEXIST', path);
+                const parent = await t.dirAt(this._parent(path));
+                const name = this._base(path);
+                if (this._hasEntry(parent.listing, name)) throw this._error('EEXIST', path);
+                const dataId = NativeFileSystem._newId();
+                const inodeKey = NativeFileSystem._newId();
+                const inode = this._newInode('dir', dataId, 4096);
+                t.put(JFS_TEXT_ENCODER.encode('{}').buffer, dataId);
+                t.put(NativeFileSystem._serializeInode(inode), inodeKey);
+                t.touch(parent);
+                this._setEntry(parent.listing, name, inodeKey);
+                t.dirs.set(path, { key: inodeKey, inode, listing: {}, own: true, dirty: false, inodeDirty: false });
+                t.changes.push({ type: 'mkdir', path });
+            }
+            // 与 ensureDir 语义一致：逐级创建，已存在的目录跳过；某一级是文件时报 EEXIST。
+            async _opMkdirp(t, path) {
+                if (path === '/') return;
+                const parts = path.slice(1).split('/');
+                let current = '';
+                for (const part of parts) {
+                    current += '/' + part;
+                    const parent = await t.dirAt(this._parent(current));
+                    const key = this._entryKey(parent.listing, part);
+                    if (!key) { await this._opMkdir(t, current); continue; }
+                    try { await t.dir(current); }
+                    catch (error) {
+                        if (error && (error.code === 'ENOTDIR' || error.code === 'ENOENT')) throw this._error('EEXIST', current);
+                        throw error;
+                    }
+                }
+            }
+            async _opWriteFile(t, path, content, size) {
+                if (path === '/') throw this._error('EISDIR', path);
+                const parent = await t.dirAt(this._parent(path));
+                const name = this._base(path);
+                const inodeKey = this._entryKey(parent.listing, name);
+                if (!inodeKey) {
+                    const dataId = NativeFileSystem._newId();
+                    const newInodeKey = NativeFileSystem._newId();
+                    const inode = this._newInode('file', dataId, size);
+                    t.put(content, dataId);
+                    t.put(NativeFileSystem._serializeInode(inode), newInodeKey);
+                    t.touch(parent);
+                    this._setEntry(parent.listing, name, newInodeKey);
+                    t.changes.push({ type: 'create', path });
+                    return;
+                }
+                const inode = await t.inode(inodeKey);
+                if (!inode) throw new Error('文件元数据损坏: ' + path);
+                if (NativeFileSystem._isDir(inode)) throw this._error('EISDIR', path);
+                inode.size = size;
+                inode.atime = inode.mtime = inode.ctime = Date.now();
+                t.put(content, inode.id);
+                t.put(NativeFileSystem._serializeInode(inode), inodeKey);
+                t.changes.push({ type: 'change', path });
+            }
+            async _opUnlink(t, path) {
+                if (path === '/') throw this._error('EISDIR', path);
+                const parent = await t.dirAt(this._parent(path));
+                const name = this._base(path);
+                const inodeKey = this._entryKey(parent.listing, name);
+                if (!inodeKey) throw this._error('ENOENT', path);
+                const inode = await t.inode(inodeKey);
+                if (!inode) throw this._error('ENOENT', path);
+                if (NativeFileSystem._isDir(inode)) throw this._error('EISDIR', path);
+                t.del(inodeKey); t.del(inode.id);
+                t.touch(parent);
+                delete parent.listing[name];
+                t.changes.push({ type: 'delete', path });
+            }
+            async _opRmdir(t, path) {
+                if (path === '/') throw this._error('EBUSY', path);
+                const parent = await t.dirAt(this._parent(path));
+                const name = this._base(path);
+                const inodeKey = this._entryKey(parent.listing, name);
+                if (!inodeKey) throw this._error('ENOENT', path);
+                const inode = await t.inode(inodeKey);
+                if (!inode) throw this._error('ENOENT', path);
+                if (!NativeFileSystem._isDir(inode)) throw this._error('ENOTDIR', path);
+                const self = t.dirs.get(path);
+                const listing = self ? self.listing : await t.listingOf(inode, path);
+                const hasMount = Array.from(this._mounts.keys()).some(mountPath => this._parent(mountPath) === path);
+                if (Object.keys(listing).length || hasMount) throw this._error('ENOTEMPTY', path);
+                t.del(inodeKey); t.del(inode.id);
+                t.touch(parent);
+                delete parent.listing[name];
+                t.dropDirs(path);
+                t.changes.push({ type: 'rmdir', path });
+            }
+            async _opRename(t, from, to) {
+                if (from === to) return;
+                if (from === '/' || to === '/') throw this._error('EINVAL', from);
+                if (to.startsWith(from + '/')) throw this._error('EINVAL', to);
+                const fromParentPath = this._parent(from), toParentPath = this._parent(to);
+                const sourceParent = await t.dirAt(fromParentPath);
+                const targetParent = fromParentPath === toParentPath ? sourceParent : await t.dirAt(toParentPath);
+                const fromName = this._base(from), toName = this._base(to);
+                const sourceKey = this._entryKey(sourceParent.listing, fromName);
+                if (!sourceKey) throw this._error('ENOENT', from);
+                const sourceInode = await t.inode(sourceKey);
+                if (!sourceInode) throw this._error('ENOENT', from);
+                const sourceIsDir = NativeFileSystem._isDir(sourceInode);
+                const targetKey = this._entryKey(targetParent.listing, toName);
+                if (targetKey) {
+                    const targetInode = await t.inode(targetKey);
+                    if (!targetInode) throw this._error('ENOENT', to);
+                    const targetIsDir = NativeFileSystem._isDir(targetInode);
+                    if (sourceIsDir !== targetIsDir) throw this._error(sourceIsDir ? 'ENOTDIR' : 'EISDIR', to);
+                    if (targetIsDir) {
+                        const self = t.dirs.get(to);
+                        const targetListing = self ? self.listing : await t.listingOf(targetInode, to);
+                        if (Object.keys(targetListing).length) throw this._error('ENOTEMPTY', to);
+                        t.dropDirs(to);
+                    }
+                    t.del(targetKey); t.del(targetInode.id);
+                }
+                t.touch(sourceParent);
+                if (targetParent !== sourceParent) t.touch(targetParent);
+                delete sourceParent.listing[fromName];
+                this._setEntry(targetParent.listing, toName, sourceKey);
+                if (sourceIsDir) t.rekeyDirs(from, to);
+                t.changes.push({ type: 'rename', path: to, oldPath: from });
+            }
+            async _opUtimes(t, path, atime, mtime) {
+                const at = atime instanceof Date ? atime.getTime() : Number(atime);
+                const mt = mtime instanceof Date ? mtime.getTime() : Number(mtime);
+                const found = await t.nodeAt(path);
+                const known = t.dirs.get(path);
+                const inode = known ? t.own(known).inode : found.inode;
+                inode.atime = Number.isFinite(at) && at > 0 ? at : Date.now();
+                inode.mtime = Number.isFinite(mt) && mt > 0 ? mt : Date.now();
+                if (known) known.inodeDirty = true;
+                else {
+                    t.put(NativeFileSystem._serializeInode(inode), found.key);
+                    if (NativeFileSystem._isDir(inode)) t.stale.push(path);
+                }
+                t.changes.push({ type: 'utimes', path });
+            }
+            // 收集整棵子树的 inode（只读 inode，不读文件内容）。
+            async _collectTree(t, path, inode, out, rel) {
+                const self = t.dirs.get(path);
+                const listing = self ? self.listing : await t.listingOf(inode, path);
+                const names = Object.keys(listing);
+                const inodes = await Promise.all(names.map(name => t.inode(listing[name])));
+                const subdirs = [];
+                names.forEach((name, i) => {
+                    const child = inodes[i];
+                    if (!child) return;      // 悬空条目：跳过（与逐个 stat 失败时跳过一致）
+                    const item = { rel: rel ? rel + '/' + name : name, path: path === '/' ? '/' + name : path + '/' + name, key: listing[name], inode: child, isDir: NativeFileSystem._isDir(child) };
+                    out.push(item);
+                    if (item.isDir) subdirs.push(item);
+                });
+                // 目录项总在它的子项之前（复制时先建目录再写文件）。
+                await Promise.all(subdirs.map(dir => this._collectTree(t, dir.path, dir.inode, out, dir.rel)));
+                return out;
+            }
+            async _opRmTree(t, path, dirOnly) {
+                if (path === '/') throw this._error('EBUSY', path);
+                const found = await t.nodeAt(path);
+                if (!NativeFileSystem._isDir(found.inode)) {
+                    if (dirOnly) throw this._error('ENOTDIR', path);
+                    return this._opUnlink(t, path);
+                }
+                const items = await this._collectTree(t, path, found.inode, [], '');
+                for (const item of items) { t.del(item.key); t.del(item.inode.id); }
+                const parent = await t.dirAt(this._parent(path));
+                t.del(found.key); t.del(found.inode.id);
+                t.touch(parent);
+                delete parent.listing[this._base(path)];
+                t.dropDirs(path);
+                t.changes.push({ type: 'rmdir', path, recursive: true, count: items.length });
+                return items;
+            }
+            async _execOp(t, op) {
+                const path = this._normalize(op.path);
+                switch (op.op) {
+                    case 'mkdir': return this._opMkdir(t, path);
+                    case 'mkdirp': return this._opMkdirp(t, path);
+                    case 'writeFile':
+                        await this._opWriteFile(t, path, op._content.buffer, op._content.size);
+                        // 可选 mtime：写入后在同一事务里设置修改日期（相当于紧跟一步 utimes）
+                        if (op.mtime != null) await this._opUtimes(t, path, op.atime != null ? op.atime : op.mtime, op.mtime);
+                        return;
+                    case 'utimes': return this._opUtimes(t, path, op.atime, op.mtime);
+                    case 'unlink': return this._opUnlink(t, path);
+                    case 'rmdir': return this._opRmdir(t, path);
+                    case 'remove': return this._opRmTree(t, path, false);
+                    case 'rename': return this._opRename(t, path, this._normalize(op.to));
+                    default: throw this._error('ENOTSUP', op.op);
+                }
+            }
+
+            // ---------- 公开的多步操作（只用于不含挂载点的根卷路径） ----------
+            // ops: [{ op, path, data?, encoding?, atime?, mtime?, to?, group?, stop? }]
+            //  · 默认：某一步失败只记录错误，继续执行后面的步骤；
+            //  · group：同组里有一步失败，同组后面的步骤跳过；
+            //  · stop：这一步失败后不再执行任何后续步骤（已完成的照常提交）；
+            //  · options.atomic：任何一步失败就整体回滚。
+            _batch(ops, options = {}) {
+                const prepared = ops.map(op => op.op === 'writeFile' ? Object.assign({}, op, { _content: NativeFileSystem._content(op.data, op.encoding, !!op.copy) }) : op);
+                for (const op of prepared) {
+                    if (op._content && op._content.size > 0xFFFFFFFF) return Promise.reject(this._error('EFBIG', op.path));
+                }
+                return this._tx('readwrite', async t => {
+                    const results = [];
+                    const skipped = new Set();
+                    let stopped = false;
+                    for (const op of prepared) {
+                        if (stopped || (op.group != null && skipped.has(op.group))) { results.push({ skipped: true }); continue; }
+                        try { await this._execOp(t, op); results.push({ ok: true }); }
+                        catch (error) {
+                            if (options.atomic) throw error;
+                            results.push({ ok: false, error });
+                            if (op.group != null) skipped.add(op.group);
+                            if (op.stop) stopped = true;
+                        }
+                    }
+                    return results;
+                });
+            }
+            _mkdirp(path) { return this._tx('readwrite', t => this._opMkdirp(t, this._normalize(path))); }
+            _rmTree(path, dirOnly) { return this._tx('readwrite', t => this._opRmTree(t, this._normalize(path), dirOnly)); }
+            // 文件夹总大小：一个只读事务遍历 inode，不读文件内容。
+            _du(path) {
+                return this._tx('readonly', async t => {
+                    const normalized = this._normalize(path);
+                    const found = await t.nodeAt(normalized);
+                    if (!NativeFileSystem._isDir(found.inode)) return found.inode.size || 0;
+                    const items = await this._collectTree(t, normalized, found.inode, [], '');
+                    let total = 0;
+                    for (const item of items) if (!item.isDir) total += item.inode.size || 0;
+                    return total;
+                });
+            }
+            // 单个文件复制：一个事务读源、写目标，并把目标时间设为 mtimeMs（与 读→写→utimes 结果相同）。
+            _copyFile(src, dst, mtimeMs) {
+                const from = this._normalize(src), to = this._normalize(dst);
+                return this._tx('readwrite', async t => {
+                    const found = await t.nodeAt(from);
+                    if (NativeFileSystem._isDir(found.inode)) throw this._error('EISDIR', from);
+                    const raw = await t.get(found.inode.id);
+                    if (raw === undefined) throw this._error('ENOENT', from);
+                    await this._opWriteFile(t, to, raw, found.inode.size);
+                    if (mtimeMs) await this._opUtimes(t, to, mtimeMs, mtimeMs);
+                });
+            }
+            // 递归复制（合并到已存在的目标目录）。语义与旧的 copyFolderRecursive 相同：
+            // 文件用源的显示时间（mtimeOf），目录最后回写时间；单项失败只记录第一个错误并继续。
+            // 文件内容分段提交（每段最多约 48 MB / 1500 项），避免一次占用过多内存。
+            async _copyTree(src, dst, mtimeOf, onProgress) {
+                const from = this._normalize(src), to = this._normalize(dst);
+                const plan = await this._tx('readonly', async t => {
+                    const found = await t.nodeAt(from);
+                    if (!NativeFileSystem._isDir(found.inode)) throw this._error('ENOTDIR', from);
+                    const items = await this._collectTree(t, from, found.inode, [], '');
+                    return { root: found, items };
+                });
+                const pins = [];
+                const dirTimes = [];
+                let firstError = null;
+                const note = error => { if (!firstError) firstError = error; };
+                const rootMs = mtimeOf(from, plan.root.inode.mtime);
+                // 目标根目录：不存在就创建；已存在且是目录就合并；是文件则整体失败。
+                await this._tx('readwrite', async t => {
+                    try { await this._opMkdir(t, to); }
+                    catch (error) {
+                        if (!error || error.code !== 'EEXIST') throw error;
+                        const existing = await t.nodeAt(to);
+                        if (!NativeFileSystem._isDir(existing.inode)) throw error;
+                    }
+                });
+                const skippedDirs = [];
+                const isSkipped = rel => skippedDirs.some(d => rel === d || rel.startsWith(d + '/'));
+                const MAX_BYTES = 48 * 1024 * 1024, MAX_ITEMS = 1500;
+                let index = 0;
+                while (index < plan.items.length) {
+                    const chunk = [];
+                    let bytes = 0;
+                    while (index < plan.items.length && chunk.length < MAX_ITEMS) {
+                        const item = plan.items[index];
+                        const size = item.isDir ? 0 : (item.inode.size || 0);
+                        if (chunk.length && bytes + size > MAX_BYTES) break;
+                        chunk.push(item); bytes += size; index++;
+                    }
+                    await this._tx('readwrite', async t => {
+                        for (const item of chunk) {
+                            if (isSkipped(item.rel)) continue;
+                            const target = to === '/' ? '/' + item.rel : to + '/' + item.rel;
+                            if (item.isDir) {
+                                try { await this._opMkdir(t, target); }
+                                catch (error) {
+                                    let ok = false;
+                                    if (error && error.code === 'EEXIST') {
+                                        try { const existing = await t.nodeAt(target); ok = NativeFileSystem._isDir(existing.inode); } catch (_) {}
+                                    }
+                                    if (!ok) { note(error); skippedDirs.push(item.rel); continue; }
+                                }
+                                dirTimes.push([target, mtimeOf(item.path, item.inode.mtime)]);
+                                continue;
+                            }
+                            try {
+                                const raw = await t.get(item.inode.id);
+                                if (raw === undefined) throw this._error('ENOENT', item.path);
+                                await this._opWriteFile(t, target, raw, item.inode.size || 0);
+                                const ms = mtimeOf(item.path, item.inode.mtime);
+                                if (ms) { await this._opUtimes(t, target, ms, ms); pins.push([target, ms]); }
+                            } catch (error) { note(error); }
+                        }
+                    });
+                    if (onProgress) { try { onProgress(index, plan.items.length); } catch (_) {} }
+                }
+                // 目录时间最后按从深到浅回写，避免被子项的创建刷新成当前时间。
+                dirTimes.sort((a, b) => b[0].length - a[0].length);
+                if (rootMs) dirTimes.push([to, rootMs]);
+                await this._tx('readwrite', async t => {
+                    for (const [path, ms] of dirTimes) {
+                        if (!ms) continue;
+                        try { await this._opUtimes(t, path, ms, ms); pins.push([path, ms]); } catch (error) { note(error); }
+                    }
+                });
+                return { firstError, pins, count: plan.items.length };
+            }
+
+            // ---------- 兼容 Node 风格的回调 API ----------
+            // 性能：同一轮事件循环里的多个 stat 合并到一个只读事务；同一目录的索引只读一次（命中缓存时不读）。
             stat(path, callback) {
                 const route = this._route(path);
                 if (route.backend) return this._mountedCall('stat', route, [callback]);
-                if (route.path === '/') { this._statOne(route.path, callback); return; }
-                const parent = this._parent(route.path);
-                if (!this._statQueue) this._statQueue = new Map();
-                let queue = this._statQueue.get(parent);
-                if (!queue) { queue = []; this._statQueue.set(parent, queue); }
-                queue.push({ name: route.path.slice(route.path.lastIndexOf('/') + 1), path: route.path, callback });
+                if (!this._statQueue) this._statQueue = [];
+                this._statQueue.push({ path: route.path, callback });
                 if (!this._statFlushPending) {
                     this._statFlushPending = true;
                     Promise.resolve().then(() => this._flushStats());
                 }
             }
-            _statOne(path, callback) {
-                this._run('readonly', ctx => this._lookup(ctx, path, (err, found) => {
-                    if (err) { ctx.fail(err); return; }
-                    ctx.setResult(NativeFileSystem._statsOf(found.inode));
-                }), callback);
-            }
             _flushStats() {
                 this._statFlushPending = false;
-                const batches = this._statQueue;
-                this._statQueue = new Map();
+                const reqs = this._statQueue || [];
+                this._statQueue = [];
                 const deliver = (req, err, stats) => {
                     if (typeof req.callback !== 'function') return;
                     try { req.callback(err || null, stats); }
                     catch (error) { setTimeout(() => { throw error; }, 0); }   // 一个回调出错不影响同批其他回调
                 };
-                for (const [parent, reqs] of batches) {
-                    if (reqs.length === 1) { this._statOne(reqs[0].path, reqs[0].callback); continue; }
-                    this._run('readonly', ctx => this._lookup(ctx, parent, (err, found) => {
-                        if (err) { ctx.fail(err); return; }
-                        if ((found.inode.mode & 0xF000) !== 0x4000) { ctx.fail(this._error('ENOTDIR', parent)); return; }
-                        this._listing(ctx, found.inode, parent, (listingErr, listing) => {
-                            if (listingErr) { ctx.fail(listingErr); return; }
-                            const results = new Array(reqs.length);
-                            let pending = reqs.length;
-                            const done = () => { if (--pending === 0) ctx.setResult(results); };
-                            reqs.forEach((req, i) => {
-                                const key = this._entryKey(listing, req.name);
-                                if (!key) { results[i] = { err: this._error('ENOENT', req.path) }; done(); return; }
-                                ctx.get(key, (getErr, raw) => {
-                                    const inode = NativeFileSystem._parseInode(raw);
-                                    results[i] = inode ? { stats: NativeFileSystem._statsOf(inode) } : { err: this._error('ENOENT', req.path) };
-                                    done();
-                                });
-                            });
-                        });
-                    }), (err, results) => {
-                        reqs.forEach((req, i) => {
-                            if (err) deliver(req, err);
-                            else deliver(req, results[i].err, results[i].stats);
-                        });
-                    });
-                }
+                this._tx('readonly', async t => {
+                    await Promise.all(reqs.map(async req => {
+                        try { req.result = { stats: NativeFileSystem._statsOf((await t.nodeAt(req.path)).inode) }; }
+                        catch (error) { req.result = { err: error }; }
+                    }));
+                }).then(() => {
+                    reqs.forEach(req => deliver(req, req.result.err, req.result.stats));
+                }, error => {
+                    reqs.forEach(req => deliver(req, error));
+                });
             }
             readdir(path, callback) {
                 const route = this._route(path);
                 if (route.backend) return this._mountedCall('readdir', route, [callback]);
-                this._run('readonly', ctx => this._lookup(ctx, route.path, (err, found) => {
-                    if (err) { ctx.fail(err); return; }
-                    if ((found.inode.mode & 0xF000) !== 0x4000) { ctx.fail(this._error('ENOTDIR', route.path)); return; }
-                    this._listing(ctx, found.inode, route.path, (listingErr, listing) => {
-                        if (listingErr) { ctx.fail(listingErr); return; }
-                        const names = new Set(Object.keys(listing));
-                        for (const mountPath of this._mounts.keys()) {
-                            if (this._parent(mountPath) === route.path) names.add(mountPath.slice(mountPath.lastIndexOf('/') + 1));
-                        }
-                        ctx.setResult(Array.from(names));
-                    });
+                NativeFileSystem._done(this._tx('readonly', async t => {
+                    const dir = await t.dirAt(route.path);
+                    const names = new Set(Object.keys(dir.listing));
+                    for (const mountPath of this._mounts.keys()) {
+                        if (this._parent(mountPath) === route.path) names.add(mountPath.slice(mountPath.lastIndexOf('/') + 1));
+                    }
+                    return Array.from(names);
                 }), callback);
             }
             mkdir(path, mode, callback) {
                 if (typeof mode === 'function') { callback = mode; mode = undefined; }
                 const route = this._route(path);
-                if (route.backend) return this._mountedCall('mkdir', route, [callback]);
-                if (route.path === '/') { if (typeof callback === 'function') callback(this._error('EEXIST', route.path)); return; }
-                this._run('readwrite', ctx => this._parentInfo(ctx, route.path, (err, parent) => {
-                    if (err) { ctx.fail(err); return; }
-                    if (this._hasEntry(parent.listing, parent.name)) { ctx.fail(this._error('EEXIST', route.path)); return; }
-                    const dataId = NativeFileSystem._newId();
-                    const inodeKey = NativeFileSystem._newId();
-                    const inode = this._newInode('dir', dataId, 4096);
-                    ctx.put(new TextEncoder().encode('{}').buffer, dataId);
-                    ctx.put(NativeFileSystem._serializeInode(inode), inodeKey);
-                    this._setEntry(parent.listing, parent.name, inodeKey);
-                    this._writeParent(ctx, parent);
-                    ctx.setResult(undefined);
-                }), callback);
+                if (route.backend) return this._mountedCall('mkdir', route, [callback], { type: 'mkdir', path: this._normalize(path) });
+                NativeFileSystem._done(this._tx('readwrite', t => this._opMkdir(t, route.path)), callback, () => undefined);
             }
             readFile(path, encoding, flag, callback) {
                 if (typeof encoding === 'function') { callback = encoding; encoding = null; }
                 else if (typeof flag === 'function') callback = flag;
                 const route = this._route(path);
                 if (route.backend) return this._mountedCall('readFile', route, [encoding, callback]);
-                this._run('readonly', ctx => this._lookup(ctx, route.path, (err, found) => {
-                    if (err) { ctx.fail(err); return; }
-                    if ((found.inode.mode & 0xF000) === 0x4000) { ctx.fail(this._error('EISDIR', route.path)); return; }
-                    ctx.get(found.inode.id, (dataErr, raw) => {
-                        if (dataErr) { ctx.fail(dataErr); return; }
-                        if (raw === undefined) { ctx.fail(this._error('ENOENT', route.path)); return; }
-                        const bytes = NativeFileSystem._bytes(raw);
-                        if (!bytes) { ctx.fail(new Error('文件数据格式无效: ' + route.path)); return; }
-                        const data = NativeBuffer.from(bytes);
-                        ctx.setResult(typeof encoding === 'string' && encoding ? data.toString(encoding === 'utf8' ? 'utf-8' : encoding) : data);
-                    });
-                }), callback);
+                const read = this._tx('readonly', async t => {
+                    const found = await t.nodeAt(route.path);
+                    if (NativeFileSystem._isDir(found.inode)) throw this._error('EISDIR', route.path);
+                    const raw = await t.get(found.inode.id);
+                    if (raw === undefined) throw this._error('ENOENT', route.path);
+                    return raw;
+                }).then(async raw => {
+                    // 前向兼容：以后的版本可能把大文件存成 Blob，这里也能读出来。
+                    const data = (typeof Blob !== 'undefined' && raw instanceof Blob) ? new NativeBuffer(await raw.arrayBuffer()) : NativeFileSystem._fromStored(raw);
+                    if (!data) throw new Error('文件数据格式无效: ' + route.path);
+                    return typeof encoding === 'string' && encoding ? data.toString(encoding === 'utf8' ? 'utf-8' : encoding) : data;
+                });
+                NativeFileSystem._done(read, callback);
             }
             writeFile(path, data, encoding, flag, mode, callback) {
                 if (typeof encoding === 'function') callback = encoding;
                 else if (typeof flag === 'function') callback = flag;
                 else if (typeof mode === 'function') callback = mode;
                 const route = this._route(path);
-                if (route.backend) return this._mountedCall('writeFile', route, [data, encoding, flag, mode, callback]);
+                if (route.backend) {
+                    // 把参数整理成固定位置，确保后端调用的是包装后的回调（用于错误码和变更事件）。
+                    const enc = typeof encoding === 'string' ? encoding : null;
+                    const fl = typeof flag === 'string' ? flag : undefined;
+                    const md = typeof mode === 'function' ? undefined : mode;
+                    return this._mountedCall('writeFile', route, [data, enc, fl, md, callback], { type: 'change', path: this._normalize(path) });
+                }
                 if (route.path === '/') { if (typeof callback === 'function') callback(this._error('EISDIR', route.path)); return; }
-                let bytes;
-                try {
-                    if (typeof data === 'string') bytes = NativeBuffer.from(data, typeof encoding === 'string' ? encoding : 'utf8');
-                    else if (data instanceof ArrayBuffer) bytes = NativeBuffer.from(data);
-                    else if (ArrayBuffer.isView(data)) bytes = NativeBuffer.from(data);
-                    else if (data && typeof data.length === 'number') bytes = NativeBuffer.from(data);
-                    else bytes = new NativeBuffer(0);
-                } catch (error) { if (typeof callback === 'function') callback(error); return; }
-                if (bytes.byteLength > 0xFFFFFFFF) { if (typeof callback === 'function') callback(this._error('EFBIG', route.path)); return; }
-                const content = bytes.slice().buffer;
-                this._run('readwrite', ctx => this._parentInfo(ctx, route.path, (err, parent) => {
-                    if (err) { ctx.fail(err); return; }
-                    const inodeKey = this._entryKey(parent.listing, parent.name);
-                    if (!inodeKey) {
-                        const dataId = NativeFileSystem._newId();
-                        const newInodeKey = NativeFileSystem._newId();
-                        const inode = this._newInode('file', dataId, bytes.byteLength);
-                        ctx.put(content, dataId);
-                        ctx.put(NativeFileSystem._serializeInode(inode), newInodeKey);
-                        this._setEntry(parent.listing, parent.name, newInodeKey);
-                        this._writeParent(ctx, parent);
-                        ctx.setResult(undefined);
-                        return;
-                    }
-                    ctx.get(inodeKey, (inodeErr, rawInode) => {
-                        if (inodeErr) { ctx.fail(inodeErr); return; }
-                        const inode = NativeFileSystem._parseInode(rawInode);
-                        if (!inode) { ctx.fail(new Error('文件元数据损坏: ' + route.path)); return; }
-                        if ((inode.mode & 0xF000) === 0x4000) { ctx.fail(this._error('EISDIR', route.path)); return; }
-                        inode.size = bytes.byteLength;
-                        inode.atime = inode.mtime = inode.ctime = Date.now();
-                        ctx.put(content, inode.id);
-                        ctx.put(NativeFileSystem._serializeInode(inode), inodeKey);
-                        ctx.setResult(undefined);
-                    });
-                }), callback);
+                let content;
+                try { content = NativeFileSystem._content(data, encoding, true); }
+                catch (error) { if (typeof callback === 'function') callback(error); return; }
+                if (content.size > 0xFFFFFFFF) { if (typeof callback === 'function') callback(this._error('EFBIG', route.path)); return; }
+                NativeFileSystem._done(this._tx('readwrite', t => this._opWriteFile(t, route.path, content.buffer, content.size)), callback, () => undefined);
             }
             unlink(path, callback) {
                 const route = this._route(path);
-                if (route.backend) return this._mountedCall('unlink', route, [callback]);
+                if (route.backend) return this._mountedCall('unlink', route, [callback], { type: 'delete', path: this._normalize(path) });
                 if (route.path === '/') { if (typeof callback === 'function') callback(this._error('EISDIR', route.path)); return; }
-                this._run('readwrite', ctx => this._parentInfo(ctx, route.path, (err, parent) => {
-                    if (err) { ctx.fail(err); return; }
-                    const inodeKey = this._entryKey(parent.listing, parent.name);
-                    if (!inodeKey) { ctx.fail(this._error('ENOENT', route.path)); return; }
-                    ctx.get(inodeKey, (inodeErr, rawInode) => {
-                        if (inodeErr) { ctx.fail(inodeErr); return; }
-                        const inode = NativeFileSystem._parseInode(rawInode);
-                        if (!inode) { ctx.fail(this._error('ENOENT', route.path)); return; }
-                        if ((inode.mode & 0xF000) === 0x4000) { ctx.fail(this._error('EISDIR', route.path)); return; }
-                        ctx.del(inodeKey); ctx.del(inode.id);
-                        delete parent.listing[parent.name];
-                        this._writeParent(ctx, parent);
-                        ctx.setResult(undefined);
-                    });
-                }), callback);
+                NativeFileSystem._done(this._tx('readwrite', t => this._opUnlink(t, route.path)), callback, () => undefined);
             }
             rmdir(path, callback) {
                 const route = this._route(path);
-                if (route.backend) return this._mountedCall('rmdir', route, [callback]);
+                if (route.backend) return this._mountedCall('rmdir', route, [callback], { type: 'rmdir', path: this._normalize(path) });
                 if (route.path === '/') { if (typeof callback === 'function') callback(this._error('EBUSY', route.path)); return; }
-                this._run('readwrite', ctx => this._parentInfo(ctx, route.path, (err, parent) => {
-                    if (err) { ctx.fail(err); return; }
-                    const inodeKey = this._entryKey(parent.listing, parent.name);
-                    if (!inodeKey) { ctx.fail(this._error('ENOENT', route.path)); return; }
-                    ctx.get(inodeKey, (inodeErr, rawInode) => {
-                        if (inodeErr) { ctx.fail(inodeErr); return; }
-                        const inode = NativeFileSystem._parseInode(rawInode);
-                        if (!inode) { ctx.fail(this._error('ENOENT', route.path)); return; }
-                        if ((inode.mode & 0xF000) !== 0x4000) { ctx.fail(this._error('ENOTDIR', route.path)); return; }
-                        this._listing(ctx, inode, route.path, (listErr, listing) => {
-                            if (listErr) { ctx.fail(listErr); return; }
-                            const hasMount = Array.from(this._mounts.keys()).some(mountPath => this._parent(mountPath) === route.path);
-                            if (Object.keys(listing).length || hasMount) { ctx.fail(this._error('ENOTEMPTY', route.path)); return; }
-                            ctx.del(inodeKey); ctx.del(inode.id);
-                            delete parent.listing[parent.name];
-                            this._writeParent(ctx, parent);
-                            ctx.setResult(undefined);
-                        });
-                    });
-                }), callback);
+                NativeFileSystem._done(this._tx('readwrite', t => this._opRmdir(t, route.path)), callback, () => undefined);
             }
             rename(oldPath, newPath, callback) {
                 const sourceRoute = this._route(oldPath), targetRoute = this._route(newPath);
@@ -3601,81 +4133,24 @@
                         const cb = typeof callback === 'function' ? callback : function() {};
                         cb(this._error('EXDEV', oldPath)); return;
                     }
-                    return this._mountedCall('rename', sourceRoute, [targetRoute.path, callback]);
+                    return this._mountedCall('rename', sourceRoute, [targetRoute.path, callback], { type: 'rename', path: this._normalize(newPath), oldPath: this._normalize(oldPath) });
                 }
                 const from = sourceRoute.path, to = targetRoute.path;
                 if (from === to) { if (typeof callback === 'function') callback(null); return; }
                 if (from === '/' || to === '/') { if (typeof callback === 'function') callback(this._error('EINVAL', from)); return; }
                 if (to.startsWith(from + '/')) { if (typeof callback === 'function') callback(this._error('EINVAL', to)); return; }
-                this._run('readwrite', ctx => {
-                    const fromParentPath = this._parent(from), toParentPath = this._parent(to);
-                    this._parentInfo(ctx, from, (sourceErr, sourceParent) => {
-                        if (sourceErr) { ctx.fail(sourceErr); return; }
-                        const withTarget = targetParent => {
-                            const sourceKey = this._entryKey(sourceParent.listing, sourceParent.name);
-                            if (!sourceKey) { ctx.fail(this._error('ENOENT', from)); return; }
-                            if (fromParentPath === toParentPath && sourceParent.name === targetParent.name) { ctx.setResult(undefined); return; }
-                            ctx.get(sourceKey, (inodeErr, rawInode) => {
-                                if (inodeErr) { ctx.fail(inodeErr); return; }
-                                const sourceInode = NativeFileSystem._parseInode(rawInode);
-                                if (!sourceInode) { ctx.fail(this._error('ENOENT', from)); return; }
-                                const targetKey = this._entryKey(targetParent.listing, targetParent.name);
-                                const finishRename = () => {
-                                    delete sourceParent.listing[sourceParent.name];
-                                    this._setEntry(targetParent.listing, targetParent.name, sourceKey);
-                                    if (fromParentPath === toParentPath) this._writeParent(ctx, sourceParent);
-                                    else { this._writeParent(ctx, sourceParent); this._writeParent(ctx, targetParent); }
-                                    ctx.setResult(undefined);
-                                };
-                                if (!targetKey) { finishRename(); return; }
-                                ctx.get(targetKey, (targetErr, rawTarget) => {
-                                    if (targetErr) { ctx.fail(targetErr); return; }
-                                    const targetInode = NativeFileSystem._parseInode(rawTarget);
-                                    if (!targetInode) { ctx.fail(this._error('ENOENT', to)); return; }
-                                    const sourceIsDir = (sourceInode.mode & 0xF000) === 0x4000;
-                                    const targetIsDir = (targetInode.mode & 0xF000) === 0x4000;
-                                    if (sourceIsDir !== targetIsDir) { ctx.fail(this._error(sourceIsDir ? 'ENOTDIR' : 'EISDIR', to)); return; }
-                                    const replace = () => {
-                                        ctx.del(targetKey); ctx.del(targetInode.id);
-                                        if (fromParentPath === toParentPath) delete sourceParent.listing[sourceParent.name];
-                                        finishRename();
-                                    };
-                                    if (targetIsDir) {
-                                        this._listing(ctx, targetInode, to, (targetListErr, targetListing) => {
-                                            if (targetListErr) { ctx.fail(targetListErr); return; }
-                                            if (Object.keys(targetListing).length) { ctx.fail(this._error('ENOTEMPTY', to)); return; }
-                                            replace();
-                                        });
-                                    } else replace();
-                                });
-                            });
-                        };
-                        if (fromParentPath === toParentPath) {
-                            withTarget(Object.assign({}, sourceParent, { name: to.slice(to.lastIndexOf('/') + 1) }));
-                        } else this._parentInfo(ctx, to, (targetErr, targetParent) => targetErr ? ctx.fail(targetErr) : withTarget(targetParent));
-                    });
-                }, callback);
+                NativeFileSystem._done(this._tx('readwrite', t => this._opRename(t, from, to)), callback, () => undefined);
             }
             utimes(path, atime, mtime, callback) {
                 const route = this._route(path);
-                if (route.backend) return this._mountedCall('utimes', route, [atime, mtime, callback]);
-                this._run('readwrite', ctx => this._lookup(ctx, route.path, (err, found) => {
-                    if (err) { ctx.fail(err); return; }
-                    const at = atime instanceof Date ? atime.getTime() : Number(atime);
-                    const mt = mtime instanceof Date ? mtime.getTime() : Number(mtime);
-                    found.inode.atime = Number.isFinite(at) && at > 0 ? at : Date.now();
-                    found.inode.mtime = Number.isFinite(mt) && mt > 0 ? mt : Date.now();
-                    ctx.put(NativeFileSystem._serializeInode(found.inode), found.key);
-                    ctx.setResult(undefined);
-                }), callback);
+                if (route.backend) return this._mountedCall('utimes', route, [atime, mtime, callback], { type: 'utimes', path: this._normalize(path) });
+                NativeFileSystem._done(this._tx('readwrite', t => this._opUtimes(t, route.path, atime, mtime)), callback, () => undefined);
             }
             exists(path, callback) {
                 const route = this._route(path);
                 if (route.backend) { route.backend.stat(route.path, err => callback(!err)); return; }
-                this._run('readonly', ctx => this._lookup(ctx, route.path, (err, found) => {
-                    if (err) { ctx.setResult(false); return; }
-                    ctx.setResult(true);
-                }), (err, value) => callback(!err && !!value));
+                this._tx('readonly', async t => { await t.nodeAt(route.path); return true; })
+                    .then(() => callback(true), () => callback(false));
             }
         }
 
@@ -3688,6 +4163,9 @@
                 SYSTEM.mountedFolders = {}; // { mountPath: { handle, name, id } }
                 
                 // === 修改时间缓存系统（修复 IndexedDB 等后端不支持 utimes 导致解压后日期丢失）===
+                // 显示规则保持不变：路径在日期记录里有值时，stat 总是返回记录里的日期
+                // （所以改完文件保存后，资源管理器里的修改日期不变——这是现有的预期行为）。
+                // 数据仍存放在 localStorage 的 JISHENG_OS_MTIME_CACHE，格式不变，旧版本可直接读取。
                 SYSTEM.mtimeCache = {};
                 try {
                     const savedMtime = localStorage.getItem('JISHENG_OS_MTIME_CACHE');
@@ -3700,10 +4178,26 @@
                     if (p.length > 1 && p.endsWith('/')) p = p.slice(0, -1);
                     return p;
                 };
+                // 绝大多数键本来就是规范的：先做便宜的检查，只有需要时才跑正则。
+                const _normKey = function(k) {
+                    return (k.indexOf('//') !== -1 || (k.length > 1 && k.charCodeAt(k.length - 1) === 47)) ? _normMtimePath(k) : k;
+                };
                 
+                // 性能：以前每改一条日期就把整个记录 JSON.stringify 一遍写进 localStorage
+                // （解压/上传 1000 个文件 = 1000 次全量写入，约 2.5 秒）。现在改为最多每 0.4 秒写一次，
+                // 页面隐藏/关闭时立即写入。SYSTEM.saveMtimeCache() 本身仍然是立即写入。
+                let _mtimeSaveTimer = 0;
                 SYSTEM.saveMtimeCache = function() {
+                    if (_mtimeSaveTimer) { clearTimeout(_mtimeSaveTimer); _mtimeSaveTimer = 0; }
                     try { localStorage.setItem('JISHENG_OS_MTIME_CACHE', JSON.stringify(SYSTEM.mtimeCache)); } catch(e) {}
                 };
+                const _scheduleMtimeSave = function() {
+                    if (!_mtimeSaveTimer) _mtimeSaveTimer = setTimeout(() => { _mtimeSaveTimer = 0; SYSTEM.saveMtimeCache(); }, 400);
+                };
+                SYSTEM.flushMtimeCache = function() { if (_mtimeSaveTimer) SYSTEM.saveMtimeCache(); };
+                window.addEventListener('pagehide', SYSTEM.flushMtimeCache);
+                window.addEventListener('beforeunload', SYSTEM.flushMtimeCache);
+                document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') SYSTEM.flushMtimeCache(); });
                 
                 SYSTEM.setMtimeCache = function(path, mtime) {
                     if (!mtime || isLocalMountedPath(path)) return;
@@ -3711,8 +4205,14 @@
                     if (!isNaN(ms) && ms > 0) {
                         // 统一用规范化路径作键（去掉重复/结尾斜杠），保证 rename 迁移时能匹配
                         SYSTEM.mtimeCache[_normMtimePath(path)] = ms;
-                        SYSTEM.saveMtimeCache();
+                        _scheduleMtimeSave();
                     }
+                };
+                // 显示用的修改时间：与下面包装后的 stat 完全相同的规则（供 JISHENG FS 的递归复制使用）
+                SYSTEM.displayMtime = function(path, backendMs) {
+                    let cachedMs = SYSTEM.mtimeCache[path];
+                    if (!cachedMs) cachedMs = SYSTEM.mtimeCache[_normMtimePath(path)];
+                    return (cachedMs && !isLocalMountedPath(path)) ? cachedMs : backendMs;
                 };
                 
                 // 包装 fs.utimes：即使后端（如 IndexedDB）返回 ENOTSUP，也把目标时间写入缓存
@@ -3722,19 +4222,10 @@
                     return originalUtimes(path, atime, mtime, callback);
                 };
 
-                // 包装写入类操作：文件系统一旦变化就清空"文件夹大小"缓存，
-                // 保证列表里的文件夹大小在复制/删除/保存后立即刷新（而不是等缓存过期）
-                ['writeFile', 'writeFileSync', 'appendFile', 'appendFileSync',
-                 'unlink', 'unlinkSync', 'rmdir', 'rmdirSync',
-                 'mkdir', 'mkdirSync', 'rename', 'renameSync',
-                 'truncate', 'truncateSync'].forEach(fnName => {
-                    if (typeof SYSTEM.fs[fnName] === 'function') {
-                        const orig = SYSTEM.fs[fnName].bind(SYSTEM.fs);
-                        SYSTEM.fs[fnName] = function() {
-                            try { if (typeof invalidateAllDirSizes === 'function') invalidateAllDirSizes(); } catch (e) {}
-                            return orig.apply(null, arguments);
-                        };
-                    }
+                // 文件夹大小缓存：以前每次写入前清空全部缓存；现在由 JISHENG FS 在提交后
+                // 只清掉受影响路径的祖先目录（以及被删除/移走的子树），其他窗口的文件夹大小不必重算。
+                fs.onCommit(event => {
+                    try { if (typeof invalidateDirSizesFor === 'function') invalidateDirSizesFor(event); } catch (e) {}
                 });
                 
                 // 包装 fs.stat：如果路径在缓存中有修改时间，则优先返回缓存值
@@ -3766,7 +4257,7 @@
                     const prefix = base === '/' ? '/' : base + '/';
                     let changed = false;
                     Object.keys(SYSTEM.mtimeCache).forEach(k => {
-                        const nk = _normMtimePath(k);
+                        const nk = _normKey(k);
                         if (nk === base || nk.indexOf(prefix) === 0) {
                             delete SYSTEM.mtimeCache[k];
                             changed = true;
@@ -3775,7 +4266,7 @@
                     return changed;
                 };
                 SYSTEM.dropMtimeCache = function(p) {
-                    if (_dropMtimeSubtree(p)) SYSTEM.saveMtimeCache();
+                    if (_dropMtimeSubtree(p)) _scheduleMtimeSave();
                 };
                 SYSTEM.moveMtimeCache = function(oldPath, newPath, srcMtimeMs) {
                     if (isLocalMountedPath(oldPath) || isLocalMountedPath(newPath)) return;
@@ -3786,7 +4277,7 @@
                     // 1) 先收集旧子树条目
                     const moved = [];
                     Object.keys(SYSTEM.mtimeCache).forEach(k => {
-                        const nk = _normMtimePath(k);
+                        const nk = _normKey(k);
                         if (nk === o || nk.indexOf(oPrefix) === 0) {
                             moved.push([n + nk.substring(o.length), SYSTEM.mtimeCache[k]]);
                             delete SYSTEM.mtimeCache[k];
@@ -3800,10 +4291,10 @@
                     if (srcMtimeMs && !isNaN(srcMtimeMs) && srcMtimeMs > 0) {
                         SYSTEM.mtimeCache[n] = srcMtimeMs;
                     }
-                    SYSTEM.saveMtimeCache();
+                    _scheduleMtimeSave();
                 };
 
-                const _prevRename = SYSTEM.fs.rename;
+                const _prevRename = SYSTEM.fs.rename.bind(SYSTEM.fs);
                 SYSTEM.fs.rename = function(oldPath, newPath, callback) {
                     const cb = (typeof callback === 'function') ? callback : function() {};
                     // 先取源的修改时间（经由上面包装过的 stat，已包含缓存值）
@@ -3824,8 +4315,7 @@
 
                 // 删除文件/空目录成功后清理缓存，避免以后同名新建的项目"继承"旧日期
                 ['unlink', 'rmdir'].forEach(fnName => {
-                    const prev = SYSTEM.fs[fnName];
-                    if (typeof prev !== 'function') return;
+                    const prev = SYSTEM.fs[fnName].bind(SYSTEM.fs);
                     SYSTEM.fs[fnName] = function(p, callback) {
                         const cb = (typeof callback === 'function') ? callback : function() {};
                         return prev(p, function(err) {
@@ -3835,6 +4325,9 @@
                     };
                 });
                 // ================================================================
+
+                SYSTEM.jfs = createJishengFS(fs);
+                initFsAutoRefresh();
                 
                 // 创建挂载点目录
                 SYSTEM.fs.mkdir('/mnt', () => {});
@@ -3849,6 +4342,272 @@
             });
         }
 
+        // ======================== SYSTEM.jfs：JISHENG FS 高层接口 ========================
+        // Promise 接口 + 递归操作 + 批量写入 + 变更监听。
+        // 单项操作全部经过 SYSTEM.fs（含内核包装层），递归/批量操作在引擎内部完成后
+        // 再按逐项调用时完全相同的规则更新日期记录，因此显示结果与逐个调用 SYSTEM.fs 一致。
+        function createJishengFS(engine) {
+            const call = (name, ...args) => new Promise((resolve, reject) => {
+                SYSTEM.fs[name](...args, (err, value) => err ? reject(err) : resolve(value));
+            });
+            const isDirStats = st => !!st && (typeof st.isDirectory === 'function' ? st.isDirectory() : !!st.isDirectory);
+            const native = path => engine._isNativeTree(path);
+            const onRoot = path => !engine._route(path).backend;
+            const toMs = value => {
+                const ms = value instanceof Date ? value.getTime() : Number(value);
+                return Number.isFinite(ms) && ms > 0 ? ms : 0;
+            };
+            const displayMtime = (path, inodeMs) => SYSTEM.displayMtime ? SYSTEM.displayMtime(path, inodeMs) : inodeMs;
+
+            // 旧 ensureDir 的逐级算法（挂载点路径使用）
+            async function mkdirpGeneric(path) {
+                const parts = String(path).split('/').filter(p => p);
+                let current = '';
+                for (const part of parts) {
+                    current += '/' + part;
+                    const dir = current;
+                    await new Promise((resolve, reject) => {
+                        SYSTEM.fs.mkdir(dir, (err) => {
+                            if (!err) { resolve(); return; }
+                            SYSTEM.fs.stat(dir, (statErr, stats) => {
+                                if (!statErr && isDirStats(stats)) resolve();
+                                else reject(err);
+                            });
+                        });
+                    });
+                }
+            }
+            function mkdirp(path) {
+                return onRoot(path) ? engine._mkdirp(path).then(() => undefined) : mkdirpGeneric(path);
+            }
+
+            async function remove(path, options = {}) {
+                if (options.recursive && native(path)) {
+                    await engine._rmTree(path, false);
+                    try { SYSTEM.dropMtimeCache(path); } catch (_) {}
+                    return;
+                }
+                const st = await call('stat', path);
+                if (!isDirStats(st)) return call('unlink', path);
+                if (!options.recursive) return call('rmdir', path);
+                await new Promise((resolve, reject) => deleteFolderRecursive(path, err => err ? reject(err) : resolve()));
+            }
+
+            async function copyTreeNative(src, dst, onProgress) {
+                const result = await engine._copyTree(src, dst, displayMtime, onProgress);
+                result.pins.forEach(([path, ms]) => SYSTEM.setMtimeCache(path, ms));
+                return result;
+            }
+
+            async function copy(src, dst) {
+                const from = engine._normalize(src), to = engine._normalize(dst);
+                // 不能复制到自身或自己的子文件夹里
+                if (to === from || to.startsWith(from === '/' ? '/' : from + '/')) throw engine._error('EINVAL', dst);
+                const st = await call('stat', src);
+                if (isDirStats(st)) {
+                    await new Promise((resolve, reject) => copyFolderRecursive(src, dst, err => err ? reject(err) : resolve()));
+                } else {
+                    await new Promise((resolve, reject) => copyFilePreservingMtime(src, dst, st.mtime || null, err => err ? reject(err) : resolve()));
+                }
+            }
+
+            // 移动：同一存储内直接 rename；跨存储（如根目录 ↔ /opfs）自动改为 复制（保留日期）+ 删除源。
+            async function move(src, dst) {
+                try { await call('rename', src, dst); return; }
+                catch (err) { if (!err || err.code !== 'EXDEV') throw err; }
+                const st = await call('stat', src);
+                if (isDirStats(st)) {
+                    await new Promise((resolve, reject) => copyFolderRecursive(src, dst, err => err ? reject(err) : resolve()));
+                    await new Promise((resolve, reject) => deleteFolderRecursive(src, err => err ? reject(err) : resolve()));
+                    return;
+                }
+                const data = await call('readFile', src);
+                await call('writeFile', dst, data);
+                if (st.mtime) { try { await call('utimes', dst, st.mtime, st.mtime); } catch (_) {} }
+                await call('unlink', src);
+            }
+
+            async function du(path) {
+                if (native(path)) return engine._du(path);
+                return new Promise(resolve => computeDirSize(path, resolve));
+            }
+
+            // 批量写入。ops: [{ op: 'mkdir'|'mkdirp'|'writeFile'|'utimes'|'unlink'|'rmdir'|'remove', path, data?, encoding?, atime?, mtime?, group?, stop? }]
+            // writeFile 带 mtime 时写入后立即设置并记录修改日期（与 writeFile + utimes 两步相同）。
+            // 规则见 NativeFileSystem._batch。返回与 ops 一一对应的 [{ ok, error } | { skipped: true }]。
+            // 全部位于根卷时在少量事务里完成；涉及挂载点时按顺序逐项调用 SYSTEM.fs。
+            async function batch(ops, options = {}) {
+                const list = Array.from(ops || []);
+                if (!list.length) return [];
+                list.forEach(op => { if (op.op === 'rename') throw engine._error('ENOTSUP', 'batch rename'); });
+                const allNative = list.every(op => op.op === 'remove' ? native(op.path) : onRoot(op.path));
+                return allNative ? nativeBatch(list, options) : genericBatch(list, options);
+            }
+            function afterOps(ops, results) {
+                ops.forEach((op, i) => {
+                    const r = results[i];
+                    if (!r || r.skipped) return;
+                    // 与包装层相同：utimes 无论成败都记录日期；删除成功后清掉日期记录。
+                    if (op.op === 'utimes') SYSTEM.setMtimeCache(op.path, op.mtime);
+                    else if (op.op === 'writeFile' && op.mtime != null && r.ok) SYSTEM.setMtimeCache(op.path, op.mtime);
+                    else if (r.ok && (op.op === 'unlink' || op.op === 'rmdir' || op.op === 'remove')) { try { SYSTEM.dropMtimeCache(op.path); } catch (_) {} }
+                });
+            }
+            async function nativeBatch(list, options) {
+                const MAX_BYTES = 48 * 1024 * 1024, MAX_OPS = 2000;
+                const chunks = [];
+                if (options.atomic) chunks.push(list);
+                else {
+                    let chunk = [], bytes = 0;
+                    list.forEach((op, i) => {
+                        const size = op.op === 'writeFile' && op.data ? (op.data.byteLength != null ? op.data.byteLength : (op.data.length || 0)) : 0;
+                        const sameGroup = op.group != null && i > 0 && list[i - 1].group === op.group;
+                        if (chunk.length && !sameGroup && (chunk.length >= MAX_OPS || bytes + size > MAX_BYTES)) { chunks.push(chunk); chunk = []; bytes = 0; }
+                        chunk.push(op); bytes += size;
+                    });
+                    if (chunk.length) chunks.push(chunk);
+                }
+                const results = [];
+                let stopped = null;
+                for (const chunk of chunks) {
+                    if (stopped) { chunk.forEach(() => results.push(stopped.error ? { ok: false, error: stopped.error } : { skipped: true })); continue; }
+                    let chunkResults;
+                    try { chunkResults = await engine._batch(chunk, options); }
+                    catch (error) {
+                        if (options.atomic) throw error;
+                        // 事务级失败（例如存储空间不足）：这一段全部失败，后面的不再尝试。
+                        chunkResults = chunk.map(() => ({ ok: false, error }));
+                        stopped = { error };
+                    }
+                    afterOps(chunk, chunkResults);
+                    chunkResults.forEach(r => results.push(r));
+                    if (!stopped && chunk.some((op, i) => op.stop && chunkResults[i] && chunkResults[i].ok === false)) stopped = { error: null };
+                    if (options.onProgress) { try { options.onProgress(results.length, list.length); } catch (_) {} }
+                }
+                return results;
+            }
+            async function genericBatch(list, options) {
+                const results = [];
+                const skipped = new Set();
+                let stopped = false;
+                for (let i = 0; i < list.length; i++) {
+                    const op = list[i];
+                    if (stopped || (op.group != null && skipped.has(op.group))) { results.push({ skipped: true }); continue; }
+                    try {
+                        switch (op.op) {
+                            case 'mkdir': await call('mkdir', op.path); break;
+                            case 'mkdirp': await mkdirp(op.path); break;
+                            case 'writeFile':
+                                await (op.encoding ? call('writeFile', op.path, op.data, op.encoding) : call('writeFile', op.path, op.data));
+                                if (op.mtime != null) { try { await call('utimes', op.path, op.atime != null ? op.atime : op.mtime, op.mtime); } catch (_) {} }
+                                break;
+                            case 'utimes': await call('utimes', op.path, op.atime != null ? op.atime : op.mtime, op.mtime); break;
+                            case 'unlink': await call('unlink', op.path); break;
+                            case 'rmdir': await call('rmdir', op.path); break;
+                            case 'remove': await remove(op.path, { recursive: true }); break;
+                            default: throw engine._error('ENOTSUP', op.op);
+                        }
+                        results.push({ ok: true });
+                    } catch (error) {
+                        if (options.atomic) throw error;
+                        results.push({ ok: false, error });
+                        if (op.group != null) skipped.add(op.group);
+                        if (op.stop) stopped = true;
+                    }
+                    if (options.onProgress && (i % 20 === 19 || i === list.length - 1)) { try { options.onProgress(i + 1, list.length); } catch (_) {} }
+                }
+                return results;
+            }
+
+            // 监听某个文件夹的变化（本页和其他标签页的写入都会通知）。返回取消监听的函数。
+            function watch(path, listener, options = {}) {
+                const target = engine._normalize(path);
+                const prefix = target === '/' ? '/' : target + '/';
+                return engine.watch(event => {
+                    let hit = event.dirs.has(target);
+                    if (!hit && options.recursive) {
+                        hit = event.changes.some(c => [c.path, c.oldPath].some(p => p && (p === target || p.startsWith(prefix))))
+                            || Array.from(event.dirs).some(d => d === target || d.startsWith(prefix));
+                    }
+                    if (hit) listener(event);
+                });
+            }
+
+            async function usage() {
+                const out = { used: null, quota: null, persisted: null };
+                try {
+                    if (navigator.storage && navigator.storage.estimate) {
+                        const est = await navigator.storage.estimate();
+                        out.used = est.usage; out.quota = est.quota;
+                    }
+                    if (navigator.storage && navigator.storage.persisted) out.persisted = await navigator.storage.persisted();
+                } catch (_) {}
+                return out;
+            }
+
+            return {
+                name: 'JISHENG FS', version: 1, engine,
+                stat: path => call('stat', path),
+                readdir: path => call('readdir', path),
+                readFile: (path, encoding) => encoding ? call('readFile', path, encoding) : call('readFile', path),
+                writeFile: async (path, data, options = {}) => {
+                    await (options.encoding ? call('writeFile', path, data, options.encoding) : call('writeFile', path, data));
+                    if (options.mtime) await call('utimes', path, options.atime || options.mtime, options.mtime);
+                },
+                mkdir: path => call('mkdir', path),
+                mkdirp,
+                unlink: path => call('unlink', path),
+                rmdir: path => call('rmdir', path),
+                rename: (from, to) => call('rename', from, to),
+                utimes: (path, atime, mtime) => call('utimes', path, atime, mtime),
+                exists: path => new Promise(resolve => SYSTEM.fs.exists(path, value => resolve(!!value))),
+                remove, copy, move, du, batch, watch, usage,
+                onCommit: hook => engine.onCommit(hook),
+                isNative: native,
+                _copyTreeNative: copyTreeNative,
+                _toMs: toMs
+            };
+        }
+
+        // 文件变化后自动刷新桌面和已打开的文件夹窗口（包括其他标签页里的修改）。
+        // 已经被代码手动刷新过的（刷新时间晚于变化时间）不会重复刷新；拖拽/按住鼠标时推迟。
+        function initFsAutoRefresh() {
+            if (!SYSTEM.fs || typeof SYSTEM.fs.watch !== 'function') return;
+            let pointerDown = false;
+            document.addEventListener('pointerdown', () => { pointerDown = true; }, true);
+            const release = () => { pointerDown = false; };
+            document.addEventListener('pointerup', release, true);
+            document.addEventListener('pointercancel', release, true);
+            window.addEventListener('blur', release);
+            let desktopDue = 0, timer = 0;
+            const windowsDue = new Map();
+            const norm = p => SYSTEM.fs._normalize(p);
+            const busy = () => pointerDown || !!document.querySelector('.sysdlg-overlay, .sys-dialog-overlay');
+            const run = () => {
+                timer = 0;
+                if (busy()) { timer = setTimeout(run, 400); return; }
+                if (desktopDue && desktopDue > (SYSTEM._desktopRenderedAt || 0)) { try { refreshDesktop(); } catch (_) {} }
+                desktopDue = 0;
+                windowsDue.forEach((time, windowId) => {
+                    const state = SYSTEM.folderWindowStates && SYSTEM.folderWindowStates[windowId];
+                    if (!state || !document.getElementById('folder-filelist-' + windowId)) return;
+                    if (time > (state._renderedAt || 0)) { state.fileStats = {}; try { renderFolderContent(windowId); } catch (_) {} }
+                });
+                windowsDue.clear();
+            };
+            SYSTEM.fs.watch(event => {
+                if (SYSTEM.desktopPath && event.dirs.has(norm(SYSTEM.desktopPath))) desktopDue = Math.max(desktopDue, event.time);
+                const states = SYSTEM.folderWindowStates || {};
+                Object.keys(states).forEach(windowId => {
+                    const state = states[windowId];
+                    if (state && state.currentPath && event.dirs.has(norm(state.currentPath))) {
+                        windowsDue.set(windowId, Math.max(windowsDue.get(windowId) || 0, event.time));
+                    }
+                });
+                if ((desktopDue || windowsDue.size) && !timer) timer = setTimeout(run, 250);
+            });
+        }
+
         // === FileSystemAccessFS: 将 File System Access API 包装为系统文件接口 ===
         class FSAStats {
             constructor(isFile, size, mtime) {
@@ -3860,6 +4619,9 @@
                 // Directory modification time is unavailable from File System Access API.
                 // Keep it empty instead of presenting a fabricated current timestamp.
                 this.mtime = (mtime && Number(mtime) > 0) ? new Date(Number(mtime)) : null;
+                this.mtimeMs = this.mtime ? this.mtime.getTime() : 0;
+                this.atime = this.mtime;
+                this.ctime = this.mtime;
                 this.blocks = 1;
                 this.mode = isFile ? 0o666 : (0o777 | 0o40000);
                 // 目录状态通过标准 isDirectory() 方法提供。
@@ -3901,17 +4663,16 @@
                 }
             }
             read(buffer, offset, length, position, cb) {
+                const pos = typeof position === 'number' ? position : this._position;
                 this._handle.getFile().then(f => {
-                    return f.arrayBuffer();
+                    const end = Math.min(pos + length, f.size);
+                    if (end <= pos) return null;
+                    return f.slice(pos, end).arrayBuffer();
                 }).then(ab => {
-                    const data = new Uint8Array(ab);
-                    const pos = typeof position === 'number' ? position : this._position;
-                    const end = Math.min(pos + length, data.length);
-                    const len = end - pos;
-                    if (len <= 0) { cb(null, 0); return; }
-                    buffer.set(data.subarray(pos, end), offset);
-                    this._position = end;
-                    cb(null, len);
+                    if (!ab || !ab.byteLength) { cb(null, 0); return; }
+                    buffer.set(new Uint8Array(ab), offset);
+                    this._position = pos + ab.byteLength;
+                    cb(null, ab.byteLength);
                 }).catch(cb);
             }
             write(buffer, offset, length, position, cb) {
@@ -3973,6 +4734,35 @@
                 }
             }
             getName() { return 'FileSystemAccess'; }
+            static _err(code, path) {
+                const messages = { ENOENT: 'No such file or directory', EEXIST: 'File already exists', ENOTDIR: 'Not a directory', EISDIR: 'Is a directory', ENOTEMPTY: 'Directory not empty', EINVAL: 'Invalid argument', ENOTSUP: 'Operation not supported' };
+                const error = new Error((messages[code] || 'Filesystem error') + ': ' + path);
+                error.code = code;
+                error.path = path;
+                return error;
+            }
+            // 取子项句柄（文件或文件夹），不存在时返回 null。
+            static async _child(parent, name) {
+                try { return await parent.getFileHandle(name); }
+                catch (error) {
+                    if (error && error.name === 'NotFoundError') return null;
+                    if (!error || error.name !== 'TypeMismatchError') throw error;
+                }
+                return parent.getDirectoryHandle(name);
+            }
+            // 复制一个文件或整个文件夹到 dstParent/name（文件直接以 Blob 写入，不整个读进内存）。
+            static async _copyEntry(src, dstParent, name) {
+                if (src.kind === 'file') {
+                    const file = await src.getFile();
+                    const fh = await dstParent.getFileHandle(name, { create: true });
+                    const writable = await fh.createWritable();
+                    await writable.write(file);
+                    await writable.close();
+                    return;
+                }
+                const dir = await dstParent.getDirectoryHandle(name, { create: true });
+                for await (const [childName, child] of src.entries()) await FileSystemAccessFS._copyEntry(child, dir, childName);
+            }
             static Create(opts, cb) {
                 if (opts.handle instanceof FileSystemDirectoryHandle) {
                     cb(null, new FileSystemAccessFS(opts.handle));
@@ -4071,7 +4861,14 @@
                 for (const p of parentParts) {
                     chain = chain.then(h => h.getDirectoryHandle(p));
                 }
-                chain.then(parentHandle => {
+                chain.then(async parentHandle => {
+                    let exists = false;
+                    try { await parentHandle.getDirectoryHandle(name); exists = true; }
+                    catch (error) {
+                        if (error && error.name === 'TypeMismatchError') exists = true;
+                        else if (!error || error.name !== 'NotFoundError') throw error;
+                    }
+                    if (exists) throw FileSystemAccessFS._err('EEXIST', path);
                     return parentHandle.getDirectoryHandle(name, { create: true });
                 }).then(() => { this._invalidate(path); cb(null); }).catch(cb);
             }
@@ -4085,8 +4882,16 @@
                 for (const p of parentParts) {
                     chain = chain.then(h => h.getDirectoryHandle(p));
                 }
-                chain.then(parentHandle => {
-                    return parentHandle.removeEntry(name, { recursive: true });
+                chain.then(async parentHandle => {
+                    // 与根卷一致：只删除空文件夹。以前用 recursive:true，会把非空文件夹连内容一起删掉。
+                    let dirHandle;
+                    try { dirHandle = await parentHandle.getDirectoryHandle(name); }
+                    catch (error) {
+                        if (error && error.name === 'TypeMismatchError') throw FileSystemAccessFS._err('ENOTDIR', path);
+                        throw error;
+                    }
+                    for await (const _ of dirHandle.keys()) throw FileSystemAccessFS._err('ENOTEMPTY', path);
+                    return parentHandle.removeEntry(name);
                 }).then(() => { this._invalidate(path); cb(null); }).catch(cb);
             }
 
@@ -4099,9 +4904,19 @@
                 for (const p of parentParts) {
                     chain = chain.then(h => h.getDirectoryHandle(p));
                 }
-                chain.then(parentHandle => {
+                chain.then(async parentHandle => {
+                    try { await parentHandle.getFileHandle(name); }
+                    catch (error) {
+                        if (error && error.name === 'TypeMismatchError') throw FileSystemAccessFS._err('EISDIR', path);
+                        throw error;
+                    }
                     return parentHandle.removeEntry(name);
                 }).then(() => { this._invalidate(path); cb(null); }).catch(cb);
+            }
+
+            // 浏览器的文件句柄不能修改日期；日期由系统的日期记录（mtimeCache）保存，这里只确认路径存在。
+            utimes(path, atime, mtime, cb) {
+                this.stat(path, false, err => cb(err || null));
             }
 
             // 与文件后端保持一致的 readFile 回调签名。
@@ -4125,7 +4940,7 @@
                         return file.text().then(text => cb(null, text));
                     } else {
                         return file.arrayBuffer().then(ab => {
-                            cb(null, Buffer.from(ab));
+                            cb(null, new NativeBuffer(ab));
                         });
                     }
                 }).catch(cb);
@@ -4162,14 +4977,36 @@
             }
 
             rename(oldPath, newPath, cb) {
-                // 跨文件系统不支持直接 rename，使用读-写方式
-                this.readFile(oldPath, null, null, (err, data) => {
-                    if (err) { cb(err); return; }
-                    this.writeFile(newPath, data, null, null, null, (err2) => {
-                        if (err2) { cb(err2); return; }
-                        this.unlink(oldPath, cb);
-                    });
-                });
+                // 语义与根卷一致：可重命名文件和文件夹；目标是文件则覆盖，是空文件夹则替换，非空报 ENOTEMPTY。
+                // 以前用 读→写→删 实现，文件夹根本无法重命名。
+                const from = this._resolve(oldPath), to = this._resolve(newPath);
+                (async () => {
+                    if (!from.length || !to.length) throw FileSystemAccessFS._err('EINVAL', oldPath);
+                    const fromKey = '/' + from.join('/'), toKey = '/' + to.join('/');
+                    if (fromKey === toKey) return;
+                    if (toKey.startsWith(fromKey + '/')) throw FileSystemAccessFS._err('EINVAL', newPath);
+                    const srcParent = await this._getHandle('/' + from.slice(0, -1).join('/'));
+                    const dstParent = await this._getHandle('/' + to.slice(0, -1).join('/'));
+                    const srcName = from[from.length - 1], dstName = to[to.length - 1];
+                    const src = await FileSystemAccessFS._child(srcParent, srcName);
+                    if (!src) throw FileSystemAccessFS._err('ENOENT', oldPath);
+                    const existing = await FileSystemAccessFS._child(dstParent, dstName);
+                    let sameEntry = false;
+                    if (existing) {
+                        sameEntry = typeof existing.isSameEntry === 'function' && await existing.isSameEntry(src);
+                        if (!sameEntry) {
+                            if (existing.kind !== src.kind) throw FileSystemAccessFS._err(src.kind === 'directory' ? 'ENOTDIR' : 'EISDIR', newPath);
+                            if (existing.kind === 'directory') { for await (const _ of existing.keys()) throw FileSystemAccessFS._err('ENOTEMPTY', newPath); }
+                            await dstParent.removeEntry(dstName);
+                        }
+                    }
+                    if (typeof src.move === 'function') {
+                        try { await src.move(dstParent, dstName); return; }
+                        catch (error) { if (sameEntry) throw error; /* 部分浏览器或本地文件夹不支持移动，改用复制 */ }
+                    } else if (sameEntry) throw FileSystemAccessFS._err('ENOTSUP', newPath);
+                    await FileSystemAccessFS._copyEntry(src, dstParent, dstName);
+                    await srcParent.removeEntry(srcName, { recursive: src.kind === 'directory' });
+                })().then(() => { this._invalidate(oldPath); this._invalidate(newPath); cb(null); }, cb);
             }
 
             open(path, flags, mode, cb) {
@@ -4298,54 +5135,71 @@
         function handleUploadFiles(fileList) {
             if (!fileList || fileList.length === 0) return;
             
+            const files = Array.from(fileList);
+            const total = files.length;
             let count = 0;
             let successCount = 0;
             let errorCount = 0;
-            const total = fileList.length;
+            // 上传目标在开始时确定，上传过程中再次打开上传对话框也不会写错位置。
+            const targetPath = SYSTEM.uploadTargetPath;
+            const targetWindowId = SYSTEM.uploadTargetWindowId;
+            const refresh = () => {
+                if (targetWindowId) folderRefresh(targetWindowId);
+                else refreshDesktop();
+            };
 
             // 修复(#19)：以"完成数"统计，目录创建/写入失败都计为完成但不计成功，
             // 并如实通知用户，避免目录创建失败后仍写文件、却提示"上传完成"。
             const onItemDone = (ok) => {
                 count++;
                 if(ok) successCount++; else errorCount++;
-                if(count === total || count % 5 === 0) {
-                    if(SYSTEM.uploadTargetWindowId) folderRefresh(SYSTEM.uploadTargetWindowId);
-                    else refreshDesktop();
-                }
-                if(count === total) {
-                    if(errorCount > 0) Notify.error('部分失败', `成功导入 ${successCount} 个，失败 ${errorCount} 个`);
-                    else Notify.success('上传完成', `成功导入 ${successCount} 个项目`);
-                }
             };
 
-            Array.from(fileList).forEach(file => {
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    const buffer = SYSTEM.Buffer.from(e.target.result);
-                    // 如果是上传文件夹，file.webkitRelativePath 会包含 "Folder/Sub/file.txt"
-                    // 如果是上传文件，通常只是 "file.txt"
-                    const relPath = file.webkitRelativePath || file.name;
-                    const fullPath = SYSTEM.uploadTargetPath + '/' + relPath;
-                    
-                    // 确保父目录存在；失败则不再尝试写入文件。
-                    ensureDir(fullPath.substring(0, fullPath.lastIndexOf('/'))).then(() => {
-                        SYSTEM.fs.writeFile(fullPath, buffer, (wErr) => {
-                            if(wErr) console.error('上传写入失败:', relPath, wErr);
-                            // 保留原始修改时间：上传后用文件本机的 lastModified 回写，
-                            // 否则虚拟 FS 会把 mtime 置为当前时间，导致"修改日期全没了"。
-                            if(!wErr && file.lastModified && SYSTEM.fs.utimes) {
-                                try { SYSTEM.fs.utimes(fullPath, file.lastModified, file.lastModified, () => {}); } catch(e) {}
-                            }
-                            onItemDone(!wErr);
-                        });
-                    }).catch((dirErr) => {
-                        console.error('上传目录创建失败:', relPath, dirErr);
-                        onItemDone(false);
+            // JISHENG FS：分段上传。每段最多约 32 MB / 200 个文件，只把当前这一段读进内存
+            // （以前会把所有文件同时读进内存），每段用一次批量写入完成：
+            // 建目录 → 写文件 → 回写文件原始修改时间（同一个文件里前一步失败，后面的步骤跳过）。
+            (async () => {
+                const MAX_BYTES = 32 * 1024 * 1024, MAX_FILES = 200;
+                let index = 0;
+                while (index < files.length) {
+                    const chunk = [];
+                    let bytes = 0;
+                    while (index < files.length && chunk.length < MAX_FILES) {
+                        const size = files[index].size || 0;
+                        if (chunk.length && bytes + size > MAX_BYTES) break;
+                        chunk.push(files[index]); bytes += size; index++;
+                    }
+                    const datas = await Promise.all(chunk.map(file => file.arrayBuffer().catch(() => null)));
+                    const ops = [], owners = [];
+                    chunk.forEach((file, i) => {
+                        // 如果是上传文件夹，file.webkitRelativePath 会包含 "Folder/Sub/file.txt"
+                        // 如果是上传文件，通常只是 "file.txt"
+                        const relPath = file.webkitRelativePath || file.name;
+                        if (!datas[i]) { console.error('读取上传文件失败:', file.name); onItemDone(false); return; }
+                        const fullPath = targetPath + '/' + relPath;
+                        const group = 'u' + i;
+                        owners.push({ relPath, first: ops.length });
+                        ops.push({ op: 'mkdirp', path: fullPath.substring(0, fullPath.lastIndexOf('/')), group });
+                        ops.push({ op: 'writeFile', path: fullPath, data: datas[i], group });
+                        // 保留原始修改时间：上传后用文件本机的 lastModified 回写，
+                        // 否则虚拟 FS 会把 mtime 置为当前时间，导致"修改日期全没了"。
+                        if (file.lastModified) ops.push({ op: 'utimes', path: fullPath, atime: file.lastModified, mtime: file.lastModified, group });
                     });
-                };
-                reader.onerror = () => { console.error('读取上传文件失败:', file.name); onItemDone(false); };
-                reader.readAsArrayBuffer(file);
-            });
+                    let results;
+                    try { results = ops.length ? await SYSTEM.jfs.batch(ops) : []; }
+                    catch (err) { results = ops.map(() => ({ ok: false, error: err })); }
+                    owners.forEach(({ relPath, first }) => {
+                        const dirResult = results[first], writeResult = results[first + 1];
+                        if (!dirResult || !dirResult.ok) { console.error('上传目录创建失败:', relPath, dirResult && dirResult.error); onItemDone(false); return; }
+                        if (!writeResult || !writeResult.ok) { console.error('上传写入失败:', relPath, writeResult && writeResult.error); onItemDone(false); return; }
+                        onItemDone(true);
+                    });
+                    if (count < total) refresh();
+                }
+                refresh();
+                if(errorCount > 0) Notify.error('部分失败', `成功导入 ${successCount} 个，失败 ${errorCount} 个`);
+                else Notify.success('上传完成', `成功导入 ${successCount} 个项目`);
+            })();
             
             // 清空 value 以便下次能选同一个文件
             document.getElementById('global-upload-file').value = '';
@@ -4445,6 +5299,7 @@
 
         // 2. 替换原有的 refreshDesktop (改为绝对定位布局)
         async function refreshDesktop() {
+            SYSTEM._desktopRenderedAt = Date.now();
             const container = document.getElementById('desktop-icons');
             container.innerHTML = '';
             
@@ -5733,13 +6588,13 @@
             
             function performPaste(srcPath, destPath, isCut, done) {
                 if (isCut) {
-                    SYSTEM.fs.rename(srcPath, destPath, (err) => {
-                        if (err) {
-                            console.error('剪切失败:', err);
-                            errorCount++;
-                        } else {
-                            processedCount++;
-                        }
+                    // JISHENG FS move：同一存储内 rename，跨存储（如桌面 → /opfs）自动 复制（保留日期）+ 删除源
+                    SYSTEM.jfs.move(srcPath, destPath).then(() => {
+                        processedCount++;
+                        done();
+                    }, (err) => {
+                        console.error('剪切失败:', err);
+                        errorCount++;
                         done();
                     });
                 } else {
@@ -5808,6 +6663,16 @@
         }
 
         function copyFilePreservingMtime(srcPath, destPath, sourceMtime, callback) {
+            // JISHENG FS：根卷内复制在一个事务里完成（读源 → 写目标 → 回写日期），不经过内存缓冲转换。
+            if (SYSTEM.fs && typeof SYSTEM.fs._copyFile === 'function' && !SYSTEM.fs._route(srcPath).backend && !SYSTEM.fs._route(destPath).backend) {
+                const ms = sourceMtime instanceof Date ? sourceMtime.getTime() : Number(sourceMtime);
+                const valid = Number.isFinite(ms) && ms > 0 ? ms : 0;
+                SYSTEM.fs._copyFile(srcPath, destPath, valid).then(() => {
+                    if (valid) { try { SYSTEM.setMtimeCache(destPath, valid); } catch (_) {} }
+                    callback(null);
+                }, err => callback(err));
+                return;
+            }
             SYSTEM.fs.readFile(srcPath, (readErr, data) => {
                 if (readErr) { callback(readErr); return; }
                 SYSTEM.fs.writeFile(destPath, data, writeErr => {
@@ -5820,6 +6685,11 @@
         // 递归复制文件夹：每个文件和每一层目录都在复制完成后回写源修改日期。
         // 这是 IndexedDB ↔ OPFS 专用迁移和普通跨目录复制共用的唯一实现，避免日期逻辑分叉。
         function copyFolderRecursive(srcPath, destPath, callback) {
+            // JISHENG FS：根卷 → 根卷 的整棵树复制在引擎里分段完成（每段一个事务），日期规则与下面的逐项实现相同。
+            if (SYSTEM.jfs && SYSTEM.fs._isNativeTree(srcPath) && SYSTEM.fs._isNativeTree(destPath)) {
+                SYSTEM.jfs._copyTreeNative(srcPath, destPath).then(result => callback(result.firstError || null), err => callback(err));
+                return;
+            }
             const isDir = stats => !!stats && (typeof stats.isDirectory === 'function' ? stats.isDirectory() : stats.isDirectory);
             SYSTEM.fs.stat(srcPath, (sourceStatErr, sourceStats) => {
                 if (sourceStatErr || !sourceStats) { callback(sourceStatErr || new Error('无法读取源文件夹')); return; }
@@ -6427,6 +7297,7 @@
             uiNewFolder:  '<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2v11z"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/>',
             uiUploadFolder: '<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2v11z"/><polyline points="16 15 12 11 8 15"/><line x1="12" y1="11" x2="12" y2="19"/>',
             uiNewFile:    '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>',
+            uiNewHtml:    '<path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z"/><path d="M14 2v5a1 1 0 0 0 1 1h5"/><path d="M10 12.5 8 15l2 2.5"/><path d="m14 12.5 2 2.5-2 2.5"/>',
             uiSearch:     '<circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>',
             uiFullscreen: '<path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/>',
             uiMinimize:   '<line x1="5" y1="12" x2="19" y2="12"/>',
@@ -6635,9 +7506,26 @@
             return null;
         }
 
-        // 文件系统发生写入时调用：清空全部文件夹大小缓存（见 fs 写入操作的包装）
+        // 每次失效都递增；计算开始后如果发生过失效，结果只返回给调用者、不写入缓存（避免缓存到旧值）。
+        let DIR_SIZE_EPOCH = 0;
         function invalidateAllDirSizes() {
+            DIR_SIZE_EPOCH++;
             for (const k in DIR_SIZE_CACHE) delete DIR_SIZE_CACHE[k];
+        }
+        // JISHENG FS 提交后调用：只清掉变化路径的祖先目录和被删除/移走的子树。
+        function invalidateDirSizesFor(event) {
+            DIR_SIZE_EPOCH++;
+            const paths = [];
+            (event && event.changes || []).forEach(c => {
+                [c.path, c.oldPath].forEach(p => { if (p) paths.push(String(p).replace(/\/\*$/, '') || '/'); });
+            });
+            if (!paths.length) return;
+            const norm = p => (SYSTEM.fs && SYSTEM.fs._normalize) ? SYSTEM.fs._normalize(p) : p;
+            Object.keys(DIR_SIZE_CACHE).forEach(key => {
+                const k = norm(key);
+                const kPrefix = k === '/' ? '/' : k + '/';
+                if (paths.some(p => p === k || p.startsWith(kPrefix) || k.startsWith(p + '/'))) delete DIR_SIZE_CACHE[key];
+            });
         }
 
         function computeDirSize(path, cb) {
@@ -6650,9 +7538,10 @@
             let pendingDirs = 1;   // 正在遍历中的目录数（含根）
             let entryCount = 0;
             let capped = false;
+            const epoch = DIR_SIZE_EPOCH;
 
             const finish = () => {
-                DIR_SIZE_CACHE[path] = { size: total, time: Date.now() };
+                if (epoch === DIR_SIZE_EPOCH) DIR_SIZE_CACHE[path] = { size: total, time: Date.now() };
                 const cbs = DIR_SIZE_PENDING[path] || [];
                 delete DIR_SIZE_PENDING[path];
                 cbs.forEach(fn => { try { fn(total); } catch (e) {} });
@@ -6684,6 +7573,11 @@
                     });
                 });
             };
+            // JISHENG FS：根卷内（子树没有挂载点）一个只读事务遍历 inode 求和，不需要逐个 readdir + stat。
+            if (SYSTEM.fs && typeof SYSTEM.fs._du === 'function' && SYSTEM.fs._isNativeTree(path)) {
+                SYSTEM.fs._du(path).then(size => { total = size; finish(); }, () => finish());
+                return;
+            }
             walk(path);
         }
 
@@ -6693,6 +7587,7 @@
         function renderFolderContent(windowId) {
             const state = SYSTEM.folderWindowStates[windowId];
             if (!state) return;
+            state._renderedAt = Date.now();
             // 渲染令牌：防止旧的异步回调覆盖新渲染的内容
             state._renderToken = (state._renderToken || 0) + 1;
             const renderToken = state._renderToken;
@@ -7190,9 +8085,14 @@
             } else {
                 const name = await SysDialog.prompt({ title: '新建文件', icon: 'uiNewFile', label: '文件名称', value: '新建文本文档.txt', okText: '创建', validate: SysDialog.nameValidator('文件名称') });
                 if (!name) return;
-                SYSTEM.fs.writeFile(state.currentPath + '/' + name, '', (err) => {
-                    if (err) Notify.error('创建失败', err.message);
-                    else { renderFolderContent(windowId); refreshDesktop(); Notify.success('成功', '文件已创建'); }
+                const filePath = state.currentPath + '/' + name;
+                // 同名文件已存在时不覆盖（以前会把已有文件清空）
+                SYSTEM.fs.stat(filePath, (statErr) => {
+                    if (!statErr) { Notify.error('创建失败', `"${name}" 已存在`); return; }
+                    SYSTEM.fs.writeFile(filePath, '', (err) => {
+                        if (err) Notify.error('创建失败', err.message);
+                        else { renderFolderContent(windowId); refreshDesktop(); Notify.success('成功', '文件已创建'); }
+                    });
                 });
             }
         }
@@ -7618,6 +8518,10 @@
                             ${icon('uiNewFile','sm')}
                             <span>新建文本文档</span>
                         </div>
+                        <div class="context-item" onclick="createNewHtmlFile(SYSTEM.folderWindowStates['${windowId}'].currentPath, '${windowId}'); closeCtx()">
+                            ${icon('uiNewHtml','sm')}
+                            <span>新建 HTML 文档</span>
+                        </div>
                     `;
                     document.getElementById('context-menu').innerHTML = menuItems;
                     showCtx(blankTouchStartX, blankTouchStartY);
@@ -7680,6 +8584,10 @@
                     <div class="context-item" onclick="folderCreateNew('${windowId}','file'); closeCtx()">
                         ${icon('uiNewFile','sm')}
                         <span>新建文本文档</span>
+                    </div>
+                    <div class="context-item" onclick="createNewHtmlFile(SYSTEM.folderWindowStates['${windowId}'].currentPath, '${windowId}'); closeCtx()">
+                        ${icon('uiNewHtml','sm')}
+                        <span>新建 HTML 文档</span>
                     </div>
                 `;
                 document.getElementById('context-menu').innerHTML = menuItems;
@@ -8230,13 +9138,13 @@
             
             function performFolderPaste(srcPath, destPath, isCut, done) {
                 if(isCut) {
-                    SYSTEM.fs.rename(srcPath, destPath, (err) => {
-                        if(err) {
-                            console.error('剪切失败:', err);
-                            errorCount++;
-                        } else {
-                            processedCount++;
-                        }
+                    // JISHENG FS move：同一存储内 rename，跨存储自动 复制（保留日期）+ 删除源
+                    SYSTEM.jfs.move(srcPath, destPath).then(() => {
+                        processedCount++;
+                        done();
+                    }, (err) => {
+                        console.error('剪切失败:', err);
+                        errorCount++;
                         done();
                     });
                 } else {
@@ -8845,6 +9753,10 @@
                     ${icon('uiMenuFile','sm')}
                     <span>新建文本文档</span>
                 </div>
+                <div class="context-item" onclick="createNewHtmlFile(SYSTEM.desktopPath); closeCtx()">
+                    ${icon('uiNewHtml','sm')}
+                    <span>新建 HTML 文档</span>
+                </div>
             `;
             showCtx(e.clientX, e.clientY);
         };
@@ -8860,6 +9772,25 @@
                     refreshDesktop();
                     Notify.success("成功", "文件夹创建成功");
                 }
+            });
+        }
+
+        // 新建 HTML 文档：在 dirPath 下创建一个空的 .html 文件，并直接用 HTML 编辑器打开（保存会写回这个文件）。
+        // 双击 .html 是在浏览器里打开，空文件只会显示白页，所以新建后直接进入编辑器。
+        async function createNewHtmlFile(dirPath, windowId) {
+            if (!dirPath) return;
+            const input = await SysDialog.prompt({ title: '新建 HTML 文档', icon: 'uiNewHtml', label: '文件名称', value: '新建 HTML 文档.html', okText: '创建', validate: SysDialog.nameValidator('文件名称') });
+            if (!input) return;
+            const name = /\.html?$/i.test(input) ? input : input + '.html';
+            const path = dirPath + '/' + name;
+            SYSTEM.fs.stat(path, (statErr) => {
+                if (!statErr) { Notify.error('创建失败', `"${name}" 已存在`); return; }
+                SYSTEM.fs.writeFile(path, '', (err) => {
+                    if (err) { Notify.error('创建失败', err.message); return; }
+                    if (windowId && SYSTEM.folderWindowStates && SYSTEM.folderWindowStates[windowId]) renderFolderContent(windowId);
+                    refreshDesktop();
+                    openCodeEditor('', name, dirPath);
+                });
             });
         }
 
@@ -9587,6 +10518,15 @@
         }
 
         function deleteFolderRecursive(path, callback) {
+            // JISHENG FS：根卷内（且子树里没有挂载点）一个事务删除整棵树，日期记录随后整棵清掉。
+            if (SYSTEM.fs && typeof SYSTEM.fs._rmTree === 'function' && SYSTEM.fs._isNativeTree(path)) {
+                const cb = typeof callback === 'function' ? callback : function() {};
+                SYSTEM.fs._rmTree(path, true).then(() => {
+                    try { SYSTEM.dropMtimeCache(path); } catch (_) {}
+                    cb(null);
+                }, err => cb(err));
+                return;
+            }
             SYSTEM.fs.readdir(path, (err, files) => {
                 if(err) { callback(err); return; }
                 
@@ -9830,44 +10770,27 @@
                     }
                 }
 
-                const total = extractedFiles.length;
-                
-                for (let i = 0; i < extractedFiles.length; i++) {
-                    const file = extractedFiles[i];
+                // JISHENG FS：全部文件和目录一次交给批量写入（根卷内每段一个事务，目录索引只写一次）。
+                // 规则与以前逐个调用完全相同：目录创建失败 → 停止并报错；单个文件写入失败 → 跳过继续；
+                // 文件写完后回写压缩包里记录的修改时间。
+                const ops = [];
+                for (const file of extractedFiles) {
                     const fullPath = targetDir + '/' + file.path;
-                    
-                    if (file.dir) {
-                        await ensureDir(fullPath);
-                        updateProgress(90 + (i / total) * 10);
-                        continue;
-                    }
-                    
-                    const fileParentDir = fullPath.substring(0, fullPath.lastIndexOf('/'));
-                    await ensureDir(fileParentDir);
-                    
-                    const buffer = SYSTEM.Buffer ? SYSTEM.Buffer.from(file.data) : file.data;
-                    
-                    await new Promise(resolve => {
-                        SYSTEM.fs.writeFile(fullPath, buffer, () => resolve());
-                    });
-                    
-                    if (file.mtime && SYSTEM.fs.utimes) {
+                    if (file.dir) { ops.push({ op: 'mkdirp', path: fullPath, stop: true }); continue; }
+                    ops.push({ op: 'mkdirp', path: fullPath.substring(0, fullPath.lastIndexOf('/')), stop: true });
+                    ops.push({ op: 'writeFile', path: fullPath, data: file.data });
+                    if (file.mtime) {
                         const mtimeMs = file.mtime instanceof Date ? file.mtime.getTime() : Number(file.mtime);
-                        if (!isNaN(mtimeMs) && mtimeMs > 0) {
-                            try { SYSTEM.fs.utimes(fullPath, mtimeMs, mtimeMs, () => {}); } catch(e) {}
-                        }
+                        if (!isNaN(mtimeMs) && mtimeMs > 0) ops.push({ op: 'utimes', path: fullPath, atime: mtimeMs, mtime: mtimeMs });
                     }
-                    
-                    updateProgress(90 + (i / total) * 10);
                 }
+                const results = await SYSTEM.jfs.batch(ops, { onProgress: (done, all) => updateProgress(90 + (done / all) * 10) });
+                const fatal = ops.findIndex((op, i) => op.stop && results[i] && results[i].ok === false);
+                if (fatal !== -1) throw results[fatal].error;
 
                 // 按深度从深到浅回写目录 mtime，避免被子文件创建刷为最新
                 const sortedDirs = Array.from(dirMtimeMap.entries()).sort((a, b) => b[0].length - a[0].length);
-                for (const [dirPath, mtimeMs] of sortedDirs) {
-                    if (SYSTEM.fs.utimes) {
-                        try { SYSTEM.fs.utimes(dirPath, mtimeMs, mtimeMs, () => {}); } catch(e) {}
-                    }
-                }
+                await SYSTEM.jfs.batch(sortedDirs.map(([dirPath, mtimeMs]) => ({ op: 'utimes', path: dirPath, atime: mtimeMs, mtime: mtimeMs })));
 
                 closeProgress();
                 Notify.success('解压完成', `已解压 ${extractedFiles.length} 个文件到 "${folderName}"`);
@@ -9895,6 +10818,11 @@
         }
 
         async function ensureDir(path) {
+            // JISHENG FS：根卷路径在一个事务里逐级创建（以前每一级都要 mkdir 失败一次再 stat 一次）。
+            if (SYSTEM.fs && typeof SYSTEM.fs._mkdirp === 'function' && !SYSTEM.fs._route(path).backend) {
+                await SYSTEM.fs._mkdirp(path);
+                return;
+            }
             const parts = path.split('/').filter(p => p);
             let current = '';
             for(const part of parts) {
@@ -14088,7 +15016,7 @@
                         group = 'hidden'; reason = '隐藏文件或隐藏目录（. 开头）';
                     } else if (!isDir && /\(\d+\)(\.[a-z0-9]+)?$/i.test(name)) {
                         group = 'duplicate'; reason = '自动重命名产生的疑似重复副本';
-                    } else if (!isDir && /^(新建文本文档|未命名|untitled).*\.(txt|html?)$/i.test(name) && !(Number(stat.size) || 0)) {
+                    } else if (!isDir && /^(新建文本文档|新建 ?HTML ?文档|未命名|untitled).*\.(txt|html?)$/i.test(name) && !(Number(stat.size) || 0)) {
                         group = 'blank'; reason = '0 字节的未命名文档';
                     }
                     if (group) found.push({ kind: 'fs', group, path: fullPath, isDir, size: isDir ? null : (Number(stat.size) || 0), reason, volume: volumeLabel });
@@ -14289,7 +15217,7 @@
         // 布局：左侧固定分类与搜索，右侧一次只显示一个分类；内容区宽度 ≤600px 时侧栏
         // 自动变为顶部横向标签（CSS 容器查询）。所有交互通过 window id 定位，支持多窗口并存，
         // 但 openSettings() 默认复用已打开的设置窗口。
-        const STX_VERSION = '10.5.8';
+        const STX_VERSION = '10.5.9';
         const STX_PAGES = [
             { k: 'personal', n: '个性化', d: '壁纸与桌面交互方式', ic: 'stxPalette' },
             { k: 'storage', n: '存储', d: '空间占用、存储位置与工作区复制', ic: 'stxHardDrive' },
