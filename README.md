@@ -1,4 +1,4 @@
-# JISHENG OS // SYSTEM DIAGNOSTIC REPORT v10.5.9
+# JISHENG OS // SYSTEM DIAGNOSTIC REPORT v10.6.0
 ### Code Name: JianSheng (简生). Status: Persistent.
 **代号：简生 · 源点：自然语言生成 · 状态：持久化实体**
 
@@ -182,4 +182,4 @@
 
 **[ 诊断完成 · CORE DRIVERS：IndexedDB / OPFS / File System Access API / JSZip / 7z-wasm / V86 / CodeMirror ]**
 
-**[ JISHENG OS v10.5.9 已就绪。期待与您的下一次链接。]**
+**[ JISHENG OS v10.6.0 已就绪。期待与您的下一次链接。]**
