@@ -80,7 +80,9 @@
             --text-main: #ffffff;
             --text-muted: #8a8a9a;
             --taskbar-height: 48px;
-            --win-close-red: #e81123;
+            --win-close-red: #e81123;  /* 仅窗口/任务栏「关闭」按钮（Windows 惯例） */
+            /* 危险/删除操作统一配色（v10.7）：文字与描边用 --danger，实心按钮用 --danger-strong */
+            --danger: #ff6b78; --danger-soft: rgba(255, 107, 120, 0.14); --danger-line: rgba(255, 107, 120, 0.35); --danger-strong: #e5484d;
             /* === 文件夹窗口列宽（表头与行共用同一组变量，保证上下对齐）=== */
             --col-name-width: 240px;
             --col-date-width: 138px;
@@ -170,7 +172,7 @@
             backdrop-filter: blur(40px) saturate(180%);
             -webkit-backdrop-filter: blur(40px) saturate(180%);
             border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: 8px;
+            border-radius: var(--win-radius);
             box-shadow: 0 20px 50px -12px rgba(0, 0, 0, 0.6);
         }
 
@@ -185,12 +187,12 @@
         .sys-dialog-overlay.open { opacity: 1; }
         .sys-dialog {
             width: min(440px, 100%); max-height: calc(100vh - 32px); overflow: auto;
-            background: rgba(16, 16, 22, 0.75);
+            background: var(--pop-bg); color: var(--pop-ink);
             backdrop-filter: blur(40px) saturate(180%);
             -webkit-backdrop-filter: blur(40px) saturate(180%);
-            border: 1px solid rgba(255, 255, 255, 0.08); border-radius: var(--dlg-radius);
+            border: 1px solid var(--pop-border); border-radius: var(--dlg-radius);
             padding: 20px 20px 16px;
-            box-shadow: 0 20px 50px -12px rgba(0, 0, 0, 0.6);
+            box-shadow: var(--pop-shadow);
             transform: translateY(10px) scale(0.97);
             transition: transform 0.18s cubic-bezier(0.2, 0.8, 0.2, 1);
             user-select: text; -webkit-user-select: text;
@@ -200,60 +202,63 @@
         @keyframes sysDialogShake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } }
         .sys-dialog-head { display: flex; gap: 14px; align-items: flex-start; }
         .sys-dialog-icon {
-            flex-shrink: 0; width: 40px; height: 40px; border-radius: 10px;
+            flex-shrink: 0; width: 40px; height: 40px; border-radius: max(0px, calc(var(--dlg-radius) - 2px));
             display: flex; align-items: center; justify-content: center;
             background: rgba(0, 120, 212, 0.18); color: #6cc3ff;
         }
         .sys-dialog-icon .icon-svg { width: 22px; height: 22px; stroke-width: 1.8; }
-        .sys-dialog-icon.danger { background: rgba(232, 17, 35, 0.16); color: #ff6b7a; }
+        .sys-dialog-icon.danger { background: var(--danger-soft); color: var(--danger); }
         .sys-dialog-titles { min-width: 0; flex: 1; padding-top: 2px; }
-        .sys-dialog-title { font-size: 15px; font-weight: 600; color: var(--text-main); line-height: 1.4; }
-        .sys-dialog-msg { margin-top: 4px; font-size: 13px; color: var(--text-muted); line-height: 1.55; word-break: break-word; white-space: pre-line; }
+        .sys-dialog-title { font-size: 15px; font-weight: 600; color: var(--pop-ink); line-height: 1.4; }
+        .sys-dialog-msg { margin-top: 4px; font-size: 13px; color: var(--pop-muted); line-height: 1.55; word-break: break-word; white-space: pre-line; }
         .sys-dialog-body { margin-top: 16px; display: flex; flex-direction: column; gap: 14px; }
         .sys-dialog-field[hidden] { display: none; }
-        .sys-dialog-label { display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 6px; }
+        .sys-dialog-label { display: block; font-size: 12px; color: var(--pop-muted); margin-bottom: 6px; }
         .sys-dialog-input {
             width: 100%; height: 40px; padding: 0 12px; font-size: 14px; font-family: inherit;
-            color: var(--text-main); background: rgba(255, 255, 255, 0.06);
-            border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 8px;
+            color: var(--pop-ink); background: rgba(0, 0, 0, 0.28);
+            border: 1px solid rgba(255, 255, 255, 0.1); border-radius: var(--ctl-radius); outline: none;
             transition: border-color 0.15s, box-shadow 0.15s; color-scheme: dark;
         }
+        .sys-dialog-input:hover { border-color: rgba(255, 255, 255, 0.16); }
         .sys-dialog-input:focus { border-color: var(--accent-blue); box-shadow: 0 0 0 3px rgba(0, 120, 212, 0.25); }
-        select.sys-dialog-input option { background: #1e1e28; color: var(--text-main); }
+        select.sys-dialog-input option { background: #1c1c24; color: var(--text-main); }
         .sys-dialog-radios { display: flex; flex-direction: column; gap: 8px; }
         .sys-dialog-radio {
             position: relative; display: flex; align-items: flex-start; gap: 12px; padding: 10px 12px;
-            border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.08); background: rgba(255, 255, 255, 0.03);
+            border-radius: var(--ctl-radius); border: 1px solid rgba(255, 255, 255, 0.08); background: rgba(255, 255, 255, 0.03);
             cursor: pointer; transition: background 0.12s, border-color 0.12s;
         }
         .sys-dialog-radio input { position: absolute; opacity: 0; pointer-events: none; }
         .sys-dialog-radio:hover { background: rgba(255, 255, 255, 0.06); }
+        .sys-dialog-radio:has(input:focus-visible) { box-shadow: var(--focus-ring); }
         .sys-dialog-radio.checked { border-color: rgba(0, 120, 212, 0.7); background: rgba(0, 120, 212, 0.12); }
         .sys-dialog-radio-dot { flex-shrink: 0; width: 16px; height: 16px; margin-top: 1px; border-radius: 50%; border: 2px solid rgba(255, 255, 255, 0.35); position: relative; }
         .sys-dialog-radio.checked .sys-dialog-radio-dot { border-color: var(--accent-cyan); }
         .sys-dialog-radio.checked .sys-dialog-radio-dot::after { content: ''; position: absolute; inset: 3px; border-radius: 50%; background: var(--accent-cyan); }
         .sys-dialog-radio-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-        .sys-dialog-radio-title { font-size: 13px; color: var(--text-main); display: flex; align-items: center; gap: 8px; }
+        .sys-dialog-radio-title { font-size: 13px; color: var(--pop-ink); display: flex; align-items: center; gap: 8px; }
         .sys-dialog-radio-title .icon-svg { width: 15px; height: 15px; color: var(--text-muted); stroke-width: 2; flex-shrink: 0; }
         .sys-dialog-radio.checked .sys-dialog-radio-title .icon-svg { color: var(--accent-cyan); }
         .sys-dialog-radio-desc { font-size: 12px; color: var(--text-muted); word-break: break-all; }
         .sys-dialog-empty { font-size: 12px; color: var(--text-muted); padding: 8px 2px; }
-        .sys-dialog-error { margin-top: 10px; font-size: 12px; color: #ff8a94; }
+        .sys-dialog-error { margin-top: 10px; font-size: 12px; color: var(--danger); }
         .sys-dialog-error[hidden] { display: none; }
         .sys-dialog-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px; }
         .sys-dialog-btn {
             min-width: 84px; height: 36px; padding: 0 16px; font-size: 13px; font-family: inherit;
-            border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.12);
-            background: rgba(255, 255, 255, 0.06); color: var(--text-main); cursor: pointer;
-            transition: background 0.12s, transform 0.08s;
+            border-radius: var(--ctl-radius); border: 1px solid rgba(255, 255, 255, 0.12);
+            background: rgba(255, 255, 255, 0.06); color: var(--pop-ink); cursor: pointer;
+            transition: background 0.12s, border-color 0.12s, filter 0.12s, transform 0.08s;
         }
         .sys-dialog-btn:hover { background: rgba(255, 255, 255, 0.11); }
-        .sys-dialog-btn:active { transform: scale(0.97); }
-        .sys-dialog-btn:focus-visible { box-shadow: 0 0 0 3px rgba(0, 120, 212, 0.35); }
-        .sys-dialog-btn.primary { background: linear-gradient(135deg, #1a86e0, #0f6cc0); border-color: rgba(0, 120, 212, 0.6); }
-        .sys-dialog-btn.primary:hover { background: linear-gradient(135deg, #2a93ea, #1478cc); }
-        .sys-dialog-btn.primary.danger { background: linear-gradient(135deg, #e0344a, #c01a2e); border-color: rgba(232, 17, 35, 0.6); }
-        .sys-dialog-btn.primary.danger:hover { background: linear-gradient(135deg, #ea4358, #cc2438); }
+        .sys-dialog-btn:active { transform: translateY(1px); }
+        .sys-dialog-btn:focus-visible { outline: 2px solid var(--accent-cyan); outline-offset: 2px; }
+        /* 主按钮与设置页 .stx-btn.primary 一致：纯色强调色 + 悬停提亮（不再用旧版渐变） */
+        .sys-dialog-btn.primary { background: var(--accent-blue); border-color: transparent; color: #fff; font-weight: 500; }
+        .sys-dialog-btn.primary:hover { background: var(--accent-blue); filter: brightness(1.12); }
+        .sys-dialog-btn.primary.danger { background: var(--danger-strong); }
+        .sys-dialog-btn.primary.danger:hover { background: var(--danger-strong); filter: brightness(1.1); }
         @media (max-width: 768px) {
             /* 手机上靠上显示，避免被软键盘挡住输入框和按钮 */
             .sys-dialog-overlay { align-items: flex-start; padding: 10vh 12px 12px; }
@@ -365,10 +370,10 @@
 
         /* === 窗口系统 === */
         /* 窗口圆角（设置 → 个性化 → 窗口圆角） */
-        /* --ui-radius：任务栏按钮、菜单项、开始菜单图标等“内部条目”；--dlg-radius：系统对话框；--cal-day-radius：日历日期 */
-        :root { --win-radius: 10px; --ui-radius: 6px; --dlg-radius: 12px; --cal-day-radius: 50%; }
-        html[data-win-corners="small"] { --win-radius: 6px; --ui-radius: 4px; --dlg-radius: 8px; --cal-day-radius: 4px; }
-        html[data-win-corners="square"] { --win-radius: 0px; --ui-radius: 0px; --dlg-radius: 0px; --cal-day-radius: 0px; }
+        /* --ui-radius：任务栏按钮、菜单项、开始菜单图标等“内部条目”；--ctl-radius：按钮、输入框、分段控件、图标底座；--card-radius：设置卡片等大块面板；--dlg-radius：系统对话框；--cal-day-radius：日历日期 */
+        :root { --win-radius: 10px; --ui-radius: 6px; --ctl-radius: 8px; --card-radius: 12px; --dlg-radius: 12px; --cal-day-radius: 50%; }
+        html[data-win-corners="small"] { --win-radius: 6px; --ui-radius: 4px; --ctl-radius: 6px; --card-radius: 8px; --dlg-radius: 8px; --cal-day-radius: 4px; }
+        html[data-win-corners="square"] { --win-radius: 0px; --ui-radius: 0px; --ctl-radius: 0px; --card-radius: 0px; --dlg-radius: 0px; --cal-day-radius: 0px; }
         /* 修复：窗口下方两个角被内部内容（白色内容区、状态栏、侧栏等）盖成直角。
            以前 .window 是 overflow: visible，圆角只画在窗口自己的背景上，子元素照样铺满到直角。
            缩放手柄都在窗口内部，裁剪不会影响拖拽改大小；box-shadow 画在元素外，也不会被自身裁掉。 */
@@ -498,7 +503,7 @@
             position: fixed;
             background: rgba(0, 120, 212, 0.25);
             border: 2px solid var(--accent-blue);
-            border-radius: 12px;
+            border-radius: var(--win-radius);
             transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
             opacity: 0;
             pointer-events: none;
@@ -514,7 +519,7 @@
             background: rgba(0,0,0,0.2); border-bottom: 1px solid var(--glass-border);
         }
         .nav-btn {
-            width: 32px; height: 32px; border-radius: 6px; border: none;
+            width: 32px; height: 32px; border-radius: var(--ui-radius); border: none;
             background: transparent; color: var(--text-muted);
             cursor: pointer; display: flex; align-items: center; justify-content: center;
             transition: all 0.15s;
@@ -525,13 +530,13 @@
 
         .address-bar {
             flex: 1; display: flex; align-items: center; gap: 10px;
-            background: rgba(0,0,0,0.25); border-radius: 6px; padding: 0 12px; height: 32px;
+            background: rgba(0,0,0,0.25); border-radius: var(--ctl-radius); padding: 0 12px; height: 32px;
             border: 1px solid transparent; transition: all 0.2s;
         }
         .address-bar:focus-within { 
             border-color: var(--accent-blue); 
             background: rgba(0,0,0,0.4);
-            box-shadow: 0 0 0 3px rgba(0, 120, 212, 0.15);
+            box-shadow: 0 0 0 3px rgba(0, 120, 212, 0.25);
         }
         .address-bar .icon-svg { width: 14px; height: 14px; color: #4ade80; }
         .address-bar input { 
@@ -564,16 +569,6 @@
         @keyframes spin { to { transform: rotate(360deg); } }
 
         /* === 记事本特定样式 === */
-        /* .notepad-btn 仍被 V86 虚拟机工具栏使用，保留 */
-        .notepad-btn {
-            background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border);
-            color: var(--text-main); padding: 4px 12px; border-radius: 4px; font-size: 12px; cursor: pointer;
-            transition: 0.2s; line-height: 1.4;
-        }
-        .notepad-btn:hover { background: rgba(255,255,255,0.15); }
-        .notepad-btn:disabled { opacity: 0.35; cursor: default; }
-        .notepad-btn:disabled:hover { background: rgba(255,255,255,0.05); }
-        .notepad-btn svg { width: 14px; height: 14px; vertical-align: -2px; }
         .notepad-area {
             flex: 1; background: #1e1e1e; border: none; color: #e0e0e0;
             padding: 16px; font-family: 'Consolas', monospace; font-size: 14px; resize: none;
@@ -591,7 +586,7 @@
         .npx-bar { display: flex; align-items: center; gap: 2px; height: 40px; padding: 0 6px; flex: none; min-width: 0;
             background: rgba(0,0,0,.22); border-bottom: 1px solid var(--line); }
         .npx-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 28px; min-width: 28px; padding: 0 8px;
-            border: 0; border-radius: 7px; background: transparent; color: #c9cad4; font: inherit; font-size: 12.5px; cursor: pointer; white-space: nowrap; flex: none;
+            border: 0; border-radius: var(--ui-radius); background: transparent; color: #c9cad4; font: inherit; font-size: 12.5px; cursor: pointer; white-space: nowrap; flex: none;
             transition: background .12s, color .12s; }
         .npx-btn:hover:not(:disabled) { background: rgba(255,255,255,.07); color: #fff; }
         .npx-btn:active:not(:disabled) { background: rgba(255,255,255,.1); }
@@ -601,9 +596,9 @@
         .npx-btn.save.pending:hover { background: rgba(0,120,212,.34); }
         .npx :where(button):focus-visible { outline: 2px solid var(--accent-cyan); outline-offset: 1px; }
         .npx-sep { width: 1px; height: 18px; background: var(--line); margin: 0 5px; flex: none; }
-        .npx-font { display: inline-flex; align-items: center; height: 28px; padding: 0 2px; border-radius: 8px; background: rgba(0,0,0,.25);
+        .npx-font { display: inline-flex; align-items: center; height: 28px; padding: 0 2px; border-radius: var(--ctl-radius); background: rgba(0,0,0,.25);
             border: 1px solid var(--line); flex: none; }
-        .npx-font .npx-btn { height: 24px; min-width: 26px; padding: 0 4px; border-radius: 6px; }
+        .npx-font .npx-btn { height: 24px; min-width: 26px; padding: 0 4px; border-radius: var(--ui-radius); }
         .npx-font .npx-btn .icon-svg { width: 15px; height: 15px; }
         .npx-fsize { min-width: 26px; text-align: center; font-size: 12px; color: var(--ink); font-variant-numeric: tabular-nums; cursor: default; user-select: none; }
         .npx-sp { flex: 1; min-width: 6px; }
@@ -635,7 +630,7 @@
         }
 
         /* === CSV 表格（v10.6 重做：真表头、排序、筛选、正确解析、写回原目录） === */
-        .csvx-search { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 8px; border-radius: 8px; background: rgba(0,0,0,.25); border: 1px solid var(--line); color: var(--muted); min-width: 0; flex: 0 1 220px; }
+        .csvx-search { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 8px; border-radius: var(--ctl-radius); background: rgba(0,0,0,.25); border: 1px solid var(--line); color: var(--muted); min-width: 0; flex: 0 1 220px; }
         .csvx-search:focus-within { border-color: rgba(0,120,212,.6); }
         .csvx-search input { flex: 1; min-width: 0; background: transparent; border: 0; outline: none; color: var(--ink); font: inherit; font-size: 12.5px; }
         .csvx-search .icon-svg { width: 14px; height: 14px; }
@@ -652,7 +647,7 @@
         .csvx-table td.num, .csvx-table th.num { text-align: right; }
         .csvx-table tbody tr:hover td { background: rgba(255,255,255,.035); }
         .csvx-table tbody tr:hover .rn { background: #2a2a33; }
-        .csvx-table mark { background: rgba(245,165,36,.35); color: #fff; border-radius: 2px; }
+        .csvx-table mark { background: rgba(245,165,36,.35); color: #fff; border-radius: min(2px, var(--ui-radius)); }
         .csvx-more { display: block; margin: 12px auto; }
         .csvx-empty { padding: 48px 20px; text-align: center; color: var(--muted); font-size: 13px; }
         .csvx .notepad-area { flex: 1; min-height: 0; }
@@ -856,7 +851,7 @@
         .sm-about { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; padding: 6px 8px; text-align: left; }
         .sm-logo {
             flex: none; width: 30px; height: 30px; display: grid; place-items: center;
-            border-radius: min(8px, calc(var(--ui-radius) + 2px)); border: 1px solid var(--pop-line);
+            border-radius: var(--ctl-radius); border: 1px solid var(--pop-line);
             background: linear-gradient(135deg, #0a0a0f, #181c24); font: 900 11px "Arial Black", Inter, sans-serif;
         }
         .sm-logo span { background: linear-gradient(90deg, #0078d4, #00d4ff); -webkit-background-clip: text; background-clip: text; color: transparent; }
@@ -866,7 +861,7 @@
         .sm-iconbtn { flex: none; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; color: #c9cad6; }
         .sm-iconbtn .icon-svg { width: 18px; height: 18px; }
         .sm-about:hover, .sm-iconbtn:hover { background: var(--tb-hover); color: #fff; }
-        .sm-iconbtn.danger:hover { background: rgba(232, 17, 35, 0.16); color: #ff8a94; }
+        .sm-iconbtn.danger:hover { background: var(--danger-soft); color: var(--danger); }
         .sm-about:focus-visible, .sm-iconbtn:focus-visible { box-shadow: inset var(--focus-ring); }
 
         /* --- 日历 --- */
@@ -952,9 +947,9 @@
         .context-item:hover .icon-svg, .context-item.kb-active .icon-svg { color: #fff; }
         .context-item:active { background: rgba(255, 255, 255, 0.12); }
         .context-item.accent, .context-item.accent .icon-svg { color: var(--accent-cyan); }
-        .context-item.danger, .context-item.danger .icon-svg { color: #ff8a94; }
-        .context-item.danger:hover, .context-item.danger.kb-active { background: rgba(232, 17, 35, 0.16); color: #ffb3ba; }
-        .context-item.danger:hover .icon-svg, .context-item.danger.kb-active .icon-svg { color: #ffb3ba; }
+        .context-item.danger, .context-item.danger .icon-svg { color: var(--danger); }
+        .context-item.danger:hover, .context-item.danger.kb-active { background: var(--danger-soft); color: var(--danger); }
+        .context-item.danger:hover .icon-svg, .context-item.danger.kb-active .icon-svg { color: var(--danger); }
         .context-item.disabled, .context-item[aria-disabled="true"] { opacity: 0.4; pointer-events: none; }
         .context-divider { height: 1px; margin: 4px 8px; background: rgba(255, 255, 255, 0.08); }
         @media (pointer: coarse) {
@@ -1060,7 +1055,7 @@
         .system-app-hidden { display: none !important; }
         .stx {
             --line: rgba(255,255,255,.075); --card: rgba(255,255,255,.035); --ink: #f2f3f7; --muted: #9a9bab;
-            --acc: var(--accent-blue); --cyan: var(--accent-cyan); --ok: #19c37d; --warn: #f5a524; --danger: #ff6b78;
+            --acc: var(--accent-blue); --cyan: var(--accent-cyan); --ok: #19c37d; --warn: #f5a524;
             container-type: inline-size; color: var(--ink); font-size: 13px; line-height: 1.45; min-height: 0;
         }
         .stx .icon-svg { width: 18px; height: 18px; flex: none; }
@@ -1073,19 +1068,19 @@
         .stx-logo span { background: linear-gradient(90deg,#0078d4,#00d4ff); -webkit-background-clip: text; background-clip: text; color: transparent; }
         .stx-logo.lg { width: 60px; height: 60px; border-radius: 15px; font-size: 22px; }
         .stx-search { position: relative; margin: 0 2px 10px; flex: none; }
-        .stx-search input { width: 100%; height: 34px; border-radius: 8px; border: 1px solid var(--line); background: rgba(0,0,0,.3); color: var(--ink); padding: 0 28px 0 32px; font: inherit; font-size: 12.5px; }
+        .stx-search input { width: 100%; height: 34px; border-radius: var(--ctl-radius); border: 1px solid var(--line); background: rgba(0,0,0,.3); color: var(--ink); padding: 0 28px 0 32px; font: inherit; font-size: 12.5px; }
         .stx-search input::placeholder { color: var(--muted); }
         .stx-search input:focus { border-color: var(--acc); }
         .stx-search input::-webkit-search-cancel-button { display: none; }
         .stx-search > .icon-svg { position: absolute; left: 10px; top: 9.5px; width: 15px; height: 15px; color: var(--muted); pointer-events: none; }
-        .stx-search-x { position: absolute; right: 5px; top: 6px; width: 22px; height: 22px; border: 0; border-radius: 6px; background: transparent; color: var(--muted); cursor: pointer; display: none; place-items: center; }
+        .stx-search-x { position: absolute; right: 5px; top: 6px; width: 22px; height: 22px; border: 0; border-radius: var(--ui-radius); background: transparent; color: var(--muted); cursor: pointer; display: none; place-items: center; }
         .stx-search-x .icon-svg { width: 13px; height: 13px; }
         .stx-search-x:hover { background: rgba(255,255,255,.08); color: var(--ink); }
         .stx-search.has-q .stx-search-x { display: grid; }
-        .stx-navi { display: flex; align-items: center; gap: 11px; width: 100%; padding: 8px 10px; border: 0; border-radius: 8px; background: transparent; color: #cfd0da; font: inherit; font-size: 13px; text-align: left; cursor: pointer; position: relative; user-select: none; flex: none; }
+        .stx-navi { display: flex; align-items: center; gap: 11px; width: 100%; padding: 8px 10px; border: 0; border-radius: var(--ctl-radius); background: transparent; color: #cfd0da; font: inherit; font-size: 13px; text-align: left; cursor: pointer; position: relative; user-select: none; flex: none; }
         .stx-navi:hover { background: rgba(255,255,255,.05); }
         .stx-navi.on { background: rgba(255,255,255,.085); color: #fff; }
-        .stx-navi.on::before { content: ""; position: absolute; left: 0; top: 9px; bottom: 9px; width: 3px; border-radius: 2px; background: var(--acc); }
+        .stx-navi.on::before { content: ""; position: absolute; left: 0; top: 9px; bottom: 9px; width: 3px; border-radius: min(2px, var(--ui-radius)); background: var(--acc); }
         .stx-navi em { margin-left: auto; font-style: normal; font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
         .stx-navi em.warn { color: var(--warn); }
         .stx-main { min-height: 0; display: flex; flex-direction: column; }
@@ -1106,7 +1101,7 @@
         }
 
         /* 通用控件 */
-        .stx-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 32px; padding: 0 13px; border-radius: 8px; border: 1px solid rgba(255,255,255,.12); background: rgba(255,255,255,.06); color: var(--ink); font: inherit; font-size: 12.5px; cursor: pointer; white-space: nowrap; transition: background .15s, border-color .15s, transform .1s; }
+        .stx-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 32px; padding: 0 13px; border-radius: var(--ctl-radius); border: 1px solid rgba(255,255,255,.12); background: rgba(255,255,255,.06); color: var(--ink); font: inherit; font-size: 12.5px; cursor: pointer; white-space: nowrap; transition: background .15s, border-color .15s, transform .1s; }
         .stx-btn:hover { background: rgba(255,255,255,.11); }
         .stx-btn:active { transform: translateY(1px); }
         .stx-btn:disabled { opacity: .42; cursor: not-allowed; transform: none; }
@@ -1114,8 +1109,8 @@
         .stx-btn .icon-svg { width: 15px; height: 15px; }
         .stx-btn.primary { background: var(--acc); border-color: transparent; color: #fff; }
         .stx-btn.primary:hover:not(:disabled) { filter: brightness(1.12); background: var(--acc); }
-        .stx-btn.danger { color: var(--danger); border-color: rgba(255,107,120,.35); background: rgba(255,107,120,.06); }
-        .stx-btn.danger:hover:not(:disabled) { background: rgba(255,107,120,.14); }
+        .stx-btn.danger { color: var(--danger); border-color: var(--danger-line); background: rgba(255,107,120,.06); }
+        .stx-btn.danger:hover:not(:disabled) { background: var(--danger-soft); }
         .stx-btn.ghost { background: transparent; border-color: transparent; color: var(--muted); }
         .stx-btn.ghost:hover:not(:disabled) { color: var(--ink); background: rgba(255,255,255,.06); }
         .stx-btn.sm { min-height: 28px; padding: 0 10px; font-size: 12px; }
@@ -1127,18 +1122,18 @@
         .stx-sw[aria-checked="true"] { background: var(--acc); }
         .stx-sw[aria-checked="true"]::after { transform: translateX(18px); }
         .stx-sw:disabled { opacity: .45; cursor: not-allowed; }
-        .stx-seg { display: inline-flex; padding: 3px; gap: 2px; border-radius: 9px; background: rgba(0,0,0,.28); border: 1px solid var(--line); }
-        .stx-seg button { border: 0; background: transparent; color: var(--muted); padding: 5px 12px; border-radius: 6px; font: inherit; font-size: 12.5px; cursor: pointer; white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; }
+        .stx-seg { display: inline-flex; padding: 3px; gap: 2px; border-radius: var(--ctl-radius); background: rgba(0,0,0,.28); border: 1px solid var(--line); }
+        .stx-seg button { border: 0; background: transparent; color: var(--muted); padding: 5px 12px; border-radius: var(--ui-radius); font: inherit; font-size: 12.5px; cursor: pointer; white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; }
         .stx-seg button .icon-svg { width: 14px; height: 14px; }
         .stx-seg button.on { background: rgba(255,255,255,.12); color: var(--ink); box-shadow: 0 1px 2px rgba(0,0,0,.3); }
-        .stx-pill { display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; padding: 2px 9px; border-radius: 99px; background: rgba(255,255,255,.07); color: var(--muted); white-space: nowrap; }
+        .stx-pill { display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; padding: 2px 9px; border-radius: calc(var(--ui-radius) * 999); background: rgba(255,255,255,.07); color: var(--muted); white-space: nowrap; }
         .stx-pill .icon-svg { width: 12px; height: 12px; }
         .stx-pill.ok { background: rgba(25,195,125,.13); color: #5ee0a6; }
         .stx-pill.warn { background: rgba(245,165,36,.13); color: #f5c26b; }
         .stx-pill.bad { background: rgba(255,107,120,.12); color: #ff9aa6; }
         .stx-mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; }
         .stx-muted { color: var(--muted); }
-        .stx-cb { appearance: none; -webkit-appearance: none; width: 17px; height: 17px; border-radius: 5px; border: 1.5px solid rgba(255,255,255,.3); display: grid; place-items: center; cursor: pointer; margin: 0; background: transparent; flex: none; }
+        .stx-cb { appearance: none; -webkit-appearance: none; width: 17px; height: 17px; border-radius: min(5px, var(--ui-radius)); border: 1.5px solid rgba(255,255,255,.3); display: grid; place-items: center; cursor: pointer; margin: 0; background: transparent; flex: none; }
         .stx-cb:checked, .stx-cb:indeterminate { background: var(--acc); border-color: var(--acc); }
         .stx-cb:checked::after { content: ""; width: 9px; height: 5px; border: 2px solid #fff; border-top: 0; border-right: 0; transform: rotate(-45deg) translate(1px,-1px); }
         .stx-cb:indeterminate::after { content: ""; width: 8px; height: 2px; background: #fff; border-radius: 1px; }
@@ -1156,7 +1151,7 @@
         .stx-grp-h h3 { font-size: 12px; font-weight: 600; color: #c9c9d6; letter-spacing: .02em; }
         .stx-grp-h > span { font-size: 11.5px; color: var(--muted); }
         .stx-grp-h .sp, .stx-ph .sp { flex: 1; }
-        .stx-card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; min-width: 0; }
+        .stx-card { background: var(--card); border: 1px solid var(--line); border-radius: var(--card-radius); min-width: 0; }
         .stx-card.pad { padding: 16px; }
         .stx-row { display: grid; grid-template-columns: 34px minmax(0,1fr) auto; align-items: center; column-gap: 14px; row-gap: 10px; padding: 13px 16px; min-height: 58px; position: relative; }
         .stx-row + .stx-row { border-top: 1px solid var(--line); }
@@ -1190,7 +1185,7 @@
         .stx-row.noicon { grid-template-columns: minmax(0,1fr) auto; }
         .stx-row.click { cursor: pointer; }
         .stx-row.click:hover { background: rgba(255,255,255,.03); }
-        .stx-row-ic { width: 34px; height: 34px; border-radius: 9px; display: grid; place-items: center; background: rgba(255,255,255,.06); color: #cfd3dc; }
+        .stx-row-ic { width: 34px; height: 34px; border-radius: var(--ctl-radius); display: grid; place-items: center; background: rgba(255,255,255,.06); color: #cfd3dc; }
         .stx-row-tx { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
         .stx-row-tx b { font-weight: 500; font-size: 13.5px; color: var(--ink); overflow-wrap: anywhere; }
         .stx-row-tx small { font-size: 12px; color: var(--muted); line-height: 1.5; overflow-wrap: anywhere; }
@@ -1223,16 +1218,16 @@
         .stx-sub { font-size: 12px; color: var(--muted); }
         .stx-pct { text-align: right; font-size: 22px; font-weight: 650; color: var(--cyan); font-variant-numeric: tabular-nums; }
         .stx-pct small { display: block; font-size: 11px; color: var(--muted); font-weight: 400; }
-        .stx-meter { height: 6px; border-radius: 3px; background: rgba(255,255,255,.08); overflow: hidden; margin-top: 12px; }
+        .stx-meter { height: 6px; border-radius: min(3px, var(--ui-radius)); background: rgba(255,255,255,.08); overflow: hidden; margin-top: 12px; }
         .stx-meter i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg,#087ed7,#00d4ff); }
-        .stx-meter.warn i { background: linear-gradient(90deg,#f59e0b,#ef4444); }
+        .stx-meter.warn i { background: linear-gradient(90deg, var(--warn), var(--danger)); }
         .stx-stack-label { display: flex; justify-content: space-between; gap: 8px; font-size: 11.5px; color: var(--muted); margin-top: 16px; }
-        .stx-stack { display: flex; height: 14px; border-radius: 7px; overflow: hidden; background: rgba(255,255,255,.07); margin-top: 6px; gap: 2px; }
+        .stx-stack { display: flex; height: 14px; border-radius: min(7px, var(--ctl-radius)); overflow: hidden; background: rgba(255,255,255,.07); margin-top: 6px; gap: 2px; }
         .stx-stack i { display: block; height: 100%; min-width: 3px; transition: opacity .15s, filter .15s; }
         .stx-stack:hover i { opacity: .55; } .stx-stack i:hover { opacity: 1; filter: brightness(1.2); }
         .stx-legend { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px,1fr)); gap: 4px 18px; margin-top: 12px; }
         .stx-lg { display: grid; grid-template-columns: 10px minmax(0,1fr) auto; gap: 2px 8px; align-items: center; font-size: 12.5px; padding: 3px 0; }
-        .stx-lg i { width: 10px; height: 10px; border-radius: 3px; }
+        .stx-lg i { width: 10px; height: 10px; border-radius: min(3px, var(--ui-radius)); }
         .stx-lg span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .stx-lg em { font-style: normal; color: var(--muted); font-variant-numeric: tabular-nums; font-size: 12px; white-space: nowrap; }
         .stx-lg small { grid-column: 2 / 4; color: var(--muted); font-size: 11px; margin-top: -2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -1240,23 +1235,23 @@
         @container (max-width: 720px) { .stx-vgrid { grid-template-columns: 1fr; } }
         .stx-bars { display: flex; flex-direction: column; gap: 11px; }
         .stx-bar { display: grid; grid-template-columns: 28px minmax(0,1fr) auto; gap: 4px 10px; align-items: center; }
-        .stx-bar .ic, .stx-file .ic { width: 28px; height: 28px; border-radius: 8px; display: grid; place-items: center; }
+        .stx-bar .ic, .stx-file .ic { width: 28px; height: 28px; border-radius: var(--ctl-radius); display: grid; place-items: center; }
         .stx-bar .ic .icon-svg, .stx-file .ic .icon-svg { width: 15px; height: 15px; }
         .stx-bar .nm { font-size: 12.5px; display: flex; justify-content: space-between; gap: 8px; min-width: 0; }
         .stx-bar .nm span:last-child { color: var(--muted); font-size: 11.5px; white-space: nowrap; }
         .stx-bar .sz { font-size: 12.5px; font-variant-numeric: tabular-nums; text-align: right; min-width: 62px; }
-        .stx-bar .tr { grid-column: 2 / 4; height: 6px; border-radius: 3px; background: rgba(255,255,255,.07); overflow: hidden; margin-top: -2px; }
-        .stx-bar .tr i { display: block; height: 100%; border-radius: 3px; min-width: 2px; }
+        .stx-bar .tr { grid-column: 2 / 4; height: 6px; border-radius: min(3px, var(--ui-radius)); background: rgba(255,255,255,.07); overflow: hidden; margin-top: -2px; }
+        .stx-bar .tr i { display: block; height: 100%; border-radius: min(3px, var(--ui-radius)); min-width: 2px; }
         .stx-files { display: flex; flex-direction: column; }
-        .stx-file { display: grid; grid-template-columns: 28px minmax(0,1fr) auto; gap: 10px; align-items: center; padding: 8px 6px; border-radius: 8px; border: 0; background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; width: 100%; }
+        .stx-file { display: grid; grid-template-columns: 28px minmax(0,1fr) auto; gap: 10px; align-items: center; padding: 8px 6px; border-radius: var(--ctl-radius); border: 0; background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; width: 100%; }
         .stx-file:hover { background: rgba(255,255,255,.045); }
         .stx-file + .stx-file { box-shadow: 0 -1px 0 var(--line); }
         .stx-file .nm { min-width: 0; }
         .stx-file .nm b { display: block; font-weight: 500; font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .stx-file .nm small { display: block; color: var(--muted); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .stx-file .sz { font-size: 12.5px; font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
-        .stx-tm { position: relative; width: 100%; aspect-ratio: 16 / 7; min-height: 160px; max-height: 380px; border-radius: 10px; overflow: hidden; background: rgba(0,0,0,.25); }
-        .stx-tile { position: absolute; display: flex; flex-direction: column; justify-content: flex-start; align-items: stretch; padding: 6px 8px; border: 2px solid rgba(20,20,28,.95); border-radius: 8px; overflow: hidden; font-size: 11.5px; line-height: 1.35; color: rgba(255,255,255,.96); transition: filter .15s; cursor: default; text-align: left; font-family: inherit; }
+        .stx-tm { position: relative; width: 100%; aspect-ratio: 16 / 7; min-height: 160px; max-height: 380px; border-radius: var(--win-radius); overflow: hidden; background: rgba(0,0,0,.25); }
+        .stx-tile { position: absolute; display: flex; flex-direction: column; justify-content: flex-start; align-items: stretch; padding: 6px 8px; border: 2px solid rgba(20,20,28,.95); border-radius: var(--ctl-radius); overflow: hidden; font-size: 11.5px; line-height: 1.35; color: rgba(255,255,255,.96); transition: filter .15s; cursor: default; text-align: left; font-family: inherit; }
         button.stx-tile { cursor: pointer; }
         .stx-tile:hover { filter: brightness(1.18); }
         .stx-tile b { display: block; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -1264,11 +1259,11 @@
         .stx-tile.xs b, .stx-tile.xs span { display: none; }
         .stx-tm-legend { display: flex; gap: 6px 14px; flex-wrap: wrap; margin-top: 10px; font-size: 11.5px; color: var(--muted); }
         .stx-tm-legend span { display: inline-flex; align-items: center; gap: 6px; }
-        .stx-tm-legend i { width: 9px; height: 9px; border-radius: 3px; }
-        .stx-skel { height: 12px; border-radius: 6px; background: linear-gradient(90deg, rgba(255,255,255,.05), rgba(255,255,255,.11), rgba(255,255,255,.05)); background-size: 200% 100%; animation: stxSkel 1.2s ease-in-out infinite; }
+        .stx-tm-legend i { width: 9px; height: 9px; border-radius: min(3px, var(--ui-radius)); }
+        .stx-skel { height: 12px; border-radius: var(--ui-radius); background: linear-gradient(90deg, rgba(255,255,255,.05), rgba(255,255,255,.11), rgba(255,255,255,.05)); background-size: 200% 100%; animation: stxSkel 1.2s ease-in-out infinite; }
         @keyframes stxSkel { from { background-position: 200% 0; } to { background-position: -200% 0; } }
         .stx-rcards { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px,1fr)); gap: 10px; }
-        .stx-rcard { text-align: left; display: flex; gap: 11px; padding: 13px; border-radius: 11px; border: 1px solid var(--line); background: rgba(255,255,255,.03); cursor: pointer; color: var(--ink); font: inherit; }
+        .stx-rcard { text-align: left; display: flex; gap: 11px; padding: 13px; border-radius: var(--win-radius); border: 1px solid var(--line); background: rgba(255,255,255,.03); cursor: pointer; color: var(--ink); font: inherit; }
         .stx-rcard:hover:not(:disabled) { background: rgba(255,255,255,.055); }
         .stx-rcard.on { border-color: var(--acc); background: color-mix(in srgb, var(--acc) 12%, transparent); }
         .stx-rcard:disabled { opacity: .45; cursor: not-allowed; }
@@ -1278,7 +1273,7 @@
         .stx-rcard b { display: block; font-weight: 550; font-size: 13px; }
         .stx-rcard small { display: block; color: var(--muted); font-size: 11.5px; line-height: 1.5; margin-top: 2px; }
         .stx-mig { display: grid; grid-template-columns: minmax(0,1fr) auto minmax(0,1fr); gap: 12px; align-items: center; }
-        .stx-mig .end { padding: 12px; border-radius: 10px; background: rgba(255,255,255,.035); border: 1px solid var(--line); min-width: 0; }
+        .stx-mig .end { padding: 12px; border-radius: var(--win-radius); background: rgba(255,255,255,.035); border: 1px solid var(--line); min-width: 0; }
         .stx-mig .end small { color: var(--muted); font-size: 11px; display: block; }
         .stx-mig .end b { font-weight: 600; font-size: 13.5px; }
         .stx-mig .end .stx-mono { display: block; color: var(--muted); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -1298,8 +1293,8 @@
         .stx-clean-head .sp { flex: 1; }
         .stx-scan { display: flex; flex-direction: column; gap: 10px; padding: 16px; border-top: 1px solid var(--line); }
         .stx-scan .stx-mono { color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .stx-indet { height: 6px; border-radius: 3px; background: rgba(255,255,255,.08); overflow: hidden; position: relative; }
-        .stx-indet i { position: absolute; top: 0; bottom: 0; width: 35%; border-radius: 3px; background: linear-gradient(90deg, var(--acc), var(--cyan)); animation: stxIndet 1.1s ease-in-out infinite; }
+        .stx-indet { height: 6px; border-radius: min(3px, var(--ui-radius)); background: rgba(255,255,255,.08); overflow: hidden; position: relative; }
+        .stx-indet i { position: absolute; top: 0; bottom: 0; width: 35%; border-radius: min(3px, var(--ui-radius)); background: linear-gradient(90deg, var(--acc), var(--cyan)); animation: stxIndet 1.1s ease-in-out infinite; }
         @keyframes stxIndet { from { left: -35%; } to { left: 100%; } }
         .stx-cg { border-top: 1px solid var(--line); }
         .stx-cg-h { display: grid; grid-template-columns: 20px minmax(0,1fr) auto 16px; gap: 10px; align-items: center; padding: 11px 16px; cursor: pointer; user-select: none; }
@@ -1310,21 +1305,21 @@
         .stx-cg.open .stx-cg-h > .icon-svg { transform: rotate(90deg); }
         .stx-cg-items { display: none; padding: 0 12px 10px 42px; }
         .stx-cg.open .stx-cg-items { display: block; }
-        .stx-ci { display: grid; grid-template-columns: 20px minmax(0,1fr) auto; gap: 10px; align-items: center; padding: 8px; border-radius: 8px; cursor: pointer; }
+        .stx-ci { display: grid; grid-template-columns: 20px minmax(0,1fr) auto; gap: 10px; align-items: center; padding: 8px; border-radius: var(--ctl-radius); cursor: pointer; }
         .stx-ci:hover { background: rgba(255,255,255,.04); }
         .stx-ci b { display: block; font-weight: 400; font-size: 12px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; overflow-wrap: anywhere; }
         .stx-ci small { display: block; color: var(--muted); font-size: 11px; overflow-wrap: anywhere; }
         .stx-ci em { font-style: normal; color: var(--muted); font-size: 11.5px; font-variant-numeric: tabular-nums; white-space: nowrap; }
-        .stx-actionbar { position: sticky; bottom: 0; display: flex; align-items: center; gap: 8px 10px; flex-wrap: wrap; padding: 12px 16px; border-top: 1px solid var(--line); background: rgba(30,30,40,.97); border-radius: 0 0 12px 12px; z-index: 1; }
+        .stx-actionbar { position: sticky; bottom: 0; display: flex; align-items: center; gap: 8px 10px; flex-wrap: wrap; padding: 12px 16px; border-top: 1px solid var(--line); background: rgba(30,30,40,.97); border-radius: 0 0 var(--card-radius) var(--card-radius); z-index: 1; }
         .stx-actionbar .sp { flex: 1; }
         .stx-actionbar > span { font-size: 12.5px; }
         @container (max-width: 470px) { .stx-cg-items { padding-left: 14px; } .stx-ci { grid-template-columns: 20px minmax(0,1fr); } .stx-ci em { grid-column: 2; } .stx-cg-h { grid-template-columns: 20px minmax(0,1fr) 16px; } .stx-cg-h small { grid-column: 2; grid-row: 2; } .stx-cg-h > .icon-svg { grid-column: 3; grid-row: 1; } }
 
         /* 个性化 · 壁纸（取代旧的浮动壁纸面板；所有入口统一到 设置 → 个性化） */
         .stx-wpx-hero { display: grid; grid-template-columns: minmax(200px, 320px) minmax(0,1fr); gap: 18px; padding: 16px; align-items: center; }
-        .stx-wpx-prev { position: relative; aspect-ratio: 16 / 10; border-radius: 10px; border: 1px solid var(--line); background: #0b1222 center / cover no-repeat; overflow: hidden; box-shadow: 0 10px 30px -12px rgba(0,0,0,.7); }
+        .stx-wpx-prev { position: relative; aspect-ratio: 16 / 10; border-radius: var(--win-radius); border: 1px solid var(--line); background: #0b1222 center / cover no-repeat; overflow: hidden; box-shadow: 0 10px 30px -12px rgba(0,0,0,.7); }
         .stx-wpx-prev::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 9%; background: rgba(10,10,15,.82); border-top: 1px solid rgba(255,255,255,.06); }
-        .stx-wpx-drop { position: absolute; inset: 0; z-index: 1; display: none; flex-direction: column; align-items: center; justify-content: center; gap: 8px; font-style: normal; font-size: 12.5px; color: #fff; background: rgba(0,120,212,.55); border: 2px dashed rgba(255,255,255,.85); border-radius: 10px; backdrop-filter: blur(2px); }
+        .stx-wpx-drop { position: absolute; inset: 0; z-index: 1; display: none; flex-direction: column; align-items: center; justify-content: center; gap: 8px; font-style: normal; font-size: 12.5px; color: #fff; background: rgba(0,120,212,.55); border: 2px dashed rgba(255,255,255,.85); border-radius: var(--win-radius); backdrop-filter: blur(2px); }
         .stx-wpx-drop .icon-svg { width: 26px; height: 26px; }
         .stx-wpx.drag .stx-wpx-drop { display: flex; }
         .stx-wpx-info { min-width: 0; display: flex; flex-direction: column; gap: 6px; }
@@ -1344,7 +1339,7 @@
         .stx-wpx-st.err i { background: var(--warn); }
         @keyframes stxWpxPulse { 50% { opacity: .3; } }
         .stx-wpx-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(148px, 1fr)); gap: 10px; padding: 14px; }
-        .stx-wpx-tile { position: relative; aspect-ratio: 16 / 10; border-radius: 9px; border: 1px solid var(--line); padding: 0; cursor: pointer; overflow: hidden; color: #fff; font: inherit;
+        .stx-wpx-tile { position: relative; aspect-ratio: 16 / 10; border-radius: var(--ctl-radius); border: 1px solid var(--line); padding: 0; cursor: pointer; overflow: hidden; color: #fff; font: inherit;
             background: #11131a center / cover no-repeat; transition: transform .14s, box-shadow .14s, border-color .14s; }
         .stx-wpx-tile:hover { transform: translateY(-2px); box-shadow: 0 10px 24px -10px rgba(0,0,0,.8); border-color: rgba(255,255,255,.22); }
         .stx-wpx-tile.on { border-color: var(--acc); box-shadow: 0 0 0 2px var(--acc); }
@@ -1353,7 +1348,7 @@
         .stx-wpx-tile .ck { position: absolute; top: 6px; right: 6px; width: 20px; height: 20px; border-radius: 50%; display: none; place-items: center; background: var(--acc); box-shadow: 0 1px 4px rgba(0,0,0,.5); }
         .stx-wpx-tile .ck .icon-svg { width: 13px; height: 13px; stroke-width: 2.25; }
         .stx-wpx-tile.on .ck { display: grid; }
-        .stx-wpx-tile .tag { position: absolute; top: 6px; left: 6px; padding: 1px 7px; border-radius: 99px; font-size: 10.5px; background: rgba(0,0,0,.62); }
+        .stx-wpx-tile .tag { position: absolute; top: 6px; left: 6px; padding: 1px 7px; border-radius: calc(var(--ui-radius) * 999); font-size: 10.5px; background: rgba(0,0,0,.62); }
         .stx-wpx-tile.mine .tag { background: var(--acc); }
         .stx-wpx-tile.mine:not(.on) { border-color: rgba(0,120,212,.7); border-style: dashed; }
         .stx-wpx-cell { position: relative; min-width: 0; display: grid; }
@@ -1361,13 +1356,13 @@
             background: rgba(0,0,0,.66); color: #fff; cursor: pointer; opacity: 0; transition: opacity .15s, background .15s; }
         .stx-wpx-del .icon-svg { width: 12px; height: 12px; stroke-width: 2; }
         .stx-wpx-cell:hover .stx-wpx-del, .stx-wpx-del:focus-visible { opacity: 1; }
-        .stx-wpx-del:hover { background: var(--danger); }
+        .stx-wpx-del:hover { background: var(--danger-strong); }
         @media (hover: none) { .stx-wpx-del { opacity: 1; } }
         .stx-wpx-tile.busy::before { content: ""; position: absolute; inset: 0; background: rgba(0,0,0,.45); z-index: 1; }
         .stx-wpx-tile.busy::after { content: ""; position: absolute; z-index: 2; top: 50%; left: 50%; width: 22px; height: 22px; margin: -11px 0 0 -11px; border-radius: 50%;
             border: 2px solid rgba(255,255,255,.25); border-top-color: #fff; animation: stxWpxSpin .8s linear infinite; }
         @keyframes stxWpxSpin { to { transform: rotate(360deg); } }
-        .stx-wpx-skel { aspect-ratio: 16 / 10; height: auto; border-radius: 9px; }
+        .stx-wpx-skel { aspect-ratio: 16 / 10; height: auto; border-radius: var(--ctl-radius); }
         @container (max-width: 560px) {
             .stx-wpx-hero { grid-template-columns: 1fr; }
             .stx-wpx-prev { max-width: 420px; }
@@ -1381,7 +1376,7 @@
         .stx-about b { font-size: 17px; font-weight: 650; display: block; }
         .stx-about small { display: block; color: var(--muted); font-size: 12px; margin-top: 2px; }
         .stx-caps { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px,1fr)); gap: 8px; padding: 14px 16px; }
-        .stx-cap { display: flex; align-items: center; gap: 8px; font-size: 12.5px; padding: 8px 10px; border-radius: 8px; background: rgba(255,255,255,.03); min-width: 0; }
+        .stx-cap { display: flex; align-items: center; gap: 8px; font-size: 12.5px; padding: 8px 10px; border-radius: var(--ctl-radius); background: rgba(255,255,255,.03); min-width: 0; }
         .stx-cap .icon-svg { width: 15px; height: 15px; }
         .stx-cap .y { color: var(--ok); } .stx-cap .n { color: var(--danger); } .stx-cap .u { color: var(--warn); }
         .stx-cap span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -1439,7 +1434,7 @@
         /* 视图切换：分段按钮 */
         .fx-seg {
             display: flex; align-items: center; gap: 2px; padding: 2px; flex: none;
-            background: rgba(255,255,255,0.05); border-radius: calc(var(--ui-radius, 6px) + 2px);
+            background: rgba(255,255,255,0.05); border-radius: var(--ctl-radius);
         }
         .fx-seg .fx-btn { height: 26px; min-width: 28px; padding: 0 8px; }
         .fx-seg .fx-btn.fx-icon-only { width: 28px; padding: 0; }
@@ -1506,6 +1501,21 @@
         .fx-search-clear { width: 22px; min-width: 22px; height: 22px; padding: 0; visibility: hidden; }
         .fx-search-clear .icon-svg { width: 13px; height: 13px; }
         .fx-search.has-q .fx-search-clear { visibility: visible; }
+        /* 搜索范围：当前文件夹 ⇄ 全局（v10.7）。关闭时只显示一个「多个文件夹」图标；打开后变成高亮的「全局」标签 */
+        .fx-search-scope { height: 22px; min-width: 22px; padding: 0 4px; gap: 4px; color: var(--text-muted); font-size: 11.5px; border-radius: max(0px, calc(var(--ui-radius) - 2px)); }
+        .fx-search-scope .icon-svg { width: 14px; height: 14px; color: currentColor; }
+        .fx-search-scope .fx-scope-lbl { display: none; }
+        .fx-search-scope:hover { color: var(--text-main); }
+        .fx-search.is-global { flex-basis: 280px; }
+        .fx-search.is-global > .icon-svg { color: var(--accent-cyan); }
+        .fx-search.is-global .fx-search-scope { background: rgba(0, 120, 212, 0.24); color: #9dd8ff; padding: 0 7px 0 5px; }
+        .fx-search.is-global .fx-search-scope:hover { background: rgba(0, 120, 212, 0.34); color: #fff; }
+        .fx-search.is-global:not(.is-tight) .fx-search-scope .fx-scope-lbl { display: inline; }
+        /* 全局搜索结果：详细信息视图在名称后显示灰色“所在位置”，空间不够时先截断位置；图标视图悬停显示位置 */
+        .fx-loc { flex: 0 10000 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11.5px; color: var(--text-muted); }
+        .fx-row.selected .fx-loc { color: rgba(255, 255, 255, 0.72); }
+        .fx-gsearch-loading { display: flex; align-items: center; justify-content: center; gap: 8px; }
+        .fx-gsearch-loading .icon-svg { width: 16px; height: 16px; opacity: 0.7; }
 
         /* --- 主体：侧栏 + 主区 --- */
         .fx-body { flex: 1; min-height: 0; display: flex; position: relative; }
@@ -1578,7 +1588,7 @@
         }
         .fx-empty .icon-svg { width: 40px; height: 40px; opacity: 0.35; }
         .fx-empty small { font-size: 11px; opacity: 0.75; }
-        .fx-empty.fx-err { color: #ff8a8a; }
+        .fx-empty.fx-err { color: var(--danger); }
         .fx-loading { padding: 40px; text-align: center; color: var(--text-muted); font-size: 13px; }
 
         /* --- 详细信息视图 --- */
@@ -1738,7 +1748,7 @@
         }
 
         /* --- 搜索高亮 --- */
-        .search-highlight { background: rgba(0, 120, 212, 0.4); color: #fff; border-radius: 2px; padding: 0 1px; }
+        .search-highlight { background: rgba(0, 120, 212, 0.4); color: #fff; border-radius: min(2px, var(--ui-radius)); padding: 0 1px; }
 
         /* --- JISHENG OS 应用（带声明的 HTML）在文件夹里显示自己的图标 --- */
         .fx-c-name .app-custom-icon, .fx-mitem .app-custom-icon { width: 18px; height: 18px; flex: none; color: rgba(255,255,255,0.9); }
@@ -1771,13 +1781,13 @@
         .extract-progress {
             position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
             width: min(400px, calc(100vw - 32px));
-            background: rgba(16, 16, 22, 0.75);
+            background: var(--pop-bg); color: var(--pop-ink);
             backdrop-filter: blur(40px) saturate(180%);
             -webkit-backdrop-filter: blur(40px) saturate(180%);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: 14px;
+            border: 1px solid var(--pop-border);
+            border-radius: var(--dlg-radius);
             padding: 22px 22px 18px; z-index: 9999;
-            box-shadow: 0 20px 50px -12px rgba(0, 0, 0, 0.6);
+            box-shadow: var(--pop-shadow);
             display: flex; flex-direction: column; gap: 14px;
             animation: extractIn 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
         }
@@ -1786,7 +1796,7 @@
         @keyframes extractOut { to { opacity: 0; transform: translate(-50%, -44%) scale(0.97); } }
         .extract-head { display: flex; align-items: center; gap: 14px; }
         .extract-icon {
-            flex-shrink: 0; width: 40px; height: 40px; border-radius: 10px;
+            flex-shrink: 0; width: 40px; height: 40px; border-radius: max(0px, calc(var(--dlg-radius) - 2px));
             display: flex; align-items: center; justify-content: center;
             background: rgba(0, 120, 212, 0.14); border: 1px solid rgba(0, 120, 212, 0.22);
             color: #6cc3ff;
@@ -1800,12 +1810,12 @@
         .extract-progress .bar {
             width: 100%; height: 8px; background: rgba(255, 255, 255, 0.07);
             border: 1px solid rgba(255, 255, 255, 0.06);
-            border-radius: 999px; overflow: hidden; padding: 1px;
+            border-radius: calc(var(--ui-radius) * 999); overflow: hidden; padding: 1px;
         }
         .extract-progress .bar-fill {
             height: 100%; width: 0%;
             background: linear-gradient(90deg, #0a7bd6 0%, #00d4ff 100%);
-            border-radius: 999px; position: relative; overflow: hidden;
+            border-radius: calc(var(--ui-radius) * 999); position: relative; overflow: hidden;
             transition: width 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
             box-shadow: 0 0 10px rgba(0, 212, 255, 0.35);
         }
@@ -1827,7 +1837,7 @@
 
         /* === 计算器（v10.6 重做：系统新风格、键盘操作、精确小数） === */
         .calx { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 10px; padding: 12px; background: rgba(20,20,28,.85); color: #f2f3f7; outline: none; container-type: size; }
-        .calx-display { position: relative; display: flex; flex-direction: column; justify-content: flex-end; align-items: stretch; gap: 4px; min-height: 92px; padding: 12px 14px 10px; border-radius: 12px;
+        .calx-display { position: relative; display: flex; flex-direction: column; justify-content: flex-end; align-items: stretch; gap: 4px; min-height: 92px; padding: 12px 14px 10px; border-radius: var(--card-radius);
             background: rgba(0,0,0,.28); border: 1px solid rgba(255,255,255,.06); cursor: copy; text-align: right; }
         .calx-expr { font-size: 13px; color: #9a9bab; min-height: 18px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; direction: rtl; unicode-bidi: plaintext; font-variant-numeric: tabular-nums; }
         .calx-result { font-size: 40px; line-height: 1.15; font-weight: 300; white-space: nowrap; overflow: hidden; font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
@@ -1835,7 +1845,7 @@
         .calx-display:hover .calx-hint { opacity: 1; }
         .calx-hint { position: absolute; left: 12px; top: 10px; font-size: 11px; color: #9a9bab; opacity: 0; transition: opacity .15s; pointer-events: none; }
         .calx-keys { flex: 1; min-height: 0; display: grid; grid-template-columns: repeat(4, 1fr); grid-auto-rows: 1fr; gap: 6px; }
-        .calx-key { border: 1px solid rgba(255,255,255,.07); border-radius: 10px; background: rgba(255,255,255,.07); color: #f2f3f7; font: inherit; font-size: 19px; cursor: pointer;
+        .calx-key { border: 1px solid rgba(255,255,255,.07); border-radius: var(--win-radius); background: rgba(255,255,255,.07); color: #f2f3f7; font: inherit; font-size: 19px; cursor: pointer;
             display: flex; align-items: center; justify-content: center; transition: background .12s, transform .08s, border-color .12s; user-select: none; -webkit-user-select: none; touch-action: manipulation; min-height: 0; }
         .calx-key:hover { background: rgba(255,255,255,.13); }
         .calx-key:active, .calx-key.press { transform: scale(.96); background: rgba(255,255,255,.18); }
@@ -1855,7 +1865,7 @@
         .pnt-bar { display: flex; align-items: center; gap: 6px; padding: 7px 10px; border-bottom: 1px solid rgba(255,255,255,.07); flex-wrap: wrap; flex-shrink: 0; }
         .pnt-sep { width: 1px; height: 20px; background: rgba(255,255,255,.1); margin: 0 4px; }
         .pnt-sp { flex: 1; }
-        .pnt-btn { height: 30px; min-width: 30px; padding: 0 7px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; border-radius: 8px; border: 1px solid transparent; background: transparent; color: #d7d8e2; font: inherit; font-size: 12.5px; cursor: pointer; transition: background .12s, color .12s; white-space: nowrap; }
+        .pnt-btn { height: 30px; min-width: 30px; padding: 0 7px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; border-radius: var(--ctl-radius); border: 1px solid transparent; background: transparent; color: #d7d8e2; font: inherit; font-size: 12.5px; cursor: pointer; transition: background .12s, color .12s; white-space: nowrap; }
         .pnt-btn:hover:not(:disabled) { background: rgba(255,255,255,.08); color: #fff; }
         .pnt-btn:disabled { opacity: .35; cursor: default; }
         .pnt-btn.on { background: rgba(0,120,212,.28); border-color: rgba(0,120,212,.45); color: #fff; }
@@ -1906,7 +1916,7 @@
             font-size: 11px; color: #4ade80;
             background: rgba(0,0,0,0.7);
             padding: 6px 10px;
-            border-radius: 4px;
+            border-radius: min(4px, var(--ui-radius));
             max-width: 300px;
             pointer-events: none;
         }
@@ -1989,17 +1999,17 @@
         .imv { flex: 1; min-height: 0; display: flex; flex-direction: column; background: #121216; }
         .imv .npx-bar { background: rgba(0,0,0,.35); }
         .imv-pos, .imv-zoom { min-width: 54px; text-align: center; font-size: 12px; color: var(--ink); font-variant-numeric: tabular-nums; cursor: default; user-select: none; }
-        .imv-zoom { min-width: 44px; cursor: pointer; border-radius: 6px; padding: 4px 0; }
+        .imv-zoom { min-width: 44px; cursor: pointer; border-radius: var(--ui-radius); padding: 4px 0; }
         .imv-zoom:hover { background: rgba(255,255,255,.07); }
-        .imv-seg { display: inline-flex; padding: 2px; border-radius: 8px; background: rgba(0,0,0,.3); border: 1px solid var(--line); flex: none; }
-        .imv-seg .npx-btn { height: 24px; border-radius: 6px; }
+        .imv-seg { display: inline-flex; padding: 2px; border-radius: var(--ctl-radius); background: rgba(0,0,0,.3); border: 1px solid var(--line); flex: none; }
+        .imv-seg .npx-btn { height: 24px; border-radius: var(--ui-radius); }
         .imv-info { font-size: 11.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; padding: 0 6px; }
         .imv-stage { flex: 1; min-height: 0; position: relative; overflow: hidden; cursor: default; touch-action: none;
             background: #121216 repeating-conic-gradient(rgba(255,255,255,.025) 0 25%, transparent 0 50%) 0 0 / 24px 24px; }
         .imv-stage.grab { cursor: grab; } .imv-stage.grabbing { cursor: grabbing; }
         .imv-stage > img { position: absolute; left: 0; top: 0; transform-origin: 0 0; max-width: none; user-select: none; -webkit-user-drag: none; image-rendering: auto; }
         .imv-stage.pixel > img { image-rendering: pixelated; }
-        .imv-nav { position: absolute; top: 50%; width: 44px; height: 64px; margin-top: -32px; border: 0; border-radius: 10px; background: rgba(0,0,0,.45); color: #fff; display: flex; align-items: center; justify-content: center; cursor: pointer; opacity: 0; transition: opacity .15s, background .15s; z-index: 2; }
+        .imv-nav { position: absolute; top: 50%; width: 44px; height: 64px; margin-top: -32px; border: 0; border-radius: var(--win-radius); background: rgba(0,0,0,.45); color: #fff; display: flex; align-items: center; justify-content: center; cursor: pointer; opacity: 0; transition: opacity .15s, background .15s; z-index: 2; }
         .imv-nav .icon-svg { width: 22px; height: 22px; }
         .imv-nav.prev { left: 10px; } .imv-nav.next { right: 10px; }
         .imv-stage:hover .imv-nav:not(:disabled) { opacity: .85; }
@@ -2010,7 +2020,7 @@
         .imv-strip .pg { flex: none; width: 100%; max-width: 1000px; min-height: 60vh; display: flex; align-items: center; justify-content: center; color: #555; font-size: 12px; }
         .imv-strip .pg.ok { min-height: 0; }
         .imv-strip .pg img { width: 100%; display: block; }
-        .window.truly-fullscreen .imv .npx-bar { position: absolute; left: 50%; top: 10px; transform: translateX(-50%); z-index: 5; border-radius: 12px; border: 1px solid var(--line); opacity: 0; transition: opacity .2s; max-width: calc(100% - 80px); }
+        .window.truly-fullscreen .imv .npx-bar { position: absolute; left: 50%; top: 10px; transform: translateX(-50%); z-index: 5; border-radius: var(--card-radius); border: 1px solid var(--line); opacity: 0; transition: opacity .2s; max-width: calc(100% - 80px); }
         .window.truly-fullscreen .imv:hover .npx-bar { opacity: 1; }
         .window.truly-fullscreen .imv { position: relative; }
         @container npx (max-width: 620px) { .imv-info { display: none; } }
@@ -2022,7 +2032,7 @@
            窗口拖窄、贴边半屏、手机全屏都能得到合适的工具栏和视图。 */
         .editor-app.edx {
             --line: rgba(255,255,255,.075); --ink: #e9eaf0; --muted: #9a9bab; --acc: var(--accent-blue); --cyan: var(--accent-cyan);
-            --ok: #19c37d; --warn: #f5a524; --danger: #ff6b78; --pane: #0d1117; --bar: rgba(0,0,0,.22);
+            --ok: #19c37d; --warn: #f5a524; --pane: #0d1117; --bar: rgba(0,0,0,.22);
             --edx-font: 14px;
             container-type: inline-size; container-name: edx;
             position: relative; display: flex; flex-direction: column; flex: 1; min-height: 0; height: 100%;
@@ -2036,7 +2046,7 @@
         .edx-bar { display: flex; align-items: center; gap: 4px; height: 44px; padding: 0 8px; flex: none; background: var(--bar); border-bottom: 1px solid var(--line); min-width: 0; }
         .edx-sep { width: 1px; height: 20px; background: var(--line); margin: 0 4px; flex: none; }
         .edx-sp { flex: 1; min-width: 4px; }
-        .edx-ib { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 30px; min-width: 30px; padding: 0 7px; border: 0; border-radius: 7px; background: transparent; color: #c9cad4; cursor: pointer; white-space: nowrap; flex: none; transition: background .12s, color .12s; }
+        .edx-ib { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 30px; min-width: 30px; padding: 0 7px; border: 0; border-radius: var(--ui-radius); background: transparent; color: #c9cad4; cursor: pointer; white-space: nowrap; flex: none; transition: background .12s, color .12s; }
         .edx-ib:hover:not(:disabled) { background: rgba(255,255,255,.07); color: #fff; }
         .edx-ib:active:not(:disabled) { background: rgba(255,255,255,.1); }
         .edx-ib:disabled { opacity: .38; cursor: default; }
@@ -2045,19 +2055,19 @@
         .edx-ib.danger:hover:not(:disabled) { background: rgba(255,107,120,.12); color: var(--danger); }
         .edx-ib .lbl { font-size: 12.5px; }
         /* 文件按钮：只显示图标（文件名见悬停提示与窗口标题），未保存时图标右上角出现圆点 */
-        .edx-file { display: inline-flex; align-items: center; gap: 3px; height: 30px; padding: 0 5px 0 7px; border: 1px solid var(--line); border-radius: 8px; background: rgba(255,255,255,.035); color: var(--ink); cursor: pointer; flex: none; }
+        .edx-file { display: inline-flex; align-items: center; gap: 3px; height: 30px; padding: 0 5px 0 7px; border: 1px solid var(--line); border-radius: var(--ctl-radius); background: rgba(255,255,255,.035); color: var(--ink); cursor: pointer; flex: none; }
         .edx-file:hover { background: rgba(255,255,255,.07); }
         .edx-file .fi { position: relative; display: inline-flex; }
         .edx-file .fi .icon-svg { color: #e8833a; }
         .edx-file .dot { position: absolute; top: -2px; right: -3px; width: 7px; height: 7px; border-radius: 50%; background: var(--warn); box-shadow: 0 0 0 2px #1b1b22; display: none; }
         .edx.dirty .edx-file .dot { display: block; }
         .edx-file > .icon-svg { width: 13px; height: 13px; color: var(--muted); }
-        .edx-select { height: 30px; padding: 0 26px 0 10px; border: 1px solid var(--line); border-radius: 8px; color: var(--ink); font: inherit; font-size: 12.5px; cursor: pointer; flex: none; color-scheme: dark;
+        .edx-select { height: 30px; padding: 0 26px 0 10px; border: 1px solid var(--line); border-radius: var(--ctl-radius); color: var(--ink); font: inherit; font-size: 12.5px; cursor: pointer; flex: none; color-scheme: dark;
             background: rgba(255,255,255,.035) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239a9bab' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat right 8px center / 12px; appearance: none; -webkit-appearance: none; }
         .edx-select:hover { background-color: rgba(255,255,255,.07); }
         .edx-select option { background: #1d1d27; color: var(--ink); }
-        .edx-seg { display: inline-flex; padding: 2px; gap: 2px; border-radius: 9px; background: rgba(0,0,0,.28); border: 1px solid var(--line); flex: none; }
-        .edx-seg button { display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px; border: 0; border-radius: 7px; background: transparent; color: var(--muted); cursor: pointer; white-space: nowrap; }
+        .edx-seg { display: inline-flex; padding: 2px; gap: 2px; border-radius: var(--ctl-radius); background: rgba(0,0,0,.28); border: 1px solid var(--line); flex: none; }
+        .edx-seg button { display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px; border: 0; border-radius: var(--ui-radius); background: transparent; color: var(--muted); cursor: pointer; white-space: nowrap; }
         .edx-seg button:hover { color: var(--ink); }
         .edx-seg button.on { background: rgba(255,255,255,.12); color: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.3); }
         .edx-seg button .icon-svg { width: 15px; height: 15px; }
@@ -2087,14 +2097,14 @@
 
 
         /* 查找 / 替换浮层（VS Code 式，固定在代码区右上角） */
-        .edx-find { position: absolute; top: 8px; right: 16px; z-index: 6; display: none; flex-direction: column; gap: 6px; width: min(440px, calc(100% - 32px)); padding: 7px; border-radius: 11px; background: rgba(30,30,40,.97); border: 1px solid rgba(255,255,255,.1); box-shadow: 0 10px 30px rgba(0,0,0,.45); }
+        .edx-find { position: absolute; top: 8px; right: 16px; z-index: 6; display: none; flex-direction: column; gap: 6px; width: min(440px, calc(100% - 32px)); padding: 7px; border-radius: var(--win-radius); background: rgba(30,30,40,.97); border: 1px solid rgba(255,255,255,.1); box-shadow: 0 10px 30px rgba(0,0,0,.45); }
         .edx-find.open { display: flex; }
         .edx-find-row { display: flex; align-items: center; gap: 4px; min-width: 0; }
         .edx-find-row.rep { display: none; padding-left: 28px; }
         .edx-find.rep-open .edx-find-row.rep { display: flex; }
         .edx-find .tg > .icon-svg { transition: transform .15s; }
         .edx-find.rep-open .tg > .icon-svg { transform: rotate(90deg); }
-        .edx-field { position: relative; flex: 1; min-width: 0; display: flex; align-items: center; height: 28px; border: 1px solid var(--line); border-radius: 7px; background: rgba(0,0,0,.3); }
+        .edx-field { position: relative; flex: 1; min-width: 0; display: flex; align-items: center; height: 28px; border: 1px solid var(--line); border-radius: var(--ctl-radius); background: rgba(0,0,0,.3); }
         .edx-field:focus-within { border-color: var(--acc); box-shadow: 0 0 0 1px var(--acc); }
         .edx .edx-field input:focus-visible { outline: none; }
         .edx-field.bad { border-color: var(--danger); }
@@ -2102,7 +2112,7 @@
         .edx-field input::placeholder { color: var(--muted); font-family: inherit; }
         .edx-field .cnt { color: var(--muted); font-size: 11px; white-space: nowrap; padding: 0 4px; font-variant-numeric: tabular-nums; }
         .edx-field .cnt.none { color: var(--danger); }
-        .edx-opt { display: inline-grid; place-items: center; width: 22px; height: 22px; margin-right: 2px; border: 1px solid transparent; border-radius: 5px; background: transparent; color: var(--muted); cursor: pointer; flex: none; }
+        .edx-opt { display: inline-grid; place-items: center; width: 22px; height: 22px; margin-right: 2px; border: 1px solid transparent; border-radius: min(5px, var(--ui-radius)); background: transparent; color: var(--muted); cursor: pointer; flex: none; }
         .edx-opt:hover { color: var(--ink); background: rgba(255,255,255,.06); }
         .edx-opt.on { color: #fff; background: rgba(0,120,212,.3); border-color: rgba(0,120,212,.7); }
         .edx-opt .icon-svg { width: 15px; height: 15px; }
@@ -2121,14 +2131,14 @@
         .edx-pbar .edx-ib .icon-svg { width: 15px; height: 15px; }
         .edx-pbar .edx-ib.stale { color: var(--warn); }
         .edx-badge { min-width: 16px; height: 16px; padding: 0 4px; border-radius: 8px; font-size: 10px; line-height: 16px; font-weight: 600; text-align: center; background: rgba(255,255,255,.14); color: var(--ink); font-style: normal; }
-        .edx-badge.err { background: #d4283a; color: #fff; }
+        .edx-badge.err { background: var(--danger-strong); color: #fff; }
         .edx-badge:empty { display: none; }
         .edx-stage { flex: 1; min-height: 0; position: relative; overflow: hidden; background: var(--pane); }
         .edx-device { position: absolute; left: 0; top: 0; width: 100%; height: 100%; transform-origin: 0 0; background: #fff; }
         .edx-device iframe { display: block; width: 100%; height: 100%; border: 0; background: #fff; }
         .edx-stage.framed { background: repeating-linear-gradient(45deg, #0b0e14 0 10px, #0d1118 10px 20px); }
-        .edx-stage.framed .edx-device { box-shadow: 0 0 0 1px rgba(255,255,255,.12), 0 10px 40px rgba(0,0,0,.5); border-radius: 6px; overflow: hidden; }
-        .edx-devlabel { position: absolute; right: 8px; bottom: 6px; z-index: 2; font-size: 10.5px; color: var(--muted); background: rgba(0,0,0,.55); padding: 2px 7px; border-radius: 6px; pointer-events: none; }
+        .edx-stage.framed .edx-device { box-shadow: 0 0 0 1px rgba(255,255,255,.12), 0 10px 40px rgba(0,0,0,.5); border-radius: var(--ui-radius); overflow: hidden; }
+        .edx-devlabel { position: absolute; right: 8px; bottom: 6px; z-index: 2; font-size: 10.5px; color: var(--muted); background: rgba(0,0,0,.55); padding: 2px 7px; border-radius: var(--ui-radius); pointer-events: none; }
         .edx .editor-preview-loading { position: absolute; top: 0; left: 0; right: 0; height: 2px; z-index: 4; overflow: hidden; }
         .edx .editor-preview-loading.active::after { content: ''; position: absolute; top: 0; left: -40%; width: 40%; height: 100%; background: var(--cyan); animation: editor-loading-bar .9s ease-in-out infinite; }
         @keyframes editor-loading-bar { 0% { left: -40% } 100% { left: 100% } }
@@ -2151,7 +2161,7 @@
 
         /* 状态栏 */
         .edx-status { display: flex; align-items: center; gap: 2px; height: 26px; padding: 0 6px; flex: none; background: var(--bar); border-top: 1px solid var(--line); color: var(--muted); font-size: 11.5px; min-width: 0; overflow: hidden; }
-        .edx-status .it { display: inline-flex; align-items: center; gap: 5px; height: 20px; padding: 0 7px; border: 0; border-radius: 5px; background: transparent; color: inherit; white-space: nowrap; font-size: 11.5px; }
+        .edx-status .it { display: inline-flex; align-items: center; gap: 5px; height: 20px; padding: 0 7px; border: 0; border-radius: min(5px, var(--ui-radius)); background: transparent; color: inherit; white-space: nowrap; font-size: 11.5px; }
         .edx-status button.it { cursor: pointer; }
         .edx-status button.it:hover { background: rgba(255,255,255,.07); color: var(--ink); }
         .edx-status .it i { width: 6px; height: 6px; border-radius: 50%; background: var(--ok); }
@@ -2159,9 +2169,9 @@
         .edx-status .sp { flex: 1; }
 
         /* 弹出菜单 */
-        .edx-menu { position: absolute; z-index: 50; min-width: 220px; max-width: min(300px, calc(100% - 16px)); max-height: calc(100% - 60px); overflow-y: auto; padding: 5px; border-radius: 11px; background: rgba(32,32,42,.98); border: 1px solid rgba(255,255,255,.1); box-shadow: 0 14px 40px rgba(0,0,0,.5); animation: edxPop .12s ease-out; }
+        .edx-menu { position: absolute; z-index: 50; min-width: 220px; max-width: min(300px, calc(100% - 16px)); max-height: calc(100% - 60px); overflow-y: auto; padding: 5px; border-radius: var(--win-radius); background: rgba(32,32,42,.98); border: 1px solid rgba(255,255,255,.1); box-shadow: 0 14px 40px rgba(0,0,0,.5); animation: edxPop .12s ease-out; }
         @keyframes edxPop { from { opacity: 0; transform: translateY(-4px); } }
-        .edx-mi { display: grid; grid-template-columns: 18px minmax(0,1fr) auto; align-items: center; gap: 9px; width: 100%; min-height: 32px; padding: 0 10px 0 8px; border: 0; border-radius: 7px; background: transparent; color: var(--ink); text-align: left; cursor: pointer; font-size: 12.5px; }
+        .edx-mi { display: grid; grid-template-columns: 18px minmax(0,1fr) auto; align-items: center; gap: 9px; width: 100%; min-height: 32px; padding: 0 10px 0 8px; border: 0; border-radius: var(--ui-radius); background: transparent; color: var(--ink); text-align: left; cursor: pointer; font-size: 12.5px; }
         .edx-mi:hover:not(:disabled), .edx-mi:focus-visible { background: rgba(255,255,255,.08); outline: none; }
         .edx-mi:disabled { opacity: .4; cursor: default; }
         .edx-mi .icon-svg { width: 15px; height: 15px; color: #c3c5d0; }
@@ -2182,7 +2192,7 @@
             .edx-seg.view button { padding: 0 8px; }
         }
         @container edx (max-width: 720px) {
-            .edx .mid-hide { display: none !important; }      /* 格式化 / 复制 / 清空 / 导入 / 导出收进“更多”菜单 */
+            .edx .mid-hide { display: none !important; }      /* 格式化 / 复制 / 清空收进“更多”菜单（导入 / 导出始终留在工具栏） */
         }
         @container edx (max-width: 640px) {
             .edx-seg.view button[data-view="split"] { display: none; }
@@ -2245,7 +2255,7 @@
         }
         .editor-app .CodeMirror-dialog input {
             background: rgba(255,255,255,0.06) !important; color: var(--text-main) !important;
-            border: 1px solid var(--glass-border) !important; border-radius: 4px !important;
+            border: 1px solid var(--glass-border) !important; border-radius: min(4px, var(--ui-radius)) !important;
             padding: 3px 8px !important; outline: none !important;
         }
         .editor-app .CodeMirror-dialog input:focus { border-color: var(--accent-blue) !important; }
@@ -2511,9 +2521,10 @@
         function cornerPresetOf(r) { return r === 0 ? 'square' : r <= 7 ? 'small' : 'round'; }
         function cornerLevelLabel(r) { return r === 0 ? '直角' : r <= 4 ? '微圆角' : r <= 7 ? '小圆角' : r <= 12 ? '圆角' : '大圆角'; }
         function cornerTokens(r) {
-            if (r <= 0) return { win: 0, ui: 0, dlg: 0, cal: '0px' };
-            const ui = Math.min(r, Math.round(r / 2 + 1));          // 菜单项、按钮、列表行等“内部条目”
-            return { win: r, ui, dlg: Math.min(24, r + 2), cal: r >= 10 ? '50%' : ui + 'px' };
+            if (r <= 0) return { win: 0, ui: 0, ctl: 0, card: 0, dlg: 0, cal: '0px' };
+            const ui = Math.min(r, Math.round(r / 2 + 1));          // 菜单项、工具栏按钮、列表行等“内部条目”
+            const ctl = Math.min(r, Math.round(r * 0.6 + 2));       // 按钮、输入框、分段控件、图标底座
+            return { win: r, ui, ctl, card: Math.min(20, r + 2), dlg: Math.min(24, r + 2), cal: r >= 10 ? '50%' : ui + 'px' };
         }
         function applyWindowCorners() {
             const r = clampCornerRadius(SYSTEM.cornerRadius);
@@ -2522,6 +2533,8 @@
             const t = cornerTokens(r), st = document.documentElement.style;
             st.setProperty('--win-radius', t.win + 'px');
             st.setProperty('--ui-radius', t.ui + 'px');
+            st.setProperty('--ctl-radius', t.ctl + 'px');
+            st.setProperty('--card-radius', t.card + 'px');
             st.setProperty('--dlg-radius', t.dlg + 'px');
             st.setProperty('--cal-day-radius', t.cal);
             document.documentElement.dataset.winCorners = SYSTEM.windowCorners;
@@ -7038,6 +7051,7 @@
             fxPlus: '<path d="M5 12h14" /><path d="M12 5v14" />',
             // fxX: Lucide x
             fxX: '<path d="M18 6 6 18" /><path d="m6 6 12 12" />',
+            fxSearchAll: '<path d="M20 17a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3.9a2 2 0 0 1-1.69-.9l-.81-1.2a2 2 0 0 0-1.67-.9H8a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2Z"/><path d="M2 8v11a2 2 0 0 0 2 2h14"/>',
             // fxIcons: Lucide layout-grid
             fxIcons: '<rect width="7" height="7" x="3" y="3" rx="1" /><rect width="7" height="7" x="14" y="3" rx="1" /><rect width="7" height="7" x="14" y="14" rx="1" /><rect width="7" height="7" x="3" y="14" rx="1" />',
             // fxColumns: Lucide columns-3
@@ -7075,8 +7089,8 @@
             uiCopy:       '<rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>',
             uiCut:        '<circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="20" y1="4" x2="8.12" y2="15.88"/><line x1="14.47" y1="14.48" x2="20" y2="20"/><line x1="8.12" y1="8.12" x2="12" y2="12"/>',
             uiDownload:   '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/>',
-            uiDelete:     '<path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>',
-            uiDeleteSimple: '<path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>',
+            uiDelete:     '<path d="M10 11v6"/><path d="M14 11v6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>',
+            uiDeleteSimple: '<path d="M10 11v6"/><path d="M14 11v6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>',
             uiRename:     '<path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>',
             uiExtract:    '<path d="M21 8v13H3V8"/><path d="M1 3h22v5H1z"/><path d="M10 12h4"/>',
             uiExtractSimple: '<path d="M1 3h22v5H1z"/><path d="M21 8v13H3V8"/><path d="m9 15 3-3 3 3"/><path d="M12 12v9"/>',
@@ -7433,7 +7447,7 @@
                     windowId, folderName: title, currentPath: path,
                     parentPath: opts.parentPath || fxParentOf(path),
                     viewMode, sortBy: sortPref.sortBy, sortAsc: sortPref.sortAsc,
-                    searchQuery: '', fileStats: {},
+                    searchQuery: '', searchScope: fxLoadSearchScope(), fileStats: {},
                     colWidths: fxLoadColWidths(), colOrder: fxLoadColOrder(), millerW: fxLoadMillerW(),
                     history: [path], histIdx: 0, colRoot: fxRootOf(path),
                     focusPath: null, anchorPath: null, _renderToken: 0
@@ -7490,6 +7504,7 @@
                         ${icon('uiSearch')}
                         <input type="search" id="folder-search-${wid}" placeholder="搜索当前文件夹" autocomplete="off" spellcheck="false" aria-label="搜索当前文件夹">
                         <button type="button" class="fx-btn fx-search-clear" data-act="search-clear" title="清除搜索 (Esc)" aria-label="清除搜索">${icon('fxX')}</button>
+                        <button type="button" class="fx-btn fx-search-scope" data-act="search-scope" id="fx-search-scope-${wid}" aria-pressed="false" aria-label="全局搜索">${icon('fxSearchAll')}<span class="fx-scope-lbl">全局</span></button>
                     </div>
                 </div>
                 <div class="fx-body">
@@ -7647,6 +7662,12 @@
                 case 'view-grid': return folderSetView(wid, 'grid');
                 case 'view-column': return folderSetView(wid, 'column');
                 case 'more': return fxMoreMenu(wid, el);
+                case 'search-scope': {
+                    fxSetSearchScope(wid, st.searchScope === 'all' ? 'here' : 'all');
+                    const input = fxEl('folder-search-', wid);
+                    if (input) input.focus();
+                    return;
+                }
                 case 'search-clear': {
                     const input = fxEl('folder-search-', wid);
                     if (input) { input.value = ''; input.focus(); }
@@ -7810,13 +7831,14 @@
                     fxFitToolbar(wid);
                     // 窄时：路径始终显示最后一级；搜索框提示文字缩短，不出现半截字
                     fxFitCrumbs(wid);
-                    input.placeholder = sbox.clientWidth < 170 ? '搜索' : '搜索当前文件夹';
+                    fxSyncSearchScope(wid);
                 });
             });
             ro.observe(fxEl('fx-cmd-', wid));
             ro.observe(sbox);
             ro.observe(bc);
             fxFitToolbar(wid);
+            fxSyncSearchScope(wid);
             return () => { ro.disconnect(); clearTimeout(searchT); };
         }
 
@@ -7869,8 +7891,12 @@
         function fxTypeText(en) { return en.isDir ? '文件夹' : getFileExtension(en.name); }
         function fxAttrs(en) { return `data-filename="${escapeAttr(en.name)}" data-path="${escapeAttr(en.path)}" data-isdir="${en.isDir}"`; }
         function fxEmptyHtml(st) {
+            if (fxIsGlobalSearch(st)) {
+                const idx = st._gIdx;
+                return `<div class="fx-empty">${icon('uiSearch')}<div>全局搜索没有找到与“${escapeHtml(st.searchQuery)}”匹配的项目</div><small>已搜索 ${idx ? idx.scanned : 0} 个项目${idx && idx.truncated ? '（项目过多，只搜索了一部分）' : ''}</small></div>`;
+            }
             return st.searchQuery
-                ? `<div class="fx-empty">${icon('uiSearch')}<div>没有与“${escapeHtml(st.searchQuery)}”匹配的项目</div></div>`
+                ? `<div class="fx-empty">${icon('uiSearch')}<div>没有与“${escapeHtml(st.searchQuery)}”匹配的项目</div><small>想搜索所有文件夹？点搜索框右侧的按钮切换到「全局」</small></div>`
                 : `<div class="fx-empty">${icon('fileFolder')}<div>此文件夹为空</div><small>可拖入文件，或使用上方「新建」「上传」</small></div>`;
         }
 
@@ -7888,7 +7914,7 @@
             }).join('') + '</div>';
             if (!list.length) return `<div class="fx-details" role="grid">${head}${fxEmptyHtml(st)}</div>`;
             const cell = (k, en) => {
-                if (k === 'name') return `<div class="fx-c fx-c-name fx-k-name">${icon(fileIconName(en.name, en.isDir))}<span class="file-name">${highlightText(en.name, q)}</span></div>`;
+                if (k === 'name') return `<div class="fx-c fx-c-name fx-k-name">${icon(fileIconName(en.name, en.isDir))}<span class="file-name">${highlightText(en.name, q)}</span>${fxLocHtml(en, st)}</div>`;
                 if (k === 'date') return `<div class="fx-c fx-k-date file-date">${formatDate(en.mtime)}</div>`;
                 if (k === 'type') return `<div class="fx-c fx-k-type file-type">${escapeHtml(fxTypeText(en))}</div>`;
                 return `<div class="fx-c fx-k-size file-size">${fxSizeText(en)}</div>`;
@@ -7899,7 +7925,7 @@
         function fxIconsHtml(list, st) {
             if (!list.length) return fxEmptyHtml(st);
             return '<div class="fx-icons" role="listbox" aria-multiselectable="true">' + list.map(en =>
-                `<div class="folder-grid-item fx-icon" role="option" draggable="true" ${fxAttrs(en)}>${icon(fileIconName(en.name, en.isDir))}<span class="file-name label">${highlightText(en.name, st.searchQuery)}</span></div>`
+                `<div class="folder-grid-item fx-icon" role="option" draggable="true" ${fxAttrs(en)}${fxIsGlobalSearch(st) ? ` title="${escapeAttr(fxDisplayPath(fxParentOf(en.path)))}"` : ''}>${icon(fileIconName(en.name, en.isDir))}<span class="file-name label">${highlightText(en.name, st.searchQuery)}</span></div>`
             ).join('') + '</div>';
         }
         // 替换内容但保留框选框元素
@@ -7936,6 +7962,7 @@
             const pending = st._selectAfter; st._selectAfter = null;
             const keep = pending || (same ? fxSelectedPaths(windowId) : []);
             const focusPath = same ? st.focusPath : null;
+            if (fxIsGlobalSearch(st)) { fxRenderGlobal(windowId, token, keep, focusPath); return; }
             if (st.viewMode === 'column') { fxRenderMiller(windowId, token, keep, focusPath, !!pending); return; }
 
             fxReadDir(st.currentPath).then(res => {
@@ -8010,7 +8037,10 @@
             const cEl = fxEl('folder-status-count-', wid), sEl = fxEl('fx-status-sel-', wid);
             if (!st || !cEl) return;
             const n = fxScopeItems(wid).length;
-            cEl.textContent = `${n} 个项目` + (st.searchQuery ? ` · 搜索“${st.searchQuery}”` : '');
+            if (fxIsGlobalSearch(st)) {
+                const total = st._gHits || 0, idx = st._gIdx;
+                cEl.textContent = `找到 ${total} 项 · 全局` + (total > n ? `（显示前 ${n} 项）` : '') + (idx && idx.truncated ? ' · 项目过多，只搜索了一部分' : '');
+            } else cEl.textContent = `${n} 个项目` + (st.searchQuery ? ` · 搜索“${st.searchQuery}”` : '');
             const sel = fxSelectedEls(wid);
             if (!sEl) return;
             if (!sel.length) { sEl.textContent = ''; return; }
@@ -8269,6 +8299,7 @@
                 ];
             } else {
                 items = [{ icon: 'uiOpen', label: '打开', act: () => activateFolderItem(windowId, name, path, isDir) }];
+                if (st && fxIsGlobalSearch(st)) items.push({ icon: 'stxFolderOpen', label: '打开所在位置', act: () => fxRevealPath(windowId, path) });
                 if (isDir) items.push({ icon: 'fxNewWindow', label: '在新窗口中打开', act: () => fxOpenWindow(path, { title: name }) });
                 if (!isDir && canOpenWith(name)) items.push('-',
                     { icon: 'uiCode', label: '用代码编辑器打开', act: () => openWithEditor(path, name) },
@@ -8281,9 +8312,9 @@
                     { icon: 'uiCopy', label: '复制', act: () => copySelectedFolderItems(windowId) },
                     { icon: 'fxCopyPath', label: '复制路径', act: () => fxCopyText(path) },
                     '-',
-                    { icon: 'uiDownload', label: '下载', act: () => downloadFolderItem(windowId, name) },
-                    { icon: 'uiRename', label: '重命名', act: () => renameFolderItem(windowId, name) },
-                    { icon: 'uiDeleteSimple', label: '删除', danger: true, act: () => deleteFolderItem(windowId, name) });
+                    { icon: 'uiDownload', label: '下载', act: () => downloadFolderItem(windowId, name, path) },
+                    { icon: 'uiRename', label: '重命名', act: () => renameFolderItem(windowId, name, path) },
+                    { icon: 'uiDeleteSimple', label: '删除', danger: true, act: () => deleteFolderItem(windowId, name, path) });
             }
             openCtxMenu(items, e.clientX, e.clientY);
         }
@@ -8331,6 +8362,7 @@
             st.folderName = opts.name || fxPathName(path);
             st.parentPath = fxParentOf(path);
             st.searchQuery = '';
+            if (st._viewBeforeG) { st.viewMode = st._viewBeforeG; st._viewBeforeG = null; st._shownView = null; fxSyncViewButtons(windowId); }
             st.fileStats = {};
             st.focusPath = null; st.anchorPath = null;
             if (st.viewMode !== 'column' || !fxIsUnder(path, st.colRoot || '/')) st.colRoot = fxRootOf(path);
@@ -8402,11 +8434,154 @@
             const st = fxState(windowId);
             if (!st) return;
             st.searchQuery = query;
+            st._gFromSearch = true;          // 打字触发的重绘：沿用已建好的全局索引
+            fxApplyGlobalView(windowId);
             renderFolderContent(windowId);
+        }
+
+        // ================= 全局搜索（v10.7）=================
+        // 搜索框右侧的范围按钮切换：当前文件夹 ⇄ 全局（IndexedDB、OPFS、已挂载的本地文件夹；
+        // 开启「显示系统文件」时也包括 /system）。选择会被记住，新开的文件管理器沿用。
+        // 全局：第一次搜索时把所有位置走一遍建立索引，之后每次打字只在索引里过滤；
+        // 刷新、增删改名等任何非打字触发的重绘都会重建索引，保证结果不过时。
+        const FX_SCOPE_KEY = 'JISHENG_OS_FX_SEARCH_SCOPE';
+        const FX_G_MAX_SCAN = 30000;         // 最多扫描的项目数（防止挂载了超大的本地目录时卡住）
+        const FX_G_MAX_SHOW = 1000;          // 最多显示的结果数
+        function fxLoadSearchScope() { try { return localStorage.getItem(FX_SCOPE_KEY) === 'all' ? 'all' : 'here'; } catch (_) { return 'here'; } }
+        function fxIsGlobalSearch(st) { return !!(st && st.searchScope === 'all' && st.searchQuery); }
+        function fxSearchRoots() {
+            const roots = getExplorerStorageRoots().slice();
+            Object.values(SYSTEM.mountedFolders || {}).forEach(i => { if (i && !i.disconnected) roots.push(i.mountPath || ('/mnt/local/' + i.name)); });
+            if (SYSTEM.showHiddenFiles) roots.push('/system');
+            return [...new Set(roots)];
+        }
+        function fxSyncSearchScope(wid) {
+            const st = fxState(wid), sbox = fxEl('fx-searchbox-', wid), input = fxEl('folder-search-', wid), btn = fxEl('fx-search-scope-', wid);
+            if (!st || !sbox || !input) return;
+            const all = st.searchScope === 'all';
+            sbox.classList.toggle('is-global', all);
+            sbox.classList.toggle('is-tight', sbox.clientWidth < 200);
+            input.placeholder = sbox.clientWidth < 170 ? '搜索' : all ? '全局搜索' : '搜索当前文件夹';
+            input.setAttribute('aria-label', all ? '全局搜索' : '搜索当前文件夹');
+            if (btn) {
+                btn.setAttribute('aria-pressed', String(all));
+                btn.title = all ? '搜索范围：全局（点按改为只搜当前文件夹）  Ctrl+Shift+F' : '搜索范围：当前文件夹（点按改为全局搜索）  Ctrl+Shift+F';
+            }
+        }
+        function fxSetSearchScope(wid, scope) {
+            const st = fxState(wid);
+            if (!st) return;
+            scope = scope === 'all' ? 'all' : 'here';
+            try { localStorage.setItem(FX_SCOPE_KEY, scope); } catch (_) {}
+            if (st.searchScope === scope) { fxSyncSearchScope(wid); return; }
+            st.searchScope = scope;
+            st._gIdx = null;
+            fxSyncSearchScope(wid);
+            if (st.searchQuery) folderSearch(wid, st.searchQuery);
+        }
+        // 分栏视图只适合浏览一个目录：全局搜索期间临时用列表显示结果，清除搜索 / 进入文件夹后自动换回分栏
+        function fxApplyGlobalView(wid) {
+            const st = fxState(wid);
+            if (!st) return;
+            const g = fxIsGlobalSearch(st);
+            if (g && st.viewMode === 'column') {
+                st._viewBeforeG = 'column';
+                st.viewMode = 'list';
+            } else if (!g && st._viewBeforeG) {
+                st.viewMode = st._viewBeforeG;
+                st._viewBeforeG = null;
+                st.colRoot = fxRootOf(st.currentPath);
+            } else return;
+            st._shownView = null;
+            fxRevokePreview(st);
+            fxSyncViewButtons(wid);
+            const sc = fxEl('folder-filelist-', wid);
+            if (sc) { sc.scrollTop = 0; sc.scrollLeft = 0; }
+        }
+        // 广度优先遍历所有位置，最多同时读 6 个目录
+        function fxBuildSearchIndex(roots, idx) {
+            return new Promise(resolve => {
+                const queue = roots.slice(), seen = new Set();
+                let active = 0, finished = false;
+                const finish = () => { if (finished) return; finished = true; idx.done = true; resolve(); };
+                const pump = () => {
+                    if (idx.truncated) queue.length = 0;
+                    while (active < 6 && queue.length) {
+                        const dir = queue.shift();
+                        if (seen.has(dir)) continue;
+                        seen.add(dir);
+                        active++;
+                        fxReadDir(dir).then(res => {
+                            active--;
+                            if (!res.err) {
+                                for (const en of res.entries) {
+                                    if (idx.scanned >= FX_G_MAX_SCAN) { idx.truncated = true; break; }
+                                    idx.entries.push(en); idx.scanned++;
+                                    if (en.isDir) queue.push(en.path);
+                                }
+                            }
+                            pump();
+                        }, () => { active--; pump(); });
+                    }
+                    if (!queue.length && !active) finish();
+                };
+                pump();
+            });
+        }
+        function fxRenderGlobal(wid, token, keep, focusPath) {
+            const st = fxState(wid), sc = fxEl('folder-filelist-', wid);
+            if (!st || !sc) return;
+            const fromTyping = st._gFromSearch; st._gFromSearch = false;
+            const roots = fxSearchRoots(), key = roots.join('|');
+            if (!fromTyping || !st._gIdx || st._gIdx.key !== key || Date.now() - st._gIdx.at > 60000) {
+                const idx = { key, at: Date.now(), entries: [], scanned: 0, truncated: false, done: false };
+                idx.promise = fxBuildSearchIndex(roots, idx);
+                st._gIdx = idx;
+            }
+            const idx = st._gIdx;
+            fxSyncViewButtons(wid);
+            let tick = 0;
+            if (!idx.done) {
+                fxPaint(sc, wid, `<div class="fx-loading fx-gsearch-loading">${icon('uiSearch')}<span>正在全局搜索…</span></div>`);
+                const cEl = fxEl('folder-status-count-', wid);
+                if (cEl) cEl.textContent = `正在搜索“${st.searchQuery}”…`;
+                tick = setInterval(() => {
+                    const s = sc.querySelector('.fx-gsearch-loading span');
+                    if (s) s.textContent = `正在全局搜索… 已扫描 ${idx.scanned} 项`;
+                }, 200);
+            }
+            idx.promise.then(() => {
+                clearInterval(tick);
+                if (st._renderToken !== token || st._gIdx !== idx || !document.body.contains(sc) || !fxIsGlobalSearch(st)) return;
+                const same = st._shownPath === st.currentPath && st._shownView === st.viewMode && st._gShownQ !== undefined;
+                const prevT = same ? sc.scrollTop : 0;
+                const hits = fxSortEntries(fxFilter(idx.entries, st.searchQuery), st);
+                st._gHits = hits.length;
+                const shown = hits.slice(0, FX_G_MAX_SHOW);
+                st._entries = shown; st._shown = shown;
+                st._entryMap = new Map(shown.map(en => [en.path, en]));
+                fxPaint(sc, wid, st.viewMode === 'grid' ? fxIconsHtml(shown, st) : fxDetailsHtml(shown, st));
+                st._gShownQ = st.searchQuery;
+                fxRestoreSelection(wid, keep, focusPath);
+                sc.scrollTop = prevT;
+                fxAfterRender(wid, token);
+                fxUpgradeAppIcons(wid, sc, token);
+            });
+        }
+        function fxLocHtml(en, st) {
+            if (!fxIsGlobalSearch(st)) return '';
+            const dir = fxParentOf(en.path);
+            return `<span class="fx-loc" title="${escapeAttr(dir)}">${escapeHtml(fxDisplayPath(dir))}</span>`;
+        }
+        // 在全局结果里：跳到文件所在的文件夹并选中它
+        function fxRevealPath(wid, path) {
+            fxGo(wid, fxParentOf(path), { select: [path], force: true });
         }
         function folderSetView(windowId, mode) {
             const st = fxState(windowId);
             if (!st || !['list', 'grid', 'column'].includes(mode)) return;
+            if (mode === 'column' && fxIsGlobalSearch(st)) { Notify.info('提示', '全局搜索时以列表显示结果，清除搜索后即可使用分栏视图'); return; }
+            st._viewBeforeG = null;
             if (st.viewMode === mode) return;
             st._selectAfter = fxSelectedPaths(windowId);
             const keepFocus = st.focusPath;
@@ -9027,6 +9202,7 @@
             if (alt && k === 'ArrowRight') { stop(); fxForward(wid); return; }
             if (alt && k === 'ArrowUp') { stop(); if (fxCanGoUp(st)) folderGoUp(wid); return; }
             if (k === 'F5' || (ctrl && (k === 'r' || k === 'R'))) { stop(); folderRefresh(wid); return; }
+            if (ctrl && e.shiftKey && (k === 'f' || k === 'F')) { stop(); fxSetSearchScope(wid, 'all'); const i = fxEl('folder-search-', wid); if (i) { i.focus(); i.select(); } return; }
             if ((ctrl && (k === 'f' || k === 'F')) || k === 'F3') { stop(); const i = fxEl('folder-search-', wid); if (i) { i.focus(); i.select(); } return; }
             if ((ctrl && (k === 'l' || k === 'L')) || (alt && (k === 'd' || k === 'D'))) { stop(); fxEditPath(wid); return; }
             if (t !== sc && !sc.contains(t)) return;     // 以下按键只在文件区内生效
@@ -9568,7 +9744,7 @@
 
             selectedItems.forEach(item => {
                 const filename = item.dataset.filename;
-                const fullPath = path + '/' + filename;
+                const fullPath = item.dataset.path || (path + '/' + filename);
 
                 SYSTEM.fs.stat(fullPath, (statErr, stats) => {
                     if(statErr || !stats) {
@@ -9597,7 +9773,7 @@
             });
         }
 
-        async function deleteFolderItem(windowId, filename) {
+        async function deleteFolderItem(windowId, filename, itemPath) {
             if (!(await SysDialog.confirm({ title: '删除', icon: 'uiDelete', danger: true, okText: '删除', message: `确定删除 "${filename}" 吗？` }))) return;
             
             const contentArea = document.getElementById('folder-content-' + windowId);
@@ -9606,7 +9782,7 @@
             const state = SYSTEM.folderWindowStates?.[windowId];
             const folderName = state ? state.folderName : contentArea.closest('.window').querySelector('.window-title-text').innerText;
             const path = state ? state.currentPath : SYSTEM.desktopPath + '/' + folderName;
-            const fullPath = path + '/' + filename;
+            const fullPath = itemPath || (path + '/' + filename);
             
             // 先检查是否是文件夹
             SYSTEM.fs.stat(fullPath, (err, stats) => {
@@ -9643,7 +9819,7 @@
             });
         }
 
-        async function renameFolderItem(windowId, oldName) {
+        async function renameFolderItem(windowId, oldName, itemPath) {
             const newName = await SysDialog.prompt({ title: '重命名', icon: 'uiRename', label: '新名称', value: oldName, okText: '重命名', validate: SysDialog.nameValidator('名称') });
             if(!newName || newName === oldName) return;
             
@@ -9653,8 +9829,9 @@
             const state = SYSTEM.folderWindowStates?.[windowId];
             const folderName = state ? state.folderName : contentArea.closest('.window').querySelector('.window-title-text').innerText;
             const path = state ? state.currentPath : SYSTEM.desktopPath + '/' + folderName;
-            const oldPath = path + '/' + oldName;
-            const newPath = path + '/' + newName;
+            const dir = itemPath ? fxParentOf(itemPath) : path;
+            const oldPath = itemPath || (dir + '/' + oldName);
+            const newPath = dir + '/' + newName;
             
             SYSTEM.fs.rename(oldPath, newPath, (err) => {
                 if(err) {
@@ -9682,7 +9859,7 @@
                 return;
             }
             const filename = selectedItems[0].dataset.filename;
-            if(filename) renameFolderItem(windowId, filename);
+            if(filename) renameFolderItem(windowId, filename, selectedItems[0].dataset.path);
         }
 
         // === 文件夹窗口的复制/剪切/粘贴功能 ===
@@ -11941,13 +12118,13 @@
             downloadFileInternal(filePath, filename);
         }
 
-        function downloadFolderItem(windowId, filename) {
+        function downloadFolderItem(windowId, filename, itemPath) {
             const contentArea = document.getElementById('folder-content-' + windowId);
             if(!contentArea) return;
             const state = SYSTEM.folderWindowStates?.[windowId];
             const folderName = state ? state.folderName : contentArea.closest('.window').querySelector('.window-title-text').innerText;
             const basePath = state ? state.currentPath : SYSTEM.desktopPath + '/' + folderName;
-            const filePath = basePath + '/' + filename;
+            const filePath = itemPath || (basePath + '/' + filename);
             
             downloadFileInternal(filePath, filename);
         }
@@ -12066,15 +12243,15 @@
             const files = selectedItems.map(item => item.dataset.filename);
             
             if(files.length === 1) {
-                downloadFolderItem(windowId, files[0]);
+                downloadFolderItem(windowId, files[0], selectedItems[0].dataset.path);
                 return;
             }
             
             const zip = new JSZip();
             let processedCount = 0;
             
-            files.forEach(filename => {
-                const filePath = basePath + '/' + filename;
+            files.forEach((filename, i) => {
+                const filePath = selectedItems[i].dataset.path || (basePath + '/' + filename);
                 SYSTEM.fs.stat(filePath, (err, stats) => {
                     if(err) {
                         processedCount++;
@@ -14704,9 +14881,6 @@
                             ${ib('copy', 'stxCopy', '复制全部内容', 'mid-hide lbl-wide', '复制全部')}
                             <span class="edx-sep mid-hide"></span>
                             ${ib('clear', 'stxTrash2', '清空（Ctrl+Z 可撤销）', 'mid-hide lbl-wide danger', '清空')}
-                            <span class="edx-sep mid-hide"></span>
-                            ${ib('import', 'edxFileDown', '导入文件 (Ctrl+O)', 'mid-hide lbl-wide', '导入')}
-                            ${ib('export', 'edxFileUp', '导出文件 (Ctrl+Shift+S)', 'mid-hide lbl-wide', '导出')}
                             <span class="edx-sp"></span>
                             <select class="edx-select" data-r="lang" title="语言" aria-label="语言">
                                 <option value="htmlmixed">HTML</option>
@@ -14716,6 +14890,9 @@
                                 <option value="application/json">JSON</option>
                                 <option value="xml">XML / SVG</option>
                             </select>
+                            ${ib('import', 'uiDownload', '导入文件 (Ctrl+O)', 'edx-io lbl-wide', '导入')}
+                            ${ib('export', 'uiUpload', '导出文件 (Ctrl+Shift+S)', 'edx-io lbl-wide', '导出')}
+                            <span class="edx-sep"></span>
                             <div class="edx-seg view" role="radiogroup" aria-label="视图">
                                 <button type="button" data-view="code" role="radio" title="只看代码">${icon('edxCode')}<span class="lbl">代码</span></button>
                                 <button type="button" data-view="split" role="radio" title="代码与预览并排">${icon('edxColumns')}<span class="lbl">分屏</span></button>
@@ -15689,7 +15866,7 @@
                     { icon: 'stxUpload', label: '另存为…', kbd: 'Ctrl+Shift+S', act: () => exportEditorFile('saveas') },
                     { icon: 'uiDownload', label: '下载到设备', title: '直接用浏览器下载当前内容', act: quickDownload },
                     { sep: 1 },
-                    { icon: 'edxFileDown', label: '导入文件…', kbd: 'Ctrl+O', act: importEditorFile },
+                    { icon: 'uiDownload', label: '导入文件…', kbd: 'Ctrl+O', act: importEditorFile },
                     { icon: 'edxFilePlus', label: '新建编辑器窗口', act: () => openCodeEditor() },
                     { sep: 1 },
                     { icon: 'stxExternalLink', label: '在浏览器新标签页预览', act: openEditorInNewWindow }
@@ -15703,9 +15880,6 @@
                     { icon: 'stxCopy', label: '复制全部', act: copyAllEditorText },
                     { icon: 'edxRedo', label: '重做', kbd: 'Ctrl+Y', disabled: !editor.historySize().redo, act: () => editor.execCommand('redo') },
                     { icon: 'stxTrash2', label: '清空', danger: true, disabled: !editor.getValue(), act: clearEditor },
-                    { sep: 1 },
-                    { icon: 'edxFileDown', label: '导入', kbd: 'Ctrl+O', act: importEditorFile },
-                    { icon: 'edxFileUp', label: '导出', act: () => exportEditorFile('export') },
                     { sep: 1 });
                 items.push(
                     { head: '编辑器' },
@@ -18014,5 +18188,5 @@
         console.log('7z引擎状态:', ok ? '就绪' : '失败');
     });
     </script>
-</body>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a4c17f4ca9b63760',t:'MTc5MjI2MzExMw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
