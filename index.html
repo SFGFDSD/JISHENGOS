@@ -36,7 +36,6 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/material-darker.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/dialog/dialog.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/hint/show-hint.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/search/matchesonscrollbar.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/xml/xml.min.js"></script>
@@ -49,22 +48,17 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/matchbrackets.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/matchtags.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/trailingspace.min.js"></script>
+    <!-- 代码补全（addon/hint 全套 + show-hint.css）与 match-highlighter 已移除：编辑器从未调用 showHint、也没开 highlightSelectionMatches，加载了却永远用不到。
+         search / annotatescrollbar / matchesonscrollbar 保留：Ctrl+Shift+G、Ctrl+Shift+R 仍会用到 CodeMirror 自带的查找对话框。 -->
     <!-- 代码折叠功能已移除：不再加载 addon/fold 下的 foldcode、foldgutter（含其 CSS）、brace-fold、comment-fold、indent-fold。xml-fold 保留——它提供 CodeMirror.findMatchingTag / scanForClosingTag，是 matchtags（标签配对高亮）与 closetag 的依赖，与折叠 UI 无关 -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/fold/xml-fold.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/search/search.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/search/searchcursor.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/search/jump-to-line.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/search/match-highlighter.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/scroll/annotatescrollbar.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/search/matchesonscrollbar.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/dialog/dialog.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/comment/comment.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/hint/show-hint.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/hint/html-hint.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/hint/css-hint.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/hint/javascript-hint.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/hint/xml-hint.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/hint/anyword-hint.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/selection/active-line.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/js-beautify/1.14.11/beautify.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/js-beautify/1.14.11/beautify-css.min.js"></script>
@@ -196,7 +190,7 @@
             background: rgba(16, 16, 22, 0.75);
             backdrop-filter: blur(40px) saturate(180%);
             -webkit-backdrop-filter: blur(40px) saturate(180%);
-            border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.08); border-radius: var(--dlg-radius);
             padding: 20px 20px 16px;
             box-shadow: 0 20px 50px -12px rgba(0, 0, 0, 0.6);
             transform: translateY(10px) scale(0.97);
@@ -373,9 +367,10 @@
 
         /* === 窗口系统 === */
         /* 窗口圆角（设置 → 个性化 → 窗口圆角） */
-        :root { --win-radius: 10px; }
-        html[data-win-corners="small"] { --win-radius: 6px; }
-        html[data-win-corners="square"] { --win-radius: 0px; }
+        /* --ui-radius：任务栏按钮、菜单项、开始菜单图标等“内部条目”；--dlg-radius：系统对话框；--cal-day-radius：日历日期 */
+        :root { --win-radius: 10px; --ui-radius: 6px; --dlg-radius: 12px; --cal-day-radius: 50%; }
+        html[data-win-corners="small"] { --win-radius: 6px; --ui-radius: 4px; --dlg-radius: 8px; --cal-day-radius: 4px; }
+        html[data-win-corners="square"] { --win-radius: 0px; --ui-radius: 0px; --dlg-radius: 0px; --cal-day-radius: 0px; }
         /* 修复：窗口下方两个角被内部内容（白色内容区、状态栏、侧栏等）盖成直角。
            以前 .window 是 overflow: visible，圆角只画在窗口自己的背景上，子元素照样铺满到直角。
            缩放手柄都在窗口内部，裁剪不会影响拖拽改大小；box-shadow 画在元素外，也不会被自身裁掉。 */
@@ -665,110 +660,392 @@
         .csvx .notepad-area { flex: 1; min-height: 0; }
         @container npx (max-width: 560px) { .csvx-search { flex-basis: 130px; } }
 
-        /* === 任务栏 === */
+        /* =====================================================================
+           任务栏 · 开始菜单 · 日历 · 右键菜单 · 胶囊通知（v10.6 统一重做）
+           - 所有弹出层的圆角都跟随 设置 → 个性化 → 窗口圆角（--win-radius / --ui-radius / --cal-day-radius）
+           - 胶囊通知保持胶囊形状（这是它的身份），只统一配色、阴影、对齐与交互
+           - 键盘：Tab 可达、可见焦点环、Esc 关闭、方向键在菜单/开始菜单/日历中移动
+           ===================================================================== */
+        :root {
+            --pop-bg: rgba(20, 20, 27, 0.84);
+            --pop-border: rgba(255, 255, 255, 0.09);
+            --pop-shadow: 0 18px 48px -12px rgba(0, 0, 0, 0.7), 0 0 0 0.5px rgba(0, 0, 0, 0.5);
+            --pop-line: rgba(255, 255, 255, 0.07);
+            --pop-ink: #eef0f5;
+            --pop-muted: #9a9bab;
+            --tb-hover: rgba(255, 255, 255, 0.07);
+            --tb-press: rgba(255, 255, 255, 0.11);
+            --focus-ring: 0 0 0 2px rgba(76, 194, 255, 0.9);
+            --tb-accent: #3aa6ff;
+        }
+
+        /* --- 任务栏 --- */
         .taskbar {
             position: fixed; bottom: 0; left: 0; right: 0; height: var(--taskbar-height);
-            background: rgba(16, 16, 22, 0.75);
-            backdrop-filter: blur(40px) saturate(180%); border-top: 1px solid rgba(255,255,255,0.08);
-            display: flex; align-items: center; justify-content: space-between; z-index: 1000;
+            background: rgba(14, 14, 20, 0.8);
+            backdrop-filter: blur(40px) saturate(180%); -webkit-backdrop-filter: blur(40px) saturate(180%);
+            border-top: 1px solid rgba(255, 255, 255, 0.07);
+            display: flex; align-items: center; gap: 2px; padding-left: 4px;
+            z-index: 1000; user-select: none; -webkit-user-select: none;
         }
-        
+        .start-btn, .taskbar-icon, .taskbar-running-item, .clock {
+            height: 40px; border-radius: var(--ui-radius); cursor: pointer;
+            transition: background 0.12s, color 0.12s;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .start-btn:hover, .taskbar-icon:hover, .taskbar-running-item:hover, .clock:hover { background: var(--tb-hover); }
+        .start-btn:active, .taskbar-icon:active, .taskbar-running-item:active, .clock:active { background: var(--tb-press); }
+        .start-btn:focus-visible, .taskbar-icon:focus-visible, .taskbar-running-item:focus-visible,
+        .clock:focus-visible, .aero-peek-btn:focus-visible, .running-close-btn:focus-visible { box-shadow: inset var(--focus-ring); }
+        .start-btn:active .icon-svg, .taskbar-icon:active .icon-svg, .taskbar-running-item:active .running-icon { transform: scale(0.9); }
+
         .start-btn {
-            width: 48px; height: 100%; 
+            width: 44px; flex: none;
             display: flex; align-items: center; justify-content: center;
-            cursor: pointer; transition: background 0.15s;
         }
-        .start-btn .icon-svg { width: 20px; height: 20px; color: var(--text-main); }
-        .start-btn:hover { background: rgba(255,255,255,0.06); }
-        
-        .taskbar-apps { flex: 1; display: flex; height: 100%; padding-left: 8px; gap: 0; }
+        .start-btn .icon-svg { width: 20px; height: 20px; color: #fff; transition: transform 0.12s, color 0.12s; }
+        .start-btn.open { background: var(--tb-press); }
+        .start-btn.open .icon-svg { color: #6cc3ff; }
+
+        .taskbar-apps {
+            flex: 1; min-width: 0; height: 100%;
+            display: flex; align-items: center; gap: 2px; padding-left: 2px;
+        }
         .taskbar-icon {
-            width: 44px; height: 100%; 
+            width: 42px; flex: none; position: relative;
             display: flex; align-items: center; justify-content: center;
-            cursor: pointer; position: relative; transition: background 0.15s;
         }
-        .taskbar-icon .icon-svg { width: 20px; height: 20px; color: rgba(255,255,255,0.85); }
-        .taskbar-icon:hover { background: rgba(255,255,255,0.06); }
-        .taskbar-icon.active::after {
-            content: ''; position: absolute; bottom: 0;
-            width: 16px; height: 3px; background: var(--accent-blue); border-radius: 2px;
+        .taskbar-icon .icon-svg { width: 20px; height: 20px; color: rgba(255, 255, 255, 0.86); transition: transform 0.12s, color 0.12s; }
+        .taskbar-icon:hover .icon-svg { color: #fff; }
+        /* 固定快捷方式 与 运行中窗口 之间的分隔线（没有运行窗口时隐藏） */
+        .taskbar-sep { flex: none; width: 1px; height: 22px; margin: 0 6px; background: rgba(255, 255, 255, 0.12); }
+        .taskbar-sep:has(+ .taskbar-running-area:empty) { display: none; }
+
+        .taskbar-running-area {
+            display: flex; align-items: center; gap: 2px;
+            flex: 1; min-width: 0; height: 100%; overflow: hidden;
+        }
+        .taskbar-running-item {
+            position: relative; flex: 0 1 180px; min-width: 40px; max-width: 180px;
+            display: flex; align-items: center; gap: 8px; padding: 0 6px 0 10px;
+            color: rgba(255, 255, 255, 0.78); overflow: hidden;
+            container-type: inline-size;
+        }
+        /* 状态指示条：打开 = 短灰条；当前窗口 = 长亮条；最小化 = 短灰条 + 图标/标题变暗 */
+        .taskbar-running-item::after {
+            content: ''; position: absolute; left: 50%; bottom: 2px;
+            width: 6px; height: 3px; border-radius: min(2px, var(--ui-radius));
+            background: rgba(255, 255, 255, 0.42); transform: translateX(-50%);
+            transition: width 0.2s cubic-bezier(0.2, 0.9, 0.25, 1), background 0.2s;
+        }
+        .taskbar-running-item.focused { background: rgba(255, 255, 255, 0.09); color: #fff; }
+        .taskbar-running-item.focused:hover { background: rgba(255, 255, 255, 0.12); }
+        .taskbar-running-item.focused::after { width: 18px; background: var(--tb-accent); }
+        .taskbar-running-item.minimized-item .running-icon,
+        .taskbar-running-item.minimized-item .running-title { opacity: 0.55; }
+        .taskbar-running-item .running-icon {
+            width: 20px; height: 20px; flex: none;
+            display: flex; align-items: center; justify-content: center; transition: transform 0.12s;
+        }
+        .taskbar-running-item .running-icon .icon-svg { width: 18px; height: 18px; color: rgba(255, 255, 255, 0.88); }
+        .taskbar-running-item .running-title {
+            flex: 1; min-width: 0; font-size: 12px; line-height: 1;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .taskbar-running-item .running-close-btn {
+            flex: none; width: 22px; height: 22px; padding: 0; margin-left: 2px;
+            border: none; border-radius: max(0px, calc(var(--ui-radius) - 2px));
+            background: transparent; color: var(--pop-muted); cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            opacity: 0; transition: opacity 0.12s, background 0.12s, color 0.12s;
+        }
+        .taskbar-running-item:hover .running-close-btn,
+        .taskbar-running-item:focus-within .running-close-btn { opacity: 1; }
+        .taskbar-running-item .running-close-btn:hover { background: var(--win-close-red); color: #fff; }
+        .taskbar-running-item .running-close-btn svg { width: 12px; height: 12px; stroke: currentColor; stroke-width: 2; fill: none; }
+        /* 运行项被挤窄时只显示图标（按运行项自身宽度判断，而不是视口宽度） */
+        @container (max-width: 84px) {
+            .running-title, .running-close-btn { display: none !important; }
+            .running-icon { margin: 0 auto; }
+        }
+        /* 触屏没有悬停：不显示关闭小按钮，改用长按菜单 */
+        @media (hover: none) {
+            .taskbar-running-item .running-close-btn { display: none; }
         }
 
-        .system-tray { display: flex; align-items: center; gap: 6px; height: 100%; }
-        .tray-icon { 
-            width: 32px; height: 32px; border-radius: 4px;
-            display: flex; align-items: center; justify-content: center;
-            cursor: pointer; transition: background 0.15s;
+        /* --- 系统托盘 --- */
+        .system-tray { position: relative; flex: none; display: flex; align-items: center; gap: 2px; height: 100%; padding-left: 4px; }
+        .tray-icon {
+            width: 32px; height: 40px; border-radius: var(--ui-radius);
+            display: flex; align-items: center; justify-content: center; cursor: default;
         }
-        .tray-icon .icon-svg { width: 16px; height: 16px; color: var(--text-muted); }
-        .tray-icon:hover { background: rgba(255,255,255,0.06); }
-        
-        .clock { 
-            padding: 4px 12px; font-size: 12px; text-align: right; 
-            line-height: 1.4; cursor: pointer; border-radius: 4px;
+        .tray-icon .icon-svg { width: 16px; height: 16px; color: var(--pop-muted); }
+        .tray-icon.offline .icon-svg { color: #f5a524; }
+        .clock {
+            padding: 0 10px; display: flex; flex-direction: column; align-items: flex-end; justify-content: center;
+            font-size: 12px; line-height: 1.35; white-space: nowrap; font-variant-numeric: tabular-nums;
         }
-        .clock:hover { background: rgba(255,255,255,0.06); }
-        .clock .time { font-weight: 500; }
-        .clock .date { opacity: 0.7; font-size: 11px; }
+        .clock.open { background: var(--tb-press); }
+        .clock .time { font-weight: 500; color: #fff; }
+        .clock .date { font-size: 11px; color: rgba(255, 255, 255, 0.68); }
+        .aero-peek-btn { border-left: 1px solid rgba(255, 255, 255, 0.08) !important; }
 
-        /* === 开始菜单 === */
+        /* --- 通用弹出层外壳（开始菜单 / 日历 / 右键菜单） --- */
+        .start-menu, .calendar-panel, .context-menu {
+            background: var(--pop-bg);
+            backdrop-filter: blur(40px) saturate(180%); -webkit-backdrop-filter: blur(40px) saturate(180%);
+            border: 1px solid var(--pop-border); border-radius: var(--win-radius);
+            box-shadow: var(--pop-shadow); color: var(--pop-ink);
+        }
+
+        /* --- 开始菜单 --- */
         .start-menu {
-            position: fixed; bottom: calc(var(--taskbar-height) + 12px); left: 12px;
-            width: 340px; background: rgba(16, 16, 22, 0.75);
-            backdrop-filter: blur(40px) saturate(180%);
-            -webkit-backdrop-filter: blur(40px) saturate(180%);
-            border-radius: 10px; border: 1px solid rgba(255,255,255,0.08);
-            padding: 20px; z-index: 2000;
-            transform: translateY(20px); opacity: 0; pointer-events: none;
-            transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-            box-shadow: 0 20px 50px -12px rgba(0, 0, 0, 0.6);
+            position: fixed; left: 8px; bottom: calc(var(--taskbar-height) + 8px);
+            width: 360px; max-width: calc(100vw - 16px); max-height: calc(100vh - var(--taskbar-height) - 16px);
+            display: flex; flex-direction: column; overflow: hidden; z-index: 2000;
+            opacity: 0; transform: translateY(12px); visibility: hidden; pointer-events: none;
+            transition: opacity 0.14s ease, transform 0.22s cubic-bezier(0.2, 0.9, 0.25, 1), visibility 0s linear 0.22s;
         }
-        .start-menu.open { transform: translateY(0); opacity: 1; pointer-events: auto; }
-        
-        .start-menu-header { margin-bottom: 20px; }
-        .start-menu-header h2 { 
-            font-size: 14px; font-weight: 600; color: var(--text-muted);
-            text-transform: uppercase; letter-spacing: 1px;
+        .start-menu.open {
+            opacity: 1; transform: none; visibility: visible; pointer-events: auto;
+            transition: opacity 0.14s ease, transform 0.22s cubic-bezier(0.2, 0.9, 0.25, 1), visibility 0s;
         }
-        
-        .menu-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+        .sm-search { position: relative; flex: none; margin: 16px 16px 4px; }
+        .sm-search > .icon-svg { position: absolute; left: 11px; top: 10px; width: 16px; height: 16px; color: var(--pop-muted); pointer-events: none; }
+        .sm-search input {
+            width: 100%; height: 36px; padding: 0 12px 0 34px;
+            border-radius: var(--ui-radius); border: 1px solid rgba(255, 255, 255, 0.1);
+            background: rgba(0, 0, 0, 0.28); color: var(--pop-ink); font: inherit; font-size: 13px;
+            transition: border-color 0.12s, box-shadow 0.12s; color-scheme: dark;
+        }
+        .sm-search input::placeholder { color: var(--pop-muted); }
+        .sm-search input:focus { border-color: var(--accent-blue); box-shadow: 0 0 0 3px rgba(0, 120, 212, 0.25); }
+        .sm-search input::-webkit-search-cancel-button { filter: grayscale(1) brightness(1.6); cursor: pointer; }
+        .start-menu-header { flex: none; padding: 12px 20px 6px; }
+        .start-menu-header h2 { font-size: 12.5px; font-weight: 600; color: #c9cad6; letter-spacing: 0; text-transform: none; }
+        .menu-grid {
+            display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px;
+            padding: 0 12px 12px; overflow-y: auto; min-height: 0; scrollbar-width: thin;
+        }
         .menu-item {
-            aspect-ratio: 1; background: rgba(255,255,255,0.04);
-            border-radius: 8px; border: 1px solid transparent;
-            display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;
-            cursor: pointer; transition: all 0.15s;
+            appearance: none; border: 1px solid transparent; background: transparent; color: inherit; font: inherit;
+            height: 84px; min-width: 0; padding: 0 4px; border-radius: var(--ui-radius);
+            display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+            cursor: pointer; transition: background 0.12s, border-color 0.12s;
+            -webkit-tap-highlight-color: transparent;
         }
-        .menu-item:hover { 
-            background: rgba(255,255,255,0.08); 
-            border-color: rgba(255,255,255,0.1);
-            transform: translateY(-2px);
+        .menu-item .icon-svg, .menu-item .app-custom-icon { width: 28px; height: 28px; color: rgba(255, 255, 255, 0.9); transition: transform 0.12s; }
+        .menu-item span { max-width: 100%; font-size: 12px; color: #d6d7e0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .menu-item:hover { background: var(--tb-hover); }
+        .menu-item:active { background: var(--tb-press); }
+        .menu-item:active .icon-svg { transform: scale(0.92); }
+        .menu-item:focus-visible { box-shadow: inset var(--focus-ring); }
+        .menu-item.sm-filtered { display: none; }
+        /* 搜索时：回车会打开的那一项 */
+        .menu-item.sm-first { background: rgba(0, 120, 212, 0.16); border-color: rgba(0, 120, 212, 0.45); }
+        .sm-empty { padding: 20px 20px 28px; text-align: center; font-size: 12.5px; color: var(--pop-muted); }
+        .sm-empty[hidden] { display: none; }
+        .sm-footer {
+            flex: none; display: flex; align-items: center; gap: 2px; padding: 8px 10px;
+            border-top: 1px solid var(--pop-line); background: rgba(0, 0, 0, 0.2);
         }
-        .menu-item .icon-svg { color: rgba(255,255,255,0.8); }
-        .menu-item span { font-size: 11px; font-weight: 500; color: var(--text-muted); }
+        .sm-about, .sm-iconbtn {
+            appearance: none; border: 0; background: transparent; color: inherit; font: inherit; cursor: pointer;
+            border-radius: var(--ui-radius); transition: background 0.12s, color 0.12s;
+        }
+        .sm-about { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; padding: 6px 8px; text-align: left; }
+        .sm-logo {
+            flex: none; width: 30px; height: 30px; display: grid; place-items: center;
+            border-radius: min(8px, calc(var(--ui-radius) + 2px)); border: 1px solid var(--pop-line);
+            background: linear-gradient(135deg, #0a0a0f, #181c24); font: 900 11px "Arial Black", Inter, sans-serif;
+        }
+        .sm-logo span { background: linear-gradient(90deg, #0078d4, #00d4ff); -webkit-background-clip: text; background-clip: text; color: transparent; }
+        .sm-about-text { min-width: 0; display: flex; flex-direction: column; line-height: 1.3; }
+        .sm-about-text b { font-size: 12.5px; font-weight: 600; }
+        .sm-about-text small { font-size: 11px; color: var(--pop-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .sm-iconbtn { flex: none; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; color: #c9cad6; }
+        .sm-iconbtn .icon-svg { width: 18px; height: 18px; }
+        .sm-about:hover, .sm-iconbtn:hover { background: var(--tb-hover); color: #fff; }
+        .sm-iconbtn.danger:hover { background: rgba(232, 17, 35, 0.16); color: #ff8a94; }
+        .sm-about:focus-visible, .sm-iconbtn:focus-visible { box-shadow: inset var(--focus-ring); }
 
-        /* === 右键菜单 === */
+        /* --- 日历 --- */
+        .calendar-panel {
+            position: fixed; right: 8px; bottom: calc(var(--taskbar-height) + 8px);
+            width: 336px; max-width: calc(100vw - 16px); max-height: calc(100vh - var(--taskbar-height) - 16px);
+            overflow-y: auto; overflow-x: hidden; z-index: 2000; scrollbar-width: thin;
+            opacity: 0; transform: translateY(12px); visibility: hidden; pointer-events: none;
+            transition: opacity 0.14s ease, transform 0.22s cubic-bezier(0.2, 0.9, 0.25, 1), visibility 0s linear 0.22s;
+        }
+        .calendar-panel.open {
+            opacity: 1; transform: none; visibility: visible; pointer-events: auto;
+            transition: opacity 0.14s ease, transform 0.22s cubic-bezier(0.2, 0.9, 0.25, 1), visibility 0s;
+        }
+        .cal-now { padding: 16px 18px 14px; border-bottom: 1px solid var(--pop-line); }
+        .cal-now-time { font-size: 30px; font-weight: 300; line-height: 1.1; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; }
+        .cal-now-time small { font-size: 13px; font-weight: 400; color: var(--pop-muted); margin-right: 6px; letter-spacing: 0; }
+        .cal-now-date { margin-top: 6px; font-size: 12.5px; color: #c9cad6; }
+        .cal-now-lunar { margin-left: 8px; color: var(--pop-muted); }
+        .cal-body { padding: 12px 14px 14px; }
+        .calendar-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; padding-left: 6px; }
+        .calendar-header h3 { font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; }
+        .calendar-nav { display: flex; align-items: center; gap: 2px; }
+        .calendar-nav button {
+            min-width: 30px; height: 30px; padding: 0; border: none; border-radius: var(--ui-radius);
+            background: transparent; color: var(--pop-ink); font: inherit; font-size: 12px; cursor: pointer;
+            display: flex; align-items: center; justify-content: center; transition: background 0.12s, opacity 0.12s;
+        }
+        .calendar-nav button.cal-today { padding: 0 10px; color: #8fd0ff; }
+        .calendar-nav button:hover { background: rgba(255, 255, 255, 0.08); }
+        .calendar-nav button:active { background: rgba(255, 255, 255, 0.12); }
+        .calendar-nav button:disabled { opacity: 0.35; cursor: default; background: transparent; }
+        .calendar-nav button:focus-visible { box-shadow: inset var(--focus-ring); }
+        .calendar-weekdays { display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; }
+        .calendar-weekdays span { padding: 8px 0 6px; font-size: 11.5px; font-weight: 500; color: var(--pop-muted); }
+        .calendar-days { display: grid; grid-template-columns: repeat(7, 1fr); row-gap: 2px; }
+        .calendar-day {
+            appearance: none; border: 0; background: transparent; color: inherit; font: inherit;
+            height: 38px; padding: 0; display: flex; align-items: center; justify-content: center; cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .calendar-day span {
+            width: 34px; height: 34px; display: flex; align-items: center; justify-content: center;
+            border-radius: var(--cal-day-radius); font-size: 13px; font-variant-numeric: tabular-nums;
+            transition: background 0.12s, box-shadow 0.12s;
+        }
+        .calendar-day:hover span { background: rgba(255, 255, 255, 0.08); }
+        .calendar-day.other-month { color: var(--pop-muted); }
+        .calendar-day.other-month span { opacity: 0.5; }
+        .calendar-day.selected span { box-shadow: inset 0 0 0 1.5px rgba(76, 194, 255, 0.85); }
+        .calendar-day.today span { background: var(--accent-blue); color: #fff; font-weight: 600; }
+        .calendar-day.today:hover span { background: #1a86e0; }
+        .calendar-day.today.selected span { box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.85); }
+        .calendar-day:focus-visible span { box-shadow: var(--focus-ring); }
+        .cal-info {
+            margin-top: 10px; padding: 8px 10px; border-radius: var(--ui-radius); background: rgba(255, 255, 255, 0.04);
+            display: flex; align-items: baseline; justify-content: space-between; gap: 10px; font-size: 12px; color: #c9cad6;
+        }
+        .cal-info span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .cal-info b { flex: none; font-weight: 500; color: #8fd0ff; }
+
+        /* --- 右键菜单 --- */
         .context-menu {
-            position: fixed; min-width: 220px; background: rgba(16, 16, 22, 0.75);
-            backdrop-filter: blur(40px) saturate(180%);
-            -webkit-backdrop-filter: blur(40px) saturate(180%);
-            border: 1px solid rgba(255,255,255,0.08); border-radius: 8px;
-            padding: 6px; z-index: 3000;
-            /* 菜单过高时贴顶并内部滚动，保证最底部按钮始终可点击 */
-            max-height: calc(100vh - 16px); overflow-y: auto; overflow-x: hidden;
-            opacity: 0; transform: scale(0.95); pointer-events: none;
-            transition: all 0.12s ease; box-shadow: 0 20px 50px -12px rgba(0, 0, 0, 0.6);
+            position: fixed; min-width: 216px; max-width: min(340px, calc(100vw - 16px)); padding: 4px; z-index: 3000;
+            max-height: calc(100vh - 16px); overflow-y: auto; overflow-x: hidden; scrollbar-width: thin;
+            opacity: 0; transform: scale(0.97); transform-origin: var(--cm-origin, top left);
+            visibility: hidden; pointer-events: none;
+            transition: opacity 0.1s ease, transform 0.12s ease, visibility 0s linear 0.12s;
         }
-        .context-menu.open { opacity: 1; transform: scale(1); pointer-events: auto; }
-        
+        .context-menu.open {
+            opacity: 1; transform: none; visibility: visible; pointer-events: auto;
+            transition: opacity 0.1s ease, transform 0.14s cubic-bezier(0.2, 0.9, 0.25, 1), visibility 0s;
+        }
         .context-item {
-            padding: 10px 14px; border-radius: 5px; font-size: 13px;
-            cursor: pointer; display: flex; align-items: center; gap: 12px;
-            transition: background 0.1s;
+            display: flex; align-items: center; gap: 10px; min-height: 32px; padding: 0 12px 0 10px;
+            border-radius: var(--ui-radius); font-size: 13px; color: var(--pop-ink);
+            cursor: pointer; white-space: nowrap; user-select: none; -webkit-user-select: none;
+            transition: background 0.08s, color 0.08s;
         }
-        .context-item .icon-svg { width: 16px; height: 16px; color: var(--text-muted); }
-        .context-item:hover { background: var(--accent-blue); }
-        .context-item:hover .icon-svg { color: white; }
-        .context-divider { height: 1px; background: var(--glass-border); margin: 5px 0; }
+        .context-item > span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+        .context-item .icon-svg { flex: none; width: 16px; height: 16px; color: #a3a5b5; transition: color 0.08s; }
+        .context-item:hover, .context-item.kb-active { background: rgba(255, 255, 255, 0.08); color: #fff; }
+        .context-item:hover .icon-svg, .context-item.kb-active .icon-svg { color: #fff; }
+        .context-item:active { background: rgba(255, 255, 255, 0.12); }
+        .context-item.accent, .context-item.accent .icon-svg { color: var(--accent-cyan); }
+        .context-item.danger, .context-item.danger .icon-svg { color: #ff8a94; }
+        .context-item.danger:hover, .context-item.danger.kb-active { background: rgba(232, 17, 35, 0.16); color: #ffb3ba; }
+        .context-item.danger:hover .icon-svg, .context-item.danger.kb-active .icon-svg { color: #ffb3ba; }
+        .context-item.disabled, .context-item[aria-disabled="true"] { opacity: 0.4; pointer-events: none; }
+        .context-divider { height: 1px; margin: 4px 8px; background: rgba(255, 255, 255, 0.08); }
+        @media (pointer: coarse) {
+            .context-menu { min-width: 200px; }
+            .context-item { min-height: 44px; font-size: 14px; padding: 0 14px 0 12px; gap: 12px; }
+        }
+
+        /* --- 胶囊通知：锚定在托盘左侧（随时钟宽度自动对齐），始终是胶囊 --- */
+        #taskbar-notify-area {
+            position: absolute; right: 100%; top: 0; bottom: 0; margin-right: 6px;
+            display: flex; align-items: flex-end; justify-content: flex-end; padding-bottom: 7px;
+            width: max-content; max-width: 560px; pointer-events: none; z-index: 1005;
+        }
+        .tb-notification {
+            --tbn-c: #4cc2ff; --tbn-bg: rgba(76, 194, 255, 0.16);
+            position: relative; flex: none; max-width: 100%; min-height: 34px; height: 34px;
+            display: flex; align-items: center; gap: 9px; padding: 0 14px 0 5px;
+            border-radius: 999px; overflow: hidden; white-space: nowrap;
+            background: rgba(28, 28, 37, 0.94);
+            backdrop-filter: blur(24px) saturate(160%); -webkit-backdrop-filter: blur(24px) saturate(160%);
+            border: 1px solid rgba(255, 255, 255, 0.11);
+            box-shadow: 0 10px 28px -10px rgba(0, 0, 0, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+            color: var(--pop-ink); font-size: 12.5px; line-height: 1.35;
+            pointer-events: auto; cursor: pointer;
+            animation: tbnIn 0.34s cubic-bezier(0.2, 0.9, 0.25, 1) both;
+        }
+        .tb-notification.success { --tbn-c: #3ddc84; --tbn-bg: rgba(61, 220, 132, 0.15); }
+        .tb-notification.error   { --tbn-c: #ff6b78; --tbn-bg: rgba(255, 107, 120, 0.16); }
+        .tb-notification.warning { --tbn-c: #f5a524; --tbn-bg: rgba(245, 165, 36, 0.16); }
+        .tb-notify-badge {
+            flex: none; width: 24px; height: 24px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            background: var(--tbn-bg); color: var(--tbn-c);
+        }
+        .tb-notify-badge .icon-svg { width: 14px; height: 14px; }
+        .tb-notify-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+        .tb-notify-title { font-weight: 600; }
+        .tb-notify-msg { margin-left: 8px; color: rgba(238, 240, 245, 0.72); }
+        .tb-notify-count {
+            flex: none; padding: 1px 7px; border-radius: 999px; font-size: 11px; font-weight: 600;
+            background: rgba(255, 255, 255, 0.1); color: #fff; font-variant-numeric: tabular-nums;
+        }
+        .tb-notify-count[hidden] { display: none; }
+        /* 剩余时间：底部细线，悬停时暂停（自动消失由这条动画驱动） */
+        .tb-notify-progress {
+            position: absolute; left: 16px; right: 16px; bottom: 0; height: 2px; border-radius: 2px;
+            background: var(--tbn-c); opacity: 0.55; transform-origin: left center;
+            animation: tbnProgress var(--tbn-dur, 3200ms) linear forwards;
+        }
+        .tb-notification:hover .tb-notify-progress,
+        .tb-notification.expanded .tb-notify-progress { animation-play-state: paused; }
+        .tb-notification.bump { animation: tbnBump 0.28s ease; }
+        /* 文字放不下：悬停 / 轻点时向上展开显示全文（底边不动，不会遮住时钟） */
+        .tb-notification.expanded {
+            height: auto; white-space: normal; align-items: flex-start;
+            padding-top: 5px; padding-bottom: 7px; border-radius: 17px;
+        }
+        .tb-notification.expanded .tb-notify-text { overflow: visible; padding-top: 3px; word-break: break-word; }
+        .tb-notification.expanded .tb-notify-title { display: block; }
+        .tb-notification.expanded .tb-notify-msg { display: block; margin-left: 0; margin-top: 2px; }
+        .tb-notification.hiding {
+            position: absolute; right: 0; bottom: 7px; pointer-events: none;
+            animation: tbnOut 0.24s ease forwards;
+        }
+        @keyframes tbnIn { from { opacity: 0; transform: translateX(18px) scale(0.96); } to { opacity: 1; transform: none; } }
+        @keyframes tbnOut { to { opacity: 0; transform: translateX(18px) scale(0.96); } }
+        @keyframes tbnBump { 40% { transform: scale(1.04); } }
+        @keyframes tbnProgress { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+
+        /* --- 手机 / 窄屏 --- */
+        @media (max-width: 600px) {
+            .taskbar { padding-left: 2px; gap: 0; }
+            /* 固定快捷方式放不下：可横向滑动；一旦有运行中的窗口，任务栏改为显示运行窗口（开始菜单里仍可启动应用） */
+            .taskbar-apps { overflow-x: auto; overflow-y: hidden; scrollbar-width: none; overscroll-behavior-x: contain; }
+            .taskbar-apps::-webkit-scrollbar { display: none; }
+            .taskbar-icon { width: 40px; }
+            .taskbar-apps:has(.taskbar-running-item) > .taskbar-icon.pinned,
+            .taskbar-apps:has(.taskbar-running-item) > .taskbar-sep { display: none; }
+            .taskbar-running-area { overflow-x: auto; scrollbar-width: none; }
+            .taskbar-running-item { flex: 0 0 44px; max-width: 44px; padding: 0; justify-content: center; }
+            .taskbar-running-item .running-title, .taskbar-running-item .running-close-btn { display: none; }
+            .tray-icon:not(.offline) { display: none; }
+            .clock .date { display: none; }
+            .start-menu, .calendar-panel { left: 8px; right: 8px; width: auto; max-width: none; }
+            #taskbar-notify-area { max-width: calc(100vw - 120px); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .start-menu, .calendar-panel, .context-menu, .start-menu.open, .calendar-panel.open, .context-menu.open { transition-duration: 0s !important; transform: none; }
+            .tb-notification, .tb-notification.hiding, .tb-notification.bump { animation-duration: 0.01s; }
+            .tb-notify-progress { opacity: 0; }
+        }
 
         /* === 系统设置（侧栏导航版，v10.6）===
            所有规则以 .stx 作用域隔离，避免与文件管理器等窗口的通用类名冲突。
@@ -1509,58 +1786,6 @@
         /* 兼容旧结构 h4 兜底（若 JS 未更新也能看） */
         .extract-progress h4 { margin: 0; font-size: 13px; font-weight: 600; color: var(--text-main); text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-        /* === 日历面板 === */
-        .calendar-panel {
-            position: fixed; bottom: calc(var(--taskbar-height) + 12px); right: 12px;
-            width: 320px; background: rgba(16, 16, 22, 0.75);
-            backdrop-filter: blur(40px) saturate(180%);
-            -webkit-backdrop-filter: blur(40px) saturate(180%);
-            border-radius: 10px; border: 1px solid rgba(255,255,255,0.08);
-            padding: 20px; z-index: 2000;
-            transform: translateY(20px); opacity: 0; pointer-events: none;
-            transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-            box-shadow: 0 20px 50px -12px rgba(0, 0, 0, 0.6);
-        }
-        .calendar-panel.open { transform: translateY(0); opacity: 1; pointer-events: auto; }
-        
-        .calendar-header {
-            display: flex; justify-content: space-between; align-items: center;
-            margin-bottom: 16px;
-        }
-        .calendar-header h3 { font-size: 16px; font-weight: 600; }
-        .calendar-nav { display: flex; gap: 8px; }
-        .calendar-nav button {
-            width: 28px; height: 28px; border-radius: 6px; border: none;
-            background: rgba(255,255,255,0.08); color: var(--text-main);
-            cursor: pointer; display: flex; align-items: center; justify-content: center;
-            transition: 0.15s;
-        }
-        .calendar-nav button:hover { background: rgba(255,255,255,0.15); }
-        
-        .calendar-weekdays {
-            display: grid; grid-template-columns: repeat(7, 1fr);
-            text-align: center; margin-bottom: 8px;
-        }
-        .calendar-weekdays span {
-            font-size: 11px; color: var(--text-muted); font-weight: 600;
-            padding: 8px 0;
-        }
-        
-        .calendar-days {
-            display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px;
-        }
-        .calendar-day {
-            aspect-ratio: 1; display: flex; align-items: center; justify-content: center;
-            font-size: 13px; border-radius: 50%; cursor: pointer;
-            transition: 0.15s;
-        }
-        .calendar-day:hover { background: rgba(255,255,255,0.1); }
-        .calendar-day.other-month { color: var(--text-muted); opacity: 0.4; }
-        .calendar-day.today { 
-            background: var(--accent-blue); color: white; font-weight: 600;
-        }
-        .calendar-day.today:hover { background: #0066b8; }
-
         /* === 计算器（v10.6 重做：系统新风格、键盘操作、精确小数） === */
         .calx { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 10px; padding: 12px; background: rgba(20,20,28,.85); color: #f2f3f7; outline: none; container-type: size; }
         .calx-display { position: relative; display: flex; flex-direction: column; justify-content: flex-end; align-items: stretch; gap: 4px; min-height: 92px; padding: 12px 14px 10px; border-radius: 12px;
@@ -1650,91 +1875,6 @@
             cursor: none;
         }
 
-        /* === 通知系统=== */
-        #taskbar-notify-area {
-            position: absolute;
-            right: 140px;
-            top: 0;
-            bottom: 0;
-            
-            width: auto;
-            max-width: calc(100vw - 155px);
-            
-            display: flex;
-            align-items: center;
-            justify-content: flex-end;
-            
-            pointer-events: none;
-            z-index: 1005;
-            overflow: visible;
-        }
-        
-        /* 移动端适配：同样放宽限制 */
-        @media (max-width: 600px) {
-            #taskbar-notify-area {
-                right: 90px; /* 移动端托盘区域较小 */
-                max-width: calc(100vw - 100px); /* 利用移动端几乎所有宽度 */
-            }
-            .tb-notification {
-                max-width: 100%; /* 确保胶囊自身不被限制 */
-            }
-        }
-
-        /* 具体的通知胶囊 */
-        .tb-notification {
-            background: rgba(40, 40, 50, 0.95);
-            border: 1px solid rgba(255, 255, 255, 0.15);
-            border-radius: 20px;
-            padding: 0 16px 0 12px;
-            height: 36px;
-            
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            
-            pointer-events: auto;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-            cursor: pointer;
-            
-            transform: translateX(120%);
-            opacity: 0;
-            animation: slideLeftOut 0.5s cubic-bezier(0.19, 1, 0.22, 1) forwards;
-            
-            white-space: nowrap;
-            flex-shrink: 0;
-        }
-
-        /* 动画关键帧 */
-        @keyframes slideLeftOut {
-            0% { transform: translateX(120%); opacity: 0; }
-            100% { transform: translateX(0); opacity: 1; }
-        }
-        
-        /* 消失动画 */
-        .tb-notification.hiding {
-            animation: slideRightBack 0.4s cubic-bezier(0.19, 1, 0.22, 1) forwards;
-        }
-        @keyframes slideRightBack {
-            0% { transform: translateX(0); opacity: 1; }
-            100% { transform: translateX(120%); opacity: 0; }
-        }
-
-        /* 图标与文字样式 */
-        .tb-notify-icon { width: 16px; height: 16px; flex-shrink: 0; }
-        .tb-notify-icon.success { color: #4ade80; }
-        .tb-notify-icon.error { color: #ef4444; }
-        .tb-notify-icon.warning { color: #f59e0b; }
-        .tb-notify-icon.info { color: var(--accent-blue); }
-
-        .tb-notify-content {
-            display: flex; flex-direction: column; justify-content: center;
-            font-size: 12px; color: #fff;
-            padding-right: 4px;
-        }
-        .tb-notify-title { font-weight: 600; margin-right: 6px; }
-        .tb-notify-msg { opacity: 0.8; font-weight: 400; }
-        .tb-notify-content.single .tb-notify-msg { display: none; }
-
         /* === 调整手柄 === */
         .resize-handle { position: absolute; z-index: 30; touch-action: none; }
         .resize-handle.n { top: 0; height: 6px; left:0; right:0; cursor: n-resize; }
@@ -1779,13 +1919,7 @@
             /* 隐藏不需要的元素 */
             .resize-handle { display: none !important; }
             .win-btn:nth-child(2) { display: none; } /* 隐藏最大化按钮 */
-            .clock .date { display: none; } /* 隐藏日期 */
             
-            /* 增大触摸区域 */
-            .start-menu { width: 95%; left: 2.5%; bottom: 60px; }
-            .taskbar-icon { width: 42px; }
-            .context-menu { min-width: 160px; padding: 8px; }
-            .context-item { padding: 12px; font-size: 14px; }
         }
 
         /* 真正全屏状态 */
@@ -2076,14 +2210,6 @@
             padding: 3px 8px !important; outline: none !important;
         }
         .editor-app .CodeMirror-dialog input:focus { border-color: var(--accent-blue) !important; }
-        .editor-app .CodeMirror-hints {
-            background: rgba(0,0,0,0.20) !important; border: 1px solid var(--glass-border) !important;
-            border-radius: 6px !important; box-shadow: 0 8px 24px rgba(0,0,0,.4) !important;
-            font-family: 'JetBrains Mono', monospace !important; font-size: 13px !important;
-            z-index: 99999 !important; overflow: hidden;
-        }
-        .editor-app .CodeMirror-hint { color: var(--text-main) !important; padding: 4px 10px !important; }
-        .editor-app li.CodeMirror-hint-active { background: var(--accent-blue) !important; color: #fff !important; }
         
         /* 拖拽防选中 - 修复iframe拦截拖拽问题 */
         .no-select { user-select: none !important; -webkit-user-select: none !important; }
@@ -2135,113 +2261,6 @@
             z-index: 9000 !important;
         }
 
-        /* === 任务栏固定快捷方式（只负责启动） === */
-        .taskbar-icon.pinned {
-            position: relative;
-        }
-        .taskbar-icon.pinned:not(.has-windows)::after {
-            display: none;
-        }
-
-        /* === 运行中窗口的条状图标 === */
-        .taskbar-running-item {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            padding: 0 12px;
-            height: 100%;
-            border-radius: 0;
-            cursor: pointer;
-            background: transparent;
-            border: none;
-            border-bottom: 2px solid transparent;
-            transition: all 0.15s;
-            max-width: 160px;
-            min-width: 44px;
-            position: relative;
-            flex-shrink: 1;
-            overflow: hidden;
-        }
-        .taskbar-running-item:hover {
-            background: rgba(255,255,255,0.06);
-        }
-        .taskbar-running-item.focused {
-            background: rgba(255,255,255,0.08);
-            border-bottom-color: rgba(0, 120, 212, 0.6);
-            box-shadow: inset 0 -1px 0 0 rgba(0, 120, 212, 0.3);
-        }
-        .taskbar-running-item.minimized-item {
-            opacity: 0.5;
-        }
-        .taskbar-running-item.minimized-item.focused {
-            border-bottom-color: rgba(0, 120, 212, 0.4);
-            box-shadow: inset 0 -1px 0 0 rgba(0, 120, 212, 0.2);
-        }
-        .taskbar-running-item .running-icon {
-            width: 20px;
-            height: 20px;
-            flex-shrink: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        .taskbar-running-item .running-icon .icon-svg {
-            width: 18px;
-            height: 18px;
-            color: rgba(255,255,255,0.85);
-        }
-        .taskbar-running-item .running-title {
-            font-size: 12px;
-            color: var(--text-main);
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            flex: 1;
-            line-height: 1;
-        }
-
-        /* 任务栏运行项关闭按钮 */
-        .taskbar-running-item .running-close-btn {
-            width: 18px;
-            height: 18px;
-            border-radius: 3px;
-            border: none;
-            background: transparent;
-            color: var(--text-muted);
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex-shrink: 0;
-            opacity: 0;
-            transition: all 0.15s;
-            margin-left: 4px;
-        }
-        .taskbar-running-item:hover .running-close-btn {
-            opacity: 1;
-        }
-        .taskbar-running-item .running-close-btn:hover {
-            background: var(--win-close-red);
-            color: white;
-        }
-        .taskbar-running-item .running-close-btn svg {
-            width: 12px;
-            height: 12px;
-            stroke: currentColor;
-            stroke-width: 2;
-            fill: none;
-        }
-
-        /* 运行区域容器 */
-        .taskbar-running-area {
-            display: flex;
-            align-items: center;
-            gap: 0;
-            flex: 1;
-            overflow: hidden;
-            min-width: 0;
-            height: 100%;
-        }
     </style>
 </head>
 <body>
@@ -2268,25 +2287,27 @@
      </div>
 
     <!-- 任务栏 -->
-    <div class="taskbar">
-        <div class="start-btn" data-icon="uiStartMenu" onclick="toggleStartMenu()"></div>
+    <div class="taskbar" role="toolbar" aria-label="任务栏">
+        <div class="start-btn" data-icon="uiStartMenu" onclick="toggleStartMenu()" role="button" tabindex="0" title="开始" aria-label="开始" aria-haspopup="dialog" aria-expanded="false" aria-controls="start-menu"></div>
         <div class="taskbar-apps" id="taskbar-apps">
             <!-- 固定快捷方式（只负责打开应用） -->
-            <div class="taskbar-icon pinned" onclick="openBrowser()" title="浏览器" data-icon="appBrowser" data-system-app="browser"></div>
-            <div class="taskbar-icon pinned" onclick="openFileExplorer()" title="文件资源管理器" data-icon="appExplorer" data-system-app="explorer"></div>
-            <div class="taskbar-icon pinned" onclick="openNotepad()" title="记事本" data-icon="appNotepad" data-system-app="notepad"></div>
-            <div class="taskbar-icon pinned" onclick="openCalculator()" title="计算器" data-icon="appCalc" data-system-app="calculator"></div>
-            <div class="taskbar-icon pinned" onclick="openPaint()" title="画板" data-icon="appPaint" data-system-app="paint"></div>
-            <div class="taskbar-icon pinned" onclick="openSettings()" title="设置" data-icon="appSettings" data-system-app="settings"></div>
-            <div class="taskbar-icon pinned" onclick="openV86()" title="V86虚拟机" data-icon="appVM" data-system-app="v86"></div>
-            <div class="taskbar-icon pinned" onclick="openCodeEditor()" title="HTML编辑器" data-icon="appCode" data-system-app="code"></div>
+            <div class="taskbar-icon pinned" onclick="openBrowser()" title="浏览器" aria-label="浏览器" role="button" tabindex="0" data-icon="appBrowser" data-system-app="browser"></div>
+            <div class="taskbar-icon pinned" onclick="openFileExplorer()" title="文件资源管理器" aria-label="文件资源管理器" role="button" tabindex="0" data-icon="appExplorer" data-system-app="explorer"></div>
+            <div class="taskbar-icon pinned" onclick="openNotepad()" title="记事本" aria-label="记事本" role="button" tabindex="0" data-icon="appNotepad" data-system-app="notepad"></div>
+            <div class="taskbar-icon pinned" onclick="openCalculator()" title="计算器" aria-label="计算器" role="button" tabindex="0" data-icon="appCalc" data-system-app="calculator"></div>
+            <div class="taskbar-icon pinned" onclick="openPaint()" title="画板" aria-label="画板" role="button" tabindex="0" data-icon="appPaint" data-system-app="paint"></div>
+            <div class="taskbar-icon pinned" onclick="openSettings()" title="设置" aria-label="设置" role="button" tabindex="0" data-icon="appSettings" data-system-app="settings"></div>
+            <div class="taskbar-icon pinned" onclick="openV86()" title="V86虚拟机" aria-label="V86虚拟机" role="button" tabindex="0" data-icon="appVM" data-system-app="v86"></div>
+            <div class="taskbar-icon pinned" onclick="openCodeEditor()" title="HTML编辑器" aria-label="HTML编辑器" role="button" tabindex="0" data-icon="appCode" data-system-app="code"></div>
+            <div class="taskbar-sep" aria-hidden="true"></div>
             <!-- 运行中窗口的条状图标动态插入这里 -->
             <div class="taskbar-running-area" id="taskbar-running-area"></div>
         </div>
-        <div id="taskbar-notify-area"></div>
         <div class="system-tray">
-            <div class="tray-icon" id="tray-wifi" data-icon="uiWifi" title="网络"></div>
-            <div class="clock" id="clock" onclick="toggleCalendar()">
+            <!-- 胶囊通知锚定在托盘左侧（right:100%），时钟文字变宽也不会错位 -->
+            <div id="taskbar-notify-area"></div>
+            <div class="tray-icon" id="tray-wifi" role="img" title="网络" aria-label="网络"></div>
+            <div class="clock" id="clock" onclick="toggleCalendar()" role="button" tabindex="0" aria-label="日期和时间" aria-haspopup="dialog" aria-expanded="false" aria-controls="calendar-panel">
                 <div class="time" id="time">12:00</div>
                 <div class="date" id="date">2024/01/01</div>
             </div>
@@ -2294,64 +2315,66 @@
                  onmouseenter="aeroPeekDesktopEnter()"
                  onmouseleave="aeroPeekDesktopLeave()"
                  onclick="aeroPeekDesktopClick()"
-                 title="显示桌面">
+                 title="显示桌面" role="button" tabindex="0" aria-label="显示桌面">
             </div>
         </div>
     </div>
 
     <!-- 开始菜单 -->
-    <div class="start-menu" id="start-menu">
+    <div class="start-menu" id="start-menu" role="dialog" aria-label="开始菜单">
+        <div class="sm-search" data-icon="uiSearch" data-icon-size="sm">
+            <input id="start-search" type="search" placeholder="搜索应用" autocomplete="off" spellcheck="false" aria-label="搜索应用">
+        </div>
         <div class="start-menu-header">
-            <h2>已固定</h2>
+            <h2 id="start-menu-heading">已固定</h2>
         </div>
         <div class="menu-grid">
-            <div class="menu-item" onclick="openBrowser(); toggleStartMenu()" data-icon="appBrowser" data-icon-size="lg" data-system-app="browser">
-                <span>浏览器</span>
-            </div>
-            <div class="menu-item" onclick="openNotepad(); toggleStartMenu()" data-icon="appNotepad" data-icon-size="lg" data-system-app="notepad">
-                <span>记事本</span>
-            </div>
-            <div class="menu-item" onclick="openCalculator(); toggleStartMenu()" data-icon="appCalc" data-icon-size="lg" data-system-app="calculator">
-                <span>计算器</span>
-            </div>
-            <div class="menu-item" onclick="openPaint(); toggleStartMenu()" data-icon="appPaint" data-icon-size="lg" data-system-app="paint">
-                <span>画板</span>
-            </div>
-            <div class="menu-item" onclick="openSettings(); toggleStartMenu()" data-icon="appSettings" data-icon-size="lg" data-system-app="settings">
-                <span>设置</span>
-            </div>
-            <div class="menu-item" onclick="openWallpaperPanel(); toggleStartMenu()" data-icon="uiWallpaper" data-icon-size="lg">
-                <span>壁纸</span>
-            </div>
-            <div class="menu-item" onclick="resetSystem()" data-icon="uiBrowserRefresh" data-icon-size="lg">
-                <span>重置系统</span>
-            </div>
-            <div class="menu-item" onclick="openV86(); toggleStartMenu()" data-icon="appVM" data-icon-size="lg" data-system-app="v86">
-                <span>V86 虚拟机</span>
-            </div>
-            <div class="menu-item" onclick="openCodeEditor(); toggleStartMenu()" data-icon="appCode" data-icon-size="lg" data-system-app="code">
-                <span>HTML 编辑器</span>
-            </div>
+            <button type="button" class="menu-item" data-launch="openBrowser" data-keywords="browser web 网页 网站 llq" data-icon="appBrowser" data-icon-size="lg" data-system-app="browser"><span>浏览器</span></button>
+            <button type="button" class="menu-item" data-launch="openFileExplorer" data-keywords="explorer files 文件 文件夹 资源管理器 wj zygl" data-icon="appExplorer" data-icon-size="lg" data-system-app="explorer"><span>文件资源管理器</span></button>
+            <button type="button" class="menu-item" data-launch="openNotepad" data-keywords="notepad text txt 文本 jsb" data-icon="appNotepad" data-icon-size="lg" data-system-app="notepad"><span>记事本</span></button>
+            <button type="button" class="menu-item" data-launch="openCalculator" data-keywords="calculator calc 计算 jsq" data-icon="appCalc" data-icon-size="lg" data-system-app="calculator"><span>计算器</span></button>
+            <button type="button" class="menu-item" data-launch="openPaint" data-keywords="paint draw 画图 绘图 hb" data-icon="appPaint" data-icon-size="lg" data-system-app="paint"><span>画板</span></button>
+            <button type="button" class="menu-item" data-launch="openCodeEditor" data-keywords="html code editor 代码 编辑器 bjq" data-icon="appCode" data-icon-size="lg" data-system-app="code"><span>HTML 编辑器</span></button>
+            <button type="button" class="menu-item" data-launch="openV86" data-keywords="v86 vm virtual machine linux 虚拟机 xnj" data-icon="appVM" data-icon-size="lg" data-system-app="v86"><span>V86 虚拟机</span></button>
+            <button type="button" class="menu-item" data-launch="openWallpaperPanel" data-keywords="wallpaper background 背景 壁纸 bz" data-icon="uiWallpaper" data-icon-size="lg"><span>壁纸</span></button>
+            <button type="button" class="menu-item" data-launch="openSettings" data-keywords="settings 系统设置 设置 sz" data-icon="appSettings" data-icon-size="lg" data-system-app="settings"><span>设置</span></button>
+        </div>
+        <div class="sm-empty" id="start-empty" hidden></div>
+        <div class="sm-footer">
+            <button type="button" class="sm-about" data-launch="openSettingsAbout" title="关于 JISHENG OS">
+                <span class="sm-logo"><span>JS</span></span>
+                <span class="sm-about-text"><b>JISHENG OS</b><small id="start-version">关于本系统</small></span>
+            </button>
+            <button type="button" class="sm-iconbtn" data-launch="openSettings" data-icon="appSettings" title="设置" aria-label="设置"></button>
+            <button type="button" class="sm-iconbtn danger" data-launch="resetSystem" data-icon="uiBrowserRefresh" title="重置系统…（会先确认）" aria-label="重置系统"></button>
         </div>
     </div>
 
     <!-- 日历面板 -->
-    <div class="calendar-panel" id="calendar-panel">
-        <div class="calendar-header">
-            <h3 id="calendar-title">2024年1月</h3>
-            <div class="calendar-nav">
-                <button onclick="changeMonth(-1)" data-icon="uiChevronLeft" data-icon-size="sm"></button>
-                <button onclick="changeMonth(1)" data-icon="uiChevronRight" data-icon-size="sm"></button>
+    <div class="calendar-panel" id="calendar-panel" role="dialog" aria-label="日历">
+        <div class="cal-now">
+            <div class="cal-now-time" id="cal-now-time"></div>
+            <div class="cal-now-date"><span id="cal-now-date"></span><span class="cal-now-lunar" id="cal-now-lunar"></span></div>
+        </div>
+        <div class="cal-body">
+            <div class="calendar-header">
+                <h3 id="calendar-title" aria-live="polite">2024年1月</h3>
+                <div class="calendar-nav">
+                    <button type="button" class="cal-today" id="cal-today" onclick="calGoToday()" title="回到今天（Home）">今天</button>
+                    <button type="button" onclick="changeMonth(-1)" data-icon="uiChevronLeft" data-icon-size="sm" title="上个月（PageUp）" aria-label="上个月"></button>
+                    <button type="button" onclick="changeMonth(1)" data-icon="uiChevronRight" data-icon-size="sm" title="下个月（PageDown）" aria-label="下个月"></button>
+                </div>
             </div>
+            <div class="calendar-weekdays" aria-hidden="true">
+                <span>日</span><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span>
+            </div>
+            <div class="calendar-days" id="calendar-days"></div>
+            <div class="cal-info" id="cal-info"></div>
         </div>
-        <div class="calendar-weekdays">
-            <span>日</span><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span>
-        </div>
-        <div class="calendar-days" id="calendar-days"></div>
     </div>
 
     <!-- 右键菜单 -->
-    <div class="context-menu" id="context-menu"></div>
+    <div class="context-menu" id="context-menu" role="menu" aria-label="菜单"></div>
 
     <!-- 壁纸上传（界面在 设置 → 个性化） -->
     <input type="file" id="file-input" hidden accept="image/*">
@@ -2700,65 +2723,100 @@
         ];
         const wallpapers = WALLPAPER_PRESETS.map(p => p.url);
 
-        // === 通知系统 (任务栏内嵌版) ===
+        // === 通知系统（任务栏内嵌胶囊）===
+        // - 胶囊锚定在托盘左侧（CSS：#taskbar-notify-area 位于 .system-tray 内，right:100%），时钟变宽也不会错位
+        // - 同一时刻只显示一条；新通知交叉淡入淡出（旧胶囊脱离文档流，不会把新胶囊挤歪）
+        // - 相同内容连续出现时合并为 ×N，而不是反复闪烁
+        // - 按类型给停留时间（错误更久）；悬停暂停；文字放不下时悬停/轻点向上展开全文
+        // - 文本一律按纯文本渲染：调用方可能传入已转义的文本（&amp; 等），先解码实体再用 textContent，
+        //   既不会显示成 "&amp;"，也不会把文件名里的 <img onerror> 之类当 HTML 执行
         const Notify = {
             container: null,
-            timer: null,
-            
+            current: null,
+            DURATION: { info: 3200, success: 3200, warning: 5000, error: 6500 },
+
             init() {
                 this.container = document.getElementById('taskbar-notify-area');
-            },
-            
-            show({ title, message, type = 'info', duration = 3000 }) {
-                // 如果容器没初始化
-                if (!this.container) this.init();
-
-                // 如果已有通知，先移除（造成一种切换的效果）
-                if (this.container.children.length > 0) {
-                    const old = this.container.firstElementChild;
-                    old.classList.add('hiding');
-                    setTimeout(() => old.remove(), 300);
+                if (this.container) {
+                    this.container.setAttribute('role', 'status');
+                    this.container.setAttribute('aria-live', 'polite');
                 }
-                
-                // 清除之前的定时器
-                if (this.timer) clearTimeout(this.timer);
+            },
+
+            _text(v) {
+                if (v == null || v === '') return '';
+                const t = document.createElement('textarea');   // RCDATA：只解码实体，不解析标签
+                t.innerHTML = String(v);
+                return t.value;
+            },
+
+            // 胶囊最宽只能到开始按钮右侧，避免盖住开始按钮
+            _fit() {
+                const tray = this.container && this.container.parentElement;
+                if (!tray) return;
+                const room = tray.getBoundingClientRect().left - 60;
+                this.container.style.maxWidth = Math.max(140, Math.min(560, room)) + 'px';
+            },
+
+            dismiss(el) {
+                if (!el || el.classList.contains('hiding')) return;
+                el.classList.remove('expanded');
+                el.classList.add('hiding');
+                if (this.current === el) this.current = null;
+                setTimeout(() => el.remove(), 260);
+            },
+
+            show({ title, message, type = 'info', duration } = {}) {
+                if (!this.container) this.init();
+                if (!this.container) return null;
+                if (!this.DURATION[type]) type = 'info';
+                const t = this._text(title), m = this._text(message);
+                const dur = Math.max(1200, Number(duration) || this.DURATION[type]);
+                const key = type + '\u0000' + t + '\u0000' + m;
+
+                const cur = this.current;
+                if (cur && cur._key === key && cur.isConnected && !cur.classList.contains('hiding')) {
+                    cur._count += 1;
+                    const badge = cur.querySelector('.tb-notify-count');
+                    badge.textContent = '×' + cur._count;
+                    badge.hidden = false;
+                    const bar = cur.querySelector('.tb-notify-progress');
+                    bar.style.animation = 'none'; void bar.offsetWidth; bar.style.animation = '';
+                    cur.classList.remove('bump'); void cur.offsetWidth; cur.classList.add('bump');
+                    return cur;
+                }
+                if (cur) this.dismiss(cur);
+                this._fit();
 
                 const el = document.createElement('div');
-                el.className = 'tb-notification';
-                // 点击可立即关闭
-                el.onclick = () => {
-                    el.classList.add('hiding');
-                    setTimeout(() => el.remove(), 400);
-                };
+                el.className = 'tb-notification ' + type;
+                el._key = key; el._count = 1;
+                el.style.setProperty('--tbn-dur', dur + 'ms');
+                const iconName = 'ui' + type.charAt(0).toUpperCase() + type.slice(1);
+                el.innerHTML = `<span class="tb-notify-badge">${icon(iconName, 'tb-notify-icon')}</span>`
+                    + `<span class="tb-notify-text"><span class="tb-notify-title"></span><span class="tb-notify-msg"></span></span>`
+                    + `<span class="tb-notify-count" hidden></span><span class="tb-notify-progress"></span>`;
+                el.querySelector('.tb-notify-title').textContent = t;
+                const msgEl = el.querySelector('.tb-notify-msg');
+                if (m) msgEl.textContent = m; else msgEl.remove();
 
-                // 简单的内容布局：图标 + 文本
-                // 如果有 message，显示 "Title: Message"，否则只显示 Title
-                const notifyIconName = 'ui' + type.charAt(0).toUpperCase() + type.slice(1);
-                el.innerHTML = `
-                    ${icon(notifyIconName, 'tb-notify-icon ' + type)}
-                    <div class="tb-notify-content ${!message ? 'single' : ''}">
-                        <span>
-                            <span class="tb-notify-title">${title}</span>
-                            ${message ? `<span class="tb-notify-msg">${message}</span>` : ''}
-                        </span>
-                    </div>
-                `;
-                
+                const text = el.querySelector('.tb-notify-text');
+                const truncated = () => text.scrollWidth > text.clientWidth + 1;
+                el.addEventListener('mouseenter', () => { if (!el.classList.contains('hiding') && truncated()) el.classList.add('expanded'); });
+                el.addEventListener('mouseleave', () => el.classList.remove('expanded'));
+                el.addEventListener('click', e => {
+                    e.stopPropagation();
+                    // 触屏没有悬停：第一次轻点展开全文，第二次关闭
+                    if (!el.classList.contains('expanded') && truncated()) { el.classList.add('expanded'); return; }
+                    this.dismiss(el);
+                });
+                el.querySelector('.tb-notify-progress').addEventListener('animationend', () => this.dismiss(el));
+
                 this.container.appendChild(el);
-                
-                // 自动滑回消失
-                this.timer = setTimeout(() => {
-                    if (el && el.parentElement) {
-                        el.classList.add('hiding');
-                        setTimeout(() => {
-                            if (el.parentElement) el.remove();
-                        }, 400);
-                    }
-                }, duration);
-                
+                this.current = el;
                 return el;
             },
-            
+
             success(title, message) { return this.show({ title, message, type: 'success' }); },
             error(title, message) { return this.show({ title, message, type: 'error' }); },
             warning(title, message) { return this.show({ title, message, type: 'warning' }); },
@@ -5222,59 +5280,186 @@
                 const [t, dt] = text.split('|');
                 document.getElementById('time').textContent = t;
                 document.getElementById('date').textContent = dt;
+                const clockEl = document.getElementById('clock');
+                if (clockEl) clockEl.title = `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日 ${['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'][d.getDay()]}`;
+                if (SYSTEM.calendarOpen && typeof updateCalendarNow === 'function') updateCalendarNow();
             }
             clockTimer = setTimeout(updateClock, 60000 - (Date.now() % 60000) + 20);
         }
         updateClock();
         document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') updateClock(); });
 
-        // === 日历功能 ===
-        function toggleCalendar() {
-            SYSTEM.calendarOpen = !SYSTEM.calendarOpen;
-            document.getElementById('calendar-panel').classList.toggle('open', SYSTEM.calendarOpen);
-            if(SYSTEM.calendarOpen) {
-                SYSTEM.startOpen = false;
-                document.getElementById('start-menu').classList.remove('open');
+        // === 日历面板 ===
+        // 打开时总是回到“本月”；点日期可选中并显示星期 / 农历 / 距今天数；
+        // 键盘：方向键按天/周移动，PageUp/PageDown 换月，Home 回到今天，Esc 关闭；滚轮换月。
+        const CAL = { sel: null, wheelAt: 0 };
+        const CAL_WEEK = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
+        let calLunarFmt;
+        const CAL_LUNAR_DAY = n => {
+            const d = '一二三四五六七八九十';
+            if (n <= 10) return '初' + d[n - 1];
+            if (n < 20) return '十' + d[n - 11];
+            if (n === 20) return '二十';
+            if (n < 30) return '廿' + d[n - 21];
+            return '三十';
+        };
+        function calLunar(d) {
+            try {
+                if (calLunarFmt === undefined) calLunarFmt = new Intl.DateTimeFormat('zh-CN-u-ca-chinese', { month: 'long', day: 'numeric' });
+                const parts = calLunarFmt.formatToParts(d);
+                const month = (parts.find(p => p.type === 'month') || {}).value || '';
+                const day = (parts.find(p => p.type === 'day') || {}).value || '';
+                if (!month || !day || /\d/.test(month)) return '';   // 不支持农历历法的环境会退回公历数字月份，直接不显示
+                // ICU 给出的农历“日”通常是阿拉伯数字（如 8），转换成习惯写法（初八）
+                const n = parseInt(day, 10);
+                const dayText = isNaN(n) ? day : CAL_LUNAR_DAY(n);
+                return '农历' + month + dayText;
+            } catch (e) { calLunarFmt = null; return ''; }
+        }
+        function calSameDay(a, b) { return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate(); }
+
+        function updateCalendarNow() {
+            const d = new Date();
+            const h = d.getHours();
+            const timeEl = document.getElementById('cal-now-time');
+            if (!timeEl) return;
+            timeEl.innerHTML = `<small>${h >= 12 ? '下午' : '上午'}</small>${h % 12 || 12}:${String(d.getMinutes()).padStart(2, '0')}`;
+            document.getElementById('cal-now-date').textContent = `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日 ${CAL_WEEK[d.getDay()]}`;
+            document.getElementById('cal-now-lunar').textContent = calLunar(d);
+        }
+
+        function setCalendarOpen(open, opts = {}) {
+            const panel = document.getElementById('calendar-panel');
+            const clock = document.getElementById('clock');
+            if (!panel || (!!open === !!SYSTEM.calendarOpen && !opts.force)) return;
+            SYSTEM.calendarOpen = !!open;
+            panel.classList.toggle('open', SYSTEM.calendarOpen);
+            if (clock) { clock.classList.toggle('open', SYSTEM.calendarOpen); clock.setAttribute('aria-expanded', SYSTEM.calendarOpen ? 'true' : 'false'); }
+            if (SYSTEM.calendarOpen) {
+                setStartOpen(false);
+                closeCtx();
+                const now = new Date();
+                SYSTEM.currentMonth = now.getMonth();
+                SYSTEM.currentYear = now.getFullYear();
+                CAL.sel = null;
+                updateCalendarNow();
                 renderCalendar();
+                if (opts.keyboard) requestAnimationFrame(() => calFocusCell());
+            } else {
+                if (opts.restoreFocus && clock) clock.focus({ preventScroll: true });
+                else if (panel.contains(document.activeElement)) document.activeElement.blur();
             }
         }
+        function toggleCalendar(opts) { setCalendarOpen(!SYSTEM.calendarOpen, opts || {}); }
 
         function changeMonth(delta) {
             SYSTEM.currentMonth += delta;
-            if(SYSTEM.currentMonth > 11) { SYSTEM.currentMonth = 0; SYSTEM.currentYear++; }
-            if(SYSTEM.currentMonth < 0) { SYSTEM.currentMonth = 11; SYSTEM.currentYear--; }
+            if (SYSTEM.currentMonth > 11) { SYSTEM.currentMonth = 0; SYSTEM.currentYear++; }
+            if (SYSTEM.currentMonth < 0) { SYSTEM.currentMonth = 11; SYSTEM.currentYear--; }
             renderCalendar();
+        }
+
+        function calGoToday() {
+            const now = new Date();
+            SYSTEM.currentMonth = now.getMonth();
+            SYSTEM.currentYear = now.getFullYear();
+            CAL.sel = null;
+            renderCalendar();
+            calFocusCell();
+        }
+
+        // 选中某天（可跨月），并把焦点留在该天
+        function calSelect(d, focus) {
+            CAL.sel = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+            SYSTEM.currentYear = d.getFullYear();
+            SYSTEM.currentMonth = d.getMonth();
+            renderCalendar();
+            if (focus) calFocusCell();
+        }
+        function calFocusCell() {
+            const cell = document.querySelector('#calendar-days .calendar-day[tabindex="0"]');
+            if (cell) cell.focus({ preventScroll: true });
         }
 
         function renderCalendar() {
             const year = SYSTEM.currentYear;
             const month = SYSTEM.currentMonth;
             const today = new Date();
-            
-            document.getElementById('calendar-title').innerText = `${year}年${month + 1}月`;
-            
+            document.getElementById('calendar-title').textContent = `${year}年${month + 1}月`;
+
             const firstDay = new Date(year, month, 1).getDay();
-            const daysInMonth = new Date(year, month + 1, 0).getDate();
-            const daysInPrevMonth = new Date(year, month, 0).getDate();
-            
+            const start = new Date(year, month, 1 - firstDay);
+            const sel = CAL.sel;
+            // 键盘焦点所在格：选中日 > 今天（若在本月）> 本月 1 日
+            const focusDay = (sel && sel.getMonth() === month && sel.getFullYear() === year) ? sel
+                : (today.getMonth() === month && today.getFullYear() === year) ? today : new Date(year, month, 1);
+
             let html = '';
-            
-            for(let i = firstDay - 1; i >= 0; i--) {
-                html += `<div class="calendar-day other-month">${daysInPrevMonth - i}</div>`;
+            for (let i = 0; i < 42; i++) {
+                const d = new Date(start.getFullYear(), start.getMonth(), start.getDate() + i);
+                const cls = ['calendar-day'];
+                if (d.getMonth() !== month) cls.push('other-month');
+                const isToday = calSameDay(d, today);
+                if (isToday) cls.push('today');
+                if (sel && calSameDay(d, sel)) cls.push('selected');
+                const label = `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日 ${CAL_WEEK[d.getDay()]}${isToday ? '，今天' : ''}`;
+                html += `<button type="button" class="${cls.join(' ')}" data-date="${d.getFullYear()}-${d.getMonth()}-${d.getDate()}" tabindex="${calSameDay(d, focusDay) ? 0 : -1}" aria-label="${label}"${isToday ? ' aria-current="date"' : ''}><span>${d.getDate()}</span></button>`;
             }
-            
-            for(let i = 1; i <= daysInMonth; i++) {
-                const isToday = (i === today.getDate() && month === today.getMonth() && year === today.getFullYear());
-                html += `<div class="calendar-day${isToday ? ' today' : ''}">${i}</div>`;
-            }
-            
-            const remaining = 42 - (firstDay + daysInMonth);
-            for(let i = 1; i <= remaining; i++) {
-                html += `<div class="calendar-day other-month">${i}</div>`;
-            }
-            
             document.getElementById('calendar-days').innerHTML = html;
+
+            const todayBtn = document.getElementById('cal-today');
+            if (todayBtn) todayBtn.disabled = (month === today.getMonth() && year === today.getFullYear() && (!sel || calSameDay(sel, today)));
+
+            // 选中日信息
+            const info = document.getElementById('cal-info');
+            if (info) {
+                const d = sel || today;
+                const t0 = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+                const diff = Math.round((new Date(d.getFullYear(), d.getMonth(), d.getDate()) - t0) / 86400000);
+                const rel = diff === 0 ? '今天' : diff === 1 ? '明天' : diff === -1 ? '昨天' : diff > 0 ? `${diff} 天后` : `${-diff} 天前`;
+                const lunar = calLunar(d);
+                const yearPart = d.getFullYear() !== today.getFullYear() ? `${d.getFullYear()}年` : '';
+                info.innerHTML = `<span>${yearPart}${d.getMonth() + 1}月${d.getDate()}日 ${CAL_WEEK[d.getDay()]}${lunar ? ' · ' + lunar : ''}</span><b>${rel}</b>`;
+            }
         }
+
+        (function initCalendarPanel() {
+            const panel = document.getElementById('calendar-panel');
+            const days = document.getElementById('calendar-days');
+            if (!panel || !days) return;
+            days.addEventListener('click', e => {
+                const cell = e.target.closest('.calendar-day');
+                if (!cell) return;
+                const [y, m, d] = cell.dataset.date.split('-').map(Number);
+                calSelect(new Date(y, m, d), true);
+            });
+            panel.addEventListener('keydown', e => {
+                const cell = e.target.closest && e.target.closest('.calendar-day');
+                const base = cell ? (() => { const [y, m, d] = cell.dataset.date.split('-').map(Number); return new Date(y, m, d); })() : null;
+                const move = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -7, ArrowDown: 7 }[e.key];
+                if (base && move) {
+                    e.preventDefault();
+                    calSelect(new Date(base.getFullYear(), base.getMonth(), base.getDate() + move), true);
+                } else if (e.key === 'PageUp' || e.key === 'PageDown') {
+                    e.preventDefault();
+                    const ref = base || new Date(SYSTEM.currentYear, SYSTEM.currentMonth, 1);
+                    const step = e.key === 'PageUp' ? -1 : 1;
+                    const dim = new Date(ref.getFullYear(), ref.getMonth() + step + 1, 0).getDate();
+                    calSelect(new Date(ref.getFullYear(), ref.getMonth() + step, Math.min(ref.getDate(), dim)), true);
+                } else if (e.key === 'Home') {
+                    e.preventDefault();
+                    calGoToday();
+                }
+            });
+            panel.querySelector('.cal-body').addEventListener('wheel', e => {
+                if (Math.abs(e.deltaY) < 4) return;
+                e.preventDefault();
+                const now = Date.now();
+                if (now - CAL.wheelAt < 220) return;   // 触控板一次滑动会产生很多 wheel 事件
+                CAL.wheelAt = now;
+                changeMonth(e.deltaY > 0 ? 1 : -1);
+            }, { passive: false });
+        })();
 
         // === 桌面渲染 ===
         // ===============================================
@@ -6985,27 +7170,6 @@
             folderNavigateTo(windowId, '/', '完整文件系统');
         }
 
-        // 侧边栏导航到本地文件根目录
-        function sidebarNavigateToLocal(windowId) {
-            const state = SYSTEM.folderWindowStates[windowId];
-            if (!state) return;
-            state.currentPath = '/mnt/local';
-            state.folderName = '本地文件';
-            state.parentPath = '/mnt';
-            state.searchQuery = '';
-            state.fileStats = {};
-            const win = document.getElementById('folder-content-' + windowId)?.closest('.window');
-            if (win) {
-                const titleEl = win.querySelector('.window-title-text');
-                if (titleEl) titleEl.textContent = '本地文件';
-            }
-            const searchInput = document.getElementById('folder-search-' + windowId);
-            if (searchInput) searchInput.value = '';
-            updateFolderBreadcrumb(windowId);
-            updateSidebarActive(windowId, 'local');
-            renderFolderContent(windowId);
-        }
-
         // 侧边栏导航到已挂载文件夹
         function sidebarNavigateToMounted(windowId, folderId) {
             const info = SYSTEM.mountedFolders[folderId];
@@ -7027,27 +7191,6 @@
             if (searchInput) searchInput.value = '';
             updateFolderBreadcrumb(windowId);
             updateSidebarActive(windowId, 'mounted-' + info.name);
-            renderFolderContent(windowId);
-        }
-
-        // 侧边栏导航到桌面
-        function sidebarNavigateToDesktop(windowId) {
-            const state = SYSTEM.folderWindowStates[windowId];
-            if (!state) return;
-            state.currentPath = SYSTEM.desktopPath;
-            state.folderName = '桌面';
-            state.parentPath = SYSTEM.desktopPath;
-            state.searchQuery = '';
-            state.fileStats = {};
-            const win = document.getElementById('folder-content-' + windowId)?.closest('.window');
-            if (win) {
-                const titleEl = win.querySelector('.window-title-text');
-                if (titleEl) titleEl.textContent = '桌面';
-            }
-            const searchInput = document.getElementById('folder-search-' + windowId);
-            if (searchInput) searchInput.value = '';
-            updateFolderBreadcrumb(windowId);
-            updateSidebarActive(windowId, 'desktop');
             renderFolderContent(windowId);
         }
 
@@ -7093,31 +7236,6 @@
 
         // 文件夹侧边栏更新
                 // 本地挂载文件夹的侧边栏更新
-                // 侧边栏导航到本地子文件夹
-                // 侧边栏导航到本地文件夹根目录
-                // 侧边栏导航到文件夹
-        function sidebarNavigateToFolder(windowId, folderName) {
-            const state = SYSTEM.folderWindowStates[windowId];
-            if (!state) return;
-            const newPath = state.currentPath + '/' + folderName;
-            // 修复(#9)：必须在更新 currentPath 之前保存旧路径为 parentPath，
-            // 否则"返回上级"会回到当前目录自身，导致导航死循环。
-            state.parentPath = state.currentPath;
-            state.currentPath = newPath;
-            state.folderName = folderName;
-            state.searchQuery = '';
-            state.fileStats = {};
-            const win = document.getElementById('folder-content-' + windowId)?.closest('.window');
-            if (win) {
-                const titleEl = win.querySelector('.window-title-text');
-                if (titleEl) titleEl.textContent = folderName;
-            }
-            const searchInput = document.getElementById('folder-search-' + windowId);
-            if (searchInput) searchInput.value = '';
-            updateFolderBreadcrumb(windowId);
-            updateSidebarActive(windowId, 'folder-' + folderName);
-            renderFolderContent(windowId);
-        }
 
         function sidebarNavigateToPath(windowId, fullPath, folderName) {
             const state = SYSTEM.folderWindowStates[windowId];
@@ -7338,6 +7456,8 @@
             uiUndo:       '<path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 1 1 0 12h-3"/>',
             uiRedo:       '<path d="M15 14l5-5-5-5"/><path d="M20 9H10a6 6 0 1 0 0 12h3"/>',
             uiGithub:     '<g fill="currentColor" stroke="none"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></g>',
+            uiWifiOff:    '<path d="M12 20h.01"/><path d="M8.5 16.429a5 5 0 0 1 7 0"/><path d="M5 12.859a10 10 0 0 1 5.17-2.69"/><path d="M19 12.859a10 10 0 0 0-2.007-1.523"/><path d="M2 8.82a15 15 0 0 1 4.177-2.643"/><path d="M22 8.82a15 15 0 0 0-11.288-3.764"/><path d="m2 2 20 20"/>',
+            uiTbRestore:  '<rect x="2" y="4" width="20" height="16" rx="2"/><path d="M10 4v4"/><path d="M2 8h20"/><path d="M6 4v4"/>',
             uiWifi:       '<path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><circle cx="12" cy="20" r="1"/>',
             // 编辑器
             editorFormat:       '<path d="m16 16-3 3 3 3"/><path d="M3 12h14.5a1 1 0 0 1 0 7H13"/><path d="M3 19h6"/><path d="M3 5h18"/>',
@@ -10847,9 +10967,118 @@
 
 
         // === 右键菜单 ===
-        function closeCtx() {
-            document.getElementById('context-menu').classList.remove('open');
+        // 所有右键菜单（桌面 / 图标 / 文件夹窗口 / 任务栏）都共用 #context-menu 和 showCtx(x, y)。
+        // showCtx 统一负责：定位（贴边时翻转到光标另一侧，而不是压在光标下面）、危险项着色、
+        // ARIA 角色、键盘操作（↑↓ Home End 回车 空格 Esc Tab）。
+        const CTX = { active: -1, returnFocus: null };
+        const CTX_DANGER_RE = /^(删除|永久删除|卸载挂载|忘记此文件夹|关闭窗口)/;
+
+        function ctxItems() {
+            return Array.from(document.querySelectorAll('#context-menu .context-item'))
+                .filter(it => !it.classList.contains('disabled') && it.getAttribute('aria-disabled') !== 'true' && it.offsetParent !== null);
         }
+        function ctxSetActive(idx, fromMouse) {
+            const items = ctxItems();
+            items.forEach(it => it.classList.remove('kb-active'));
+            if (!items.length) { CTX.active = -1; return; }
+            CTX.active = (idx + items.length) % items.length;
+            const it = items[CTX.active];
+            it.classList.add('kb-active');
+            if (!fromMouse) it.scrollIntoView({ block: 'nearest' });
+        }
+
+        function closeCtx(opts) {
+            const cm = document.getElementById('context-menu');
+            if (!cm) return;
+            const wasOpen = cm.classList.contains('open');
+            cm.classList.remove('open');
+            cm.querySelectorAll('.kb-active').forEach(it => it.classList.remove('kb-active'));
+            CTX.active = -1;
+            if (wasOpen && opts && opts.restoreFocus && CTX.returnFocus && CTX.returnFocus.isConnected) {
+                try { CTX.returnFocus.focus({ preventScroll: true }); } catch (e) {}
+            }
+            if (wasOpen) CTX.returnFocus = null;
+        }
+
+        // 统一整理菜单项：危险项（旧代码用内联红色）改为 .danger，删除类操作统一标红
+        function enhanceCtxItems(cm) {
+            cm.setAttribute('role', 'menu');
+            cm.querySelectorAll('.context-item').forEach(it => {
+                it.setAttribute('role', 'menuitem');
+                it.tabIndex = -1;
+                const c = it.style.color || '';
+                if (/win-close-red|#e81123|\bred\b/i.test(c)) { it.classList.add('danger'); it.style.color = ''; }
+                else if (/accent-cyan/.test(c)) { it.classList.add('accent'); it.style.color = ''; }
+                it.querySelectorAll('span[style*="win-close-red"]').forEach(sp => { it.classList.add('danger'); sp.style.color = ''; });
+                const label = (it.textContent || '').trim();
+                if (CTX_DANGER_RE.test(label)) it.classList.add('danger');
+                if (it.classList.contains('disabled')) it.setAttribute('aria-disabled', 'true');
+            });
+            cm.querySelectorAll('.context-divider').forEach(d => d.setAttribute('role', 'separator'));
+        }
+
+        function showCtx(x, y, opts = {}) {
+            const cm = document.getElementById('context-menu');
+            setStartOpen(false);
+            setCalendarOpen(false);
+            enhanceCtxItems(cm);
+            const ae = document.activeElement;
+            CTX.returnFocus = (ae && ae !== document.body && !cm.contains(ae)) ? ae : null;
+
+            // 先放到左上角测量真实尺寸（offsetWidth/Height 不受打开动画的 scale 影响）
+            cm.classList.remove('open');
+            cm.style.left = '0px';
+            cm.style.top = '0px';
+            cm.scrollTop = 0;
+            const w = cm.offsetWidth || 240, h = cm.offsetHeight || 200;
+            const vw = window.innerWidth, vh = window.innerHeight, M = 8;
+            let left = x, top = y, ox = 'left', oy = 'top';
+            // 右侧放不下 → 翻到光标左侧；两侧都放不下 → 贴边
+            if (left + w > vw - M) { left = x - w; ox = 'right'; }
+            if (left < M) { left = Math.max(M, Math.min(x, vw - w - M)); ox = 'left'; }
+            // 下方放不下 → 翻到光标上方；上下都放不下 → 贴顶，菜单内部滚动
+            if (top + h > vh - M) { top = y - h; oy = 'bottom'; }
+            if (top < M) { top = Math.max(M, Math.min(y, vh - h - M)); oy = 'top'; }
+            cm.style.left = Math.round(left) + 'px';
+            cm.style.top = Math.round(top) + 'px';
+            cm.style.setProperty('--cm-origin', `${oy} ${ox}`);
+            void cm.offsetWidth;   // 让打开动画每次都从头播放
+            cm.classList.add('open');
+            CTX.active = -1;
+            if (opts.keyboard) ctxSetActive(0);
+        }
+
+        // 通用：用数据描述生成菜单（任务栏菜单使用；旧菜单仍然是 innerHTML + showCtx）
+        // items: [{ icon, label, act, danger, disabled }] 或 '-'（分隔线）
+        function openCtxMenu(items, x, y, opts) {
+            const cm = document.getElementById('context-menu');
+            cm.innerHTML = items.map((it, i) => it === '-'
+                ? '<div class="context-divider"></div>'
+                : `<div class="context-item${it.danger ? ' danger' : ''}${it.disabled ? ' disabled' : ''}" data-mi="${i}">${icon(it.icon || 'uiOpen', 'sm')}<span>${escapeHtml(it.label)}</span></div>`).join('');
+            cm.querySelectorAll('[data-mi]').forEach(el => {
+                el.addEventListener('click', () => {
+                    const it = items[+el.dataset.mi];
+                    closeCtx();
+                    if (it && typeof it.act === 'function') it.act();
+                });
+            });
+            showCtx(x, y, opts);
+        }
+
+        (function initContextMenu() {
+            const cm = document.getElementById('context-menu');
+            if (!cm) return;
+            cm.addEventListener('mousemove', e => {
+                const it = e.target.closest('.context-item');
+                if (!it) return;
+                const idx = ctxItems().indexOf(it);
+                if (idx >= 0 && idx !== CTX.active) ctxSetActive(idx, true);
+            });
+            cm.addEventListener('contextmenu', e => e.preventDefault());
+            // 窗口大小变化 / 在菜单外滚动：菜单位置已失效，直接关闭
+            window.addEventListener('resize', () => closeCtx());
+            document.addEventListener('wheel', e => { if (!e.target.closest || !e.target.closest('.context-menu')) closeCtx(); }, { passive: true, capture: true });
+        })();
 
         // === 挂载本地文件夹功能 (统一文件系统架构) ===
         const MOUNTED_FOLDERS_DB = 'MountedFoldersDB';
@@ -11095,98 +11324,6 @@
 
 
 
-        function ctxApp(e, type) {
-            e.preventDefault(); e.stopPropagation();
-            const cm = document.getElementById('context-menu');
-            const funcMap = {
-                'browser': 'openBrowser',
-                'notepad': 'openNotepad', 
-                'calculator': 'openCalculator',
-                'paint': 'openPaint',
-                'settings': 'openSettings'
-            };
-            const funcName = funcMap[type] || ('open' + type.charAt(0).toUpperCase() + type.slice(1));
-            cm.innerHTML = `
-                <div class="context-item" onclick="${funcName}(); closeCtx()">
-                    ${icon('uiOpen','sm')}
-                    <span>打开</span>
-                </div>
-            `;
-            showCtx(e.clientX, e.clientY);
-        }
-
-        function ctxFile(e, filename) {
-            e.preventDefault(); e.stopPropagation();
-            
-            let menuItems = `
-                <div class="context-item" onclick="openFile('${filename}'); closeCtx()">
-                    ${icon('uiOpen','sm')}
-                    <span>打开</span>
-                </div>
-            `;
-
-            if (isArchiveFile(filename)) {
-                menuItems += `
-                    <div class="context-item" onclick="extractZip('${filename}'); closeCtx()">
-                        ${icon('uiExtract','sm')}
-                        <span>解压到当前文件夹</span>
-                    </div>
-                `;
-            }
-
-            menuItems += `
-                <div class="context-item" onclick="downloadFile('${filename}'); closeCtx()">
-                    ${icon('uiDownload','sm')}
-                    <span>下载</span>
-                </div>
-                <div class="context-item" onclick="renameFile('${filename}'); closeCtx()">
-                    ${icon('uiRename','sm')}
-                    <span>重命名</span>
-                </div>
-                <div class="context-divider"></div>
-                <div class="context-item" onclick="deleteFile('${filename}'); closeCtx()">
-                    ${icon('uiDelete','sm')}
-                    <span style="color:var(--win-close-red)">删除</span>
-                </div>
-            `;
-
-            document.getElementById('context-menu').innerHTML = menuItems;
-            showCtx(e.clientX, e.clientY);
-        }
-
-        function showCtx(x, y) {
-            const cm = document.getElementById('context-menu');
-            // 先显示并重置位置以测量真实尺寸（读取几何信息会强制同步布局）
-            cm.style.left = '0px';
-            cm.style.top = '0px';
-            cm.classList.add('open');
-            const rect = cm.getBoundingClientRect();
-            const w = rect.width || 240;
-            const h = rect.height || 200;
-            // 水平：不超出右侧
-            let left = Math.max(8, Math.min(x, window.innerWidth - w - 8));
-            // 垂直：若超出底部则上移；若菜单比视口还高则贴顶并允许内部滚动
-            let top = y;
-            if (top + h > window.innerHeight - 8) top = window.innerHeight - h - 8;
-            if (top < 8) top = 8;
-            cm.style.left = left + 'px';
-            cm.style.top = top + 'px';
-            SYSTEM.startOpen = false; document.getElementById('start-menu').classList.remove('open');
-            SYSTEM.calendarOpen = false; document.getElementById('calendar-panel').classList.remove('open');
-        }
-
-        async function renameFile(oldName) {
-            const newName = await SysDialog.prompt({ title: '重命名', icon: 'uiRename', label: '新名称', value: oldName, okText: '重命名', validate: SysDialog.nameValidator('名称') });
-            if(!newName || newName === oldName) return;
-            const oldPath = SYSTEM.desktopPath + '/' + oldName;
-            const newPath = SYSTEM.desktopPath + '/' + newName;
-            
-            SYSTEM.fs.rename(oldPath, newPath, (err) => {
-                if(err) Notify.error('重命名失败', err.message);
-                else { refreshDesktop(); Notify.success('重命名成功', `已重命名为 "${newName}"`); }
-            });
-        }
-
         async function renameDesktopFile(oldName) {
             const newName = await SysDialog.prompt({ title: '重命名', icon: 'uiRename', label: '新名称', value: oldName, okText: '重命名', validate: SysDialog.nameValidator('名称') });
             if(!newName || newName === oldName) return;
@@ -11388,15 +11525,6 @@
             });
         }
 
-        document.addEventListener('click', e => {
-            if(!e.target.closest('.context-menu')) closeCtx();
-            if(!e.target.closest('.start-menu') && !e.target.closest('.start-btn')) {
-                SYSTEM.startOpen = false; document.getElementById('start-menu').classList.remove('open');
-            }
-            if(!e.target.closest('.calendar-panel') && !e.target.closest('.clock')) {
-                SYSTEM.calendarOpen = false; document.getElementById('calendar-panel').classList.remove('open');
-            }
-        });
 
         // === 键盘快捷键支持 (复制/剪切/粘贴) ===
         document.addEventListener('keydown', e => {
@@ -11486,14 +11614,243 @@
         }
 
         // === 开始菜单 ===
-        function toggleStartMenu() {
-            SYSTEM.startOpen = !SYSTEM.startOpen;
-            document.getElementById('start-menu').classList.toggle('open', SYSTEM.startOpen);
-            if(SYSTEM.startOpen) {
-                SYSTEM.calendarOpen = false;
-                document.getElementById('calendar-panel').classList.remove('open');
+        // 搜索框（名称 / 拼音首字母 / 英文都能搜）、回车打开第一项、方向键在图标间移动、Esc 关闭并把焦点还给开始按钮。
+        // 重置系统从应用图标里移到底栏，避免和应用挨在一起被误点（它本身仍会先弹确认框）。
+        function isCoarsePointer() { return !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches); }
+
+        function setStartOpen(open, opts = {}) {
+            const menu = document.getElementById('start-menu');
+            const btn = document.querySelector('.start-btn');
+            if (!menu || (!!open === !!SYSTEM.startOpen && !opts.force)) return;
+            SYSTEM.startOpen = !!open;
+            menu.classList.toggle('open', SYSTEM.startOpen);
+            if (btn) { btn.classList.toggle('open', SYSTEM.startOpen); btn.setAttribute('aria-expanded', SYSTEM.startOpen ? 'true' : 'false'); }
+            const input = document.getElementById('start-search');
+            if (SYSTEM.startOpen) {
+                setCalendarOpen(false);
+                closeCtx();
+                const ver = document.getElementById('start-version');
+                if (ver && typeof STX_VERSION !== 'undefined') ver.textContent = '版本 ' + STX_VERSION + ' · 关于本系统';
+                if (input) { input.value = ''; startFilter(''); }
+                // 手机上不自动聚焦（会直接弹出软键盘挡住菜单）
+                if (input && (!isCoarsePointer() || opts.keyboard)) requestAnimationFrame(() => input.focus({ preventScroll: true }));
+            } else {
+                if (opts.restoreFocus && btn) btn.focus({ preventScroll: true });
+                else if (menu.contains(document.activeElement)) document.activeElement.blur();
             }
         }
+        function toggleStartMenu(opts) { setStartOpen(!SYSTEM.startOpen, opts || {}); }
+        function openSettingsAbout() { openSettings('about'); }
+
+        function startVisibleItems() {
+            return Array.from(document.querySelectorAll('#start-menu .menu-item'))
+                .filter(it => !it.classList.contains('sm-filtered') && !it.classList.contains('system-app-hidden'));
+        }
+        function startFilter(raw) {
+            const q = String(raw || '').trim().toLowerCase();
+            let first = null, shown = 0;
+            document.querySelectorAll('#start-menu .menu-item').forEach(it => {
+                const hay = (it.textContent + ' ' + (it.dataset.keywords || '')).toLowerCase();
+                const match = !q || hay.includes(q);
+                it.classList.toggle('sm-filtered', !match);
+                it.classList.remove('sm-first');
+                if (match && !it.classList.contains('system-app-hidden')) { shown++; if (!first) first = it; }
+            });
+            if (q && first) first.classList.add('sm-first');
+            const heading = document.getElementById('start-menu-heading');
+            if (heading) heading.textContent = q ? '搜索结果' : '已固定';
+            const empty = document.getElementById('start-empty');
+            if (empty) { empty.hidden = shown > 0; empty.textContent = `没有找到与“${String(raw).trim()}”相关的应用`; }
+        }
+
+        (function initStartMenu() {
+            const menu = document.getElementById('start-menu');
+            const input = document.getElementById('start-search');
+            if (!menu) return;
+            menu.addEventListener('click', e => {
+                const t = e.target.closest('[data-launch]');
+                if (!t) return;
+                const fn = window[t.dataset.launch];
+                setStartOpen(false);
+                if (typeof fn === 'function') fn();
+            });
+            if (input) {
+                input.addEventListener('input', () => startFilter(input.value));
+                input.addEventListener('keydown', e => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        const first = startVisibleItems()[0];
+                        if (first && input.value.trim()) first.click();
+                    } else if (e.key === 'ArrowDown') {
+                        e.preventDefault();
+                        const first = startVisibleItems()[0];
+                        if (first) first.focus();
+                    }
+                });
+            }
+            // 图标之间的方向键导航（3 列网格）
+            menu.querySelector('.menu-grid').addEventListener('keydown', e => {
+                const items = startVisibleItems();
+                const i = items.indexOf(document.activeElement);
+                if (i < 0) return;
+                const cols = getComputedStyle(e.currentTarget).gridTemplateColumns.split(' ').length || 3;
+                let j = null;
+                if (e.key === 'ArrowRight') j = Math.min(items.length - 1, i + 1);
+                else if (e.key === 'ArrowLeft') j = Math.max(0, i - 1);
+                else if (e.key === 'ArrowDown') j = Math.min(items.length - 1, i + cols);
+                else if (e.key === 'ArrowUp') { if (i - cols < 0) { e.preventDefault(); input && input.focus(); return; } j = i - cols; }
+                else if (e.key === 'Home') j = 0;
+                else if (e.key === 'End') j = items.length - 1;
+                else if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey && e.key !== ' ' && input) { input.focus(); return; }  // 直接打字 = 搜索
+                if (j !== null) { e.preventDefault(); items[j].focus(); }
+            });
+        })();
+
+        // === 任务栏：键盘、右键菜单、长按、网络状态 ===
+        function taskbarAppDef(el) {
+            const key = el && el.dataset && el.dataset.systemApp;
+            return key ? SYSTEM_APP_DEFS.find(d => d.key === key) : null;
+        }
+        function showTaskbarMenu(target, x) {
+            const bar = document.querySelector('.taskbar');
+            const y = bar.getBoundingClientRect().top - 4;   // 从任务栏顶边向上弹出
+            const running = target.closest('.taskbar-running-item');
+            const pinned = target.closest('.taskbar-icon.pinned');
+            const mobile = window.innerWidth <= 600;
+            if (running) {
+                const id = parseInt(running.dataset.winId, 10);
+                const win = SYSTEM.windows.find(w => w.id === id);
+                if (!win) return;
+                const focused = win.element.classList.contains('focused') && !win.minimized;
+                const items = [];
+                if (win.minimized) items.push({ icon: 'uiTbRestore', label: '还原窗口', act: () => focusWin(id) });
+                else if (!focused) items.push({ icon: 'uiTbRestore', label: '切换到此窗口', act: () => focusWin(id) });
+                if (!win.minimized) items.push({ icon: 'uiMinimize', label: '最小化', act: () => minimizeWin(id) });
+                if (!mobile) items.push({ icon: 'uiMaximize', label: (win.maximized || win.snapped) ? '还原大小' : '最大化', act: () => { focusWin(id); maximizeWin(id); } });
+                items.push('-', { icon: 'uiClose', label: '关闭窗口', danger: true, act: () => closeWin(id) });
+                openCtxMenu(items, x, y);
+            } else if (pinned) {
+                const def = taskbarAppDef(pinned);
+                const name = pinned.getAttribute('aria-label') || pinned.title || '应用';
+                openCtxMenu([
+                    { icon: def ? def.icon : 'uiOpen', label: '打开' + name, act: () => pinned.click() },
+                    '-',
+                    { icon: 'stxLayoutGrid', label: '管理应用快捷方式…', act: () => openSettings('apps') }
+                ], x, y);
+            } else if (!target.closest('.tb-notification')) {
+                const locked = typeof AeroPeek !== 'undefined' && AeroPeek.isDesktopLocked;
+                openCtxMenu([
+                    { icon: 'uiMonitor', label: locked ? '恢复窗口' : '显示桌面', disabled: !locked && !SYSTEM.windows.length, act: () => aeroPeekDesktopClick() },
+                    { icon: 'stxPalette', label: '个性化设置…', act: () => openSettings('personal') }
+                ], x, y);
+            }
+        }
+
+        (function initTaskbar() {
+            const bar = document.querySelector('.taskbar');
+            if (!bar) return;
+            // role="button" 的 div：回车 / 空格 = 点击
+            bar.addEventListener('keydown', e => {
+                const t = e.target;
+                if ((e.key === 'Enter' || e.key === ' ') && t.getAttribute && t.getAttribute('role') === 'button') {
+                    e.preventDefault();
+                    if (t.classList.contains('start-btn')) toggleStartMenu({ keyboard: true });
+                    else if (t.id === 'clock') toggleCalendar({ keyboard: true });
+                    else t.click();
+                } else if ((e.key === 'Delete') && t.classList && t.classList.contains('taskbar-running-item')) {
+                    e.preventDefault();
+                    closeWin(parseInt(t.dataset.winId, 10));
+                }
+            });
+            bar.addEventListener('contextmenu', e => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (lp.timer) { clearTimeout(lp.timer); lp.timer = 0; }
+                showTaskbarMenu(e.target, e.clientX);
+            });
+            // 长按（iOS Safari 不触发 contextmenu）
+            const lp = { timer: 0, x: 0, y: 0, fired: false };
+            bar.addEventListener('pointerdown', e => {
+                if (e.pointerType !== 'touch') return;
+                const t = e.target.closest('.taskbar-running-item, .taskbar-icon.pinned');
+                if (!t) return;
+                lp.x = e.clientX; lp.y = e.clientY; lp.fired = false;
+                clearTimeout(lp.timer);
+                lp.timer = setTimeout(() => { lp.timer = 0; lp.fired = true; showTaskbarMenu(t, lp.x); }, 520);
+            });
+            const cancel = e => {
+                if (!lp.timer) return;
+                if (e.type === 'pointermove' && Math.hypot(e.clientX - lp.x, e.clientY - lp.y) < 10) return;
+                clearTimeout(lp.timer); lp.timer = 0;
+            };
+            bar.addEventListener('pointermove', cancel);
+            bar.addEventListener('pointerup', cancel);
+            bar.addEventListener('pointercancel', cancel);
+            // 长按弹出菜单后，松手产生的那次 click 不能再去切换/启动窗口
+            bar.addEventListener('click', e => {
+                if (lp.fired) { lp.fired = false; e.preventDefault(); e.stopPropagation(); }
+            }, true);
+        })();
+
+        function updateNetworkTray(announce) {
+            const el = document.getElementById('tray-wifi');
+            if (!el) return;
+            const online = navigator.onLine !== false;
+            el.classList.toggle('offline', !online);
+            el.innerHTML = icon(online ? 'uiWifi' : 'uiWifiOff');
+            el.title = online ? '网络：已连接' : '网络：已断开（离线）';
+            el.setAttribute('aria-label', el.title);
+            if (announce) {
+                if (online) Notify.success('网络已恢复');
+                else Notify.warning('网络已断开', '必应壁纸、浏览器、V86 等联网功能暂时不可用');
+            }
+        }
+        updateNetworkTray(false);
+        window.addEventListener('online', () => updateNetworkTray(true));
+        window.addEventListener('offline', () => updateNetworkTray(true));
+
+        // === 弹出层的全局关闭与键盘 ===
+        // 用 pointerdown（捕获阶段）判断“点在外面”：有些窗口内部会 stopPropagation 掉 click，
+        // 以前点进这些区域时开始菜单/日历关不掉。composedPath 在元素被重新渲染后仍然可靠（日历点日期会重绘）。
+        document.addEventListener('pointerdown', e => {
+            const path = e.composedPath ? e.composedPath() : [];
+            const inside = sel => path.some(n => n && n.matches && n.matches(sel));
+            if (!inside('.context-menu')) closeCtx();
+            if (SYSTEM.startOpen && !inside('.start-menu') && !inside('.start-btn')) setStartOpen(false);
+            if (SYSTEM.calendarOpen && !inside('.calendar-panel') && !inside('.clock')) setCalendarOpen(false);
+        }, true);
+        // 点进 iframe（浏览器、HTML 预览、应用窗口）时 document 收不到 pointerdown，只会触发 window blur
+        window.addEventListener('blur', () => {
+            setTimeout(() => {
+                const ae = document.activeElement;
+                if (ae && ae.tagName === 'IFRAME') { closeCtx(); setStartOpen(false); setCalendarOpen(false); }
+            }, 0);
+        });
+        document.addEventListener('keydown', e => {
+            if (document.querySelector('.sys-dialog-overlay')) return;   // 系统对话框自己处理按键
+            const cm = document.getElementById('context-menu');
+            const stop = () => { e.preventDefault(); e.stopPropagation(); };
+            if (cm && cm.classList.contains('open')) {
+                const items = ctxItems();
+                if (e.key === 'Escape') { stop(); closeCtx({ restoreFocus: true }); }
+                else if (e.key === 'ArrowDown') { stop(); ctxSetActive(CTX.active + 1); }
+                else if (e.key === 'ArrowUp') { stop(); ctxSetActive(CTX.active < 0 ? items.length - 1 : CTX.active - 1); }
+                else if (e.key === 'Home') { stop(); ctxSetActive(0); }
+                else if (e.key === 'End') { stop(); ctxSetActive(items.length - 1); }
+                else if ((e.key === 'Enter' || e.key === ' ') && CTX.active >= 0 && items[CTX.active]) { stop(); items[CTX.active].click(); }
+                else if (e.key === 'Tab') { stop(); closeCtx({ restoreFocus: true }); }
+                return;
+            }
+            if (e.key === 'Escape') {
+                if (SYSTEM.startOpen) {
+                    const input = document.getElementById('start-search');
+                    stop();
+                    if (input && document.activeElement === input && input.value) { input.value = ''; startFilter(''); }
+                    else setStartOpen(false, { restoreFocus: true });
+                } else if (SYSTEM.calendarOpen) { stop(); setCalendarOpen(false, { restoreFocus: true }); }
+            }
+        }, true);
+
 
         // === 窗口系统 (完整适配版) ===
         function createWindow(opts) {
@@ -14953,18 +15310,6 @@
             return result;
         }
 
-        async function measureStorageRoots(paths) {
-            const reports = await Promise.all(paths.map(path => measureStorageTree(path)));
-            return reports.reduce((total, item) => ({
-                bytes: total.bytes + item.bytes,
-                files: total.files + item.files,
-                directories: total.directories + item.directories,
-                entries: total.entries + item.entries,
-                capped: total.capped || item.capped,
-                unavailable: total.unavailable && item.unavailable
-            }), { bytes: 0, files: 0, directories: 0, entries: 0, capped: false, unavailable: true });
-        }
-
         // === 一次性缓存 / 临时文件：只扫描、由用户逐项勾选后才删除 ===
         // 不自动删除任何文件。扫描结果只是“候选项”，每项都显示路径和判定理由。
         const TEMP_CLEANUP_STATE = Object.create(null);
@@ -15353,7 +15698,6 @@
         }
 
         // 兼容旧接口：文件/后端发生变化的地方都会调用它，这里让所有设置窗口重新统计并刷新。
-        function refreshStorageDashboard(windowId) { stxRefreshStorage(Number(windowId)); }
         function refreshAllStorageDashboards() {
             STX_REPORT = null;
             stxAllWins().forEach(id => { const st = STX_STATE[id]; if (st && (st.page === 'storage' || st.page === 'about')) stxRender(id, { keepScroll: true }); else stxRenderNav(id); });
@@ -15507,7 +15851,7 @@
                 ['personal', 'presets', '预设壁纸', '预设 默认 壁纸 内置 风景'],
                 ['personal', 'bingrecent', '必应近期壁纸', '必应 bing 近期 往期 历史 壁纸'],
                 ['personal', 'history', '最近使用的壁纸', '最近 历史 之前 原来 旧 找回 恢复 壁纸'],
-                ['personal', 'corners', '窗口圆角', '圆角 直角 窗口 边角 外观 corner radius'],
+                ['personal', 'corners', '窗口圆角', '圆角 直角 窗口 边角 外观 开始菜单 日历 右键菜单 corner radius'],
                 ['personal', 'click', '图标打开方式', '单击 双击 打开 click 鼠标'],
                 ['storage', 'overview', '存储空间概览', '存储 空间 配额 已用 可用 容量 quota 占用'],
                 ['storage', 'persist', '持久化存储', 'persist 持久 防止 自动清除 驱逐 浏览器清理'],
@@ -15687,7 +16031,7 @@
             const cornerOpt = (v, label) => `<button type="button" role="radio" aria-checked="${corner === v}" class="${corner === v ? 'on' : ''}" onclick="stxSetCorners(${winId}, '${v}')">${label}</button>`;
             const win = `<div class="stx-card">${stxRow({
                 id: 'corners', ic: 'stxAppWindow', title: '窗口圆角',
-                desc: '所有窗口立即生效；最大化、贴边和手机全屏时始终为直角。',
+                desc: '窗口、开始菜单、日历、右键菜单和对话框立即生效；窗口最大化、贴边和手机全屏时始终为直角。胶囊通知始终保持胶囊形状。',
                 ctl: `<div class="stx-seg" role="radiogroup" aria-label="窗口圆角">${cornerOpt('round', '圆角')}${cornerOpt('small', '小圆角')}${cornerOpt('square', '直角')}</div>`
             })}</div>`;
             return `<div class="stx-page">${stxHead('personal')}${stxGroup('壁纸', '', hero)}${history ? stxGroup('最近使用', '你换过的壁纸，点击即可换回', history) : ''}${stxGroup('预设壁纸', `${WALLPAPER_PRESETS.length} 张`, presets)}${stxGroup('必应近期壁纸', daily ? '点击可改为固定壁纸' : '点击设为固定壁纸', recent)}${stxGroup('窗口', '', win)}${stxGroup('交互', '', click)}</div>`;
@@ -16248,7 +16592,6 @@
             try { closeCtx(); } catch (_) {}
             return openSettings('personal');
         }
-        function closePanel() {}   // 旧浮动面板已移除，保留空函数兼容旧调用
 
         // 两个概念分开：
         //   “你的壁纸”= SYSTEM.customWallpaper，保存在 wallpaper.cfg，只由你主动选择（预设 / 上传 / 右键 / 固定一张必应图）时改变；
@@ -16739,12 +17082,14 @@
                     item.className = 'taskbar-running-item';
                     item.id = 'taskbar-run-' + w.id;
                     item.dataset.winId = w.id;
+                    item.setAttribute('role', 'button');
+                    item.tabIndex = 0;
                     
                     const taskbarIcon = w.iconHtml || icon('appDefault');
                     item.innerHTML = `
                         <div class="running-icon">${taskbarIcon}</div>
                         <div class="running-title">${escapeHtml(w.title || '窗口')}</div>
-                        <button class="running-close-btn" title="关闭窗口">
+                        <button class="running-close-btn" title="关闭窗口" aria-label="关闭窗口" tabindex="-1">
                             ${icon('uiClose')}
                         </button>
                     `;
@@ -16782,10 +17127,12 @@
                     // 悬停：显示Aero Peek效果（虚化其他窗口）
                     item.addEventListener('mouseenter', function(e) {
                         const winId = parseInt(this.dataset.winId);
-                        onRunningItemHover(e, winId);
+                        clearTimeout(item._peekTimer);
+                        item._peekTimer = setTimeout(() => onRunningItemHover(e, winId), 380);
                     });
                     item.addEventListener('mouseleave', function(e) {
                         const winId = parseInt(this.dataset.winId);
+                        clearTimeout(item._peekTimer);
                         onRunningItemLeave(e, winId);
                     });
                     
@@ -16798,15 +17145,18 @@
                 
                 // 更新标题（可能变化）
                 const titleEl = item.querySelector('.running-title');
-                if (titleEl && titleEl.textContent !== w.title) {
+                if (titleEl && titleEl.textContent !== (w.title || '窗口')) {
                     titleEl.textContent = w.title || '窗口';
                 }
+                const tip = (w.title || '窗口') + (w.minimized ? '（已最小化）' : '');
+                if (item.title !== tip) { item.title = tip; item.setAttribute('aria-label', tip); }
             });
             
             // 删除已关闭的窗口图标
             Array.from(area.children).forEach(child => {
                 const winId = parseInt(child.dataset.winId);
                 if (!existingIds.has(winId)) {
+                    clearTimeout(child._peekTimer);
                     child.style.transition = 'opacity 0.15s, transform 0.15s';
                     child.style.opacity = '0';
                     child.style.transform = 'scale(0.8)';
