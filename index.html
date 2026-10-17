@@ -1452,7 +1452,9 @@
             padding: 6px 8px; flex: none; min-width: 0;
             border-bottom: 1px solid rgba(255,255,255,0.05);
         }
-        .fx-side-toggle { display: none; }
+        .fx-side-toggle { display: inline-flex; }
+        .fx-side-toggle .icon-svg { transition: opacity 0.15s; }
+        .fx-root.fx-side-collapsed .fx-side-toggle .icon-svg { opacity: 0.6; }
         .fx-crumbs {
             flex: 1 1 auto; min-width: 60px; height: 30px; margin: 0 4px 0 6px;
             display: flex; align-items: center; gap: 0;
@@ -1540,6 +1542,17 @@
         .folder-sidebar-item .icon-svg { width: 16px; height: 16px; flex: none; opacity: 0.75; }
         .folder-sidebar-item.active .icon-svg { opacity: 1; }
         .folder-sidebar-item span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+        /* 宽窗口：导航窗格可收起（点地址栏最左侧按钮），状态记在 localStorage，所有文件夹窗口共用 */
+        @container fx (width > 640px) {
+            .folder-sidebar {
+                transition: width 0.22s cubic-bezier(0.2, 0.8, 0.2, 1), padding 0.22s, border-color 0.22s, visibility 0s linear 0s;
+            }
+            .fx-root.fx-side-collapsed .folder-sidebar {
+                width: 0; padding-left: 0; padding-right: 0;
+                border-right-width: 0; visibility: hidden;
+                transition: width 0.22s cubic-bezier(0.2, 0.8, 0.2, 1), padding 0.22s, border-color 0.22s, visibility 0s linear 0.22s;
+            }
+        }
 
         /* --- 内容滚动区（三种视图共用，id 仍是 folder-filelist-*）--- */
         .fx-scroll {
@@ -1741,7 +1754,6 @@
 
         /* --- 窄窗口：侧栏变为抽屉，命令栏按钮由脚本逐级收起文字 --- */
         @container fx (max-width: 640px) {
-            .fx-side-toggle { display: inline-flex; }
             .folder-sidebar {
                 position: absolute; left: 0; top: 0; bottom: 0; z-index: 30; width: min(180px, 80%);
                 background: #1b1b24;
@@ -1753,7 +1765,7 @@
             .fx-search { flex-basis: 150px; min-width: 96px; }
             .fx-mprev { width: 240px; }
         }
-        @media (prefers-reduced-motion: reduce) { .folder-sidebar { transition: none; } }
+        @media (prefers-reduced-motion: reduce) { .folder-sidebar, .fx-root.fx-side-collapsed .folder-sidebar { transition: none; } }
 
         /* === 解压进度条（新版 · 与系统对话框同款玻璃）=== */
         .extract-progress {
@@ -7465,10 +7477,10 @@
         function fxWindowHtml(wid, viewMode) {
             const nb = (act, ic, label, tip, id) => `<button type="button" class="fx-btn fx-icon-only" data-act="${act}"${id ? ` id="${id}"` : ''} title="${tip}" aria-label="${label}">${icon(ic)}</button>`;
             return `
-            <div class="content-area dark fx-root" id="folder-content-${wid}" data-view="${viewMode}">
+            <div class="content-area dark fx-root${fxSideCollapsedPref() ? ' fx-side-collapsed' : ''}" id="folder-content-${wid}" data-view="${viewMode}">
                 ${buildFolderToolbar(wid)}
                 <div class="fx-addr">
-                    ${nb('sidebar', 'fxPanel', '导航窗格', '导航窗格').replace('fx-icon-only"', 'fx-icon-only fx-side-toggle"')}
+                    ${nb('sidebar', 'fxPanel', '导航窗格', fxSideCollapsedPref() ? '展开导航窗格' : '收起导航窗格').replace('fx-icon-only"', 'fx-icon-only fx-side-toggle"')}
                     ${nb('back', 'fxBack', '后退', '后退 (Alt+←)')}
                     ${nb('forward', 'fxFwd', '前进', '前进 (Alt+→)')}
                     ${nb('up', 'fxUp', '向上一级', '向上一级 (Alt+↑)')}
@@ -7651,9 +7663,27 @@
             }
         }
 
+        // 导航窗格：
+        //  · 宽窗口（> 640px）：点按钮收起 / 展开，记住选择（localStorage），所有文件夹窗口同步；
+        //  · 窄窗口（手机等）：仍是抽屉，默认收起，点按钮滑出，选完位置或点遮罩自动收回。
+        //  带 force 参数的调用（导航后、点遮罩）只关抽屉，不会改动宽窗口下记住的状态。
+        const FX_SIDE_PREF_KEY = 'JISHENG_OS_FX_SIDEBAR_COLLAPSED';
+        function fxSideCollapsedPref() { try { return localStorage.getItem(FX_SIDE_PREF_KEY) === '1'; } catch (_) { return false; } }
         function fxToggleSidebar(wid, force) {
             const root = fxEl('folder-content-', wid);
-            if (root) root.classList.toggle('fx-side-open', force === undefined ? !root.classList.contains('fx-side-open') : !!force);
+            if (!root) return;
+            const narrow = root.clientWidth <= 640;
+            if (force !== undefined || narrow) {
+                root.classList.toggle('fx-side-open', force === undefined ? !root.classList.contains('fx-side-open') : !!force);
+                return;
+            }
+            const collapsed = !root.classList.contains('fx-side-collapsed');
+            try { localStorage.setItem(FX_SIDE_PREF_KEY, collapsed ? '1' : '0'); } catch (_) {}
+            document.querySelectorAll('.content-area.fx-root').forEach(r => {
+                r.classList.toggle('fx-side-collapsed', collapsed);
+                const b = r.querySelector('.fx-side-toggle');
+                if (b) { b.title = collapsed ? '展开导航窗格' : '收起导航窗格'; b.setAttribute('aria-expanded', String(!collapsed)); }
+            });
         }
 
         // ================= 事件绑定（全部委托）=================
