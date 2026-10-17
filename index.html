@@ -278,7 +278,7 @@
             height: 90px; 
             padding: 10px 4px; 
             display: flex; flex-direction: column; align-items: center; gap: 6px; 
-            border-radius: 6px; cursor: pointer; 
+            border-radius: var(--ui-radius, 6px); cursor: pointer; 
             border: 1px solid transparent; 
             transition: background 0.15s, border 0.15s; 
         } 
@@ -317,7 +317,7 @@
             word-break: break-all; 
             display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; 
             padding: 0 2px; 
-            border-radius: 2px; 
+            border-radius: min(2px, var(--ui-radius, 2px)); 
         } 
         .desktop-icon.selected .label, .fx-icon.selected .label { color: #fff; } 
 
@@ -766,9 +766,11 @@
             .running-title, .running-close-btn { display: none !important; }
             .running-icon { margin: 0 auto; }
         }
-        /* 触屏没有悬停：不显示关闭小按钮，改用长按菜单 */
+        /* 触屏没有悬停：点一下任务（窗口切到前台）后，这个任务显示关闭按钮，触控尺寸加大；长按仍有完整菜单 */
         @media (hover: none) {
             .taskbar-running-item .running-close-btn { display: none; }
+            .taskbar-running-item.focused:not(.minimized-item) .running-close-btn { display: flex; opacity: 1; width: 30px; height: 30px; }
+            .taskbar-running-item.focused:not(.minimized-item) .running-close-btn svg { width: 13px; height: 13px; }
         }
 
         /* --- 系统托盘 --- */
@@ -1032,8 +1034,14 @@
             .taskbar-apps:has(.taskbar-running-item) > .taskbar-icon.pinned,
             .taskbar-apps:has(.taskbar-running-item) > .taskbar-sep { display: none; }
             .taskbar-running-area { overflow-x: auto; scrollbar-width: none; }
-            .taskbar-running-item { flex: 0 0 44px; max-width: 44px; padding: 0; justify-content: center; }
+            .taskbar-running-item { flex: 0 0 44px; max-width: 44px; padding: 0; justify-content: center; transition: flex-basis 0.18s, max-width 0.18s; }
             .taskbar-running-item .running-title, .taskbar-running-item .running-close-btn { display: none; }
+            /* 当前任务：图标 + 关闭按钮（点一下任务即可看到 ×，点 × 关闭；再点任务本身仍是最小化） */
+            .taskbar-running-item.focused:not(.minimized-item) { flex-basis: 78px; max-width: 78px; justify-content: flex-start; padding: 0 3px 0 12px; gap: 4px; }
+            .taskbar-running-item.focused:not(.minimized-item) .running-icon { margin: 0; }
+            .taskbar-running-item.focused:not(.minimized-item) .running-close-btn { display: flex !important; opacity: 1; width: 32px; height: 32px; margin-left: auto; }
+            .taskbar-running-item.focused:not(.minimized-item) .running-close-btn svg { width: 13px; height: 13px; }
+            .taskbar-running-item.focused:not(.minimized-item)::after { left: 22px; }
             .tray-icon:not(.offline) { display: none; }
             .clock .date { display: none; }
             .start-menu, .calendar-panel { left: 8px; right: 8px; width: auto; max-width: none; }
@@ -1152,6 +1160,33 @@
         .stx-card.pad { padding: 16px; }
         .stx-row { display: grid; grid-template-columns: 34px minmax(0,1fr) auto; align-items: center; column-gap: 14px; row-gap: 10px; padding: 13px 16px; min-height: 58px; position: relative; }
         .stx-row + .stx-row { border-top: 1px solid var(--line); }
+        /* 窗口圆角滑块 */
+        .stx-corner { display: flex; align-items: center; gap: 12px; }
+        .stx-corner-pv { width: 30px; height: 22px; flex: none; box-sizing: border-box; border: 1.5px solid rgba(255,255,255,.55); border-right: 0; border-bottom: 0;
+            border-top-left-radius: var(--win-radius); background: linear-gradient(135deg, rgba(0,120,212,.28), transparent 70%); }
+        .stx-corner-track { width: 200px; display: flex; flex-direction: column; gap: 2px; padding-top: 12px; }
+        .stx-corner input[type=range] { --p: 50%; -webkit-appearance: none; appearance: none; width: 100%; height: 18px; margin: 0; background: transparent; cursor: pointer; }
+        .stx-corner input[type=range]::-webkit-slider-runnable-track { height: 4px; border-radius: 2px; background: linear-gradient(90deg, var(--acc) 0 var(--p), rgba(255,255,255,.14) var(--p) 100%); }
+        .stx-corner input[type=range]::-moz-range-track { height: 4px; border-radius: 2px; background: rgba(255,255,255,.14); }
+        .stx-corner input[type=range]::-moz-range-progress { height: 4px; border-radius: 2px; background: var(--acc); }
+        .stx-corner input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; margin-top: -6px; border-radius: 50%; background: #fff; border: 0; box-shadow: 0 1px 4px rgba(0,0,0,.45); transition: transform .12s; }
+        .stx-corner input[type=range]::-moz-range-thumb { width: 16px; height: 16px; border-radius: 50%; background: #fff; border: 0; box-shadow: 0 1px 4px rgba(0,0,0,.45); }
+        .stx-corner input[type=range]:hover::-webkit-slider-thumb, .stx-corner input[type=range]:active::-webkit-slider-thumb { transform: scale(1.15); }
+        .stx-corner input[type=range]:focus-visible { outline: none; }
+        .stx-corner input[type=range]:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 3px rgba(0,120,212,.55), 0 1px 4px rgba(0,0,0,.45); }
+        .stx-corner-marks { position: relative; height: 14px; font-size: 10.5px; line-height: 14px; color: var(--muted); user-select: none; white-space: nowrap; }
+        .stx-corner-marks span { position: absolute; top: 0; }
+        .stx-corner-marks span:nth-child(1) { left: 0; }
+        .stx-corner-marks span:nth-child(2) { left: 50%; transform: translateX(-50%); }   /* 10 px = 默认圆角，正好在中间 */
+        .stx-corner-marks span:nth-child(3) { right: 0; }
+        .stx-corner-val { min-width: 50px; display: flex; flex-direction: column; align-items: flex-end; font-size: 13px; font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; line-height: 1.2; }
+        .stx-corner-val small { font-size: 11px; font-weight: 400; color: var(--muted); }
+        /* 宽控件（滑块）：始终放在说明文字下方一整行，不挤压文字 */
+        .stx-row.stx-row-wide { grid-template-columns: 34px minmax(0,1fr); }
+        .stx-row.stx-row-wide .stx-row-ic { align-self: start; margin-top: 2px; }
+        .stx-row.stx-row-wide .stx-row-ct { grid-column: 2; justify-self: stretch; justify-content: flex-start; }
+        .stx-row-wide .stx-corner { width: 100%; max-width: 460px; }
+        .stx-row-wide .stx-corner-track { flex: 1; width: auto; min-width: 110px; }
         .stx-row.noicon { grid-template-columns: minmax(0,1fr) auto; }
         .stx-row.click { cursor: pointer; }
         .stx-row.click:hover { background: rgba(255,255,255,.03); }
@@ -1476,7 +1511,7 @@
         .fx-side-scrim { display: none; }
 
         .folder-sidebar {
-            width: 196px; flex: none;
+            width: 180px; flex: none;   /* 与重做前一致 */
             display: flex; flex-direction: column;
             padding: 6px 0 10px;
             background: rgba(0,0,0,0.15);
@@ -1708,7 +1743,7 @@
         @container fx (max-width: 640px) {
             .fx-side-toggle { display: inline-flex; }
             .folder-sidebar {
-                position: absolute; left: 0; top: 0; bottom: 0; z-index: 30; width: min(240px, 80%);
+                position: absolute; left: 0; top: 0; bottom: 0; z-index: 30; width: min(180px, 80%);
                 background: #1b1b24;
                 box-shadow: 8px 0 24px rgba(0,0,0,0.45);
                 transform: translateX(-105%); transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
@@ -2394,7 +2429,8 @@
             settingsPath: '/system/config/settings.json',
             clickBehavior: 'double',
             hiddenSystemApps: [],
-            windowCorners: 'round',      // round / small / square
+            windowCorners: 'round',      // round / small / square（旧版字段：按 cornerRadius 就近换算后一并保存，回退旧版本时仍可用）
+            cornerRadius: 10,            // 窗口圆角 0–20 px（设置里的滑块），其余圆角按比例推算
             wallpaperSource: 'custom',   // custom / bing
             customWallpaper: '',         // 你的壁纸（wallpaper.cfg），必应模式下也保持不变
             wallpaperHistory: [],
@@ -2455,8 +2491,28 @@
             document.querySelectorAll('[data-storage-migration-button]').forEach(button => { button.disabled = !canUseOPFS; });
         }
 
+        // 窗口圆角：一个数值（0–20 px）推算出全部圆角变量。
+        // 10 / 6 / 0 分别与旧版「圆角 / 小圆角 / 直角」三档完全一致。
+        const CORNER_MAX = 20;
+        const CORNER_PRESETS = { round: 10, small: 6, square: 0 };
+        function clampCornerRadius(v) { const n = Math.round(Number(v)); return Number.isFinite(n) ? Math.max(0, Math.min(CORNER_MAX, n)) : 10; }
+        function cornerPresetOf(r) { return r === 0 ? 'square' : r <= 7 ? 'small' : 'round'; }
+        function cornerLevelLabel(r) { return r === 0 ? '直角' : r <= 4 ? '微圆角' : r <= 7 ? '小圆角' : r <= 12 ? '圆角' : '大圆角'; }
+        function cornerTokens(r) {
+            if (r <= 0) return { win: 0, ui: 0, dlg: 0, cal: '0px' };
+            const ui = Math.min(r, Math.round(r / 2 + 1));          // 菜单项、按钮、列表行等“内部条目”
+            return { win: r, ui, dlg: Math.min(24, r + 2), cal: r >= 10 ? '50%' : ui + 'px' };
+        }
         function applyWindowCorners() {
-            document.documentElement.dataset.winCorners = ['small', 'square'].includes(SYSTEM.windowCorners) ? SYSTEM.windowCorners : 'round';
+            const r = clampCornerRadius(SYSTEM.cornerRadius);
+            SYSTEM.cornerRadius = r;
+            SYSTEM.windowCorners = cornerPresetOf(r);
+            const t = cornerTokens(r), st = document.documentElement.style;
+            st.setProperty('--win-radius', t.win + 'px');
+            st.setProperty('--ui-radius', t.ui + 'px');
+            st.setProperty('--dlg-radius', t.dlg + 'px');
+            st.setProperty('--cal-day-radius', t.cal);
+            document.documentElement.dataset.winCorners = SYSTEM.windowCorners;
         }
         function applySystemSettings(rawSettings) {
             const settings = rawSettings && typeof rawSettings === 'object' ? rawSettings : {};
@@ -2469,6 +2525,9 @@
             SYSTEM.showHiddenFiles = settings.showHiddenFiles === true;
             SYSTEM.wallpaperSource = settings.wallpaperSource === 'bing' ? 'bing' : 'custom';
             SYSTEM.windowCorners = ['round', 'small', 'square'].includes(settings.windowCorners) ? settings.windowCorners : 'round';
+            // 新版保存的是具体数值；只有旧版的三档字段时按档位换算
+            SYSTEM.cornerRadius = Number.isFinite(Number(settings.cornerRadius)) && settings.cornerRadius !== null && settings.cornerRadius !== ''
+                ? clampCornerRadius(settings.cornerRadius) : CORNER_PRESETS[SYSTEM.windowCorners];
             applyWindowCorners();
             const hideableKeys = new Set(SYSTEM_APP_DEFS.filter(app => app.hideable).map(app => app.key));
             SYSTEM.hiddenSystemApps = Array.isArray(settings.hiddenSystemApps)
@@ -5531,7 +5590,7 @@
                             SYSTEM.fs.stat(SYSTEM.desktopPath + '/' + file, (err, stats) => {
                                 if(!err && stats.isDirectory()) {
                                     iconSvg = iconBody('fileFolder');
-                                    container.appendChild(createIconElement(fileId, file, iconSvg, `openFolderWindow('${file}')`, pos, 'folder', file));
+                                    container.appendChild(createIconElement(fileId, file, iconSvg, () => openFolderWindow(file), pos, 'folder', file));
                                 } else if(file.match(/\.html?$/i)) {
                                     // HTML文件：异步读取内容检测是否为JISHENG OS应用
                                     SYSTEM.fs.readFile(SYSTEM.desktopPath + '/' + file, 'utf8', (err, data) => {
@@ -5546,10 +5605,10 @@
                                                 displayIcon = appConfig.icon || iconBody('appUnknown');
                                             }
                                         }
-                                        container.appendChild(createIconElement(fileId, displayName, displayIcon, `openFile('${file}')`, pos, 'file', file));
+                                        container.appendChild(createIconElement(fileId, displayName, displayIcon, () => openFile(file), pos, 'file', file));
                                     });
                                 } else {
-                                    container.appendChild(createIconElement(fileId, file, iconSvg, `openFile('${file}')`, pos, 'file', file));
+                                    container.appendChild(createIconElement(fileId, file, iconSvg, () => openFile(file), pos, 'file', file));
                                 }
                             });
                         });
@@ -5690,8 +5749,11 @@
             };
 
             // 安全的动作执行方式，避免eval注入风险。右键菜单始终可以显式打开。
+            // 桌面文件/文件夹传入的是函数（文件名只在闭包里，不进任何代码字符串）；系统应用仍用固定的动作名。
             el._jishengOpen = () => {
-                if (action === 'openBrowser()') {
+                if (typeof action === 'function') {
+                    action();
+                } else if (action === 'openBrowser()') {
                     openBrowser();
                 } else if (action === 'openNotepad()') {
                     openNotepad();
@@ -5707,12 +5769,6 @@
                     openCodeEditor();
                 } else if (action === 'openFileExplorer()') {
                     openFileExplorer();
-                } else if (action.startsWith('openFolderWindow(')) {
-                    const folderName = action.match(/openFolderWindow\('(.*)'\)/)?.[1];
-                    if (folderName != null) openFolderWindow(folderName);
-                } else if (action.startsWith('openFile(')) {
-                    const filename = action.match(/openFile\('(.*)'\)/)?.[1];
-                    if (filename != null) openFile(filename);
                 }
                 clearSelection();
             };
@@ -5790,23 +5846,10 @@
         function showLocalFolderContextMenu(x, y, folderId, name) {
             const folderInfo = SYSTEM.mountedFolders[folderId] || SYSTEM.localFolders[folderId];
             const isDisconnected = folderInfo && folderInfo.disconnected;
-            const cm = document.getElementById('context-menu');
-            cm.innerHTML = `
-                <div class="context-item" onclick="openLocalFolder('${folderId}'); closeCtx()">
-                    ${icon('uiOpen','sm')}
-                    <span>打开</span>
-                </div>
-                <div class="context-divider"></div>
-                ${isDisconnected ? `<div class="context-item" onclick="remountFolder('${folderId}'); closeCtx()" style="color:var(--accent-cyan)">
-                    ${icon('uiEject','sm')}
-                    <span>重新挂载</span>
-                </div>` : ''}
-                <div class="context-item" onclick="unmountLocalFolder('${folderId}'); closeCtx()" style="color:var(--win-close-red)">
-                    ${icon('uiEject','sm')}
-                    <span>${isDisconnected ? '忘记此文件夹' : '卸载挂载'}</span>
-                </div>
-            `;
-            showCtx(x, y);
+            const items = [{ icon: 'uiOpen', label: '打开', act: () => openLocalFolder(folderId) }, '-'];
+            if (isDisconnected) items.push({ icon: 'uiEject', label: '重新挂载', act: () => remountFolder(folderId) });
+            items.push({ icon: 'uiEject', label: isDisconnected ? '忘记此文件夹' : '卸载挂载', danger: true, act: () => unmountLocalFolder(folderId) });
+            openCtxMenu(items, x, y);
         }
 
         // 4. 图标拖拽逻辑 (Windows 风格)
@@ -6435,122 +6478,53 @@
 
         // 6. 新的右键菜单逻辑 (支持多选)
         function showIconContextMenu(x, y) {
-            const cm = document.getElementById('context-menu');
-            
             const targetEl = document.elementFromPoint(x, y)?.closest('.desktop-icon');
             if (!targetEl) return;
 
             const targetId = targetEl.id;
             const isSystemApp = !targetId.startsWith('file-') && !targetEl.dataset.localFolder;
             const isLocalFolder = !!targetEl.dataset.localFolder;
-            
-            if (isSystemApp) {
-                cm.innerHTML = `
-                    <div class="context-item" onclick="activateDesktopIcon(document.getElementById('${targetId}')); closeCtx()">
-                        ${icon('uiOpen','sm')}
-                        <span>打开</span>
-                    </div>
-                `;
-                showCtx(x, y);
-                return;
-            }
+            const openItem = { icon: 'uiOpen', label: '打开', act: () => activateDesktopIcon(targetEl) };
+
+            if (isSystemApp) { openCtxMenu([openItem], x, y); return; }
 
             const selectedFiles = SYSTEM.selectedIcons.filter(id => id.startsWith('file-') || document.getElementById(id)?.dataset.localFolder);
             const count = selectedFiles.length;
-            
             const filename = targetEl.dataset.filename;
-            
-            let html = '';
-            
-            html += `
-                <div class="context-item" onclick="activateDesktopIcon(document.getElementById('${targetId}')); closeCtx()">
-                    ${icon('uiOpen','sm')}
-                    <span>打开</span>
-                </div>
-            `;
+            const fullPath = filename ? SYSTEM.desktopPath + '/' + filename : '';
+            const items = [openItem];
 
             // 「打开方式」：仅单选、非挂载文件夹、且为可指定打开方式的文件类型时显示
             if (!isLocalFolder && filename && count <= 1 && canOpenWith(filename)) {
-                const dfFullPath = escapeAttr(SYSTEM.desktopPath + '/' + filename);
-                const dfFilename = escapeAttr(filename);
-                html += `<div class="context-divider"></div>` + buildOpenWithMenu(dfFullPath, dfFilename, filename);
+                items.push('-', ...openWithItems(fullPath, filename));
             }
-
             // 「设为桌面壁纸」：仅单选的图片文件显示
             if (!isLocalFolder && filename && count <= 1 && isImageFile(filename)) {
-                const wpPathArg = escapeAttr(JSON.stringify(SYSTEM.desktopPath + '/' + filename));
-                const wpNameArg = escapeAttr(JSON.stringify(filename));
-                html += `<div class="context-divider"></div>
-                <div class="context-item" onclick="setWallpaperFromPath(${wpPathArg}, ${wpNameArg}); closeCtx()">
-                    ${icon('uiWallpaperCtx','sm')}
-                    <span>设为桌面壁纸</span>
-                </div>`;
+                items.push('-', { icon: 'uiWallpaperCtx', label: '设为桌面壁纸', act: () => setWallpaperFromPath(fullPath, filename) });
             }
-
             if (!isLocalFolder && filename && isArchiveFile(filename)) {
-                html += `
-                <div class="context-item" onclick="extractZip('${filename}'); closeCtx()">
-                    ${icon('uiExtractSimple','sm')}
-                    <span>解压</span>
-                </div>`;
+                items.push({ icon: 'uiExtractSimple', label: '解压', act: () => extractZip(filename) });
             }
 
-            html += `<div class="context-divider"></div>`;
-
-            // 添加复制/剪切选项
             const countLabel = count > 1 ? ` (${count})` : '';
-            html += `
-                <div class="context-item" onclick="copySelectedDesktopItems(); closeCtx()">
-                    ${icon('uiCopy','sm')}
-                    <span>复制${countLabel}</span>
-                </div>
-                <div class="context-item" onclick="cutSelectedDesktopItems(); closeCtx()">
-                    ${icon('uiCut','sm')}
-                    <span>剪切${countLabel}</span>
-                </div>
-            `;
+            items.push('-',
+                { icon: 'uiCopy', label: '复制' + countLabel, act: () => copySelectedDesktopItems() },
+                { icon: 'uiCut', label: '剪切' + countLabel, act: () => cutSelectedDesktopItems() });
 
             if (count > 1) {
-                html += `
-                    <div class="context-divider"></div>
-                    <div class="context-item" onclick="downloadSelectedFiles(); closeCtx()">
-                        ${icon('uiDownload','sm')}
-                        <span>下载选中 (${count})</span>
-                    </div>
-                    <div class="context-item" onclick="deleteSelected(); closeCtx()" style="color:var(--win-close-red)">
-                        ${icon('uiDelete','sm')}
-                        <span>删除选中 (${count})</span>
-                    </div>
-                `;
-            } else {
-                if (isLocalFolder) {
-                    const folderId = targetEl.dataset.localFolder;
-                    html += `
-                        <div class="context-item" onclick="unmountLocalFolder('${folderId}'); closeCtx()" style="color:var(--win-close-red)">
-                            ${icon('uiEject','sm')}
-                            <span>卸载挂载</span>
-                        </div>
-                    `;
-                } else {
-                    html += `
-                        <div class="context-item" onclick="downloadFile('${filename}'); closeCtx()">
-                            ${icon('uiDownload','sm')}
-                            <span>下载</span>
-                        </div>
-                        <div class="context-item" onclick="renameDesktopFile('${filename}'); closeCtx()">
-                            ${icon('uiRename','sm')}
-                            <span>重命名</span>
-                        </div>
-                        <div class="context-item" onclick="deleteFile('${filename}'); closeCtx()" style="color:var(--win-close-red)">
-                            ${icon('uiDeleteSimple','sm')}
-                            <span>删除</span>
-                        </div>
-                    `;
-                }
+                items.push('-',
+                    { icon: 'uiDownload', label: `下载选中 (${count})`, act: () => downloadSelectedFiles() },
+                    { icon: 'uiDelete', label: `删除选中 (${count})`, danger: true, act: () => deleteSelected() });
+            } else if (isLocalFolder) {
+                const folderId = targetEl.dataset.localFolder;
+                items.push({ icon: 'uiEject', label: '卸载挂载', danger: true, act: () => unmountLocalFolder(folderId) });
+            } else if (filename) {
+                items.push(
+                    { icon: 'uiDownload', label: '下载', act: () => downloadFile(filename) },
+                    { icon: 'uiRename', label: '重命名', act: () => renameDesktopFile(filename) },
+                    { icon: 'uiDeleteSimple', label: '删除', danger: true, act: () => deleteFile(filename) });
             }
-            
-            cm.innerHTML = html;
-            showCtx(x, y);
+            openCtxMenu(items, x, y);
         }
 
         async function deleteSelected() {
@@ -9179,8 +9153,9 @@
                 S.raf = requestAnimationFrame(tick);
             };
             const start = e => {
-                // 触屏：空白处滑动交给浏览器滚动（不框选）；轻点清空选择、长按弹菜单见下方
-                if (e.type === 'touchstart') return;
+                // 触屏：空白处按下即开始框选（和旧版、桌面一致）；滚动请在文件条目上滑动。
+                // 按住不动 500ms 会取消框选并弹出空白处菜单（见下方长按）；多指（双指缩放等）不框选。
+                if (e.type === 'touchstart' && e.touches && e.touches.length > 1) { if (S) cancelMarquee(); return; }
                 if (e.type === 'mousedown' && e.button !== 0) return;
                 if (S) return;
                 const t = e.target;
@@ -9198,7 +9173,7 @@
                 e.preventDefault();
                 sc.classList.remove('fx-kbd');
                 try { sc.focus({ preventScroll: true }); } catch (_) {}
-                const additive = e.ctrlKey || e.metaKey || e.shiftKey;
+                const additive = e.type !== 'touchstart' && (e.ctrlKey || e.metaKey || e.shiftKey);
                 if (!additive) clearFolderSelection(windowId, true);
                 const sr = scope.getBoundingClientRect();
                 const ox = scope.scrollLeft - sr.left - scope.clientLeft, oy = scope.scrollTop - sr.top - scope.clientTop;
@@ -9230,6 +9205,14 @@
                 S.cx = p.clientX; S.cy = p.clientY;
                 update();
             };
+            // 取消框选（长按转菜单、多指手势时）：清掉框，不改动已有的“清空选择”
+            const cancelMarquee = () => {
+                if (!S) return;
+                cancelAnimationFrame(S.raf);
+                S.box.style.display = 'none';
+                S = null;
+                sc.dataset.isSelecting = 'false';
+            };
             const end = () => {
                 if (!S) return;
                 cancelAnimationFrame(S.raf);
@@ -9252,12 +9235,15 @@
             // 触屏：空白处长按弹出菜单
             let lpTimer = null, lpX = 0, lpY = 0;
             const lpStart = e => {
+                if (e.touches.length > 1) { clearTimeout(lpTimer); lpTimer = null; return; }
                 if (e.target.closest('.folder-item, .folder-grid-item, .fx-head, .fx-mgrip, .fx-mprev')) return;
                 const tch = e.touches[0];
                 lpX = tch.clientX; lpY = tch.clientY;
                 clearTimeout(lpTimer);
                 lpTimer = setTimeout(() => {
                     lpTimer = null;
+                    if (S && S.moved) return;          // 已经在框选了：不弹菜单
+                    cancelMarquee();
                     const col = document.elementFromPoint(lpX, lpY)?.closest('.fx-mcol');
                     if (col) fxMillerSetActive(windowId, col);
                     clearFolderSelection(windowId);
@@ -11187,22 +11173,14 @@
             return /\.(html?|css|js|json|md)$/i.test(filename);
         }
 
-        // 生成「打开方式」三项菜单 HTML（传入已转义的路径/文件名）
-        // 上述 5 类文件统一提供：代码编辑器 / 浏览器 / 记事本 三项。
-        function buildOpenWithMenu(safeFullPath, safeFilename, filename) {
-            return `
-                <div class="context-item" onclick="openWithEditor('${safeFullPath}', '${safeFilename}'); closeCtx()">
-                    ${icon('uiCode','sm')}
-                    <span>用代码编辑器打开</span>
-                </div>
-                <div class="context-item" onclick="openWithBrowser('${safeFullPath}', '${safeFilename}'); closeCtx()">
-                    ${icon('uiBrowserCtx','sm')}
-                    <span>用浏览器打开</span>
-                </div>
-                <div class="context-item" onclick="openWithNotepad('${safeFullPath}', '${safeFilename}'); closeCtx()">
-                    ${icon('uiNewFile','sm')}
-                    <span>用记事本打开</span>
-                </div>`;
+        // 「打开方式」三项（菜单项数据，路径/文件名只在闭包里）
+        // 可指定打开方式的文件类型统一提供：代码编辑器 / 浏览器 / 记事本 三项。
+        function openWithItems(fullPath, filename) {
+            return [
+                { icon: 'uiCode', label: '用代码编辑器打开', act: () => openWithEditor(fullPath, filename) },
+                { icon: 'uiBrowserCtx', label: '用浏览器打开', act: () => openWithBrowser(fullPath, filename) },
+                { icon: 'uiNewFile', label: '用记事本打开', act: () => openWithNotepad(fullPath, filename) }
+            ];
         }
 
         async function deleteFile(filename) {
@@ -14697,8 +14675,8 @@
                             <span class="edx-sep mid-hide"></span>
                             ${ib('clear', 'stxTrash2', '清空（Ctrl+Z 可撤销）', 'mid-hide lbl-wide danger', '清空')}
                             <span class="edx-sep mid-hide"></span>
-                            ${ib('import', 'edxFileUp', '导入文件 (Ctrl+O)', 'mid-hide lbl-wide', '导入')}
-                            ${ib('export', 'edxFileDown', '导出文件 (Ctrl+Shift+S)', 'mid-hide lbl-wide', '导出')}
+                            ${ib('import', 'edxFileDown', '导入文件 (Ctrl+O)', 'mid-hide lbl-wide', '导入')}
+                            ${ib('export', 'edxFileUp', '导出文件 (Ctrl+Shift+S)', 'mid-hide lbl-wide', '导出')}
                             <span class="edx-sp"></span>
                             <select class="edx-select" data-r="lang" title="语言" aria-label="语言">
                                 <option value="htmlmixed">HTML</option>
@@ -15679,9 +15657,9 @@
                     { head: editorFsPath ? '位置：' + editorFsPath : '尚未保存到虚拟磁盘' },
                     { icon: 'edxSave', label: editorFsPath ? '保存' : '保存…', kbd: 'Ctrl+S', act: saveEditorToFile },
                     { icon: 'stxUpload', label: '另存为…', kbd: 'Ctrl+Shift+S', act: () => exportEditorFile('saveas') },
-                    { icon: 'edxFileDown', label: '下载到设备', title: '直接用浏览器下载当前内容', act: quickDownload },
+                    { icon: 'uiDownload', label: '下载到设备', title: '直接用浏览器下载当前内容', act: quickDownload },
                     { sep: 1 },
-                    { icon: 'edxFileUp', label: '导入文件…', kbd: 'Ctrl+O', act: importEditorFile },
+                    { icon: 'edxFileDown', label: '导入文件…', kbd: 'Ctrl+O', act: importEditorFile },
                     { icon: 'edxFilePlus', label: '新建编辑器窗口', act: () => openCodeEditor() },
                     { sep: 1 },
                     { icon: 'stxExternalLink', label: '在浏览器新标签页预览', act: openEditorInNewWindow }
@@ -15696,8 +15674,8 @@
                     { icon: 'edxRedo', label: '重做', kbd: 'Ctrl+Y', disabled: !editor.historySize().redo, act: () => editor.execCommand('redo') },
                     { icon: 'stxTrash2', label: '清空', danger: true, disabled: !editor.getValue(), act: clearEditor },
                     { sep: 1 },
-                    { icon: 'edxFileUp', label: '导入', kbd: 'Ctrl+O', act: importEditorFile },
-                    { icon: 'edxFileDown', label: '导出', act: () => exportEditorFile('export') },
+                    { icon: 'edxFileDown', label: '导入', kbd: 'Ctrl+O', act: importEditorFile },
+                    { icon: 'edxFileUp', label: '导出', act: () => exportEditorFile('export') },
                     { sep: 1 });
                 items.push(
                     { head: '编辑器' },
@@ -16440,7 +16418,7 @@
                 ['personal', 'presets', '预设壁纸', '预设 默认 壁纸 内置 风景'],
                 ['personal', 'bingrecent', '必应近期壁纸', '必应 bing 近期 往期 历史 壁纸'],
                 ['personal', 'history', '最近使用的壁纸', '最近 历史 之前 原来 旧 找回 恢复 壁纸'],
-                ['personal', 'corners', '窗口圆角', '圆角 直角 窗口 边角 外观 开始菜单 日历 右键菜单 corner radius'],
+                ['personal', 'corners', '窗口圆角', '圆角 直角 窗口 边角 外观 开始菜单 日历 右键菜单 图标 滑块 程度 corner radius'],
                 ['personal', 'click', '图标打开方式', '单击 双击 打开 click 鼠标'],
                 ['storage', 'overview', '存储空间概览', '存储 空间 配额 已用 可用 容量 quota 占用'],
                 ['storage', 'persist', '持久化存储', 'persist 持久 防止 自动清除 驱逐 浏览器清理'],
@@ -16616,20 +16594,57 @@
                     <button type="button" role="radio" aria-checked="${SYSTEM.clickBehavior === 'single'}" class="${SYSTEM.clickBehavior === 'single' ? 'on' : ''}" onclick="stxSetClick(${winId}, 'single')">单击</button>
                 </div>`
             })}</div>`;
-            const corner = SYSTEM.windowCorners || 'round';
-            const cornerOpt = (v, label) => `<button type="button" role="radio" aria-checked="${corner === v}" class="${corner === v ? 'on' : ''}" onclick="stxSetCorners(${winId}, '${v}')">${label}</button>`;
+            const cr = clampCornerRadius(SYSTEM.cornerRadius);
             const win = `<div class="stx-card">${stxRow({
                 id: 'corners', ic: 'stxAppWindow', title: '窗口圆角',
-                desc: '窗口、开始菜单、日历、右键菜单和对话框立即生效；窗口最大化、贴边和手机全屏时始终为直角。胶囊通知始终保持胶囊形状。',
-                ctl: `<div class="stx-seg" role="radiogroup" aria-label="窗口圆角">${cornerOpt('round', '圆角')}${cornerOpt('small', '小圆角')}${cornerOpt('square', '直角')}</div>`
+                desc: '拖动即时预览：窗口、开始菜单、日历、右键菜单、对话框，以及桌面和文件夹里的图标高亮都会跟着变。最大化、贴边和手机全屏时始终为直角，胶囊通知保持胶囊形状。',
+                cls: 'stx-row-wide',
+                ctl: `<div class="stx-corner">
+                    <span class="stx-corner-pv" aria-hidden="true"></span>
+                    <div class="stx-corner-track">
+                        <input type="range" min="0" max="${CORNER_MAX}" step="1" value="${cr}" style="--p:${cr / CORNER_MAX * 100}%" aria-label="窗口圆角" aria-valuetext="${cr} px，${cornerLevelLabel(cr)}"
+                            oninput="stxCornerInput(this)" onchange="stxCornerCommit(this)">
+                        <div class="stx-corner-marks" aria-hidden="true"><span>直角</span><span>圆角</span><span>大圆角</span></div>
+                    </div>
+                    <output class="stx-corner-val">${cr} px<small>${cornerLevelLabel(cr)}</small></output>
+                    <button type="button" class="stx-btn sm" title="恢复默认（10 px）" onclick="stxCornerReset(this)" ${cr === 10 ? 'disabled' : ''}>默认</button>
+                </div>`
             })}</div>`;
             return `<div class="stx-page">${stxHead('personal')}${stxGroup('壁纸', '', hero)}${history ? stxGroup('最近使用', '你换过的壁纸，点击即可换回', history) : ''}${stxGroup('预设壁纸', `${WALLPAPER_PRESETS.length} 张`, presets)}${stxGroup('必应近期壁纸', daily ? '点击可改为固定壁纸' : '点击设为固定壁纸', recent)}${stxGroup('窗口', '', win)}${stxGroup('交互', '', click)}</div>`;
         }
-        function stxSetCorners(winId, v) {
-            SYSTEM.windowCorners = ['round', 'small', 'square'].includes(v) ? v : 'round';
+        // 拖动中实时生效（只改 CSS 变量），松手才保存；其他已打开的设置窗口同步滑块位置
+        function stxCornerSync(r, except) {
+            document.querySelectorAll('.stx-corner').forEach(box => {
+                const inp = box.querySelector('input[type=range]');
+                if (inp && inp !== except) inp.value = r;
+                if (inp) { inp.setAttribute('aria-valuetext', `${r} px，${cornerLevelLabel(r)}`); inp.style.setProperty('--p', (r / CORNER_MAX * 100) + '%'); }
+                const out = box.querySelector('.stx-corner-val');
+                if (out) out.innerHTML = `${r} px<small>${cornerLevelLabel(r)}</small>`;
+                const btn = box.querySelector('.stx-btn');
+                if (btn) btn.disabled = r === 10;
+            });
+        }
+        function stxCornerInput(inp) {
+            SYSTEM.cornerRadius = clampCornerRadius(inp.value);
             applyWindowCorners();
+            stxCornerSync(SYSTEM.cornerRadius, inp);
+        }
+        function stxCornerCommit(inp) {
+            stxCornerInput(inp);
             saveSystemSettings();
-            stxAllWins().forEach(id => { if (STX_STATE[id] && STX_STATE[id].page === 'personal' && !STX_STATE[id].q) stxRender(id, { keepScroll: true }); });
+        }
+        function stxCornerReset() {
+            SYSTEM.cornerRadius = 10;
+            applyWindowCorners();
+            stxCornerSync(10, null);
+            saveSystemSettings();
+        }
+        // 兼容旧调用：按三档设置
+        function stxSetCorners(winId, v) {
+            SYSTEM.cornerRadius = CORNER_PRESETS[v] ?? 10;
+            applyWindowCorners();
+            stxCornerSync(SYSTEM.cornerRadius, null);
+            saveSystemSettings();
         }
         function stxSetClick(winId, v) {
             setClickBehavior(v);
@@ -16941,10 +16956,10 @@
         function stxPageClean(winId) {
             const opfsOk = stxOpfsOk();
             const backup = `<div class="stx-card">
-                ${stxRow({ id: 'export', ic: 'stxDownload', title: '导出设置备份', desc: '保存系统设置、壁纸和桌面图标位置为一个 .json 文件，可在换电脑或重置后恢复。不包含文件本身。',
-                    ctl: stxBtn('导出…', 'stxExportBackup()', { cls: 'sm', ic: 'stxDownload' }) })}
-                ${stxRow({ id: 'import', ic: 'stxUpload', title: '从备份恢复设置', desc: '选择之前导出的备份文件，恢复前会显示备份内容并请你确认。',
-                    ctl: stxBtn('选择文件…', `stxImportBackup(${winId})`, { cls: 'sm', ic: 'stxUpload' }) })}
+                ${stxRow({ id: 'export', ic: 'edxFileUp', title: '导出设置备份', desc: '保存系统设置、壁纸和桌面图标位置为一个 .json 文件，可在换电脑或重置后恢复。不包含文件本身。',
+                    ctl: stxBtn('导出…', 'stxExportBackup()', { cls: 'sm', ic: 'edxFileUp' }) })}
+                ${stxRow({ id: 'import', ic: 'edxFileDown', title: '从备份恢复设置', desc: '选择之前导出的备份文件，恢复前会显示备份内容并请你确认。',
+                    ctl: stxBtn('选择文件…', `stxImportBackup(${winId})`, { cls: 'sm', ic: 'edxFileDown' }) })}
             </div>`;
             const danger = `<div class="stx-card stx-danger">${stxRow({ id: 'reset', ic: 'stxTriangleAlert', title: '重置存储数据',
                 desc: `可选择只重置 IndexedDB${opfsOk ? '、只重置 OPFS，或全部重置' : ''}。会显示每种范围的影响并要求输入确认，操作不可恢复。`,
@@ -16963,7 +16978,8 @@
                 storageBackend: SYSTEM.storageBackend === 'opfs' && SYSTEM.opfs && SYSTEM.opfs.available ? 'opfs' : 'indexeddb',
                 showHiddenFiles: SYSTEM.showHiddenFiles === true,
                 wallpaperSource: SYSTEM.wallpaperSource === 'bing' ? 'bing' : 'custom',
-                windowCorners: ['round', 'small', 'square'].includes(SYSTEM.windowCorners) ? SYSTEM.windowCorners : 'round',
+                windowCorners: cornerPresetOf(clampCornerRadius(SYSTEM.cornerRadius)),
+                cornerRadius: clampCornerRadius(SYSTEM.cornerRadius),
                 hiddenSystemApps: SYSTEM.hiddenSystemApps.filter(key => SYSTEM_APP_DEFS.some(app => app.key === key && app.hideable))
             };
         }
@@ -17022,7 +17038,7 @@
                     `· 隐藏的系统应用：${Array.isArray(s.hiddenSystemApps) && s.hiddenSystemApps.length ? s.hiddenSystemApps.map(k => (SYSTEM_APP_DEFS.find(a => a.key === k) || { name: k }).name).join('、') : '无'}`,
                     `· 壁纸：${wp ? '包含' : '不包含'}`,
                     `· 必应每日壁纸：${s.wallpaperSource === 'bing' ? '开' : '关'}`,
-                    `· 窗口圆角：${({ small: '小圆角', square: '直角' })[s.windowCorners] || '圆角'}`,
+                    `· 窗口圆角：${(() => { const r = Number.isFinite(Number(s.cornerRadius)) && s.cornerRadius !== null && s.cornerRadius !== '' ? clampCornerRadius(s.cornerRadius) : CORNER_PRESETS[s.windowCorners] ?? 10; return `${r} px（${cornerLevelLabel(r)}）`; })()}`,
                     `· 桌面图标位置：${pos ? Object.keys(pos).length + ' 个' : '不包含'}`
                 ];
                 const ok = await SysDialog.confirm({
