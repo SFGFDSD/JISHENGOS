@@ -1,4 +1,3 @@
-[README.md](https://github.com/user-attachments/files/33592098/README.md)
 # JISHENG OS // SYSTEM DIAGNOSTIC REPORT v10.5.9
 ### Code Name: JianSheng (简生). Status: Persistent.
 **代号：简生 · 源点：自然语言生成 · 状态：持久化实体**
