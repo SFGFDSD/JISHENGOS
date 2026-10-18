@@ -18508,7 +18508,11 @@
                     }
                     
                     // 悬停：显示Aero Peek效果（虚化其他窗口）
+                    // 触摸没有「悬停」：轻触时浏览器补发的 mouseenter 不启动预览，否则 380ms 后会给刚点开的窗口挂上蓝色描边（移动端底部一条蓝线）
+                    item.addEventListener('pointerenter', function(e) { item._enterPointer = e.pointerType; });
+                    item.addEventListener('pointerdown', function(e) { item._enterPointer = e.pointerType; });
                     item.addEventListener('mouseenter', function(e) {
+                        if (item._enterPointer === 'touch') return;
                         const winId = parseInt(this.dataset.winId);
                         clearTimeout(item._peekTimer);
                         item._peekTimer = setTimeout(() => onRunningItemHover(e, winId), 380);
