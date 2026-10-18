@@ -1556,7 +1556,7 @@
         .fx-side-scrim { display: none; }
 
         .folder-sidebar {
-            width: 180px; flex: none;   /* 与重做前一致 */
+            width: 196px; flex: none;   /* 树形导航多了 ▸ 和缩进，比重做前的 180px 宽 16px */
             display: flex; flex-direction: column;
             padding: 6px 0 10px;
             background: rgba(var(--gc-13, 0,0,0), var(--ga-13, 0.15));
@@ -1585,6 +1585,17 @@
         .folder-sidebar-item .icon-svg { width: 16px; height: 16px; flex: none; opacity: 0.75; }
         .folder-sidebar-item.active .icon-svg { opacity: 1; }
         .folder-sidebar-item span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+        /* 树形导航：每层缩进 12px；▸ 只展开/收起，点名字才进入；触屏上 ▸ 的点击区放大到 28px */
+        .fx-tree .folder-sidebar-item { gap: 5px; margin: 1px 4px; padding: 0 6px 0 calc(2px + var(--d, 0) * 12px); }
+        .fx-tw { flex: none; align-self: stretch; width: 18px; display: inline-flex; align-items: center; justify-content: center; color: var(--text-muted); border-radius: var(--ui-radius, 6px); }
+        .folder-sidebar-item .fx-tw .icon-svg { width: 12px; height: 12px; opacity: .85; transition: transform .15s ease; }
+        .fx-tn[aria-expanded="true"] > .fx-tw .icon-svg { transform: rotate(90deg); }
+        .fx-tw[data-tw]:hover { color: var(--text-main); background: var(--l32, rgba(255,255,255,0.07)); }
+        .fx-tn.is-group { color: var(--text-muted); }
+        .fx-tb { margin-left: auto; flex: none; font-style: normal; font-size: 10px; line-height: 15px; padding: 0 4px; border-radius: 999px; color: var(--text-muted); background: var(--l32, rgba(255,255,255,0.07)); }
+        .fx-tn.active .fx-tb { color: inherit; }
+        @media (pointer: coarse) { .fx-tw { width: 28px; margin: 0 -5px; } .fx-tree .folder-sidebar-item { height: 34px; } }
+        @media (prefers-reduced-motion: reduce) { .folder-sidebar-item .fx-tw .icon-svg { transition: none; } }
         /* 宽窗口：导航窗格可收起（点地址栏最左侧按钮），状态记在 localStorage，所有文件夹窗口共用 */
         @container fx (width > 640px) {
             .folder-sidebar {
@@ -1798,7 +1809,7 @@
         /* --- 窄窗口：侧栏变为抽屉，命令栏按钮由脚本逐级收起文字 --- */
         @container fx (max-width: 640px) {
             .folder-sidebar {
-                position: absolute; left: 0; top: 0; bottom: 0; z-index: 30; width: min(180px, 80%);
+                position: absolute; left: 0; top: 0; bottom: 0; z-index: 30; width: min(196px, 80%);
                 background: rgba(var(--gc-16, 27,27,36), var(--ga-16, 1));
                 box-shadow: 8px 0 24px var(--l80, rgba(0,0,0,0.45));
                 transform: translateX(-105%); transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
@@ -2079,13 +2090,6 @@
         .edx-ib.danger:hover:not(:disabled) { background: rgba(255,107,120,.12); color: var(--danger); }
         .edx-ib .lbl { font-size: 12.5px; }
         /* 文件按钮：只显示图标（文件名见悬停提示与窗口标题），未保存时图标右上角出现圆点 */
-        .edx-file { display: inline-flex; align-items: center; gap: 3px; height: 30px; padding: 0 5px 0 7px; border: 1px solid var(--line); border-radius: var(--ctl-radius); background: var(--l44, rgba(255,255,255,.035)); color: var(--ink); cursor: pointer; flex: none; }
-        .edx-file:hover { background: var(--l32, rgba(255,255,255,.07)); }
-        .edx-file .fi { position: relative; display: inline-flex; }
-        .edx-file .fi .icon-svg { color: var(--l105, #e8833a); }
-        .edx-file .dot { position: absolute; top: -2px; right: -3px; width: 7px; height: 7px; border-radius: 50%; background: var(--warn); box-shadow: 0 0 0 2px var(--l106, #1b1b22); display: none; }
-        .edx.dirty .edx-file .dot { display: block; }
-        .edx-file > .icon-svg { width: 13px; height: 13px; color: var(--muted); }
         .edx-select { height: 30px; padding: 0 26px 0 10px; border: 1px solid var(--line); border-radius: var(--ctl-radius); color: var(--ink); font: inherit; font-size: 12.5px; cursor: pointer; flex: none; color-scheme: dark;
             background: var(--l44, rgba(255,255,255,.035)) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239a9bab' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat right 8px center / 12px; appearance: none; -webkit-appearance: none; }
         .edx-select:hover { background-color: var(--l32, rgba(255,255,255,.07)); }
@@ -2792,6 +2796,7 @@
             configPath: '/system/config/wallpaper.cfg',
             settingsPath: '/system/config/settings.json',
             clickBehavior: 'double',
+            storageNames: 'tech',      // 存储位置显示名：'tech' = IndexedDB 存储 / OPFS 存储；'zh' = 浏览器存储 / 高速存储
             hiddenSystemApps: [],
             windowCorners: 'round',      // round / small / square（旧版字段：按 cornerRadius 就近换算后一并保存，回退旧版本时仍可用）
             cornerRadius: 10,            // 窗口圆角 0–20 px（设置里的滑块），其余圆角按比例推算
@@ -2830,17 +2835,22 @@
         function getStorageDocumentsPath(backend) {
             return backend === 'opfs' ? '/opfs/documents' : '/documents';
         }
+        // 存储位置的显示名。默认用技术名，设置 → 文件管理 →「存储位置名称」可换成中文名；
+        // 侧栏、路径栏、窗口标题、设置页和提示统一从这里取，保证处处一致。
         function storageBackendLabel(backend) {
-            return backend === 'opfs' ? 'OPFS' : 'IndexedDB';
+            const zh = SYSTEM.storageNames === 'zh';
+            return backend === 'opfs' ? (zh ? '高速存储' : 'OPFS 存储') : (zh ? '浏览器存储' : 'IndexedDB 存储');
+        }
+        function setStorageNames(v) {
+            if (v !== 'zh' && v !== 'tech') return;
+            SYSTEM.storageNames = v;
+            saveSystemSettings();
+            refreshOpenFileManagers();
         }
         function getExplorerStorageRoots() {
             const roots = ['/desktop'];
             if (SYSTEM.opfs && SYSTEM.opfs.available) roots.push('/opfs/desktop');
             return roots;
-        }
-        function isPathInStorage(path, backend) {
-            const root = getStorageDesktopPath(backend);
-            return path === root || String(path || '').startsWith(root + '/');
         }
         function syncStorageMigrationControls() {
             const canUseOPFS = !!(SYSTEM.opfs && SYSTEM.opfs.available);
@@ -2885,6 +2895,7 @@
         function applySystemSettings(rawSettings) {
             const settings = rawSettings && typeof rawSettings === 'object' ? rawSettings : {};
             SYSTEM.clickBehavior = settings.clickBehavior === 'single' ? 'single' : 'double';
+            SYSTEM.storageNames = settings.storageNames === 'zh' ? 'zh' : 'tech';
             const requestedBackend = settings.storageBackend === 'opfs' ? 'opfs' : 'indexeddb';
             // OPFS 是渐进增强：旧浏览器 / 隐私模式不可用时安全回退到 IndexedDB。
             SYSTEM.storageBackend = requestedBackend === 'opfs' && SYSTEM.opfs && SYSTEM.opfs.available ? 'opfs' : 'indexeddb';
@@ -3052,7 +3063,10 @@
 
         // 所有已打开的资源管理器实时应用侧栏/隐藏文件设置，不要求用户重新打开窗口。
         function refreshOpenFileManagers() {
+            if (typeof FX_TREE_DIRS !== 'undefined') FX_TREE_DIRS.clear();   // 隐藏文件开关会改变每个文件夹的子项
             Object.keys(SYSTEM.folderWindowStates || {}).forEach(windowId => {
+                const st = SYSTEM.folderWindowStates[windowId];
+                if (st && typeof fxPathName === 'function') { st.folderName = fxPathName(st.currentPath); fxUpdateTitle(windowId); }
                 const sidebar = document.getElementById('folder-sidebar-' + windowId);
                 if (sidebar && typeof buildFolderSidebar === 'function') sidebar.innerHTML = buildFolderSidebar(windowId);
                 if (typeof updateFolderBreadcrumb === 'function') updateFolderBreadcrumb(windowId);
@@ -7536,7 +7550,6 @@
             edxRows: '<rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 12h18"/>',
             edxMore: '<circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/>',
             edxSave: '<path d="M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 .6 1.4V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M17 21v-7a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v7"/><path d="M7 3v4a1 1 0 0 0 1 1h7"/>',
-            edxFilePlus: '<path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z"/><path d="M14 2v5a1 1 0 0 0 1 1h5"/><path d="M9 15h6"/><path d="M12 18v-6"/>',
             edxFileUp: '<path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z"/><path d="M14 2v5a1 1 0 0 0 1 1h5"/><path d="M12 12v6"/><path d="m15 15-3-3-3 3"/>',
             edxFileDown: '<path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z"/><path d="M14 2v5a1 1 0 0 0 1 1h5"/><path d="M12 18v-6"/><path d="m9 15 3 3 3-3"/>',
             edxTerminal: '<path d="m7 11 2-2-2-2"/><path d="M11 13h4"/><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/>',
@@ -7741,7 +7754,11 @@
         const FX_COL_KEYS = ['name', 'date', 'type', 'size'];
         const FX_COL_MAX = 800;
         const FX_LS = { widths: 'JISHENG_OS_COL_WIDTHS_V2', order: 'JISHENG_OS_COL_ORDER', view: 'JISHENG_OS_FOLDER_VIEW', mcol: 'JISHENG_OS_MILLER_COL_W' };
-        const FX_ROOT_LABELS = { '/desktop': 'IndexedDB 文件', '/opfs/desktop': 'OPFS 文件', '/mnt/local': '本地文件', '/mnt': '挂载点', '/': '完整文件系统' };
+        const FX_ROOT_LABELS = {
+            get '/desktop'() { return storageBackendLabel('indexeddb'); },
+            get '/opfs/desktop'() { return storageBackendLabel('opfs'); },
+            '/mnt/local': '本地文件夹', '/mnt': '挂载点', '/': '根目录'
+        };
         let FX_SEQ = 0;
 
         function fxLsGet(key) { try { return JSON.parse(localStorage.getItem(key)); } catch (_) { return null; } }
@@ -7848,9 +7865,7 @@
         }
         function openFileExplorer(initialPath = SYSTEM.desktopPath) {
             const path = initialPath || SYSTEM.desktopPath;
-            const title = path === '/' ? '完整文件系统' : path === '/desktop' ? 'IndexedDB 文件'
-                : path === '/opfs/desktop' ? 'OPFS 文件' : (path.split('/').pop() || '文件管理器');
-            fxOpenWindow(path, { title, iconName: 'appExplorer' });
+            fxOpenWindow(path, { title: fxPathName(path), iconName: 'appExplorer' });
         }
 
         function fxWindowHtml(wid, viewMode) {
@@ -8096,8 +8111,13 @@
             side.addEventListener('click', e => {
                 const it = e.target.closest('.folder-sidebar-item');
                 if (!it || it.classList.contains('is-disabled')) return;
-                if (it.dataset.storage) sidebarNavigateToStorage(wid, it.dataset.storage);
-                else if (it.dataset.nav) fxGo(wid, it.dataset.nav);
+                const st = fxState(wid);
+                const onTwisty = !!e.target.closest('.fx-tw[data-tw]');
+                if (onTwisty || it.dataset.tgl || (st && it.dataset.nav === st.currentPath && it.getAttribute('aria-expanded'))) {
+                    fxTreeToggle(wid, it.dataset.key);   // 不导航，所以手机上抽屉也不会收起
+                    return;
+                }
+                if (it.dataset.nav) fxGo(wid, it.dataset.nav);
             });
 
             const bc = fxEl('folder-breadcrumb-', wid);
@@ -8380,9 +8400,15 @@
             if (!st || st._renderToken !== token) return;
             st._shownPath = st.currentPath;
             st._shownView = st.viewMode;
+            // 当前文件夹刚读完，直接拿来当树里它的子文件夹，不再重复读取
+            let seeded = null;
+            if (Array.isArray(st._entries) && st.viewMode !== 'column' && !fxIsGlobalSearch(st)) {
+                FX_TREE_DIRS.set(st.currentPath, fxTreeDirNames(st._entries));
+                seeded = st.currentPath;
+            }
             const side = fxEl('folder-sidebar-', windowId);
             if (side) side.innerHTML = buildFolderSidebar(windowId);
-            updateSidebarFolderList(windowId);
+            fxTreeRefresh(windowId, seeded);
             fxMarkCut(windowId);
             fxUpdateTotal(windowId);
             fxUpdateStatus(windowId);
@@ -8767,14 +8793,6 @@
             if (st.viewMode === 'column' && !fxIsUnder(parent, st.colRoot)) st.colRoot = parent;
             fxGo(windowId, parent, { select: [from] });
         }
-        // 侧边栏导航到某一内部后端的用户工作区。
-        function sidebarNavigateToStorage(windowId, backend) {
-            if (backend === 'opfs' && !(SYSTEM.opfs && SYSTEM.opfs.available)) {
-                Notify.warning('OPFS 不可用', '当前浏览器不支持 OPFS 后端');
-                return;
-            }
-            fxGo(windowId, getStorageDesktopPath(backend), { name: `${storageBackendLabel(backend)} 文件` });
-        }
 
         function folderRefresh(windowId) {
             const st = fxState(windowId);
@@ -9011,11 +9029,12 @@
         function fxOpenPath(wid, raw) {
             const st = fxState(wid);
             let p = String(raw).replace(/\\/g, '/').trim();
-            // 允许输入显示名开头，如「IndexedDB 文件/资料」
-            Object.keys(FX_ROOT_LABELS).sort((a, b) => b.length - a.length).forEach(root => {
-                const label = FX_ROOT_LABELS[root];
-                if (p === label || p.startsWith(label + '/')) p = (root === '/' ? '' : root) + p.slice(label.length);
-            });
+            // 允许输入显示名开头，如「IndexedDB 存储/资料」；技术名和中文名两套都认，与当前设置无关
+            const hit = Object.keys(FX_ROOT_LABELS).map(r => [FX_ROOT_LABELS[r], r])
+                .concat([['IndexedDB 存储', '/desktop'], ['浏览器存储', '/desktop'], ['OPFS 存储', '/opfs/desktop'], ['高速存储', '/opfs/desktop']])
+                .sort((a, b) => b[0].length - a[0].length)
+                .find(([label]) => p === label || p.startsWith(label + '/'));
+            if (hit) p = (hit[1] === '/' ? '' : hit[1]) + p.slice(hit[0].length);
             if (!p.startsWith('/')) p = fxJoin(st.currentPath, p);
             const segs = [];
             p.split('/').forEach(s => { if (!s || s === '.') return; if (s === '..') segs.pop(); else segs.push(s); });
@@ -9031,67 +9050,122 @@
             });
         }
 
-        // ================= 侧边栏 =================
+        // ================= 侧边栏：树形导航 =================
+        // 每个位置只出现一次：IndexedDB 存储、OPFS 存储（各自的根就是对应后端的桌面工作区），
+        // 已挂载的本地文件夹归到「本地文件夹」下；开启「显示系统与隐藏文件」后，最下面多一个「根目录 /」。
+        // 点名字进入该位置，点 ▸ 只展开/收起；进入某个文件夹时，树会自动展开到它所在的位置。
+        // 子文件夹按需读取：只读已展开的节点，结果缓存在 FX_TREE_DIRS，每次文件列表重绘后再核对一遍。
+        const FX_TREE_DIRS = new Map();
+        function fxTreeDirNames(entries) {
+            return entries.filter(en => en && en.isDir).map(en => en.name).sort((a, b) => FOLDER_NAME_COLLATOR.compare(a, b));
+        }
+        function fxTreeTops() {
+            const def = SYSTEM.storageBackend;
+            const tops = [{ b: 'idb', path: '/desktop', label: storageBackendLabel('indexeddb'), ic: 'stxDatabase',
+                badge: def === 'indexeddb' ? '默认' : '', tip: '/desktop' + (def === 'indexeddb' ? '\n默认存储：桌面上的文件都在这里' : '') }];
+            if (SYSTEM.opfs && SYSTEM.opfs.available) {
+                tops.push({ b: 'opfs', path: '/opfs/desktop', label: storageBackendLabel('opfs'), ic: 'stxHardDrive',
+                    badge: def === 'opfs' ? '默认' : '', tip: '/opfs/desktop' + (def === 'opfs' ? '\n默认存储：桌面上的文件都在这里' : '') });
+            }
+            const mounts = Object.values(SYSTEM.mountedFolders || {}).filter(i => i && !i.disconnected).map(i => {
+                const mp = i.mountPath || ('/mnt/local/' + i.name);
+                return { b: 'mnt', path: mp, label: i.name, ic: 'uiEject', tip: mp };
+            });
+            if (mounts.length) tops.push({ b: 'mnt', group: true, label: '本地文件夹', ic: 'stxFolderSync', tip: '已挂载的本地文件夹', kids: mounts });
+            if (SYSTEM.showHiddenFiles) tops.push({ b: 'root', path: '/', label: '根目录', ic: 'stxMonitor', tip: '/\n完整的内部文件系统，包括 /system 和挂载点' });
+            return tops;
+        }
+        // 当前路径归哪个节点管：最具体的位置优先，「根目录」只兜底
+        function fxTreeHome(tops, cur) {
+            let best = null;
+            const consider = n => { if (n.path && fxIsUnder(cur, n.path) && (!best || n.path.length > best.path.length)) best = n; };
+            tops.forEach(n => (n.group ? n.kids.forEach(consider) : consider(n)));
+            return best;
+        }
+        function fxTreeNodeHtml(st, n, depth, activeKey) {
+            const key = n.group ? 'grp|' + n.b : n.b + '|' + n.path;
+            const kids = n.group ? n.kids : (FX_TREE_DIRS.has(n.path) ? FX_TREE_DIRS.get(n.path) : null);   // null = 还没读过
+            const canOpen = n.group || kids === null || kids.length > 0;
+            const isOpen = canOpen && st.treeOpen.has(key);
+            const active = key === activeKey;
+            let h = `<div class="folder-sidebar-item fx-tn${active ? ' active' : ''}${n.group ? ' is-group' : ''}" role="treeitem" aria-level="${depth + 1}"`
+                + (canOpen ? ` aria-expanded="${isOpen}"` : '') + ` aria-selected="${active}" style="--d:${depth}"`
+                + ` data-key="${escapeAttr(key)}" ${n.group ? `data-tgl="${escapeAttr(key)}"` : `data-nav="${escapeAttr(n.path)}"`} title="${escapeAttr(n.tip || n.path)}">`
+                + `<i class="fx-tw"${canOpen ? ` data-tw="1" title="${isOpen ? '收起' : '展开'}"` : ''}>${canOpen ? icon('fxChevRight') : ''}</i>`
+                + icon(n.ic || 'fileFolder', 'sm') + `<span>${escapeHtml(n.label)}</span>` + (n.badge ? `<em class="fx-tb">${n.badge}</em>` : '') + '</div>';
+            if (isOpen) {
+                const list = n.group ? n.kids : (kids || []).map(name => ({ b: n.b, path: fxJoin(n.path, name), label: name }));
+                if (list.length) h += `<div role="group">${list.map(c => fxTreeNodeHtml(st, c, depth + 1, activeKey)).join('')}</div>`;
+            }
+            return h;
+        }
         function buildFolderSidebar(windowId) {
             const st = fxState(windowId);
-            const cur = st ? st.currentPath : SYSTEM.desktopPath;
-            const item = (attrs, ic, label, active, extra) => `<div class="folder-sidebar-item${active ? ' active' : ''}${extra || ''}" ${attrs}>${icon(ic, 'sm')}<span>${label}</span></div>`;
-            const opfsOk = SYSTEM.opfs && SYSTEM.opfs.available;
-            let mounted = '';
-            Object.keys(SYSTEM.mountedFolders || {}).forEach(id => {
-                const info = SYSTEM.mountedFolders[id];
-                if (!info || info.disconnected) return;
-                const mp = info.mountPath || ('/mnt/local/' + info.name);
-                mounted += item(`data-nav="${escapeAttr(mp)}" title="${escapeAttr(mp)}"`, 'uiEject', escapeHtml(info.name), fxIsUnder(cur, mp));
-            });
-            return `
-                <div class="folder-sidebar-section">
-                    <div class="folder-sidebar-title">存储位置</div>
-                    ${item('data-storage="indexeddb" title="/desktop"', 'fileFolder', `IndexedDB 文件${SYSTEM.storageBackend === 'indexeddb' ? ' · 默认' : ''}`, isPathInStorage(cur, 'indexeddb'))}
-                    ${opfsOk
-                        ? item('data-storage="opfs" title="/opfs/desktop"', 'fileFolder', `OPFS 文件${SYSTEM.storageBackend === 'opfs' ? ' · 默认' : ''}`, isPathInStorage(cur, 'opfs'))
-                        : item('title="当前浏览器不支持 OPFS"', 'fileFolder', 'OPFS（不可用）', false, ' is-disabled')}
-                </div>
-                ${SYSTEM.showHiddenFiles ? `
-                <div class="folder-sidebar-section">
-                    <div class="folder-sidebar-title">系统</div>
-                    ${item('data-nav="/" title="显示完整文件系统"', 'appSettings', '完整文件系统', cur === '/')}
-                    ${item('data-nav="/system" title="/system"', 'fileFolder', '系统文件', fxIsUnder(cur, '/system'))}
-                </div>` : ''}
-                ${mounted ? `<div class="folder-sidebar-section"><div class="folder-sidebar-title">已挂载</div>${mounted}</div>` : ''}
-                <div class="folder-sidebar-section">
-                    <div class="folder-sidebar-title">默认工作区中的文件夹</div>
-                    <div id="sidebar-folder-list-${windowId}">${(st && st._sideListHtml) || ''}</div>
-                </div>`;
+            if (!st) return '';
+            if (!st.treeOpen) st.treeOpen = new Set();
+            const cur = st.currentPath;
+            const tops = fxTreeTops();
+            const home = fxTreeHome(tops, cur);
+            // 位置变了：展开到当前文件夹（含它自己，方便直接看到下一级）；之后用户手动收起的不再强行展开
+            if (st._treeFor !== cur) {
+                st._treeFor = cur;
+                if (home) {
+                    if (home.b === 'mnt') st.treeOpen.add('grp|mnt');
+                    for (let p = cur, g = 0; g < 64; p = fxParentOf(p), g++) {
+                        st.treeOpen.add(home.b + '|' + p);
+                        if (p === home.path || p === '/') break;
+                    }
+                }
+            }
+            const activeKey = home ? home.b + '|' + cur : '';
+            return `<div class="fx-tree" role="tree" aria-label="位置">${tops.map(n => fxTreeNodeHtml(st, n, 0, activeKey)).join('')}</div>`;
         }
-        // 默认工作区（桌面）里的文件夹；先沿用上次的结果，读完再替换，避免闪烁
-        function updateSidebarFolderList(windowId) {
-            const st = fxState(windowId);
-            if (!st) return;
-            const desk = SYSTEM.desktopPath;
-            SYSTEM.fs.readdir(desk, (err, files) => {
-                const listEl = fxEl('sidebar-folder-list-', windowId);
-                if (!listEl) return;
-                if (err) { listEl.innerHTML = ''; return; }
-                const names = (files || []).filter(f => !shouldHideExplorerItem(desk, f));
-                if (!names.length) { listEl.innerHTML = st._sideListHtml = ''; return; }
-                const dirs = [];
-                let left = names.length;
-                names.forEach(f => {
-                    SYSTEM.fs.stat(desk + '/' + f, (e, s) => {
-                        if (!e && s && (typeof s.isDirectory === 'function' ? s.isDirectory() : s.isDirectory)) dirs.push(f);
-                        if (--left) return;
-                        dirs.sort((a, b) => FOLDER_NAME_COLLATOR.compare(a, b));
-                        const cur = st.currentPath;
-                        const html = dirs.map(d => {
-                            const p = desk + '/' + d;
-                            return `<div class="folder-sidebar-item${fxIsUnder(cur, p) ? ' active' : ''}" data-nav="${escapeAttr(p)}" title="${escapeAttr(d)}">${icon('fileFolder', 'sm')}<span>${escapeHtml(d)}</span></div>`;
-                        }).join('');
-                        st._sideListHtml = html;
-                        const el = fxEl('sidebar-folder-list-', windowId);
-                        if (el && el.innerHTML !== html) el.innerHTML = html;
-                    });
+        function fxTreeRepaint(wid) {
+            const side = fxEl('folder-sidebar-', wid);
+            if (side) side.innerHTML = buildFolderSidebar(wid);
+        }
+        function fxTreeToggle(wid, key) {
+            const st = fxState(wid);
+            if (!st || !key) return;
+            if (!st.treeOpen) st.treeOpen = new Set();
+            if (st.treeOpen.has(key)) st.treeOpen.delete(key); else st.treeOpen.add(key);
+            fxTreeRepaint(wid);
+            fxTreeRefresh(wid);
+        }
+        // 重新读取所有已展开节点的子文件夹（skip = 刚读过的当前文件夹）；有变化才重画，各窗口共用结果
+        function fxTreeRefresh(wid, skip) {
+            const st = fxState(wid), side = fxEl('folder-sidebar-', wid);
+            if (!st || !st.treeOpen || !side) return;
+            const paths = [...new Set([...side.querySelectorAll('.fx-tn[data-nav]')]
+                .filter(el => st.treeOpen.has(el.dataset.key) && el.dataset.nav !== skip).map(el => el.dataset.nav))];
+            if (!paths.length) { fxTreeLoadMissing(wid); return; }
+            Promise.all(paths.map(p => fxReadDir(p).then(res => [p, res.err ? [] : fxTreeDirNames(res.entries)]))).then(rows => {
+                let changed = false;
+                rows.forEach(([p, names]) => {
+                    const old = FX_TREE_DIRS.get(p);
+                    if (!old || old.join('\n') !== names.join('\n')) { FX_TREE_DIRS.set(p, names); changed = true; }
                 });
+                if (!changed) { fxTreeLoadMissing(wid); return; }
+                Object.keys(SYSTEM.folderWindowStates || {}).forEach(fxTreeRepaint);
+                // 重画后可能露出新的已展开节点（例如直接打开很深的文件夹时逐级展开），只补读还没缓存过的
+                Object.keys(SYSTEM.folderWindowStates || {}).forEach(fxTreeLoadMissing);
+            });
+        }
+        function fxTreeLoadMissing(wid) {
+            const st = fxState(wid), side = fxEl('folder-sidebar-', wid);
+            if (!st || !st.treeOpen || !side) return;
+            // 已展开但没读过的节点必读；看得见的收起节点也顺手读一下（最多 40 个），这样没有子文件夹的就不显示 ▸。
+            // 本地挂载的文件夹每次读取都是真实磁盘 I/O，只在展开时才读。
+            const els = [...side.querySelectorAll('.fx-tn[data-nav]')].filter(el => !FX_TREE_DIRS.has(el.dataset.nav));
+            const open = els.filter(el => el.getAttribute('aria-expanded') === 'true').map(el => el.dataset.nav);
+            const peek = els.filter(el => el.getAttribute('aria-expanded') === 'false' && !el.dataset.key.startsWith('mnt|') && !isLocalMountedPath(el.dataset.nav))
+                .slice(0, 40).map(el => el.dataset.nav);
+            const paths = [...new Set(open.concat(peek))];
+            if (!paths.length) return;
+            Promise.all(paths.map(p => fxReadDir(p).then(res => [p, res.err ? [] : fxTreeDirNames(res.entries)]))).then(rows => {
+                rows.forEach(([p, names]) => FX_TREE_DIRS.set(p, names));
+                Object.keys(SYSTEM.folderWindowStates || {}).forEach(fxTreeRepaint);
+                Object.keys(SYSTEM.folderWindowStates || {}).forEach(fxTreeLoadMissing);
             });
         }
 
@@ -9335,6 +9409,7 @@
                 updateFolderBreadcrumb(wid);
                 const side = fxEl('folder-sidebar-', wid);
                 if (side) side.innerHTML = buildFolderSidebar(wid);
+                fxTreeRefresh(wid);
             }
             fxMillerMarkPath(wid);
             st._shown = [...col.querySelectorAll('.folder-item')].map(el => st._entryMap && st._entryMap.get(el.dataset.path)).filter(Boolean);
@@ -15282,8 +15357,6 @@
                     <div class="editor-app edx" id="editor-app-${P}" data-dir="h" data-view-eff="split">
                         <input type="file" data-r="fileInput" style="display:none">
                         <header class="edx-bar" role="toolbar" aria-label="编辑器工具栏">
-                            <button type="button" class="edx-file" data-r="fileBtn" aria-haspopup="menu" aria-label="文件" title="文件"><span class="fi">${icon('stxFileCode')}<i class="dot"></i></span>${icon('edxChevDown')}</button>
-                            <span class="edx-sep narrow-hide"></span>
                             ${ib('undo', 'edxUndo', '撤销 (Ctrl+Z)')}
                             ${ib('redo', 'edxRedo', '重做 (Ctrl+Y)', 'narrow-hide')}
                             <span class="edx-sep"></span>
@@ -15579,7 +15652,6 @@
             function updateDirty() {
                 const d = isDirty();
                 root.classList.toggle('dirty', d);
-                $('fileBtn').title = `文件：${filename}\n` + (editorFsPath ? `位置：${editorFsPath}` : '尚未保存到虚拟磁盘') + (d ? '\n有未保存的修改' : '');
                 const s = $('stSave');
                 const t = s.querySelector('span');
                 if (d) t.textContent = '未保存';
@@ -16183,12 +16255,6 @@
                 a.click();
                 setTimeout(() => URL.revokeObjectURL(a.href), 10000);
             }
-            function quickDownload() {
-                const name = (filename && filename !== '未命名.html') ? filename : ('未命名' + (extByLang[curLang()] || '.txt'));
-                downloadToDevice(name, editor.getValue());
-                if (!editorFsPath) markClean();
-                Notify.success('已下载到设备', name);
-            }
             // 导出 / 另存为 / 新文件首次保存：同一个对话框，文件名可自定义；目标可选 虚拟桌面 / 原目录（从子目录打开时）/ 现实设备
             // kind: 'export'（工具栏“导出”，沿用旧文案）| 'saveas'（另存为）| 'save'（新文件按 Ctrl+S）
             async function exportEditorFile(kind) {
@@ -16308,19 +16374,6 @@
                 if (first && anchor.matches(':focus-visible')) first.focus();
             }
             const narrow = () => root.clientWidth <= 720;     // 与 CSS 中 .mid-hide 的断点一致
-            function fileMenu() {
-                openMenu($('fileBtn'), [
-                    { head: editorFsPath ? '位置：' + editorFsPath : '尚未保存到虚拟磁盘' },
-                    { icon: 'edxSave', label: editorFsPath ? '保存' : '保存…', kbd: 'Ctrl+S', act: saveEditorToFile },
-                    { icon: 'stxUpload', label: '另存为…', kbd: 'Ctrl+Shift+S', act: () => exportEditorFile('saveas') },
-                    { icon: 'uiDownload', label: '下载到设备', title: '直接用浏览器下载当前内容', act: quickDownload },
-                    { sep: 1 },
-                    { icon: 'uiDownload', label: '导入文件…', kbd: 'Ctrl+O', act: importEditorFile },
-                    { icon: 'edxFilePlus', label: '新建编辑器窗口', act: () => openCodeEditor() },
-                    { sep: 1 },
-                    { icon: 'stxExternalLink', label: '在浏览器新标签页预览', act: openEditorInNewWindow }
-                ]);
-            }
             const segRow = (opts, cur, attr) => `<div class="edx-seg sm">${opts.map(([v, l, t]) => `<button type="button" data-${attr}="${v}" class="${String(cur) === String(v) ? 'on' : ''}" ${t ? `title="${t}"` : ''}>${l}</button>`).join('')}</div>`;
             function moreMenu() {
                 const items = [];
@@ -16366,7 +16419,6 @@
             }
 
             // ===== 绑定事件 =====
-            $('fileBtn').onclick = fileMenu;
             $('more').onclick = moreMenu;
             $('undo').onclick = () => { editor.execCommand('undo'); editor.focus(); };
             $('redo').onclick = () => { editor.execCommand('redo'); editor.focus(); };
@@ -16769,13 +16821,6 @@
             await scanOneOffCache(windowId);
         }
 
-        function openFullFileExplorer() {
-            if (!SYSTEM.showHiddenFiles) {
-                Notify.warning('请先开启显示', '请先在“文件管理器”中开启“显示系统与隐藏文件”。');
-                return;
-            }
-            openFileExplorer('/');
-        }
 
         // ============================================================
         // === 系统设置（侧栏导航版）：分类页 + 搜索 + 详细存储可视化 ===
@@ -17087,8 +17132,7 @@
                 ['storage', 'backend', '默认存储位置', 'IndexedDB OPFS 后端 默认 位置 工作区'],
                 ['storage', 'copy', '复制工作区到另一位置', '迁移 复制 工作区 搬家'],
                 ['files', 'hidden', '显示系统与隐藏文件', '隐藏 系统 点文件 dotfile'],
-                ['files', 'explorer', '打开文件管理器', '资源管理器 文件管理器 explorer'],
-                ['files', 'full', '浏览完整文件系统', '根目录 完整 文件系统 /system 挂载点'],
+                ['files', 'names', '存储位置名称', 'IndexedDB OPFS 浏览器存储 高速存储 中文名 名字 改名'],
                 ['files', 'mounts', '已挂载的本地文件夹', '挂载 本地 文件夹 卸载 重新连接 授权 mount'],
                 ['clean', 'scan', '缓存与临时文件清理', '清理 缓存 临时 垃圾 扫描 释放空间'],
                 ['clean', 'export', '导出设置备份', '备份 导出 设置 迁移 换电脑'],
@@ -17518,8 +17562,8 @@
             const headRight = `<div class="stx-btns">${r ? `<span class="stx-muted" style="font-size:11.5px">更新于 ${stxTime(r.time)}</span>` : ''}${refreshBtn}</div>`;
             const opfsOk = stxOpfsOk();
             const backendCards = `<div class="stx-rcards" data-stx-row="backend">
-                <button type="button" class="stx-rcard ${SYSTEM.storageBackend === 'indexeddb' ? 'on' : ''}" onclick="stxSetBackend(${winId}, 'indexeddb')" aria-pressed="${SYSTEM.storageBackend === 'indexeddb'}"><span class="dot"></span><span><b>IndexedDB</b><small>兼容性最好，所有浏览器可用。路径 /desktop</small></span></button>
-                <button type="button" class="stx-rcard ${SYSTEM.storageBackend === 'opfs' ? 'on' : ''}" ${opfsOk ? '' : 'disabled'} onclick="stxSetBackend(${winId}, 'opfs')" aria-pressed="${SYSTEM.storageBackend === 'opfs'}"><span class="dot"></span><span><b>OPFS${opfsOk ? '' : '（不可用）'}</b><small>${opfsOk ? '读写大文件更快，适合视频、压缩包。路径 /opfs/desktop' : '当前浏览器或隐私模式未提供 Origin Private File System'}</small></span></button>
+                <button type="button" class="stx-rcard ${SYSTEM.storageBackend === 'indexeddb' ? 'on' : ''}" onclick="stxSetBackend(${winId}, 'indexeddb')" aria-pressed="${SYSTEM.storageBackend === 'indexeddb'}"><span class="dot"></span><span><b>${storageBackendLabel('indexeddb')}</b><small>${SYSTEM.storageNames === 'zh' ? 'IndexedDB · ' : ''}兼容性最好，所有浏览器可用。路径 /desktop</small></span></button>
+                <button type="button" class="stx-rcard ${SYSTEM.storageBackend === 'opfs' ? 'on' : ''}" ${opfsOk ? '' : 'disabled'} onclick="stxSetBackend(${winId}, 'opfs')" aria-pressed="${SYSTEM.storageBackend === 'opfs'}"><span class="dot"></span><span><b>${storageBackendLabel('opfs')}${opfsOk ? '' : '（不可用）'}</b><small>${SYSTEM.storageNames === 'zh' ? 'OPFS · ' : ''}${opfsOk ? '读写大文件更快，适合视频、压缩包。路径 /opfs/desktop' : '当前浏览器或隐私模式未提供 Origin Private File System'}</small></span></button>
             </div>
             <p class="stx-note" style="margin-top:2px">${icon('stxInfo')}桌面、新建文件和常规上传默认保存到这里。切换不会移动或删除已有文件，当前工作区：<span class="stx-mono" data-storage-current-path>${stxEsc(SYSTEM.desktopPath)}</span></p>`;
             const src = SYSTEM.storageBackend, dst = src === 'opfs' ? 'indexeddb' : 'opfs';
@@ -17549,8 +17593,8 @@
             const otherBytes = Number.isFinite(reported) ? Math.max(0, reported - classified) : 0;
             const stackTotal = used || 1;
             const segs = [
-                { n: 'IndexedDB 文件', c: '#1688e5', b: r.idb.bytes, s: `${r.idb.files} 个文件 · /desktop、/documents` },
-                { n: 'OPFS 文件', c: '#19c37d', b: r.opfs.bytes, s: opfsOk ? `${r.opfs.files} 个文件 · /opfs` : '当前浏览器不可用' },
+                { n: storageBackendLabel('indexeddb'), c: '#1688e5', b: r.idb.bytes, s: `${r.idb.files} 个文件 · /desktop、/documents` },
+                { n: storageBackendLabel('opfs'), c: '#19c37d', b: r.opfs.bytes, s: opfsOk ? `${r.opfs.files} 个文件 · /opfs` : '当前浏览器不可用' },
                 { n: '系统文件与设置', c: '#a78bfa', b: r.system.bytes, s: `${r.system.files} 个文件 · /system` },
                 { n: 'Cache Storage', c: '#f59e0b', b: cacheBytes, s: Number.isFinite(r.caches) ? '浏览器离线缓存' : '浏览器未单独提供' },
                 { n: '其他 / 文件系统开销', c: '#64748b', b: otherBytes, s: '元数据、草稿与未单独归类的数据' }
@@ -17641,13 +17685,14 @@
         function stxPageFiles(winId) {
             const hidden = SYSTEM.showHiddenFiles;
             const display = `<div class="stx-card">
-                ${stxRow({ id: 'hidden', ic: 'stxEye', title: '显示系统与隐藏文件', desc: '显示点文件、/system、挂载点和完整内部文件系统。仅建议在检查或维护时开启。', cls: 'keep',
+                ${stxRow({ id: 'hidden', ic: 'stxEye', title: '显示系统与隐藏文件', desc: '开启后，文件管理器侧栏最下面会出现「根目录 /」，可以查看点文件、/system 和挂载点。仅建议在检查或维护时开启。', cls: 'keep',
                     ctl: stxSwitch(hidden, `stxToggleHidden(${winId})`, '显示系统与隐藏文件', { id: `show-hidden-files-${winId}` }) })}
-                ${stxRow({ id: 'full', ic: 'stxFolder', title: '浏览完整文件系统', cls: hidden ? '' : 'dis',
-                    desc: hidden ? '从根目录 / 查看系统目录、隐藏文件与挂载点。' : '需要先打开上方“显示系统与隐藏文件”。',
-                    ctl: stxBtn('打开根目录', 'openFullFileExplorer()', { cls: 'sm', dis: !hidden }) })}
-                ${stxRow({ id: 'explorer', ic: 'stxFolderOpen', title: '文件管理器', desc: '侧栏同时提供 IndexedDB 与 OPFS；在哪个位置新建、上传或粘贴，文件就保存在哪里。',
-                    ctl: stxBtn('打开', 'openFileExplorer()', { cls: 'sm', ic: 'stxExternalLink' }) })}
+                ${stxRow({ id: 'names', ic: 'stxDatabase', title: '存储位置名称',
+                    desc: `现在显示为「${storageBackendLabel('indexeddb')}」和「${storageBackendLabel('opfs')}」。文件管理器侧栏、路径栏、窗口标题和设置里统一使用这个名字。`,
+                    ctl: `<div class="stx-seg" role="radiogroup" aria-label="存储位置名称">${[['tech', 'IndexedDB · OPFS', 'IndexedDB 存储 / OPFS 存储'], ['zh', '中文名', '浏览器存储 / 高速存储']].map(([v, l, t]) => {
+                        const on = (SYSTEM.storageNames === 'zh' ? 'zh' : 'tech') === v;
+                        return `<button type="button" role="radio" aria-checked="${on}" class="${on ? 'on' : ''}" title="${t}" onclick="stxSetNames(${winId}, '${v}')">${l}</button>`;
+                    }).join('')}</div>` })}
             </div>`;
             const mounts = Object.values(SYSTEM.mountedFolders || {});
             const fsa = stxFsaOk();
@@ -17673,6 +17718,11 @@
                 ${stxGroup('显示与浏览', '', display)}
                 ${stxGroup('已挂载的本地文件夹', mounts.length ? mounts.length + ' 个' : '', list + mountNote, mountBtn, 'data-stx-row="mounts"')}
             </div>`;
+        }
+        function stxSetNames(winId, v) {
+            setStorageNames(v);
+            stxRender(winId, { keepScroll: true });
+            Notify.success('已更新', `存储位置现在显示为「${storageBackendLabel('indexeddb')}」和「${storageBackendLabel('opfs')}」`);
         }
         function stxToggleHidden(winId) {
             setShowHiddenFiles(!SYSTEM.showHiddenFiles);
@@ -17790,6 +17840,7 @@
             return {
                 version: 2,
                 clickBehavior: SYSTEM.clickBehavior === 'single' ? 'single' : 'double',
+                storageNames: SYSTEM.storageNames === 'zh' ? 'zh' : 'tech',
                 storageBackend: SYSTEM.storageBackend === 'opfs' && SYSTEM.opfs && SYSTEM.opfs.available ? 'opfs' : 'indexeddb',
                 showHiddenFiles: SYSTEM.showHiddenFiles === true,
                 wallpaperSource: SYSTEM.wallpaperSource === 'bing' ? 'bing' : 'custom',
