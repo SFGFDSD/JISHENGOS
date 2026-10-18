@@ -26,47 +26,89 @@
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cdefs%3E%3ClinearGradient id='bg' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0%25' stop-color='%230a0a0f'/%3E%3Cstop offset='100%25' stop-color='%23181c24'/%3E%3C/linearGradient%3E%3ClinearGradient id='txt' x1='0' y1='0' x2='1' y2='0'%3E%3Cstop offset='0%25' stop-color='%230078d4'/%3E%3Cstop offset='100%25' stop-color='%2300d4ff'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='100' height='100' rx='18' fill='url(%23bg)'/%3E%3Ctext x='50%25' y='56%25' dominant-baseline='middle' text-anchor='middle' font-family='Arial Black,sans-serif' font-weight='900' font-size='52' fill='url(%23txt)'%3EJS%3C/text%3E%3C/svg%3E">
     
     <!-- 文件系统由下方的原生 IndexedDB 内核直接实现，无第三方文件系统依赖。 -->
-    <!-- JSZip 解压缩库 -->
-    <script src="https://unpkg.com/jszip@3.10.1/dist/jszip.min.js"></script>
-    <!-- V86 虚拟机模拟器 -->
-    <!-- 修复：锁定到具体版本 0.5.319，避免 @latest 导致 libv86.js 与 v86.wasm 版本错配（黑屏） -->
-    <script src="https://cdn.jsdelivr.net/npm/v86@0.5.319/build/libv86.js"></script>
-    
-    <!-- CodeMirror 代码编辑器 -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/material-darker.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/dialog/dialog.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/search/matchesonscrollbar.min.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/xml/xml.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/css/css.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/htmlmixed/htmlmixed.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/markdown/markdown.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/closebrackets.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/closetag.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/matchbrackets.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/matchtags.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/trailingspace.min.js"></script>
-    <!-- 代码补全（addon/hint 全套 + show-hint.css）与 match-highlighter 已移除：编辑器从未调用 showHint、也没开 highlightSelectionMatches，加载了却永远用不到。
-         search / annotatescrollbar / matchesonscrollbar 保留：Ctrl+Shift+G、Ctrl+Shift+R 仍会用到 CodeMirror 自带的查找对话框。 -->
-    <!-- 代码折叠功能已移除：不再加载 addon/fold 下的 foldcode、foldgutter（含其 CSS）、brace-fold、comment-fold、indent-fold。xml-fold 保留——它提供 CodeMirror.findMatchingTag / scanForClosingTag，是 matchtags（标签配对高亮）与 closetag 的依赖，与折叠 UI 无关 -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/fold/xml-fold.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/search/search.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/search/searchcursor.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/search/jump-to-line.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/scroll/annotatescrollbar.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/search/matchesonscrollbar.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/dialog/dialog.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/comment/comment.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/selection/active-line.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/js-beautify/1.14.11/beautify.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/js-beautify/1.14.11/beautify-css.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/js-beautify/1.14.11/beautify-html.min.js"></script>
+    <!-- 第三方库按需加载（V2 性能）
+         以前 <head> 里同步加载 JSZip、V86、CodeMirror（20 个脚本 + 4 个样式表）、js-beautify，共 29 个阻塞请求、分布在 3 个 CDN 上：
+         任何一个 CDN 慢或打不开，整个系统都要白屏等它；而这些库只有解压/打包、虚拟机、HTML 编辑器、格式化时才用得到。
+         现在改为第一次用到时才加载（JSLibs.load），空闲时再用 <link rel="prefetch"> 悄悄预取到缓存，第一次打开编辑器也不用等网络。
+         样式表插在 #lib-css-anchor 之前，层叠顺序与以前完全一致（下面的系统样式仍然能覆盖 CodeMirror 默认样式）。 -->
+    <meta id="lib-css-anchor" name="jisheng-lib-css-anchor" content="">
+    <script>
+    window.JSLibs = (function () {
+        var B = 'https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/', F = 'https://cdnjs.cloudflare.com/ajax/libs/js-beautify/1.14.11/';
+        var LIBS = {
+            jszip: { js: ['https://unpkg.com/jszip@3.10.1/dist/jszip.min.js'], ok: function () { return !!window.JSZip; } },
+            // 锁定 0.5.319：libv86.js 与 v86.wasm 版本必须一致，否则黑屏
+            v86: { js: ['https://cdn.jsdelivr.net/npm/v86@0.5.319/build/libv86.js'], ok: function () { return !!(window.V86 || window.V86Starter); } },
+            // search / annotatescrollbar / matchesonscrollbar：Ctrl+Shift+G、Ctrl+Shift+R 会用到 CodeMirror 自带的查找对话框；
+            // xml-fold 提供 findMatchingTag / scanForClosingTag，是 matchtags 与 closetag 的依赖（与折叠 UI 无关）
+            codemirror: {
+                css: [B + 'codemirror.min.css', B + 'theme/material-darker.min.css', B + 'addon/dialog/dialog.min.css', B + 'addon/search/matchesonscrollbar.min.css'],
+                core: B + 'codemirror.min.js',
+                js: [B + 'mode/xml/xml.min.js', B + 'mode/javascript/javascript.min.js', B + 'mode/css/css.min.js', B + 'mode/htmlmixed/htmlmixed.min.js', B + 'mode/markdown/markdown.min.js', B + 'addon/edit/closebrackets.min.js', B + 'addon/edit/closetag.min.js', B + 'addon/edit/matchbrackets.min.js', B + 'addon/edit/matchtags.min.js', B + 'addon/edit/trailingspace.min.js', B + 'addon/fold/xml-fold.min.js', B + 'addon/search/search.min.js', B + 'addon/search/searchcursor.min.js', B + 'addon/search/jump-to-line.min.js', B + 'addon/scroll/annotatescrollbar.min.js', B + 'addon/search/matchesonscrollbar.min.js', B + 'addon/dialog/dialog.min.js', B + 'addon/comment/comment.min.js', B + 'addon/selection/active-line.min.js'],
+                ok: function () { return !!(window.CodeMirror && CodeMirror.commands && CodeMirror.commands.toggleComment && CodeMirror.commands.find && CodeMirror.commands.jumpToLine); }
+            },
+            beautify: { js: [F + 'beautify.min.js', F + 'beautify-css.min.js', F + 'beautify-html.min.js'], ok: function () { return !!(window.html_beautify && window.css_beautify && window.js_beautify); } }
+        };
+        var urlP = {}, libP = {};
+        function script(url) {
+            if (urlP[url]) return urlP[url];
+            return (urlP[url] = new Promise(function (res, rej) {
+                var el = document.createElement('script');
+                el.src = url; el.async = false;          // 并行下载、按插入顺序执行
+                el.onload = function () { res(); };
+                el.onerror = function () { delete urlP[url]; el.remove(); rej(new Error('加载失败：' + url)); };
+                document.head.appendChild(el);
+            }));
+        }
+        function css(url) {
+            if (urlP[url]) return urlP[url];
+            return (urlP[url] = new Promise(function (res, rej) {
+                var el = document.createElement('link'), anchor = document.getElementById('lib-css-anchor');
+                el.rel = 'stylesheet'; el.href = url;
+                el.onload = function () { res(); };
+                el.onerror = function () { delete urlP[url]; el.remove(); rej(new Error('加载失败：' + url)); };
+                anchor.parentNode.insertBefore(el, anchor);
+            }));
+        }
+        function load(name) {
+            var L = LIBS[name];
+            if (!L) return Promise.reject(new Error('未知的库：' + name));
+            if (L.ok() && !(L.css && L.css.some(function (u) { return !urlP[u]; }))) return Promise.resolve();
+            if (libP[name]) return libP[name];
+            var p = Promise.all([
+                Promise.all((L.css || []).map(css)),
+                (L.core ? script(L.core) : Promise.resolve()).then(function () { return Promise.all(L.js.map(script)); })
+            ]).then(function () { if (!L.ok()) throw new Error(name + ' 加载后不可用'); });
+            libP[name] = p;
+            p.catch(function () { delete libP[name]; });   // 失败后允许重试
+            return p;
+        }
+        function ready(name) { var L = LIBS[name]; return !!(L && L.ok()); }
+        // 空闲预取：只下载进 HTTP 缓存、不执行；省流量模式 / 2G 网络下跳过。V86 体积大且少用，不预取。
+        function prefetch() {
+            var c = navigator.connection;
+            if (c && (c.saveData || /2g/.test(c.effectiveType || ''))) return;
+            ['codemirror', 'beautify', 'jszip'].forEach(function (n) {
+                var L = LIBS[n];
+                (L.css || []).concat(L.core ? [L.core] : [], L.js).forEach(function (u) {
+                    if (urlP[u]) return;
+                    var l = document.createElement('link'); l.rel = 'prefetch'; l.href = u; document.head.appendChild(l);
+                });
+            });
+        }
+        window.addEventListener('load', function () {
+            setTimeout(function () { (window.requestIdleCallback || setTimeout)(prefetch, { timeout: 8000 }); }, 4000);
+        });
+        return { load: load, ready: ready, prefetch: prefetch };
+    })();
+    </script>
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- V2 性能：字体样式表不再阻塞首屏渲染（fonts.googleapis.com 在部分网络下很慢甚至打不开，以前会让整个页面白屏等待）。
+         先用系统字体显示，Inter 下载好后自动替换（display=swap）。 -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" media="print" onload="this.media='all'">
+    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"></noscript>
     
     <style>
         :root {
@@ -107,10 +149,6 @@
             touch-action: none;
         }
 
-        /* 确保可滚动元素不受影响 */
-        .content-area, .csv-container, .notepad-area, .edx-body, #manga-viewer-* {
-            touch-action: auto;
-        }
 
 
         /* === SVG 图标基础样式 === */
@@ -125,7 +163,6 @@
         .icon-svg.sm { width: 16px; height: 16px; }
         .icon-svg.lg { width: 32px; height: 32px; }
         .icon-svg.xl { width: 40px; height: 40px; }
-        .icon-svg.github { width: 18px; height: 18px; fill: currentColor; stroke: none; color: var(--text-muted); }
 
         /* === JISHENG-OS-APP 应用的自定义 SVG 图标 ===
            用户在应用标记注释里粘贴的 SVG 是"原样使用"的（可能来自 iconfont / Bootstrap /
@@ -141,7 +178,6 @@
         .tb-notify-icon .icon-svg,
         .icon-svg.tb-notify-icon { stroke-width: 2; }
         .window-controls .win-btn:first-child .icon-svg { stroke-width: 2; }
-        .icon-svg.stroke-2 { stroke-width: 2; }
 
         /* === 背景系统 === */
         #dynamic-bg {
@@ -152,20 +188,6 @@
             z-index: 0;
         }
         
-        .ambient-overlay {
-            position: absolute; inset: 0;
-            background: 
-                radial-gradient(ellipse at 30% 20%, rgba(var(--a-0078d4, 0,120,212), 0.08) 0%, transparent 50%),
-                linear-gradient(to bottom, transparent 50%, rgba(0,0,0,0.7) 100%);
-            z-index: 1; pointer-events: none;
-        }
-
-        /* === 噪点 === */
-        .noise-layer {
-            position: fixed; inset: 0; z-index: 9990;
-            opacity: 0.025; pointer-events: none; mix-blend-mode: overlay;
-        }
-
         /* === 玻璃容器 === */
         .ultra-glass {
             background: rgba(var(--gc-win, 16,16,22), var(--ga-win, 0.75));
@@ -1381,7 +1403,6 @@
         .stx-cap .y { color: var(--ok); } .stx-cap .n { color: var(--danger); } .stx-cap .u { color: var(--warn); }
         .stx-cap span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .stx-cap small { margin-left: auto; color: var(--muted); font-size: 11px; white-space: nowrap; }
-        .stx-sr-page { font-size: 11px; }
 
         /* ================================================================
            === 文件资源管理器（v2）===
@@ -1911,15 +1932,6 @@
             max-width: 100%;
             max-height: 100%;
         }
-        .v86-log {
-            position: absolute; bottom: 10px; left: 10px;
-            font-size: 11px; color: #4ade80;
-            background: rgba(0,0,0,0.7);
-            padding: 6px 10px;
-            border-radius: min(4px, var(--ui-radius));
-            max-width: 300px;
-            pointer-events: none;
-        }
         .v86-screen-container.locked {
             cursor: none;
         }
@@ -2260,9 +2272,6 @@
         }
         .editor-app .CodeMirror-dialog input:focus { border-color: rgb(var(--al-0078d4, 0,120,212)) !important; }
         
-        /* 拖拽防选中 - 修复iframe拦截拖拽问题 */
-        .no-select { user-select: none !important; -webkit-user-select: none !important; }
-        .no-select iframe { pointer-events: none !important; }
         
 
         /* === Aero Peek 系统 === */
@@ -2419,6 +2428,27 @@
         }
         /* 桌面图标浮在壁纸上：浅色主题里仍用白字 + 阴影（变量在这一子树内恢复为深色值） */
         html[data-theme="light"] .desktop-icon { --l18:rgba(255,255,255,0.08); --l4:#fff; --l7:rgba(255,255,255,0.9); }
+
+        /* ===================== V2：性能 / Bug 修复 ===================== */
+        /* 编辑器组件按需加载时的占位层：盖住整个编辑器，组件就绪后移除；失败时显示重试 */
+        .edx > .edx-libload { position: absolute; inset: 0; z-index: 20; display: flex; align-items: center; justify-content: center; gap: 10px;
+            background: var(--pane); color: var(--muted); font-size: 13px; }
+        .edx-libload .icon-svg { width: 18px; height: 18px; color: var(--warn); }
+        .edx-libload-spin { width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--line); border-top-color: var(--acc); animation: spin .75s linear infinite; }
+        .edx-libload-retry { margin-left: 4px; min-height: 30px; padding: 0 14px; border-radius: var(--ctl-radius); border: 1px solid var(--line);
+            background: color-mix(in srgb, var(--ink) 6%, transparent); color: var(--ink); font: inherit; cursor: pointer; }
+        .edx-libload-retry:hover { background: color-mix(in srgb, var(--ink) 11%, transparent); }
+        .edx-libload-retry:focus-visible { outline: 2px solid rgb(var(--al-00d4ff, 0,212,255)); outline-offset: 2px; }
+
+        /* 性能：被上层窗口完全盖住的窗口不再做背景模糊。
+           backdrop-filter 是整个界面最贵的合成操作，每个窗口每一帧都要把背后的画面模糊一遍；
+           完全被盖住的窗口反正要再被上层窗口模糊一次，自己那一遍看不出来。 */
+        #windows-container > .window.glass-occluded { backdrop-filter: none; -webkit-backdrop-filter: none; }
+
+        /* 性能 + 修复：最小化的窗口以前只是 opacity:0，仍然参与合成（背景模糊照算），
+           键盘 Tab 还能把焦点移进看不见的窗口里。现在动画播完后 visibility:hidden。 */
+        .window.minimized { visibility: hidden; transition: opacity 0.2s, transform 0.2s, box-shadow 0.2s, visibility 0s linear 0.2s; }
+        .window.minimized.aero-peek-highlight { visibility: visible; }
     </style>
     <script>
     /* ===== 外观引擎：深色/浅色主题 · 强调色 · 毛玻璃（v10.8）=====
@@ -3428,6 +3458,10 @@
                     return;
                 }
                 if (stats.isDirectory()) {
+                    if (!JSLibs.ready('jszip')) {
+                        JSLibs.load('jszip').then(() => { if (seq === preloadSeq) preloadFileForDrag(filepath, filename, callback); else callback(false); }, () => callback(false));
+                        return;
+                    }
                     const zip = new JSZip();
                     const folderDate = prepareZipWriteDate(new Date(stats.mtime || Date.now()));
                     try { zip.file(filename + "/", "", { dir: true, date: folderDate }); } catch(e) {}
@@ -6829,7 +6863,7 @@
             }
             // 「设为桌面壁纸」：仅单选的图片文件显示
             if (!isLocalFolder && filename && count <= 1 && isImageFile(filename)) {
-                items.push('-', { icon: 'uiWallpaperCtx', label: '设为桌面壁纸', act: () => setWallpaperFromPath(fullPath, filename) });
+                items.push('-', { icon: 'stxWallpaper', label: '设为桌面壁纸', act: () => setWallpaperFromPath(fullPath, filename) });
             }
             if (!isLocalFolder && filename && isArchiveFile(filename)) {
                 items.push({ icon: 'uiExtractSimple', label: '解压', act: () => extractZip(filename) });
@@ -7330,7 +7364,6 @@
             // appUnknown: 未知/无图标应用的回退图标：Lucide circle-help
             appUnknown: '<circle cx="12" cy="12" r="10"/> <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/> <path d="M12 17h.01"/>',
             // --- UI 操作 ---
-            uiBack:       '<path d="M15 18l-6-6 6-6"/>',
             uiRefresh:    '<path d="M1 4v6h6"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/>',
             uiBrowserRefresh: '<path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/>',
             uiMenuFolder: '<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2v11z"/>',
@@ -7369,7 +7402,6 @@
             // fxFit: Lucide move-horizontal
             fxFit: '<path d="m18 8 4 4-4 4" /><path d="M2 12h20" /><path d="m6 8-4 4 4 4" />',
             uiList:       '<line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>',
-            uiGrid:       '<rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>',
             uiNewFolder:  '<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2v11z"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/>',
             uiUploadFolder: '<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2v11z"/><polyline points="16 15 12 11 8 15"/><line x1="12" y1="11" x2="12" y2="19"/>',
             uiNewFile:    '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>',
@@ -7396,16 +7428,13 @@
             uiDelete:     '<path d="M10 11v6"/><path d="M14 11v6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>',
             uiDeleteSimple: '<path d="M10 11v6"/><path d="M14 11v6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>',
             uiRename:     '<path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>',
-            uiExtract:    '<path d="M21 8v13H3V8"/><path d="M1 3h22v5H1z"/><path d="M10 12h4"/>',
             uiExtractSimple: '<path d="M1 3h22v5H1z"/><path d="M21 8v13H3V8"/><path d="m9 15 3-3 3 3"/><path d="M12 12v9"/>',
             uiImage:      '<rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>',
             uiWallpaper:  '<rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>',
-            uiWallpaperCtx: '<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>',
             uiEject:      '<path d="M18 19a5 5 0 0 1-5-5v8"/><path d="M9 20H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H20a2 2 0 0 1 2 2v5"/><circle cx="13" cy="12" r="2"/><circle cx="20" cy="19" r="2"/>',
             uiBrush:      '<path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/>',
             uiEraser:     '<path d="m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21"/><path d="M22 21H7"/><path d="m5 11 9 9"/>',
             uiSave:       '<path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/>',
-            uiBrowser:    '<circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>',
             uiBrowserCtx: '<circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>',
             uiCode:       '<polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>',
             uiMonitor:    '<rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>',
@@ -7413,18 +7442,10 @@
             uiArrowRight: '<line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>',
             uiUndo:       '<path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 1 1 0 12h-3"/>',
             uiRedo:       '<path d="M15 14l5-5-5-5"/><path d="M20 9H10a6 6 0 1 0 0 12h3"/>',
-            uiGithub:     '<g fill="currentColor" stroke="none"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></g>',
             uiWifiOff:    '<path d="M12 20h.01"/><path d="M8.5 16.429a5 5 0 0 1 7 0"/><path d="M5 12.859a10 10 0 0 1 5.17-2.69"/><path d="M19 12.859a10 10 0 0 0-2.007-1.523"/><path d="M2 8.82a15 15 0 0 1 4.177-2.643"/><path d="M22 8.82a15 15 0 0 0-11.288-3.764"/><path d="m2 2 20 20"/>',
             uiTbRestore:  '<rect x="2" y="4" width="20" height="16" rx="2"/><path d="M10 4v4"/><path d="M2 8h20"/><path d="M6 4v4"/>',
             uiWifi:       '<path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><circle cx="12" cy="20" r="1"/>',
             // 编辑器
-            editorFormat:       '<path d="m16 16-3 3 3 3"/><path d="M3 12h14.5a1 1 0 0 1 0 7H13"/><path d="M3 19h6"/><path d="M3 5h18"/>',
-            editorRefresh:      '<path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/>',
-            editorOpen:         '<path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>',
-            editorChevronUp:    '<path d="m18 15-6-6-6 6"/>',
-            editorChevronDown:  '<path d="m6 9 6 6 6-6"/>',
-            editorReplace:      '<path d="M14 4a1 1 0 0 1 1-1"/><path d="M15 10a1 1 0 0 1-1-1"/><path d="M21 4a1 1 0 0 0-1-1"/><path d="M21 9a1 1 0 0 1-1 1"/><path d="m3 7 3 3 3-3"/><path d="M6 10V5a2 2 0 0 1 2-2h2"/><rect x="3" y="14" width="7" height="7" rx="1"/>',
-            editorReplaceAll:   '<path d="M14 14a1 1 0 0 1 1 1v5a1 1 0 0 1-1 1"/><path d="M14 4a1 1 0 0 1 1-1"/><path d="M15 10a1 1 0 0 1-1-1"/><path d="M19 14a1 1 0 0 1 1 1v5a1 1 0 0 1-1 1"/><path d="M21 4a1 1 0 0 0-1-1"/><path d="M21 9a1 1 0 0 1-1 1"/><path d="m3 7 3 3 3-3"/><path d="M6 10V5a2 2 0 0 1 2-2h2"/><rect x="3" y="14" width="7" height="7" rx="1"/>',
             // --- 系统设置（Lucide, stroke 1.5 由 .icon-svg 统一）---
             stxPalette: '<path d="M12 22a1 1 0 0 1 0-20 10 9 0 0 1 10 9 5 5 0 0 1-5 5h-2.25a1.75 1.75 0 0 0-1.4 2.8l.3.4a1.75 1.75 0 0 1-1.4 2.8z"/><circle cx="13.5" cy="6.5" r=".5" fill="currentColor"/><circle cx="17.5" cy="10.5" r=".5" fill="currentColor"/><circle cx="6.5" cy="12.5" r=".5" fill="currentColor"/><circle cx="8.5" cy="7.5" r=".5" fill="currentColor"/>',
             stxHardDrive: '<path d="M10 16h.01"/><path d="M2.212 11.577a2 2 0 0 0-.212.896V18a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-5.527a2 2 0 0 0-.212-.896L18.55 5.11A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/><path d="M21.946 12.013H2.054"/><path d="M6 16h.01"/>',
@@ -8509,9 +8530,6 @@
             if (e.ctrlKey || e.metaKey || e.shiftKey) return;
             activateFolderItem(wid, item.dataset.filename, item.dataset.path, isDir);
         }
-        // 兼容旧调用（签名不变）
-        function handleFolderItemSingleClick(event, windowId, item) { fxItemClick(event, windowId, item); }
-        function handleFolderItemDblClick(windowId, filename, fullPath, isDir, item) { if (item) fxItemDblClick({}, windowId, item); }
 
         // 移动端双击检测（防止 Edge 等浏览器把双击识别为缩放）
         let _lastTapTime = 0;
@@ -8618,7 +8636,7 @@
                     { icon: 'uiCode', label: '用代码编辑器打开', act: () => openWithEditor(path, name) },
                     { icon: 'uiBrowserCtx', label: '用浏览器打开', act: () => openWithBrowser(path, name) },
                     { icon: 'uiNewFile', label: '用记事本打开', act: () => openWithNotepad(path, name) });
-                if (!isDir && isImageFile(name)) items.push('-', { icon: 'uiWallpaperCtx', label: '设为桌面壁纸', act: () => setWallpaperFromPath(path, name) });
+                if (!isDir && isImageFile(name)) items.push('-', { icon: 'stxWallpaper', label: '设为桌面壁纸', act: () => setWallpaperFromPath(path, name) });
                 if (!isDir && isArchiveFile(name)) items.push({ icon: 'uiExtractSimple', label: '解压', act: () => extractZipFromPath(path) });
                 items.push('-',
                     { icon: 'uiCut', label: '剪切', act: () => cutSelectedFolderItems(windowId) },
@@ -8718,13 +8736,6 @@
             if (st.viewMode === 'column' && !fxIsUnder(parent, st.colRoot)) st.colRoot = parent;
             fxGo(windowId, parent, { select: [from] });
         }
-        function folderNavigateTo(windowId, targetPath, targetName) { fxGo(windowId, targetPath, { name: targetName }); }
-        function sidebarNavigateToPath(windowId, fullPath, folderName) { fxGo(windowId, fullPath, { name: folderName }); }
-        function sidebarNavigateToSystemRoot(windowId) { if (SYSTEM.showHiddenFiles) fxGo(windowId, '/', { name: '完整文件系统' }); }
-        function sidebarNavigateToMounted(windowId, folderId) {
-            const info = SYSTEM.mountedFolders[folderId];
-            if (info) fxGo(windowId, info.mountPath || ('/mnt/local/' + info.name), { name: info.name });
-        }
         // 侧边栏导航到某一内部后端的用户工作区。
         function sidebarNavigateToStorage(windowId, backend) {
             if (backend === 'opfs' && !(SYSTEM.opfs && SYSTEM.opfs.available)) {
@@ -8733,7 +8744,6 @@
             }
             fxGo(windowId, getStorageDesktopPath(backend), { name: `${storageBackendLabel(backend)} 文件` });
         }
-        function updateSidebarActive() { /* 侧栏按路径自动标记当前项（见 buildFolderSidebar），保留此名称兼容旧调用 */ }
 
         function folderRefresh(windowId) {
             const st = fxState(windowId);
@@ -10936,7 +10946,7 @@
                     <span>刷新桌面</span>
                 </div>
                 <div class="context-item" onclick="openWallpaperPanel(); closeCtx()">
-                    ${icon('uiWallpaperCtx','sm')}
+                    ${icon('stxWallpaper','sm')}
                     <span>更换壁纸</span>
                 </div>
                 <div class="context-divider"></div>
@@ -10964,7 +10974,7 @@
                     ${icon('uiMenuFolder','sm')}
                     <span>新建文件夹</span>
                 </div>
-                <div class="context-item" onclick="openNotepad(); closeCtx()">
+                <div class="context-item" onclick="createNewTextFile(SYSTEM.desktopPath); closeCtx()">
                     ${icon('uiMenuFile','sm')}
                     <span>新建文本文档</span>
                 </div>
@@ -10987,6 +10997,22 @@
                     refreshDesktop();
                     Notify.success("成功", "文件夹创建成功");
                 }
+            });
+        }
+
+        // 新建文本文档：与资源管理器里的「新建文本文档」完全一致 —— 先弹出命名框（默认选中主文件名），
+        // 在 dirPath 下创建空文件；同名文件已存在时不覆盖。
+        async function createNewTextFile(dirPath) {
+            if (!dirPath) return;
+            const name = await SysDialog.prompt({ title: '新建文件', icon: 'uiNewFile', label: '文件名称', value: '新建文本文档.txt', okText: '创建', validate: SysDialog.nameValidator('文件名称') });
+            if (!name) return;
+            const path = dirPath + '/' + name;
+            SYSTEM.fs.stat(path, (statErr) => {
+                if (!statErr) { Notify.error('创建失败', `"${name}" 已存在`); return; }
+                SYSTEM.fs.writeFile(path, '', (err) => {
+                    if (err) Notify.error('创建失败', err.message);
+                    else { refreshDesktop(); Notify.success('成功', '文件已创建'); }
+                });
             });
         }
 
@@ -11872,6 +11898,7 @@
                     updateStatus('解析 ZIP 结构...');
                     updateProgress(10);
                     
+                    if (!JSLibs.ready('jszip')) { updateStatus('正在加载解压组件...'); await JSLibs.load('jszip'); }
                     const zip = await JSZip.loadAsync(fileData);
                     const entries = Object.keys(zip.files);
                     const fileEntries = entries.filter(name => !zip.files[name].dir);
@@ -11902,7 +11929,9 @@
                     }
                 } else if (archiveType === '7z') {
                     if (!window.sevenZipReady) {
-                        throw new Error('7z引擎未加载，请刷新页面重试');
+                        updateStatus('正在加载 7z 解压引擎...');
+                        const ok = window.sevenZipEngine ? await window.sevenZipEngine.ensure() : false;
+                        if (!ok) throw new Error('7z 解压引擎加载失败，请检查网络后重试');
                     }
                     
                     updateStatus('使用 7z 引擎解压...');
@@ -12335,57 +12364,7 @@
             return ext + ' 文件';
         }
 
-        // 渲染本地文件夹内容
-                // 更新本地文件夹面包屑导航
-                // 本地文件夹面包屑导航跳转
-                // 获取父目录 handle（辅助函数）
-                // 本地文件夹项双击处理
-                // 从本地 handle 打开文件（保留原有文件打开逻辑）
-                // 本地文件夹项右键菜单（增强版 UI）
-                // 从窗口导出本地文件夹单个文件
-                // 从窗口导出本地文件夹多个选中文件
-                // === 本地文件夹拖拽逻辑 ===
-                // 导出本地文件夹文件到桌面
-                // 递归导出目录
-        async function exportDirectoryRecursive(dirHandle, destPath) {
-            return new Promise((resolve, reject) => {
-                SYSTEM.fs.mkdir(destPath, async (err) => {
-                    if (err && err.code !== 'EEXIST') {
-                        reject(err);
-                        return;
-                    }
-                    
-                    try {
-                        for await (const [name, handle] of dirHandle.entries()) {
-                            const itemPath = destPath + '/' + name;
-                            
-                            if (handle.kind === 'file') {
-                                const file = await handle.getFile();
-                                const content = await file.arrayBuffer();
-                                await new Promise((res, rej) => {
-                                    SYSTEM.fs.writeFile(itemPath, Buffer.from(content), (e) => {
-                                        if (e) rej(e);
-                                        else res();
-                                    });
-                                });
-                            } else {
-                                await exportDirectoryRecursive(handle, itemPath);
-                            }
-                        }
-                        resolve();
-                    } catch (e) {
-                        reject(e);
-                    }
-                });
-            });
-        }
-
-        // 导出本地文件夹文件到指定文件夹
-                // 导出单个文件到桌面
-                // 导出多个选中文件
-                        // 本地文件夹图片查看器（漫画阅读器风格）
-                // 本地挂载文件夹的压缩文件 → 在网页内解压到系统文件空间
-                async function unmountLocalFolder(folderId) {
+        async function unmountLocalFolder(folderId) {
             const info = SYSTEM.mountedFolders[folderId] || SYSTEM.localFolders[folderId];
             if (info) {
                 const name = info.name;
@@ -12442,6 +12421,10 @@
             downloadFileInternal(filePath, filename);
         }
 
+        // 打包下载要用 JSZip：第一次用时先加载（通常空闲预取早已把它放进缓存，几乎没有等待）
+        function jszipThen(fn) {
+            JSLibs.load('jszip').then(fn, () => Notify.error('打包失败', '压缩组件加载失败，请检查网络后重试'));
+        }
         function downloadFileInternal(filePath, filename) {
             SYSTEM.fs.stat(filePath, (err, stats) => {
                 if(err) {
@@ -12450,6 +12433,7 @@
                 
                 if(stats.isDirectory()) {
                     // 文件夹：打包为 zip 下载
+                    if (!JSLibs.ready('jszip')) { jszipThen(() => downloadFileInternal(filePath, filename)); return; }
                     const zip = new JSZip();
                     const folderDate = prepareZipWriteDate(new Date(stats.mtime || Date.now()));
                     try { zip.file(filename + "/", "", { dir: true, date: folderDate }); } catch(e) {}
@@ -12497,6 +12481,7 @@
                 downloadFile(files[0]);
                 return;
             }
+            if (!JSLibs.ready('jszip')) { jszipThen(downloadSelectedFiles); return; }
             
             const zip = new JSZip();
             let processedCount = 0;
@@ -12559,6 +12544,7 @@
                 downloadFolderItem(windowId, files[0], selectedItems[0].dataset.path);
                 return;
             }
+            if (!JSLibs.ready('jszip')) { jszipThen(() => downloadSelectedFolderItems(windowId)); return; }
             
             const zip = new JSZip();
             let processedCount = 0;
@@ -12979,10 +12965,10 @@
                     </div>
                     <div class="window-controls">
                         <!-- 新增的全屏按钮，位于最小化之前 -->
-                        <div class="win-btn" onclick="toggleWinFullscreen(${id}, '${opts.winType || 'default'}')">${icon('uiFullscreen')}</div>
-                        <div class="win-btn" onclick="minimizeWin(${id})">${icon('uiMinimize')}</div>
-                        <div class="win-btn" onclick="maximizeWin(${id})">${icon('uiMaximize')}</div>
-                        <div class="win-btn close" onclick="closeWin(${id})">${icon('uiClose')}</div>
+                        <div class="win-btn" role="button" title="全屏" aria-label="全屏" onclick="toggleWinFullscreen(${id}, '${opts.winType || 'default'}')">${icon('uiFullscreen')}</div>
+                        <div class="win-btn" role="button" title="最小化" aria-label="最小化" onclick="minimizeWin(${id})">${icon('uiMinimize')}</div>
+                        <div class="win-btn" role="button" title="最大化 / 还原" aria-label="最大化 / 还原" onclick="maximizeWin(${id})">${icon('uiMaximize')}</div>
+                        <div class="win-btn close" role="button" title="关闭" aria-label="关闭" onclick="closeWin(${id})">${icon('uiClose')}</div>
                     </div>
                 </div>
                 ${opts.winType === 'manga' ? `<div class="manga-exit-btn" onclick="toggleWinFullscreen(${id}, 'manga')">×</div>` : ''}
@@ -13075,6 +13061,22 @@
             }
         };
 
+        // 修复：以前每次聚焦都执行 zIndex = ++SYSTEM.idCounter + 100，数值只增不减。
+        // 点了大约 900 次窗口之后，窗口层级就超过任务栏（1000）、开始菜单 / 日历（2000）、右键菜单（3000），
+        // 窗口会盖在它们上面。现在层级只在 101~800 之间分配，用完时按当前前后顺序重新压缩编号。
+        let winZTop = 100;
+        function bringWinToFront(el) {
+            const cur = +el.style.zIndex || 0;
+            if (cur && cur === winZTop) return;          // 已经在最前面：不再递增
+            if (winZTop >= 800) {
+                const others = SYSTEM.windows.map(w => w.element).filter(e => e && e !== el)
+                    .sort((a, b) => (+a.style.zIndex || 0) - (+b.style.zIndex || 0));
+                winZTop = 100;
+                others.forEach(e => { e.style.zIndex = ++winZTop; });
+            }
+            el.style.zIndex = ++winZTop;
+        }
+
         window.focusWin = function(id) {
             try { clearAeroPeekEffects(); } catch(e) {}
             if (AeroPeek.previewTimer) { clearTimeout(AeroPeek.previewTimer); AeroPeek.previewTimer = null; }
@@ -13087,7 +13089,7 @@
             if(win) {
                 if (win.element) win.element.classList.remove('aero-peek-dim','aero-peek-highlight','aero-peek-transparent');
                 win.element.classList.add('focused');
-                win.element.style.zIndex = ++SYSTEM.idCounter + 100;
+                bringWinToFront(win.element);
                 if(win.minimized) {
                     win.minimized = false;
                     win.element.classList.remove('minimized');
@@ -13095,6 +13097,60 @@
             }
             setTimeout(updateTaskbarRunningItems, 30);
         };
+
+        // =====================================================================
+        // 性能：毛玻璃遮挡剔除
+        // 一个窗口如果被更上层、完全不透明度的窗口整个盖住（考虑上层窗口的圆角），就给它加 .glass-occluded，
+        // 去掉它自己的 backdrop-filter。最大化窗口叠在一起、手机上（窗口全屏）效果最明显。
+        // 触发：窗口增删、style / class 变化（拖动、缩放、聚焦、最小化、贴边、Aero Peek）、过渡结束、浏览器窗口大小变化，
+        // 每帧最多计算一次（只读几个矩形，开销可以忽略）。
+        // =====================================================================
+        const GlassCull = (() => {
+            let raf = 0;
+            const container = document.getElementById('windows-container');
+            function rectOf(el) {
+                const r = el.getBoundingClientRect();
+                return { l: r.left, t: r.top, r: r.right, b: r.bottom };
+            }
+            // a 是否被 b 完全盖住：a 在 b 的矩形内，且 a 没有伸进 b 的四个圆角缺口
+            function covers(b, rad, a) {
+                if (a.l < b.l || a.t < b.t || a.r > b.r || a.b > b.b) return false;
+                if (rad <= 0) return true;
+                const inL = a.l < b.l + rad, inR = a.r > b.r - rad, inT = a.t < b.t + rad, inB = a.b > b.b - rad;
+                return !((inL && inT) || (inR && inT) || (inL && inB) || (inR && inB));
+            }
+            function run() {
+                raf = 0;
+                const els = SYSTEM.windows.map(w => w.element).filter(el => el && el.isConnected);
+                const peeking = AeroPeek.isDesktopPeeking || els.some(el => /aero-peek/.test(el.className));
+                const list = [];
+                els.forEach((el, i) => {
+                    const cs = getComputedStyle(el);
+                    if (peeking || el.classList.contains('minimized') || cs.visibility === 'hidden' || cs.display === 'none') { el.classList.remove('glass-occluded'); return; }
+                    list.push({ el, i, z: parseInt(cs.zIndex, 10) || 0, op: parseFloat(cs.opacity), rad: parseFloat(cs.borderTopLeftRadius) || 0, rc: rectOf(el) });
+                });
+                for (const a of list) {
+                    let hidden = false;
+                    for (const b of list) {
+                        if (b === a || b.op < 1) continue;                    // 正在淡入 / 淡出的窗口不算遮挡物
+                        if (!(b.z > a.z || (b.z === a.z && b.i > a.i))) continue;
+                        if (covers(b.rc, b.rad, a.rc)) { hidden = true; break; }
+                    }
+                    if (a.el.classList.contains('glass-occluded') !== hidden) a.el.classList.toggle('glass-occluded', hidden);
+                }
+            }
+            function schedule() { if (!raf) raf = requestAnimationFrame(run); }
+            if (container) {
+                new MutationObserver(muts => {
+                    for (const m of muts) {
+                        if (m.type === 'childList' || m.target.parentElement === container) { schedule(); return; }
+                    }
+                }).observe(container, { childList: true, subtree: true, attributes: true, attributeFilter: ['style', 'class'] });
+                container.addEventListener('transitionend', e => { if (e.target.parentElement === container) schedule(); });
+            }
+            window.addEventListener('resize', schedule);
+            return { schedule, run };
+        })();
 
         // =====================================================================
         // Aero Snap：拖到屏幕左/右边缘贴半屏，拖到顶部最大化
@@ -14715,6 +14771,7 @@
 
         // === V86 虚拟机应用 ===
         function openV86(diskPath) {
+            JSLibs.load('v86').catch(() => {});
             const winId = createWindow({
                 title: 'V86 虚拟机',
                 winType: 'v86',
@@ -14813,7 +14870,13 @@
                         }
                     };
 
+                    // V2：V86 库按需加载（打开虚拟机窗口时就开始在后台下载，选镜像时通常已经就绪）
                     const initV86 = (fileName, buffer) => {
+                        if (JSLibs.ready('v86')) return initV86Now(fileName, buffer);
+                        updateStatus('正在加载虚拟机组件...');
+                        JSLibs.load('v86').then(() => initV86Now(fileName, buffer), () => updateStatus('V86 库加载失败，请检查网络后重试', true));
+                    };
+                    const initV86Now = (fileName, buffer) => {
                         placeholder.style.display = 'none';
 
                         // 修复：不再删除/重建 canvas。V86 要求 screen_container 内
@@ -15283,7 +15346,26 @@
                     </div>
                 `,
                 onInit: (w, id) => {
-                    initCodeEditorWindow(id, initialContent, filename, saveDir);
+                    if (JSLibs.ready('codemirror')) { initCodeEditorWindow(id, initialContent, filename, saveDir); return; }
+                    // V2：CodeMirror 按需加载。窗口立即出现，盖一层加载提示；失败时可重试，不会白等。
+                    const root = document.getElementById(`editor-app-${id}`);
+                    if (!root) return;
+                    const cover = document.createElement('div');
+                    cover.className = 'edx-libload';
+                    cover.setAttribute('role', 'status');
+                    root.appendChild(cover);
+                    const attempt = () => {
+                        cover.innerHTML = '<span class="edx-libload-spin" aria-hidden="true"></span><span>正在加载编辑器组件…</span>';
+                        JSLibs.load('codemirror').then(() => {
+                            if (!document.getElementById(`win-${id}`)) return;
+                            cover.remove();
+                            initCodeEditorWindow(id, initialContent, filename, saveDir);
+                        }, () => {
+                            cover.innerHTML = `${icon('uiWarning')}<span>编辑器组件加载失败，请检查网络</span><button type="button" class="edx-libload-retry">重试</button>`;
+                            cover.querySelector('button').onclick = attempt;
+                        });
+                    };
+                    attempt();
                 }
             });
         }
@@ -15845,6 +15927,10 @@
 
             // 格式化：作为一次普通编辑写入（Ctrl+Z 可撤销），并尽量保持光标所在行与滚动位置
             function formatEditorCode() {
+                if (!JSLibs.ready('beautify')) {
+                    JSLibs.load('beautify').then(formatEditorCode, () => Notify.error('格式化失败', '格式化组件加载失败，请检查网络后重试'));
+                    return;
+                }
                 const code = editor.getValue();
                 const lang = curLang();
                 if (lang === 'markdown') { Notify.info('Markdown 不需要格式化'); return; }
@@ -16337,6 +16423,7 @@
                     previewGen++;
                     try { previewFrame.src = 'about:blank'; } catch (e) {}
                     if (editor) { try { editor.toTextArea(); } catch (e) {} editor = null; }
+                    window.removeEventListener('appearancechange', onAppearance);
                 };
                 winEl.onDestroy = cleanupEditor;
                 // closeWin() 实际调用的是 element.cleanup()：在这里解除全选修复的 document 监听，并执行上面的清理
@@ -17176,12 +17263,6 @@
             saveSystemSettings();
         }
         // 兼容旧调用：按三档设置
-        function stxSetCorners(winId, v) {
-            SYSTEM.cornerRadius = CORNER_PRESETS[v] ?? 10;
-            applyWindowCorners();
-            stxCornerSync(SYSTEM.cornerRadius, null);
-            saveSystemSettings();
-        }
         // ---------- 外观：主题模式 / 强调色 / 毛玻璃（v10.8） ----------
         // 真正改样式的是 <head> 里的 JSAppearance（首帧前就生效）；这里只负责设置页的界面和保存。
         const AP_THEME_NAMES = { dark: '深色', light: '浅色', system: '跟随系统' };
@@ -18579,12 +18660,18 @@
         }
 
         // 启动
-        window.onload = initKernel;
+        // V2 性能：以前是 window.onload = initKernel —— onload 要等页面上「所有」资源下载完：
+        // 壁纸大图（images.unsplash.com）、Google 字体、统计脚本（gtag / clarity）……
+        // 任何一个慢或者打不开（国内网络很常见），桌面就一直是空的，最长要等到连接超时（几十秒）。
+        // 内核初始化只需要 DOM，所以改为 DOMContentLoaded 就启动；壁纸 / 字体到了以后自然显示出来。
+        if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initKernel, { once: true });
+        else initKernel();
     </script>
 
-    <!-- ========== 7z-wasm 解压引擎（放在 </body> 前面）========== -->
+    <!-- ========== 7z-wasm 解压引擎 ==========
+         V2 性能：以前每次打开页面都会下载并编译 7zz.wasm（压缩后约 660KB、解压后约 1.6MB），哪怕从来不解压 7z。
+         现在第一次解压 .7z 时才加载（sevenZipEngine.ensure()）。 -->
     <script type="module">
-    import SevenZip from 'https://cdn.jsdelivr.net/npm/7z-wasm@1.2.0/7zz.es6.min.js';
 
     class SevenZipEngine {
         constructor() {
@@ -18592,8 +18679,15 @@
             this.ready = false;
         }
 
+        ensure() {
+            if (this.ready) return Promise.resolve(true);
+            if (!this._p) this._p = this.init().then(ok => { window.sevenZipReady = ok; if (!ok) this._p = null; return ok; });
+            return this._p;
+        }
+
         async init() {
             try {
+                const { default: SevenZip } = await import('https://cdn.jsdelivr.net/npm/7z-wasm@1.2.0/7zz.es6.min.js');
                 this.sevenZip = await SevenZip({
                     print: (t) => console.log('[7z]', t),
                     printErr: (t) => console.error('[7z]', t)
@@ -18677,10 +18771,6 @@
     }
 
     window.sevenZipEngine = new SevenZipEngine();
-    window.sevenZipEngine.init().then(ok => {
-        window.sevenZipReady = ok;
-        console.log('7z引擎状态:', ok ? '就绪' : '失败');
-    });
     </script>
 </body>
 </html>
