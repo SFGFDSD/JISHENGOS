@@ -29,7 +29,8 @@
     <!-- 第三方库按需加载（V2 性能）
          以前 <head> 里同步加载 JSZip、V86、CodeMirror（20 个脚本 + 4 个样式表）、js-beautify，共 29 个阻塞请求、分布在 3 个 CDN 上：
          任何一个 CDN 慢或打不开，整个系统都要白屏等它；而这些库只有解压/打包、虚拟机、HTML 编辑器、格式化时才用得到。
-         现在改为第一次用到时才加载（JSLibs.load），空闲时再用 <link rel="prefetch"> 悄悄预取到缓存，第一次打开编辑器也不用等网络。
+         现在改为不阻塞首屏地加载：HTML 编辑器（CodeMirror）最常用，页面解析完就在后台加载并执行；
+         其余（解压、虚拟机、格式化）第一次用到时才加载（JSLibs.load），空闲时再用 <link rel="prefetch"> 悄悄预取到缓存。
          样式表插在 #lib-css-anchor 之前，层叠顺序与以前完全一致（下面的系统样式仍然能覆盖 CodeMirror 默认样式）。 -->
     <meta id="lib-css-anchor" name="jisheng-lib-css-anchor" content="">
     <script>
@@ -96,6 +97,14 @@
                 });
             });
         }
+        // HTML 编辑器是最常用的功能：页面解析完（DOMContentLoaded）就在后台加载并执行 CodeMirror，不阻塞首屏，
+        // 点开编辑器时通常已经就绪。
+        // 为什么有缓存还要「加载」：HTTP 缓存省掉的只是下载；刷新页面后内存清空，20 个脚本仍要从缓存读出来、
+        // 重新解析执行一遍。以前这一步放在点开编辑器时才做，所以每次刷新后第一次打开都会转一下。
+        // CDN 打不开时这里静默失败，打开编辑器时照常提示并可重试。
+        function warmEditor() { load('codemirror').catch(function () {}); }
+        if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', warmEditor, { once: true });
+        else warmEditor();
         window.addEventListener('load', function () {
             setTimeout(function () { (window.requestIdleCallback || setTimeout)(prefetch, { timeout: 8000 }); }, 4000);
         });
@@ -495,6 +504,9 @@
         }
         .window-icon .icon-svg { display: block; width: 16px; height: 16px; color: var(--text-muted); }
         .window-title-text { font-size: 12px; font-weight: 500; color: var(--text-muted); }
+        /* 未保存标记：跟在标题后面的一支小笔（以前是标题前的「● 」字符） */
+        .win-dirty { display: inline-flex; align-items: center; flex: none; margin-left: -4px; color: var(--l30, #f5a524); }   /* = 各应用里的 --warn（状态栏「未保存」圆点同色），标题栏不在应用作用域内，直接用主题变量 */
+        .win-dirty .icon-svg { width: 13px; height: 13px; }
 
         /* 窗口控制按钮 */
         .window-controls { display: flex; height: 100%; }
@@ -2431,6 +2443,8 @@
 
         /* ===================== V2：性能 / Bug 修复 ===================== */
         /* 编辑器组件按需加载时的占位层：盖住整个编辑器，组件就绪后移除；失败时显示重试 */
+        @keyframes edxLibIn { from { opacity: 0; } }
+        .edx > .edx-libload { animation: edxLibIn .2s ease .25s both; }
         .edx > .edx-libload { position: absolute; inset: 0; z-index: 20; display: flex; align-items: center; justify-content: center; gap: 10px;
             background: var(--pane); color: var(--muted); font-size: 13px; }
         .edx-libload .icon-svg { width: 18px; height: 18px; color: var(--warn); }
@@ -7434,6 +7448,7 @@
             uiEject:      '<path d="M18 19a5 5 0 0 1-5-5v8"/><path d="M9 20H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H20a2 2 0 0 1 2 2v5"/><circle cx="13" cy="12" r="2"/><circle cx="20" cy="19" r="2"/>',
             uiBrush:      '<path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/>',
             uiEraser:     '<path d="m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21"/><path d="M22 21H7"/><path d="m5 11 9 9"/>',
+            uiUnsaved:    '<path d="M13 21h8"/><path d="m15 5 4 4"/><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/>',
             uiSave:       '<path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/>',
             uiBrowserCtx: '<circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>',
             uiCode:       '<polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>',
@@ -7549,6 +7564,22 @@
         // 返回完整 <svg> 字符串；extra 为附加 class（如 sm/lg/xl 或 tb-notify-icon）
         function icon(name, extra){
             return _S(iconBody(name))(extra ? 'icon-svg ' + extra : 'icon-svg');
+        }
+
+        // 标题栏未保存标记（记事本 / HTML 编辑器 / CSV 表格共用）：dirty 时在标题后面显示一支小笔，悬停有说明
+        function setWinDirty(winEl, dirty, tip) {
+            if (!winEl) return;
+            let el = winEl.querySelector(':scope > .title-bar .win-dirty');
+            if (!dirty) { if (el) el.remove(); return; }
+            if (!el) {
+                const t = winEl.querySelector(':scope > .title-bar .window-title-text');
+                if (!t) return;
+                t.insertAdjacentHTML('afterend', '<span class="win-dirty" role="img"></span>');
+                el = t.nextElementSibling;
+                el.innerHTML = icon('uiUnsaved');
+            }
+            const label = tip || '有未保存的修改';
+            if (el.title !== label) { el.title = label; el.setAttribute('aria-label', label); }
         }
 
         // 将静态 HTML 中带有 data-icon 的元素注入为集中式 SVG 图标
@@ -13843,7 +13874,10 @@
                         const dirty = editor.value !== st.saved;
                         status.classList.toggle('dirty', dirty); status.classList.toggle('saved', !dirty);
                         btn('save').classList.toggle('pending', dirty);
-                        if (titleEl) titleEl.textContent = (dirty ? '● ' : '') + 'CSV 表格 - ' + filename;
+                        if (titleEl) {
+                            titleEl.textContent = 'CSV 表格 - ' + filename;
+                            setWinDirty(titleEl.closest('.window'), dirty, '有未保存的修改\n按 Ctrl+S 保存');
+                        }
                     };
                     const setMode = m => {
                         st.mode = m;
@@ -13920,7 +13954,7 @@
         //    关窗、刷新、断电都不会丢；下次打开同一文件时自动恢复未保存的内容
         //  - 字号调节（工具栏字号按钮，Ctrl + 滚轮，Ctrl + - / = / 0），全局记忆
         //  - 撤销 / 重做按钮（自维护历史栈，最多 200 步；Ctrl+Z / Ctrl+Y / Ctrl+Shift+Z）
-        //  - Ctrl+S 保存；标题栏用 ● 标记未保存
+        //  - Ctrl+S 保存；标题栏用一支小笔（setWinDirty）标记未保存
         const NP_DRAFT_PREFIX = 'JSOS_NP_DRAFT::';
         const NP_FONT_KEY = 'JSOS_NP_FONTSIZE';
         const NP_FONT_MIN = 10, NP_FONT_MAX = 40, NP_FONT_DEFAULT = 14;
@@ -14011,7 +14045,8 @@
 
                     const isDirty = () => area.value !== savedContent;
                     const setTitle = () => {
-                        titleEl.innerText = (isDirty() ? '● ' : '') + '记事本 - ' + currentFile;
+                        titleEl.innerText = '记事本 - ' + currentFile;
+                        setWinDirty(w, isDirty(), '有未保存的修改\n已自动暂存在本机，刷新页面或关闭窗口不会丢失；按 Ctrl+S 保存到文件');
                         btnSave.classList.toggle('pending', isDirty());
                     };
                     // 状态：主文字（已保存 / 未保存 / 新文件）+ 次要说明（窄窗口时隐藏）+ 悬停提示
@@ -15536,7 +15571,10 @@
             function setEditorTitle() {
                 const t = document.querySelector(`#win-${winId} .window-title-text`);
                 const named = editorFsPath || filename !== '未命名.html';
-                if (t) t.textContent = (isDirty() ? '● ' : '') + (named ? `HTML编辑器 - ${filename}` : 'HTML编辑器');
+                if (t) {
+                    t.textContent = named ? `HTML编辑器 - ${filename}` : 'HTML编辑器';
+                    setWinDirty(t.closest('.window'), isDirty(), '有未保存的修改\n按 Ctrl+S 保存');
+                }
             }
             function updateDirty() {
                 const d = isDirty();
@@ -16404,7 +16442,7 @@
             updatePreviewHeader();
             renderConsole();
             updateEditorPreview();
-            if (!initialContent) setTimeout(() => editor.focus(), 60);
+            if (!initialContent) setTimeout(() => { if (editor) editor.focus(); }, 60);
 
             // 窗口 / 容器尺寸变化：比例布局自动适配，这里只需重算“是否放得下分屏”、设备缩放并刷新 CodeMirror
             const ro = new ResizeObserver(scheduleLayout);
