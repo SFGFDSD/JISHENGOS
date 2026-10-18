@@ -1510,6 +1510,40 @@
         .fx-cseg { display: inline-flex; align-items: center; flex: none; }
         .fx-cseg[hidden], .fx-crumb[hidden] { display: none; }
         .fx-crumb-more { padding: 0 5px; }
+        .fx-crumb-static { cursor: default; }
+        /* 本地文件夹加载层 */
+        .fx-busy {
+            position: absolute; inset: 0; z-index: 60;
+            display: flex; align-items: center; justify-content: center;
+            background: rgba(var(--gc-16, 16,16,22), 0.55);
+            backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px);
+            opacity: 0; transition: opacity .18s ease; cursor: progress;
+        }
+        .fx-busy[hidden] { display: none; }
+        .fx-busy.on { opacity: 1; }
+        .fx-busy-card {
+            display: flex; align-items: center; gap: 14px; max-width: min(380px, calc(100% - 32px));
+            padding: 16px 18px; border-radius: var(--card-radius, 10px);
+            background: rgba(var(--gc-16, 27,27,36), var(--ga-16, 0.96)); border: 1px solid var(--glass-border);
+            box-shadow: 0 12px 32px var(--l80, rgba(0,0,0,0.45)); cursor: default;
+        }
+        .fx-spin {
+            flex: none; width: 26px; height: 26px; border-radius: 50%;
+            border: 3px solid var(--l33, rgba(255,255,255,0.14)); border-top-color: rgb(var(--al-0078d4, 0,120,212));
+            animation: fx-spin .8s linear infinite;
+        }
+        @keyframes fx-spin { to { transform: rotate(360deg); } }
+        .fx-busy-txt { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+        .fx-busy-txt b { font-size: 13.5px; font-weight: 500; color: var(--text-main); }
+        .fx-busy-txt small { font-size: 11.5px; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .fx-busy-cancel {
+            flex: none; margin-left: 4px; height: 26px; padding: 0 10px; border-radius: var(--ctl-radius, 6px);
+            border: 1px solid var(--glass-border); background: var(--l32, rgba(255,255,255,0.07)); color: var(--text-main);
+            font: inherit; font-size: 12px; cursor: pointer;
+        }
+        .fx-busy-cancel:hover { background: var(--l54, rgba(255,255,255,0.12)); }
+        @media (prefers-reduced-motion: reduce) { .fx-spin { animation-duration: 2.4s; } .fx-busy { transition: none; } }
+        .fx-crumb-static:hover { background: transparent; color: inherit; }
         .fx-path-input {
             flex: 1; min-width: 0; height: 100%; padding: 0 10px;
             background: transparent; border: none; outline: none;
@@ -1566,36 +1600,57 @@
         }
         .folder-sidebar::-webkit-scrollbar { width: 4px; }
         .folder-sidebar::-webkit-scrollbar-thumb { background: var(--l33, rgba(255,255,255,0.1)); border-radius: 2px; }
-        .folder-sidebar-section { padding: 4px 0 6px; }
-        .folder-sidebar-title {
-            font-size: 11px; color: var(--text-muted); font-weight: 500;
-            padding: 6px 16px 4px; letter-spacing: 0.3px;
-        }
-        .folder-sidebar-item {
-            display: flex; align-items: center; gap: 9px;
-            height: 30px; margin: 1px 6px; padding: 0 10px;
+        /* 树形导航（方向 D）：宽度不变（180px）。每行 28px，▸ 永远占 14px（没有子级也留空位），
+           所以同一层的图标和文字严格对齐；每深一层缩进 14px。 */
+        .fx-tree { display: flex; flex-direction: column; padding: 0 6px; }
+        .fx-tree [role="group"] { display: contents; }
+        .fx-tn {
+            position: relative; flex: none;
+            display: flex; align-items: center; gap: 6px;
+            height: 28px; margin: 1px 0; padding: 0 6px 0 calc(2px + var(--d, 0) * 14px);
             border-radius: var(--ui-radius, 6px);
-            cursor: pointer; font-size: 12.5px; color: var(--l91, rgba(230,230,240,0.78));
+            font-size: 12.5px; line-height: 1; color: var(--l91, rgba(230,230,240,0.78));
+            cursor: pointer; white-space: nowrap; outline: none;
             transition: background 0.12s, color 0.12s;
         }
-        .folder-sidebar-item:hover { background: var(--l32, rgba(255,255,255,0.07)); color: var(--text-main); }
-        .folder-sidebar-item.active { background: rgba(var(--a-0078d4, 0,120,212), 0.26); color: var(--l4, #fff); }
-        .folder-sidebar-item.is-disabled { opacity: 0.48; cursor: default; }
-        .folder-sidebar-item.is-disabled:hover { background: transparent; color: var(--l91, rgba(230,230,240,0.78)); }
-        .folder-sidebar-item .icon-svg { width: 16px; height: 16px; flex: none; opacity: 0.75; }
-        .folder-sidebar-item.active .icon-svg { opacity: 1; }
-        .folder-sidebar-item span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
-        /* 树形导航（侧栏宽度不变，仍是 180px，间距收紧到放得下「IndexedDB 存储 默认」）：每层缩进 12px；▸ 只展开/收起，点名字才进入；触屏上 ▸ 的点击区放大到 28px */
-        .fx-tree .folder-sidebar-item { gap: 4px; margin: 1px 3px; padding: 0 2px 0 calc(1px + var(--d, 0) * 12px); }
-        .fx-tw { flex: none; align-self: stretch; width: 16px; display: inline-flex; align-items: center; justify-content: center; color: var(--text-muted); border-radius: var(--ui-radius, 6px); }
-        .folder-sidebar-item .fx-tw .icon-svg { width: 12px; height: 12px; opacity: .85; transition: transform .15s ease; }
+        .fx-tn:hover { background: var(--l32, rgba(255,255,255,0.07)); color: var(--text-main); }
+        .fx-tn.active { background: rgba(var(--a-0078d4, 0,120,212), 0.26); color: var(--l4, #fff); }
+        .fx-tn:focus-visible { box-shadow: inset 0 0 0 1.5px rgb(var(--al-0078d4, 0,120,212)); }
+        .fx-tn > .icon-svg { width: 16px; height: 16px; flex: none; opacity: 0.75; }
+        .fx-tn.active > .icon-svg, .fx-tn:hover > .icon-svg { opacity: 1; }
+        .fx-tt { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; padding: 2px 0; }
+        .fx-tw {
+            position: relative; flex: none; width: 14px; height: 18px; margin-right: -1px;
+            display: flex; align-items: center; justify-content: center;
+            color: var(--text-muted); border-radius: 4px;
+        }
+        .fx-tw .icon-svg { width: 12px; height: 12px; stroke-width: 2; transition: transform .15s ease; }
         .fx-tn[aria-expanded="true"] > .fx-tw .icon-svg { transform: rotate(90deg); }
-        .fx-tw[data-tw]:hover { color: var(--text-main); background: var(--l32, rgba(255,255,255,0.07)); }
-        .fx-tn.is-group { color: var(--text-muted); }
-        .fx-tb { margin-left: auto; flex: none; font-style: normal; font-size: 10px; line-height: 15px; padding: 0 3px; border-radius: 999px; color: var(--text-muted); background: var(--l32, rgba(255,255,255,0.07)); }
-        .fx-tn.active .fx-tb { color: inherit; }
-        @media (pointer: coarse) { .fx-tw { width: 28px; margin: 0 -6px; } .fx-tree .folder-sidebar-item { height: 34px; } }
-        @media (prefers-reduced-motion: reduce) { .folder-sidebar-item .fx-tw .icon-svg { transition: none; } }
+        .fx-tw[data-tw]:hover { color: var(--text-main); background: var(--l54, rgba(255,255,255,0.1)); }
+        .fx-tb {
+            flex: none; font-style: normal; font-size: 10px; line-height: 16px; padding: 0 5px;
+            border-radius: 999px; color: var(--text-muted); background: var(--l32, rgba(255,255,255,0.07));
+        }
+        .fx-tn.active .fx-tb { color: inherit; background: var(--l54, rgba(255,255,255,0.12)); }
+        .fx-tx {
+            flex: none; width: 22px; height: 22px; margin-right: -3px; padding: 0; border: 0;
+            display: none; align-items: center; justify-content: center;
+            background: transparent; color: var(--text-muted); border-radius: 4px; cursor: pointer;
+        }
+        .fx-tx .icon-svg { width: 14px; height: 14px; }
+        .fx-tn:hover .fx-tx, .fx-tn:focus-visible .fx-tx, .fx-tn.active .fx-tx { display: flex; }
+        .fx-tx:hover { color: var(--text-main); background: var(--l54, rgba(255,255,255,0.12)); }
+        .fx-tn.is-off { color: var(--text-muted); }
+        .fx-tn.is-off > .icon-svg { opacity: 0.55; }
+        .fx-tn.is-action { color: var(--text-muted); }
+        .fx-tn.is-action:hover { color: var(--text-main); }
+        .fx-tsep { flex: none; height: 1px; margin: 5px 6px; background: var(--glass-border, rgba(255,255,255,0.08)); }
+        @media (pointer: coarse) {
+            .fx-tn { height: 36px; }
+            .fx-tw::after { content: ''; position: absolute; inset: -9px -8px -9px -10px; }   /* ▸ 的点击区放大，布局不变 */
+            .fx-tx { display: flex; width: 30px; height: 30px; }
+        }
+        @media (prefers-reduced-motion: reduce) { .fx-tw .icon-svg { transition: none; } }
         /* 宽窗口：导航窗格可收起（点地址栏最左侧按钮），状态记在 localStorage，所有文件夹窗口共用 */
         @container fx (width > 640px) {
             .folder-sidebar {
@@ -2030,7 +2085,7 @@
         }
         .window.truly-fullscreen.manga-full .manga-exit-btn { display: flex; }
 
-        /* === 图片查看器（v10.6：单张 / 长条两种模式，按需加载） === */
+        /* === 图片查看器（单张浏览；长条连续阅读见下方「漫画阅读器」） === */
         .imv { flex: 1; min-height: 0; display: flex; flex-direction: column; background: rgba(var(--gc-19, 18,18,22), var(--ga-19, 1)); }
         .imv .npx-bar { background: var(--l103, rgba(0,0,0,.35)); }
         .imv-pos, .imv-zoom { min-width: 54px; text-align: center; font-size: 12px; color: var(--ink); font-variant-numeric: tabular-nums; cursor: default; user-select: none; }
@@ -2051,14 +2106,52 @@
         .imv-nav:hover { background: rgba(0,0,0,.7); opacity: 1 !important; }
         .imv-nav:disabled { display: none; }
         .imv-msg { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 13px; pointer-events: none; }
-        .imv-strip { flex: 1; min-height: 0; overflow-y: auto; background: #000; display: flex; flex-direction: column; align-items: center; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.2) transparent; }
-        .imv-strip .pg { flex: none; width: 100%; max-width: 1000px; min-height: 60vh; display: flex; align-items: center; justify-content: center; color: #555; font-size: 12px; }
-        .imv-strip .pg.ok { min-height: 0; }
-        .imv-strip .pg img { width: 100%; display: block; }
         .window.truly-fullscreen .imv .npx-bar { position: absolute; left: 50%; top: 10px; transform: translateX(-50%); z-index: 5; border-radius: var(--card-radius); border: 1px solid var(--line); opacity: 0; transition: opacity .2s; max-width: calc(100% - 80px); }
         .window.truly-fullscreen .imv:hover .npx-bar { opacity: 1; }
         .window.truly-fullscreen .imv { position: relative; }
         @container npx (max-width: 620px) { .imv-info { display: none; } }
+        /* === 漫画阅读器：先以普通窗口打开；点标题栏「全屏」(或按 F) 后进入沉浸全屏，只剩右上角一个 × === */
+        .window.cmx-win.truly-fullscreen {
+            height: 100dvh !important; border: 0 !important; box-shadow: none !important; background: #000 !important;
+            backdrop-filter: none !important; -webkit-backdrop-filter: none !important;
+        }
+        .window.cmx-win.truly-fullscreen > .title-bar { display: none !important; }
+        .window.cmx-win:not(.truly-fullscreen) .cmx-x { display: none; }
+        .cmx { position: relative; flex: 1; min-height: 0; background: #000; overflow: hidden; overscroll-behavior: none; }
+        .cmx-scroll {
+            position: absolute; inset: 0; overflow-x: hidden; overflow-y: auto;
+            overscroll-behavior: none; touch-action: pan-y; -webkit-overflow-scrolling: touch; overflow-anchor: none;
+            outline: none; cursor: grab; background: #000;
+            scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.18) transparent;
+        }
+        .cmx-scroll::-webkit-scrollbar { width: 8px; }
+        .cmx-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,.18); border-radius: 4px; }
+        .cmx-scroll.grabbing { cursor: grabbing; }
+        .cmx-col { display: flex; flex-direction: column; align-items: center; width: 100%; }
+        .cmx-pg { position: relative; flex: none; width: var(--cmw, 100%); max-width: 100%; aspect-ratio: var(--ar, var(--g, 0.7)); background: #0b0b0d; }
+        .cmx-pg img { display: block; width: 100%; height: 100%; user-select: none; -webkit-user-select: none; -webkit-user-drag: none; pointer-events: none; }
+        .cmx-pg .ph {
+            position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+            color: rgba(255,255,255,.22); font-size: 13px; letter-spacing: .1em; font-variant-numeric: tabular-nums;
+            background: linear-gradient(110deg, #0b0b0d 30%, #151518 50%, #0b0b0d 70%) 0 0 / 200% 100%;
+            animation: cmx-shimmer 1.4s linear infinite;
+        }
+        .cmx-pg.ok .ph { display: none; }
+        .cmx-pg.bad .ph { animation: none; color: rgba(255,255,255,.4); }
+        @keyframes cmx-shimmer { to { background-position: -200% 0; } }
+        .cmx-x {
+            position: absolute; z-index: 5; top: max(12px, env(safe-area-inset-top)); right: max(18px, env(safe-area-inset-right));
+            width: 34px; height: 34px; padding: 0; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            border: 1px solid rgba(255,255,255,.14); background: rgba(0,0,0,.4); color: rgba(255,255,255,.7);
+            cursor: pointer; transition: opacity .3s, background .15s, color .15s;
+            -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+        }
+        .cmx-x .icon-svg { width: 14px; height: 14px; stroke-width: 2; }
+        .cmx-x:hover, .cmx-x:focus-visible { color: #fff; background: rgba(0,0,0,.75); opacity: 1; }
+        .cmx.idle .cmx-x { opacity: .35; }
+        @media (pointer: coarse) { .cmx-x { width: 40px; height: 40px; } }
+        @media (prefers-reduced-motion: reduce) { .cmx-pg .ph { animation: none; } }
         @container npx (max-width: 470px) { .imv .hide-sm { display: none; } }
 
         /* === HTML 编辑器（v10.6 重做）===
@@ -2796,7 +2889,8 @@
             configPath: '/system/config/wallpaper.cfg',
             settingsPath: '/system/config/settings.json',
             clickBehavior: 'double',
-            storageNames: 'tech',      // 存储位置显示名：'tech' = IndexedDB 存储 / OPFS 存储；'zh' = 浏览器存储 / 高速存储
+            storageNames: 'tech',      // 存储位置显示名：'tech' = IndexedDB 存储 / OPFS 存储（默认）；'zh' = 浏览器存储 / 高速存储
+            imageOpen: 'comic',        // 图片默认打开方式：'comic' = 漫画阅读器（默认）；'viewer' = 图片查看器
             hiddenSystemApps: [],
             windowCorners: 'round',      // round / small / square（旧版字段：按 cornerRadius 就近换算后一并保存，回退旧版本时仍可用）
             cornerRadius: 10,            // 窗口圆角 0–20 px（设置里的滑块），其余圆角按比例推算
@@ -2835,7 +2929,7 @@
         function getStorageDocumentsPath(backend) {
             return backend === 'opfs' ? '/opfs/documents' : '/documents';
         }
-        // 存储位置的显示名。默认用技术名，设置 → 文件管理 →「存储位置名称」可换成中文名；
+        // 存储位置的显示名。默认用技术名（IndexedDB 存储 / OPFS 存储），设置 → 文件管理 →「存储位置名称」可换成中文名（浏览器存储 / 高速存储）；
         // 侧栏、路径栏、窗口标题、设置页和提示统一从这里取，保证处处一致。
         function storageBackendLabel(backend) {
             const zh = SYSTEM.storageNames === 'zh';
@@ -2848,8 +2942,8 @@
             refreshOpenFileManagers();
         }
         function getExplorerStorageRoots() {
-            const roots = ['/desktop'];
-            if (SYSTEM.opfs && SYSTEM.opfs.available) roots.push('/opfs/desktop');
+            const roots = ['/desktop', '/documents'];
+            if (SYSTEM.opfs && SYSTEM.opfs.available) roots.push('/opfs/desktop', '/opfs/documents');
             return roots;
         }
         function syncStorageMigrationControls() {
@@ -2895,7 +2989,8 @@
         function applySystemSettings(rawSettings) {
             const settings = rawSettings && typeof rawSettings === 'object' ? rawSettings : {};
             SYSTEM.clickBehavior = settings.clickBehavior === 'single' ? 'single' : 'double';
-            SYSTEM.storageNames = settings.storageNames === 'zh' ? 'zh' : 'tech';
+            SYSTEM.storageNames = settings.storageNames === 'zh' ? 'zh' : 'tech';   // 默认技术名（IndexedDB / OPFS）
+            SYSTEM.imageOpen = settings.imageOpen === 'viewer' ? 'viewer' : 'comic';
             const requestedBackend = settings.storageBackend === 'opfs' ? 'opfs' : 'indexeddb';
             // OPFS 是渐进增强：旧浏览器 / 隐私模式不可用时安全回退到 IndexedDB。
             SYSTEM.storageBackend = requestedBackend === 'opfs' && SYSTEM.opfs && SYSTEM.opfs.available ? 'opfs' : 'indexeddb';
@@ -3068,7 +3163,7 @@
                 const st = SYSTEM.folderWindowStates[windowId];
                 if (st && typeof fxPathName === 'function') { st.folderName = fxPathName(st.currentPath); fxUpdateTitle(windowId); }
                 const sidebar = document.getElementById('folder-sidebar-' + windowId);
-                if (sidebar && typeof buildFolderSidebar === 'function') sidebar.innerHTML = buildFolderSidebar(windowId);
+                if (sidebar && typeof fxTreeRepaint === 'function') fxTreeRepaint(windowId);
                 if (typeof updateFolderBreadcrumb === 'function') updateFolderBreadcrumb(windowId);
                 if (typeof renderFolderContent === 'function') renderFolderContent(windowId);
             });
@@ -3091,6 +3186,12 @@
                 if (document.fullscreenElement) document.exitFullscreen();
             }
         }
+
+        // 用户用浏览器自己的方式退出全屏（Esc、F11、系统手势）时，窗口的全屏状态也一起退出，不留一个"假全屏"窗口
+        document.addEventListener('fullscreenchange', () => {
+            if (document.fullscreenElement) return;
+            document.querySelectorAll('.window.truly-fullscreen').forEach(win => win.classList.remove('truly-fullscreen', 'manga-full'));
+        });
 
         let currentDragFile = null;
         let dragFileReady = false;
@@ -6889,6 +6990,9 @@
             if (!isLocalFolder && filename && count <= 1 && canOpenWith(filename)) {
                 items.push('-', ...openWithItems(fullPath, filename));
             }
+            if (!isLocalFolder && filename && count <= 1 && IMG_EXT_RE.test(filename)) {
+                items.push('-', ...imageOpenWithItems(fullPath, filename));
+            }
             // 「设为桌面壁纸」：仅单选的图片文件显示
             if (!isLocalFolder && filename && count <= 1 && isImageFile(filename)) {
                 items.push('-', { icon: 'stxWallpaper', label: '设为桌面壁纸', act: () => setWallpaperFromPath(fullPath, filename) });
@@ -7352,8 +7456,8 @@
             // fileFolder: Lucide folder（v1.59）
             fileFolder: '<path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/>',
             fileGeneric:'<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>',
-            // fileText: Lucide file-text（原记事本图标，让给 .txt）
-            fileText:   '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>',
+            // fileText：.txt 图标（恢复为旧版：无折角，避免半透明描边在折角处叠加发白）
+            fileText:   '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>',
             fileImg:    '<rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>',
             fileCsv:    '<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18M3 9h18M3 15h18"/>',
             fileZip:    '<path d="M21 8v13H3V8"/><path d="M1 3h22v5H1z"/><path d="M10 12h4"/>',
@@ -7433,6 +7537,8 @@
             uiNewFolder:  '<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2v11z"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/>',
             uiUploadFolder: '<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2v11z"/><polyline points="16 15 12 11 8 15"/><line x1="12" y1="11" x2="12" y2="19"/>',
             uiNewFile:    '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>',
+            // uiNewTextFile：「新建文本文档」统一图标（桌面右键、文件夹「新建」菜单、文件夹右键、命名对话框共用）——文件轮廓 + 正中一个加号，单一路径，不会叠色
+            uiNewTextFile: '<path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2zM14 2v5a1 1 0 0 0 1 1h5M12 12v6M9 15h6"/>',
             uiNewHtml:    '<path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z"/><path d="M14 2v5a1 1 0 0 0 1 1h5"/><path d="M10 12.5 8 15l2 2.5"/><path d="m14 12.5 2 2.5-2 2.5"/>',
             uiSearch:     '<circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>',
             uiFullscreen: '<path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/>',
@@ -7533,6 +7639,12 @@
             stxRotateCcw: '<path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/>',
             stxTrash2: '<path d="M10 11v6"/><path d="M14 11v6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>',
             stxPlugZap: '<path d="M6.3 20.3a2.4 2.4 0 0 0 3.4 0L12 18l-6-6-2.3 2.3a2.4 2.4 0 0 0 0 3.4Z"/><path d="m2 22 3-3"/><path d="M7.5 13.5 10 11"/><path d="M10.5 16.5 13 14"/><path d="m18 3-4 4h6l-4 4"/>',
+            // stxZap：Lucide zap（高速存储）
+            stxZap: '<path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"/>',
+            // stxFolderRoot：Lucide folder-root（根目录 /）
+            stxFolderRoot: '<path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"/><circle cx="12" cy="13" r="2"/><path d="M12 15v5"/>',
+            // stxBookOpen：Lucide book-open（漫画阅读器）
+            stxBookOpen: '<path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/>',
             stxFolder: '<path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/>',
             stxMonitorSmartphone: '<path d="M18 8V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h8"/><path d="M10 19v-3.96 3.15"/><path d="M7 19h5"/><rect width="6" height="10" x="16" y="12" rx="2"/>',
             stxCalendarSync: '<path d="M11 10v4h4"/><path d="m11 14 1.535-1.605a5 5 0 0 1 8 1.5"/><path d="M16 2v3"/><path d="m21 18-1.535 1.605a5 5 0 0 1-8-1.5"/><path d="M21 22v-4h-4"/><path d="M21 8.517V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h3.517"/><path d="M3 9h4"/><path d="M8 2v3"/>',
@@ -7754,11 +7866,16 @@
         const FX_COL_KEYS = ['name', 'date', 'type', 'size'];
         const FX_COL_MAX = 800;
         const FX_LS = { widths: 'JISHENG_OS_COL_WIDTHS_V2', order: 'JISHENG_OS_COL_ORDER', view: 'JISHENG_OS_FOLDER_VIEW', mcol: 'JISHENG_OS_MILLER_COL_W' };
-        const FX_ROOT_LABELS = {
-            get '/desktop'() { return storageBackendLabel('indexeddb'); },
-            get '/opfs/desktop'() { return storageBackendLabel('opfs'); },
-            '/mnt/local': '本地文件夹', '/mnt': '挂载点', '/': '根目录'
-        };
+        // 四个存储工作区：[路径, 存储后端, 种类]。界面上一律叫「桌面」「文档」；不是默认存储的，前面再加存储名（如「高速存储 › 桌面」）
+        const FX_STORE_ROOTS = [['/desktop', 'indexeddb', 'desktop'], ['/documents', 'indexeddb', 'documents'], ['/opfs/desktop', 'opfs', 'desktop'], ['/opfs/documents', 'opfs', 'documents']];
+        const FX_FIXED_LABELS = { '/mnt/local': '本地文件夹', '/mnt': '挂载点', '/': '根目录' };
+        function fxStoreRoot(p) { return FX_STORE_ROOTS.find(r => r[0] === p) || null; }
+        function fxStoreIsDefault(r) { return !!r && r[1] === (SYSTEM.storageBackend === 'opfs' ? 'opfs' : 'indexeddb'); }
+        function fxRootLabel(p) {
+            const r = fxStoreRoot(p);
+            if (r) return r[2] === 'desktop' ? '桌面' : '文档';
+            return Object.prototype.hasOwnProperty.call(FX_FIXED_LABELS, p) ? FX_FIXED_LABELS[p] : null;
+        }
         let FX_SEQ = 0;
 
         function fxLsGet(key) { try { return JSON.parse(localStorage.getItem(key)); } catch (_) { return null; } }
@@ -7784,7 +7901,8 @@
         function fxMountPaths() { return Object.values(SYSTEM.mountedFolders || {}).filter(Boolean).map(i => i.mountPath || ('/mnt/local/' + i.name)); }
         function fxMountedAt(path) { return Object.values(SYSTEM.mountedFolders || {}).find(i => i && (i.mountPath || ('/mnt/local/' + i.name)) === path) || null; }
         function fxPathName(path) {
-            if (Object.prototype.hasOwnProperty.call(FX_ROOT_LABELS, path)) return FX_ROOT_LABELS[path];
+            const lbl = fxRootLabel(path);
+            if (lbl != null) { const r = fxStoreRoot(path); return r && !fxStoreIsDefault(r) ? `${lbl}（${storageBackendLabel(r[1])}）` : lbl; }
             const m = fxMountedAt(path);
             if (m) return m.name;
             return String(path).split('/').pop() || '文件管理器';
@@ -7802,7 +7920,14 @@
             const parts = [];
             let p = path || '/';
             for (let guard = 0; guard < 64; guard++) {
-                if (Object.prototype.hasOwnProperty.call(FX_ROOT_LABELS, p)) { parts.unshift({ name: FX_ROOT_LABELS[p], path: p }); break; }
+                const lbl = fxRootLabel(p);
+                if (lbl != null) {
+                    parts.unshift({ name: lbl, path: p });
+                    // 非默认存储：前面加一段不可点击的存储名，例如「高速存储 › 桌面 › 视频」
+                    const r = fxStoreRoot(p);
+                    if (r && !fxStoreIsDefault(r)) parts.unshift({ name: storageBackendLabel(r[1]), path: null, ic: r[1] === 'opfs' ? 'stxZap' : 'stxHardDrive' });
+                    break;
+                }
                 const m = fxMountedAt(p);
                 parts.unshift({ name: m ? m.name : (p.split('/').pop() || p), path: p });
                 const parent = fxParentOf(p);
@@ -7819,7 +7944,9 @@
         // ================= 窗口 =================
         function fxOpenWindow(path, opts) {
             opts = opts || {};
-            SYSTEM.fs.readdir(path, (err) => {
+            // 本地挂载的文件夹读取可能要好几秒：先把窗口开出来，由窗口里的加载层显示进度，不再先读一遍再开窗（看起来像卡死）
+            const precheck = isLocalMountedPath(path) ? (cb => cb(null)) : (cb => SYSTEM.fs.readdir(path, cb));
+            precheck((err) => {
                 if (err) { Notify.error('错误', err.message); return; }
                 const windowId = 'folder-' + Date.now() + '-' + (++FX_SEQ);
                 const sortPref = loadFolderSortPref();
@@ -7900,6 +8027,13 @@
                             <span class="fx-status-sel" id="fx-status-sel-${wid}"></span>
                             <span class="fx-status-right" id="folder-status-size-${wid}"></span>
                         </div>
+                    </div>
+                </div>
+                <div class="fx-busy" id="fx-busy-${wid}" role="status" aria-live="polite" hidden>
+                    <div class="fx-busy-card">
+                        <span class="fx-spin" aria-hidden="true"></span>
+                        <div class="fx-busy-txt"><b>正在读取本地文件夹…</b><small class="fx-busy-name"></small></div>
+                        <button type="button" class="fx-busy-cancel" data-busy-cancel="1">取消</button>
                     </div>
                 </div>
             </div>`;
@@ -7985,7 +8119,7 @@
             const st = fxState(wid);
             return [
                 { icon: 'uiNewFolder', label: '文件夹', act: () => folderCreateNew(wid, 'folder') },
-                { icon: 'uiNewFile', label: '文本文档', act: () => folderCreateNew(wid, 'file') },
+                { icon: 'uiNewTextFile', label: '文本文档', act: () => folderCreateNew(wid, 'file') },
                 { icon: 'uiNewHtml', label: 'HTML 文档', act: () => createNewHtmlFile(st.currentPath, wid) }
             ];
         }
@@ -8101,35 +8235,35 @@
             fxApplyColVars(wid);
 
             root.addEventListener('click', e => {
+                if (!e.target.closest('[data-busy-cancel]')) return;
+                // 取消读取：回到上一个位置；刚打开就取消则关闭窗口
+                const st = fxState(wid);
+                if (!st) return;
+                st._renderToken++;
+                fxBusyEnd(wid);
+                if (st.histIdx > 0) fxBack(wid);
+                else { const w = root.closest('.window'); if (w) closeWin(Number(w.id.replace('win-', ''))); }
+            });
+            root.addEventListener('click', e => {
                 const b = e.target.closest('[data-act]');
                 if (!b || !root.contains(b) || b.classList.contains('disabled')) return;
                 e.preventDefault();
                 fxAction(wid, b.dataset.act, b);
             });
 
-            const side = fxEl('folder-sidebar-', wid);
-            side.addEventListener('click', e => {
-                const it = e.target.closest('.folder-sidebar-item');
-                if (!it || it.classList.contains('is-disabled')) return;
-                const st = fxState(wid);
-                const onTwisty = !!e.target.closest('.fx-tw[data-tw]');
-                if (onTwisty || it.dataset.tgl || (st && it.dataset.nav === st.currentPath && it.getAttribute('aria-expanded'))) {
-                    fxTreeToggle(wid, it.dataset.key);   // 不导航，所以手机上抽屉也不会收起
-                    return;
-                }
-                if (it.dataset.nav) fxGo(wid, it.dataset.nav);
-            });
+            fxTreeBind(wid, fxEl('folder-sidebar-', wid));
 
             const bc = fxEl('folder-breadcrumb-', wid);
             bc.addEventListener('click', e => {
                 const c = e.target.closest('.fx-crumb');
                 if (c && c.classList.contains('fx-crumb-more')) {
-                    const items = [...bc.querySelectorAll('.fx-cseg[hidden] .fx-crumb')].reverse()
+                    const items = [...bc.querySelectorAll('.fx-cseg[hidden] .fx-crumb[data-path]')].reverse()
                         .map(x => ({ icon: 'fileFolder', label: x.textContent.trim(), act: () => fxGo(wid, x.dataset.path) }));
                     fxDropMenu(c, items);
                     return;
                 }
-                if (c) { fxGo(wid, c.dataset.path); return; }
+                if (c && c.dataset.path) { fxGo(wid, c.dataset.path); return; }
+                if (c) return;   // 存储名只是标签，不可点
                 if (!bc.classList.contains('editing')) fxEditPath(wid);
             });
 
@@ -8336,6 +8470,27 @@
             return first;
         }
 
+        // 本地文件夹加载层：读取超过 120ms 才出现（快的时候不闪），盖住整个文件夹窗口内容（标题栏除外，随时可以关窗）
+        function fxBusyStart(wid, token) {
+            const st = fxState(wid), el = fxEl('fx-busy-', wid);
+            if (!st || !el) return;
+            clearTimeout(st._busyT);
+            if (!isLocalMountedPath(st.currentPath) || fxIsGlobalSearch(st)) { fxBusyEnd(wid); return; }
+            const name = fxPathName(st.currentPath);
+            st._busyT = setTimeout(() => {
+                if (st._renderToken !== token || !el.isConnected) return;
+                el.querySelector('.fx-busy-name').textContent = name;
+                el.hidden = false;
+                requestAnimationFrame(() => el.classList.add('on'));
+            }, 120);
+        }
+        function fxBusyEnd(wid) {
+            const st = fxState(wid), el = fxEl('fx-busy-', wid);
+            if (st) clearTimeout(st._busyT);
+            if (!el || el.hidden) return;
+            el.classList.remove('on');
+            el.hidden = true;
+        }
         function renderFolderContent(windowId) {
             const st = fxState(windowId);
             if (!st) return;
@@ -8343,6 +8498,7 @@
             if (!sc) return;
             st._renderedAt = Date.now();
             const token = ++st._renderToken;
+            fxBusyStart(windowId, token);
             const same = st._shownPath === st.currentPath && st._shownView === st.viewMode;
             const pending = st._selectAfter; st._selectAfter = null;
             const keep = pending || (same ? fxSelectedPaths(windowId) : []);
@@ -8354,6 +8510,12 @@
                 if (st._renderToken !== token || !document.body.contains(sc)) return;
                 const prevL = same ? sc.scrollLeft : 0, prevT = same ? sc.scrollTop : 0;
                 fxSyncViewButtons(windowId);
+                if (res.err && fxStoreRoot(st.currentPath) && st._ensuredFor !== st.currentPath) {
+                    // 存储工作区（如「高速存储 › 文档」）还不存在：建好后重读
+                    st._ensuredFor = st.currentPath;
+                    ensureDir(st.currentPath).catch(() => {}).then(() => { if (st._renderToken === token) renderFolderContent(windowId); });
+                    return;
+                }
                 if (res.err) {
                     fxPaint(sc, windowId, `<div class="fx-empty fx-err">${icon('uiWarning')}<div>无法读取此文件夹</div><small>${escapeHtml(res.err.message || '')}</small></div>`);
                     st._entries = []; st._shown = []; st._entryMap = new Map();
@@ -8398,6 +8560,7 @@
         function fxAfterRender(windowId, token) {
             const st = fxState(windowId);
             if (!st || st._renderToken !== token) return;
+            fxBusyEnd(windowId);
             st._shownPath = st.currentPath;
             st._shownView = st.viewMode;
             // 当前文件夹刚读完，直接拿来当树里它的子文件夹，不再重复读取
@@ -8406,8 +8569,7 @@
                 FX_TREE_DIRS.set(st.currentPath, fxTreeDirNames(st._entries));
                 seeded = st.currentPath;
             }
-            const side = fxEl('folder-sidebar-', windowId);
-            if (side) side.innerHTML = buildFolderSidebar(windowId);
+            fxTreeRepaint(windowId);
             fxTreeRefresh(windowId, seeded);
             fxMarkCut(windowId);
             fxUpdateTotal(windowId);
@@ -8693,6 +8855,7 @@
                     { icon: 'uiCode', label: '用代码编辑器打开', act: () => openWithEditor(path, name) },
                     { icon: 'uiBrowserCtx', label: '用浏览器打开', act: () => openWithBrowser(path, name) },
                     { icon: 'uiNewFile', label: '用记事本打开', act: () => openWithNotepad(path, name) });
+                if (!isDir && IMG_EXT_RE.test(name)) items.push('-', ...imageOpenWithItems(path, name));
                 if (!isDir && isImageFile(name)) items.push('-', { icon: 'stxWallpaper', label: '设为桌面壁纸', act: () => setWallpaperFromPath(path, name) });
                 if (!isDir && isArchiveFile(name)) items.push({ icon: 'uiExtractSimple', label: '解压', act: () => extractZipFromPath(path) });
                 items.push('-',
@@ -8715,7 +8878,7 @@
             if (Clipboard.hasItems()) items.push('-', { icon: 'uiPaste', label: '粘贴', act: () => pasteToFolderWindow(wid) });
             items.push('-',
                 { icon: 'uiNewFolder', label: '新建文件夹', act: () => folderCreateNew(wid, 'folder') },
-                { icon: 'uiNewFile', label: '新建文本文档', act: () => folderCreateNew(wid, 'file') },
+                { icon: 'uiNewTextFile', label: '新建文本文档', act: () => folderCreateNew(wid, 'file') },
                 { icon: 'uiNewHtml', label: '新建 HTML 文档', act: () => createNewHtmlFile(st.currentPath, wid) },
                 '-',
                 { icon: 'uiUpload', label: '上传文件', act: () => fxUpload(wid, false) },
@@ -8732,6 +8895,9 @@
             const win = fxEl('folder-content-', wid)?.closest('.window');
             const t = win && win.querySelector('.window-title-text');
             if (st && t) t.textContent = st.folderName;
+            // 任务栏按钮的文字跟着当前文件夹走（原来一直停在打开时的名字）
+            const wo = win && SYSTEM.windows.find(x => x.element === win);
+            if (wo && st && wo.title !== st.folderName) { wo.title = st.folderName; setTimeout(updateTaskbarRunningItems, 30); }
         }
         function fxGo(windowId, path, opts) {
             opts = opts || {};
@@ -8984,7 +9150,9 @@
             const parts = fxCrumbParts(st.currentPath);
             bc.classList.remove('editing');
             bc.innerHTML = `<button type="button" class="fx-crumb fx-crumb-more" hidden title="更多上级位置" aria-label="更多上级位置">${icon('fxMore')}</button>`
-                + parts.map((p, i) => `<span class="fx-cseg">${i ? icon('fxChevRight', 'fx-crumb-sep') : ''}<button type="button" class="fx-crumb${i === parts.length - 1 ? ' current' : ''}" data-path="${escapeAttr(p.path)}" title="${escapeAttr(p.path)}">${i === 0 ? icon('fileFolder') : ''}<span>${escapeHtml(p.name)}</span></button></span>`).join('');
+                + parts.map((p, i) => `<span class="fx-cseg">${i ? icon('fxChevRight', 'fx-crumb-sep') : ''}${p.path == null
+                    ? `<span class="fx-crumb fx-crumb-static" title="${escapeAttr(p.name)}（存储位置）">${i === 0 ? icon(p.ic || 'fileFolder') : ''}<span>${escapeHtml(p.name)}</span></span>`
+                    : `<button type="button" class="fx-crumb${i === parts.length - 1 ? ' current' : ''}" data-path="${escapeAttr(p.path)}" title="${escapeAttr(p.path)}">${i === 0 ? icon('fileFolder') : ''}<span>${escapeHtml(p.name)}</span></button>`}</span>`).join('');
             fxFitCrumbs(windowId);
         }
         // 路径太长放不下时：从最前面开始把上级收进「…」，绝不出现被切掉一半的文字
@@ -9030,8 +9198,11 @@
             const st = fxState(wid);
             let p = String(raw).replace(/\\/g, '/').trim();
             // 允许输入显示名开头，如「IndexedDB 存储/资料」；技术名和中文名两套都认，与当前设置无关
-            const hit = Object.keys(FX_ROOT_LABELS).map(r => [FX_ROOT_LABELS[r], r])
-                .concat([['IndexedDB 存储', '/desktop'], ['浏览器存储', '/desktop'], ['OPFS 存储', '/opfs/desktop'], ['高速存储', '/opfs/desktop']])
+            const alias = [['桌面', SYSTEM.desktopPath], ['文档', SYSTEM.documentsPath], ['本地文件夹', '/mnt/local'], ['挂载点', '/mnt'], ['根目录', '/']];
+            [['indexeddb', ['IndexedDB 存储', '浏览器存储']], ['opfs', ['OPFS 存储', '高速存储']]].forEach(([b, names]) => names.forEach(n => {
+                alias.push([n + '/桌面', getStorageDesktopPath(b)], [n + '/文档', getStorageDocumentsPath(b)], [n, getStorageDesktopPath(b)]);
+            }));
+            const hit = alias
                 .sort((a, b) => b[0].length - a[0].length)
                 .find(([label]) => p === label || p.startsWith(label + '/'));
             if (hit) p = (hit[1] === '/' ? '' : hit[1]) + p.slice(hit[0].length);
@@ -9050,51 +9221,95 @@
             });
         }
 
-        // ================= 侧边栏：树形导航 =================
-        // 每个位置只出现一次：IndexedDB 存储、OPFS 存储（各自的根就是对应后端的桌面工作区），
-        // 已挂载的本地文件夹归到「本地文件夹」下；开启「显示系统与隐藏文件」后，最下面多一个「根目录 /」。
-        // 点名字进入该位置，点 ▸ 只展开/收起；进入某个文件夹时，树会自动展开到它所在的位置。
+        // ================= 侧边栏：树形导航（方向 D）=================
+        // 结构（每个位置只出现一次入口，同一位置只高亮一个节点，快速访问优先）：
+        //   根目录 /           —— 仅在「显示系统与隐藏文件」开启时出现，放最上面
+        //   桌面 / 文档         —— 默认存储里的两个工作区（快速访问）
+        //   浏览器存储 ▸ 桌面、文档 —— IndexedDB；默认存储带「默认」标记
+        //   高速存储 ▸ 桌面、文档   —— OPFS；浏览器不支持时不显示
+        //   本地文件夹 ▸ 已挂载的文件夹（悬停可卸载；未授权的显示为灰色，点一下重新授权）
+        // 点名字 = 进入并展开；点 ▸ = 只展开/收起；分组（存储 / 本地文件夹）只展开/收起。
+        // 键盘：↑↓ 移动，→ 展开/进入子级，← 收起/回到上级，Enter 打开，Home/End 首尾。
         // 子文件夹按需读取：只读已展开的节点，结果缓存在 FX_TREE_DIRS，每次文件列表重绘后再核对一遍。
         const FX_TREE_DIRS = new Map();
+        const FX_TREE_GRP_KEY = 'JISHENG_OS_FX_TREE_GROUPS';
         function fxTreeDirNames(entries) {
             return entries.filter(en => en && en.isDir).map(en => en.name).sort((a, b) => FOLDER_NAME_COLLATOR.compare(a, b));
         }
+        function fxTreeGroupPref() {
+            const v = fxLsGet(FX_TREE_GRP_KEY);
+            return v && typeof v === 'object' ? v : { 'grp|mnt': true };
+        }
+        function fxTreeSaveGroup(key, open) {
+            const v = fxTreeGroupPref(); v[key] = !!open; fxLsSet(FX_TREE_GRP_KEY, v);
+        }
         function fxTreeTops() {
-            const def = SYSTEM.storageBackend;
-            const tops = [{ b: 'idb', path: '/desktop', label: storageBackendLabel('indexeddb'), ic: 'stxDatabase',
-                badge: def === 'indexeddb' ? '默认' : '', tip: '/desktop' + (def === 'indexeddb' ? '\n默认存储：桌面上的文件都在这里' : '') }];
-            if (SYSTEM.opfs && SYSTEM.opfs.available) {
-                tops.push({ b: 'opfs', path: '/opfs/desktop', label: storageBackendLabel('opfs'), ic: 'stxHardDrive',
-                    badge: def === 'opfs' ? '默认' : '', tip: '/opfs/desktop' + (def === 'opfs' ? '\n默认存储：桌面上的文件都在这里' : '') });
-            }
-            const mounts = Object.values(SYSTEM.mountedFolders || {}).filter(i => i && !i.disconnected).map(i => {
+            const def = SYSTEM.storageBackend === 'opfs' ? 'opfs' : 'indexeddb';
+            const opfsOk = !!(SYSTEM.opfs && SYSTEM.opfs.available);
+            const tops = [];
+            if (SYSTEM.showHiddenFiles) tops.push({ b: 'root', path: '/', label: '根目录 /', ic: 'stxFolderRoot', tip: '根目录 /\n完整的内部文件系统，包括 /system 和挂载点' });
+            const where = p => `${storageBackendLabel(def)} · ${p}`;
+            tops.push({ b: 'q', path: SYSTEM.desktopPath, label: '桌面', ic: 'stxMonitor', tip: '桌面\n' + where(SYSTEM.desktopPath) });
+            tops.push({ sep: true });
+            const store = (backend, b, ic, tech, desc) => {
+                const label = storageBackendLabel(backend), isDef = def === backend;
+                const kid = (path, name) => ({ b, path, label: name, tip: `${label} › ${name}\n${path}` });
+                return { b, group: true, label, ic, badge: isDef ? '默认' : '',
+                    tip: `${label}（${tech}）\n${desc}${isDef ? '\n默认存储：桌面上的文件都在这里' : ''}`,
+                    kids: [kid(getStorageDesktopPath(backend), '桌面'), kid(getStorageDocumentsPath(backend), '文档')] };
+            };
+            tops.push(store('indexeddb', 'idb', 'stxHardDrive', 'IndexedDB', '兼容所有浏览器'));
+            if (opfsOk) tops.push(store('opfs', 'opfs', 'stxZap', 'OPFS', '大文件读写更快'));
+            const mounts = Object.values(SYSTEM.mountedFolders || {}).filter(i => i && i.id).map(i => {
                 const mp = i.mountPath || ('/mnt/local/' + i.name);
-                return { b: 'mnt', path: mp, label: i.name, ic: 'uiEject', tip: mp };
+                return i.disconnected
+                    ? { b: 'mnt', path: mp, label: i.name, ic: 'stxUnplug', off: true, remount: i.id, tip: `${i.name}\n需要重新授权 —— 单击重新连接\n${mp}` }
+                    : { b: 'mnt', path: mp, label: i.name, ic: 'fileFolder', mount: i.id, tip: `${i.name}\n电脑上的文件夹 · ${mp}` };
             });
-            if (mounts.length) tops.push({ b: 'mnt', group: true, label: '本地文件夹', ic: 'stxFolderSync', tip: '已挂载的本地文件夹', kids: mounts });
-            if (SYSTEM.showHiddenFiles) tops.push({ b: 'root', path: '/', label: '根目录', ic: 'stxMonitor', tip: '/\n完整的内部文件系统，包括 /system 和挂载点' });
+            const fsa = 'showDirectoryPicker' in window;
+            if (mounts.length || fsa) {
+                const kids = mounts.slice();
+                if (fsa) kids.push({ b: 'mnt', action: 'mount', label: '挂载本地文件夹…', ic: 'stxFolderPlus', tip: '把电脑上的一个文件夹挂载进来，直接读写，不占浏览器空间' });
+                tops.push({ b: 'mnt', group: true, label: '本地文件夹', ic: 'stxFolderSync', tip: '本地文件夹\n已挂载的电脑文件夹', kids });
+            }
             return tops;
         }
-        // 当前路径归哪个节点管：最具体的位置优先，「根目录」只兜底
+        // 当前路径归哪个节点管：快速访问（桌面）优先，其次存储与本地文件夹里最具体的那个，「根目录」只兜底
         function fxTreeHome(tops, cur) {
+            const nodes = tops.filter(n => !n.sep);
+            const q = nodes.find(n => n.b === 'q' && fxIsUnder(cur, n.path));
+            if (q) return q;
             let best = null;
-            const consider = n => { if (n.path && fxIsUnder(cur, n.path) && (!best || n.path.length > best.path.length)) best = n; };
-            tops.forEach(n => (n.group ? n.kids.forEach(consider) : consider(n)));
-            return best;
+            nodes.forEach(n => (n.kids || []).forEach(k => {
+                if (k.path && !k.off && fxIsUnder(cur, k.path) && (!best || k.path.length > best.path.length)) best = Object.assign({ inGroup: true }, k);
+            }));
+            if (best) return best;
+            return nodes.find(n => n.b === 'root' && fxIsUnder(cur, '/')) || null;
         }
+        function fxTreeKey(n) { return n.group ? 'grp|' + n.b : n.action ? 'act|' + n.action : n.b + '|' + n.path; }
         function fxTreeNodeHtml(st, n, depth, activeKey) {
-            const key = n.group ? 'grp|' + n.b : n.b + '|' + n.path;
-            const kids = n.group ? n.kids : (FX_TREE_DIRS.has(n.path) ? FX_TREE_DIRS.get(n.path) : null);   // null = 还没读过
-            const canOpen = n.group || kids === null || kids.length > 0;
+            if (n.sep) return '<div class="fx-tsep" role="none"></div>';
+            const key = fxTreeKey(n);
+            let kids = null, canOpen = false;
+            if (n.group) { kids = n.kids; canOpen = kids.length > 0; }
+            else if (n.path && !n.off && !n.action) {
+                kids = FX_TREE_DIRS.has(n.path) ? FX_TREE_DIRS.get(n.path) : null;   // null = 还没读过
+                canOpen = kids === null || kids.length > 0;
+            }
             const isOpen = canOpen && st.treeOpen.has(key);
             const active = key === activeKey;
-            let h = `<div class="folder-sidebar-item fx-tn${active ? ' active' : ''}${n.group ? ' is-group' : ''}" role="treeitem" aria-level="${depth + 1}"`
-                + (canOpen ? ` aria-expanded="${isOpen}"` : '') + ` aria-selected="${active}" style="--d:${depth}"`
-                + ` data-key="${escapeAttr(key)}" ${n.group ? `data-tgl="${escapeAttr(key)}"` : `data-nav="${escapeAttr(n.path)}"`} title="${escapeAttr(n.tip || n.path)}">`
-                + `<i class="fx-tw"${canOpen ? ` data-tw="1" title="${isOpen ? '收起' : '展开'}"` : ''}>${canOpen ? icon('fxChevRight') : ''}</i>`
-                + icon(n.ic || 'fileFolder', 'sm') + `<span>${escapeHtml(n.label)}</span>` + (n.badge ? `<em class="fx-tb">${n.badge}</em>` : '') + '</div>';
+            const attrs = n.group ? `data-tgl="1"` : n.action ? `data-act-tree="${n.action}"` : n.off ? `data-remount="${escapeAttr(n.remount)}"` : `data-nav="${escapeAttr(n.path)}"`;
+            const cls = 'fx-tn' + (active ? ' active' : '') + (n.group ? ' is-group' : '') + (n.off ? ' is-off' : '') + (n.action ? ' is-action' : '');
+            let h = `<div class="${cls}" role="treeitem" aria-level="${depth + 1}"` + (canOpen ? ` aria-expanded="${isOpen}"` : '')
+                + ` aria-selected="${active}" tabindex="-1" style="--d:${depth}" data-key="${escapeAttr(key)}" ${attrs} title="${escapeAttr(n.tip || n.path || n.label)}">`
+                + `<span class="fx-tw"${canOpen ? ' data-tw="1"' : ''} aria-hidden="true">${canOpen ? icon('fxChevRight') : ''}</span>`
+                + icon(n.ic || 'fileFolder', 'sm')
+                + `<span class="fx-tt">${escapeHtml(n.label)}</span>`
+                + (n.badge ? `<em class="fx-tb">${n.badge}</em>` : '')
+                + (n.mount ? `<button type="button" class="fx-tx" data-eject="${escapeAttr(n.mount)}" tabindex="-1" title="卸载“${escapeAttr(n.label)}”（不会删除电脑上的文件）" aria-label="卸载">${icon('stxUnplug')}</button>` : '')
+                + '</div>';
             if (isOpen) {
-                const list = n.group ? n.kids : (kids || []).map(name => ({ b: n.b, path: fxJoin(n.path, name), label: name }));
+                const list = n.group ? n.kids : (kids || []).map(name => ({ b: n.b, path: fxJoin(n.path, name), label: name, tip: fxDisplayPath(fxJoin(n.path, name)) + '\n' + fxJoin(n.path, name) }));
                 if (list.length) h += `<div role="group">${list.map(c => fxTreeNodeHtml(st, c, depth + 1, activeKey)).join('')}</div>`;
             }
             return h;
@@ -9102,35 +9317,178 @@
         function buildFolderSidebar(windowId) {
             const st = fxState(windowId);
             if (!st) return '';
-            if (!st.treeOpen) st.treeOpen = new Set();
+            if (!st.treeOpen) {
+                const g = fxTreeGroupPref();
+                st.treeOpen = new Set(Object.keys(g).filter(k => g[k]));
+            }
             const cur = st.currentPath;
             const tops = fxTreeTops();
             const home = fxTreeHome(tops, cur);
             // 位置变了：展开到当前文件夹（含它自己，方便直接看到下一级）；之后用户手动收起的不再强行展开
-            if (st._treeFor !== cur) {
-                st._treeFor = cur;
+            const forKey = cur + '\n' + (home ? home.b + '|' + home.path : '');   // 切换默认存储后同一路径可能换了归属节点
+            if (st._treeFor !== forKey) {
+                st._treeFor = forKey;
                 if (home) {
-                    if (home.b === 'mnt') st.treeOpen.add('grp|mnt');
+                    if (home.inGroup) st.treeOpen.add('grp|' + home.b);
                     for (let p = cur, g = 0; g < 64; p = fxParentOf(p), g++) {
                         st.treeOpen.add(home.b + '|' + p);
                         if (p === home.path || p === '/') break;
                     }
                 }
             }
-            const activeKey = home ? home.b + '|' + cur : '';
-            return `<div class="fx-tree" role="tree" aria-label="位置">${tops.map(n => fxTreeNodeHtml(st, n, 0, activeKey)).join('')}</div>`;
+            st._treeActive = home ? home.b + '|' + cur : '';
+            return `<div class="fx-tree" role="tree" aria-label="位置">${tops.map(n => fxTreeNodeHtml(st, n, 0, st._treeActive)).join('')}</div>`;
         }
+        // 重画侧栏：保留滚动位置和键盘焦点；可聚焦节点只有一个（roving tabindex）
         function fxTreeRepaint(wid) {
-            const side = fxEl('folder-sidebar-', wid);
-            if (side) side.innerHTML = buildFolderSidebar(wid);
+            const st = fxState(wid), side = fxEl('folder-sidebar-', wid);
+            if (!st || !side) return;
+            const had = side.contains(document.activeElement) && document.activeElement.dataset ? document.activeElement.dataset.key : null;
+            const top = side.scrollTop;
+            side.innerHTML = buildFolderSidebar(wid);
+            side.scrollTop = top;
+            const rows = [...side.querySelectorAll('.fx-tn')];
+            const want = had || st._treeFocus || st._treeActive;
+            const t = rows.find(r => r.dataset.key === want) || rows.find(r => r.classList.contains('active')) || rows[0];
+            if (t) { t.tabIndex = 0; if (had) t.focus({ preventScroll: true }); }
         }
-        function fxTreeToggle(wid, key) {
+        function fxTreeToggle(wid, key, force) {
             const st = fxState(wid);
             if (!st || !key) return;
             if (!st.treeOpen) st.treeOpen = new Set();
-            if (st.treeOpen.has(key)) st.treeOpen.delete(key); else st.treeOpen.add(key);
+            const open = force === undefined ? !st.treeOpen.has(key) : !!force;
+            if (open === st.treeOpen.has(key)) return;
+            if (open) st.treeOpen.add(key); else st.treeOpen.delete(key);
+            if (key.startsWith('grp|')) fxTreeSaveGroup(key, open);
+            st._treeFocus = key;
             fxTreeRepaint(wid);
             fxTreeRefresh(wid);
+        }
+        // 树里的「打开」：存储工作区不存在时先建好（例如从没用过的「高速存储 › 文档」）
+        function fxTreeGo(wid, path) {
+            if (FX_STORE_ROOTS.some(r => r[0] === path)) {
+                ensureDir(path).catch(() => {}).then(() => fxGo(wid, path));
+            } else fxGo(wid, path);
+        }
+        async function fxTreeMount(wid) {
+            const before = new Set(Object.keys(SYSTEM.mountedFolders || {}));
+            await mountLocalFolder();
+            const added = Object.values(SYSTEM.mountedFolders || {}).find(i => i && !before.has(i.id) && !i.disconnected);
+            if (added && fxState(wid)) fxGo(wid, added.mountPath || ('/mnt/local/' + added.name));
+        }
+        async function fxTreeRemount(wid, id) {
+            const info = SYSTEM.mountedFolders[id];
+            if (!info) return;
+            const ok = await remountFolder(id, false);
+            if (ok && fxState(wid)) fxGo(wid, info.mountPath || ('/mnt/local/' + info.name));
+        }
+        async function fxTreeEject(wid, id) {
+            const info = SYSTEM.mountedFolders[id];
+            if (!info) return;
+            const ok = await SysDialog.confirm({
+                title: '卸载文件夹', icon: 'uiEject', okText: '卸载',
+                message: `卸载“${info.name}”后，JISHENG OS 将不再能访问它，已打开的相关窗口可能无法继续使用。\n\n电脑上的文件不会被删除，之后可以随时重新挂载。`
+            });
+            if (!ok) return;
+            const mp = info.mountPath || ('/mnt/local/' + info.name);
+            await unmountLocalFolder(id);
+            // 正在浏览这个文件夹的窗口回到桌面
+            Object.keys(SYSTEM.folderWindowStates || {}).forEach(w => {
+                const s = fxState(w);
+                if (s && fxIsUnder(s.currentPath, mp)) fxGo(w, SYSTEM.desktopPath);
+            });
+        }
+        function fxTreeRepaintAll() {
+            Object.keys(SYSTEM.folderWindowStates || {}).forEach(fxTreeRepaint);
+        }
+        // 侧栏交互：单击 / 键盘 / 右键
+        function fxTreeBind(wid, side) {
+            const rowsOf = () => [...side.querySelectorAll('.fx-tn')];
+            const focusRow = (row) => {
+                if (!row) return;
+                rowsOf().forEach(r => { r.tabIndex = r === row ? 0 : -1; });
+                const st = fxState(wid); if (st) st._treeFocus = row.dataset.key;
+                row.focus({ preventScroll: true });
+                row.scrollIntoView({ block: 'nearest' });
+            };
+            const activate = (row, viaKey) => {
+                const st = fxState(wid);
+                if (!row || !st) return;
+                if (row.dataset.actTree === 'mount') { fxTreeMount(wid); return; }
+                if (row.dataset.remount) { fxTreeRemount(wid, row.dataset.remount); return; }
+                if (row.dataset.tgl) { fxTreeToggle(wid, row.dataset.key); return; }
+                const nav = row.dataset.nav;
+                if (!nav) return;
+                st._treeFocus = row.dataset.key;
+                if (nav === st.currentPath) {
+                    // 已经在这里：单击名字 = 展开/收起（键盘 Enter 不收起）
+                    if (!viaKey && row.hasAttribute('aria-expanded')) fxTreeToggle(wid, row.dataset.key);
+                    else fxToggleSidebar(wid, false);
+                    return;
+                }
+                fxTreeGo(wid, nav);
+            };
+            const onClick = e => {
+                const ej = e.target.closest('[data-eject]');
+                if (ej) { e.stopPropagation(); fxTreeEject(wid, ej.dataset.eject); return; }
+                const row = e.target.closest('.fx-tn');
+                if (!row) return;
+                rowsOf().forEach(r => { r.tabIndex = r === row ? 0 : -1; });
+                if (e.target.closest('.fx-tw[data-tw]')) { fxTreeToggle(wid, row.dataset.key); return; }   // 只展开/收起，手机抽屉不收起
+                if (e.detail > 1) return;   // 双击的第二下不再重复处理（第一下已经进入并展开）
+                activate(row, false);
+            };
+            const onKey = e => {
+                const row = e.target.closest('.fx-tn');
+                if (!row || e.altKey || e.ctrlKey || e.metaKey) return;
+                const rows = rowsOf(), i = rows.indexOf(row);
+                const exp = row.getAttribute('aria-expanded');
+                const level = +row.getAttribute('aria-level');
+                let hit = true;
+                switch (e.key) {
+                    case 'ArrowDown': focusRow(rows[Math.min(rows.length - 1, i + 1)]); break;
+                    case 'ArrowUp': focusRow(rows[Math.max(0, i - 1)]); break;
+                    case 'Home': focusRow(rows[0]); break;
+                    case 'End': focusRow(rows[rows.length - 1]); break;
+                    case 'ArrowRight':
+                        if (exp === 'false') fxTreeToggle(wid, row.dataset.key, true);
+                        else if (exp === 'true' && rows[i + 1] && +rows[i + 1].getAttribute('aria-level') > level) focusRow(rows[i + 1]);
+                        break;
+                    case 'ArrowLeft':
+                        if (exp === 'true') fxTreeToggle(wid, row.dataset.key, false);
+                        else { for (let k = i - 1; k >= 0; k--) if (+rows[k].getAttribute('aria-level') < level) { focusRow(rows[k]); break; } }
+                        break;
+                    case 'Enter': case ' ': activate(row, true); break;
+                    case 'Escape': fxToggleSidebar(wid, false); { const sc = fxEl('folder-filelist-', wid); if (sc) sc.focus(); } break;
+                    default: hit = false;
+                }
+                if (hit) { e.preventDefault(); e.stopPropagation(); }
+            };
+            const onCtx = e => {
+                const row = e.target.closest('.fx-tn');
+                if (!row) return;
+                e.preventDefault(); e.stopPropagation();
+                const nav = row.dataset.nav, items = [];
+                if (nav) {
+                    items.push({ icon: 'uiOpen', label: '打开', act: () => fxTreeGo(wid, nav) });
+                    items.push({ icon: 'fxNewWindow', label: '在新窗口中打开', act: () => fxOpenWindow(nav, { title: fxPathName(nav) }) });
+                    if (row.hasAttribute('aria-expanded')) items.push({ icon: 'fxChevRight', label: row.getAttribute('aria-expanded') === 'true' ? '收起' : '展开', act: () => fxTreeToggle(wid, row.dataset.key) });
+                    items.push('-', { icon: 'fxCopyPath', label: '复制路径', act: () => { try { navigator.clipboard.writeText(nav); Notify.success('已复制', nav); } catch (_) {} } });
+                    const ej = row.querySelector('[data-eject]');
+                    if (ej) items.push('-', { icon: 'stxUnplug', label: '卸载', act: () => fxTreeEject(wid, ej.dataset.eject) });
+                } else if (row.dataset.tgl) {
+                    items.push({ icon: 'fxChevRight', label: row.getAttribute('aria-expanded') === 'true' ? '收起' : '展开', act: () => fxTreeToggle(wid, row.dataset.key) });
+                    if (row.dataset.key === 'grp|mnt' && 'showDirectoryPicker' in window) items.push({ icon: 'stxFolderPlus', label: '挂载本地文件夹…', act: () => fxTreeMount(wid) });
+                } else if (row.dataset.remount) {
+                    items.push({ icon: 'stxPlugZap', label: '重新授权', act: () => fxTreeRemount(wid, row.dataset.remount) });
+                } else if (row.dataset.actTree === 'mount') {
+                    items.push({ icon: 'stxFolderPlus', label: '挂载本地文件夹…', act: () => fxTreeMount(wid) });
+                }
+                if (items.length) openCtxMenu(items, e.clientX, e.clientY);
+            };
+            side.addEventListener('click', onClick);
+            side.addEventListener('keydown', onKey);
+            side.addEventListener('contextmenu', onCtx);
         }
         // 重新读取所有已展开节点的子文件夹（skip = 刚读过的当前文件夹）；有变化才重画，各窗口共用结果
         function fxTreeRefresh(wid, skip) {
@@ -9146,7 +9504,7 @@
                     if (!old || old.join('\n') !== names.join('\n')) { FX_TREE_DIRS.set(p, names); changed = true; }
                 });
                 if (!changed) { fxTreeLoadMissing(wid); return; }
-                Object.keys(SYSTEM.folderWindowStates || {}).forEach(fxTreeRepaint);
+                fxTreeRepaintAll();
                 // 重画后可能露出新的已展开节点（例如直接打开很深的文件夹时逐级展开），只补读还没缓存过的
                 Object.keys(SYSTEM.folderWindowStates || {}).forEach(fxTreeLoadMissing);
             });
@@ -9164,7 +9522,7 @@
             if (!paths.length) return;
             Promise.all(paths.map(p => fxReadDir(p).then(res => [p, res.err ? [] : fxTreeDirNames(res.entries)]))).then(rows => {
                 rows.forEach(([p, names]) => FX_TREE_DIRS.set(p, names));
-                Object.keys(SYSTEM.folderWindowStates || {}).forEach(fxTreeRepaint);
+                fxTreeRepaintAll();
                 Object.keys(SYSTEM.folderWindowStates || {}).forEach(fxTreeLoadMissing);
             });
         }
@@ -9407,8 +9765,7 @@
                 st.parentPath = fxParentOf(dir);
                 fxUpdateTitle(wid);
                 updateFolderBreadcrumb(wid);
-                const side = fxEl('folder-sidebar-', wid);
-                if (side) side.innerHTML = buildFolderSidebar(wid);
+                fxTreeRepaint(wid);
                 fxTreeRefresh(wid);
             }
             fxMillerMarkPath(wid);
@@ -9928,7 +10285,7 @@
                     else { state._selectAfter = [dirPath]; renderFolderContent(windowId); refreshDesktop(); Notify.success('成功', '文件夹已创建'); }
                 });
             } else {
-                const name = await SysDialog.prompt({ title: '新建文件', icon: 'uiNewFile', label: '文件名称', value: '新建文本文档.txt', okText: '创建', validate: SysDialog.nameValidator('文件名称') });
+                const name = await SysDialog.prompt({ title: '新建文件', icon: 'uiNewTextFile', label: '文件名称', value: '新建文本文档.txt', okText: '创建', validate: SysDialog.nameValidator('文件名称') });
                 if (!name) return;
                 const filePath = state.currentPath + '/' + name;
                 // 同名文件已存在时不覆盖（以前会把已有文件清空）
@@ -11077,11 +11434,11 @@
                 </div>
                 <div class="context-divider"></div>
                 <div class="context-item" onclick="createNewFolder(); closeCtx()">
-                    ${icon('uiMenuFolder','sm')}
+                    ${icon('uiNewFolder','sm')}
                     <span>新建文件夹</span>
                 </div>
                 <div class="context-item" onclick="createNewTextFile(SYSTEM.desktopPath); closeCtx()">
-                    ${icon('uiMenuFile','sm')}
+                    ${icon('uiNewTextFile','sm')}
                     <span>新建文本文档</span>
                 </div>
                 <div class="context-item" onclick="createNewHtmlFile(SYSTEM.desktopPath); closeCtx()">
@@ -11110,7 +11467,7 @@
         // 在 dirPath 下创建空文件；同名文件已存在时不覆盖。
         async function createNewTextFile(dirPath) {
             if (!dirPath) return;
-            const name = await SysDialog.prompt({ title: '新建文件', icon: 'uiNewFile', label: '文件名称', value: '新建文本文档.txt', okText: '创建', validate: SysDialog.nameValidator('文件名称') });
+            const name = await SysDialog.prompt({ title: '新建文件', icon: 'uiNewTextFile', label: '文件名称', value: '新建文本文档.txt', okText: '创建', validate: SysDialog.nameValidator('文件名称') });
             if (!name) return;
             const path = dirPath + '/' + name;
             SYSTEM.fs.stat(path, (statErr) => {
@@ -11631,9 +11988,9 @@
                     }
                 });
             }
-            // 2. 处理图片文件 (改为调用漫画查看器)
+            // 2. 处理图片文件：按设置用漫画阅读器（默认）或图片查看器打开
             else if(IMG_EXT_RE.test(filename)) {
-                openMangaViewer(fullPath, filename);
+                openImageFile(fullPath, filename);
             }
             // 3. 处理 CSV 文件 (使用表格查看器)
             else if(filename.match(/\.csv$/i)) {
@@ -11832,6 +12189,15 @@
                 { icon: 'uiCode', label: '用代码编辑器打开', act: () => openWithEditor(fullPath, filename) },
                 { icon: 'uiBrowserCtx', label: '用浏览器打开', act: () => openWithBrowser(fullPath, filename) },
                 { icon: 'uiNewFile', label: '用记事本打开', act: () => openWithNotepad(fullPath, filename) }
+            ];
+        }
+
+        // 图片的「打开方式」：漫画阅读器 / 图片查看器（默认的那一项标注「默认」）
+        function imageOpenWithItems(fullPath, filename) {
+            const def = SYSTEM.imageOpen === 'viewer' ? 'viewer' : 'comic';
+            return [
+                { icon: 'stxBookOpen', label: '用漫画阅读器打开' + (def === 'comic' ? '（默认）' : ''), act: () => openImageFile(fullPath, filename, 'comic') },
+                { icon: 'fileImg', label: '用图片查看器打开' + (def === 'viewer' ? '（默认）' : ''), act: () => openImageFile(fullPath, filename, 'viewer') }
             ];
         }
 
@@ -12405,6 +12771,7 @@
                 await saveMountedFolder(folderId, folderName, dirHandle, mountPath);
                 
                 refreshDesktop();
+                if (typeof fxTreeRepaintAll === 'function') fxTreeRepaintAll();
                 Notify.success('挂载成功', `已挂载: ${folderName}`);
             } catch (e) {
                 if (e.name !== 'AbortError') {
@@ -12431,6 +12798,7 @@
                 delete SYSTEM.mountedFolders[folderInfo.id].disconnected;
                 Notify.success('重新挂载成功', `已挂载: ${folderInfo.name}`);
                 refreshDesktop();
+                if (typeof fxTreeRepaintAll === 'function') fxTreeRepaintAll();
                 if (openAfterMount) {
                     const pathParts = mountPath.split('/');
                     const fName = pathParts[pathParts.length - 1];
@@ -12491,6 +12859,7 @@
                 try { await removeMountedFolder(folderId); } catch (e) { console.error('从 IndexedDB 删除失败:', e); }
                 
                 refreshDesktop();
+                if (typeof fxTreeRepaintAll === 'function') fxTreeRepaintAll();
                 Notify.success('已卸载', `已卸载: ${name}`);
             }
         }
@@ -14635,14 +15004,268 @@
             });
         }
 
-        // 漫画/长图查看器：打开单张图片时触发，加载同目录下所有图片
-        // 图片查看器（原「漫画阅读器」升级）：
-        //  - 单张模式：适应窗口、滚轮以光标为中心缩放、拖动平移、双击 适应/100%、← → 切换、旋转、全屏；只缓存附近几张
-        //  - 长条模式（原漫画阅读）：滚动到附近才读取文件（原来一打开就把整个文件夹的图片全部读进内存）
-        //  - 所有 Blob URL 在换图 / 关窗时释放（原来从不释放）
+        // ================= 漫画阅读器（与图片查看器分开的独立应用）=================
+        // 打开即全屏沉浸：没有标题栏、没有工具栏，只有右上角一个小 ×（关闭）。
+        // 同目录的图片按自然顺序竖向连续排列：
+        //  - 原生滚动容器（touch-action: pan-y），手机手指滑动、触控板、滚轮都是浏览器原生滚动；鼠标可按住拖动并带惯性滑行
+        //  - 每页先用比例占位，图片读到后再换成真实比例；视口上方的页变高时自动补偿滚动位置，画面不跳
+        //  - 只读取视口附近的图片（并发 3 张，离当前页近的优先），离得很远的释放内存，滚回来再读
+        //  - 键盘：↑↓ 滚动，PageUp/PageDown/空格 翻一屏，←→ 上一页/下一页，Home/End，+/−/0 调整宽度，F 浏览器全屏，Esc 关闭
+        const CMX_WIDTH_KEY = 'JSOS_CMX_WIDTH';
+        const CMX_DEF_W = 960;
+        // 按设置决定图片用哪个应用打开（设置 → 应用 →「图片默认打开方式」）
+        function openImageFile(fullPath, filename, how) {
+            if ((how || SYSTEM.imageOpen) === 'viewer') openMangaViewer(fullPath, filename);
+            else openComicReader(fullPath, filename);
+        }
+        function openComicReader(targetFullPath, targetFilename, opts) {
+            const folderPath = targetFullPath.substring(0, targetFullPath.lastIndexOf('/')) || '/';
+            const folderName = folderPath.split('/').pop() || '/';
+            // 和系统里其他窗口一样：先以窗口打开，用户自己点标题栏的「全屏」再全屏。
+            // 例外：从已经全屏的图片查看器切过来时，直接接着全屏看（浏览器本来就处于全屏状态）。
+            const inheritFs = !!(opts && opts.fullscreen && document.fullscreenElement);
+            SYSTEM.fs.readdir(folderPath, (err, files) => {
+                if (err) { Notify.error('打开失败', err.message); return; }
+                const collator = new Intl.Collator('zh-CN', { numeric: true, sensitivity: 'base' });
+                const list = (files || []).filter(f => IMG_EXT_RE.test(f)).sort(collator.compare);
+                if (!list.includes(targetFilename)) list.unshift(targetFilename);
+                const target = Math.max(0, list.indexOf(targetFilename));
+                createWindow({
+                    title: '漫画阅读器 - ' + folderName,
+                    winType: 'comic',
+                    iconHtml: icon('stxBookOpen', 'sm'),
+                    width: 900, height: 700,
+                    content: `
+                        <div class="cmx">
+                            <div class="cmx-scroll" tabindex="0" aria-label="${escapeAttr(folderName)}，共 ${list.length} 张"><div class="cmx-col"></div></div>
+                            <button type="button" class="cmx-x" title="退出全屏 (Esc)" aria-label="退出全屏">${icon('uiClose')}</button>
+                        </div>`,
+                    onInit: (w, winId) => {
+                        w.classList.add('cmx-win');
+                        if (inheritFs) w.classList.add('truly-fullscreen');
+                        const sc = w.querySelector('.cmx-scroll'), col = w.querySelector('.cmx-col'), root = w.querySelector('.cmx');
+                        let closed = false;
+                        // —— 宽度（页面最大宽度，px；窄屏自动占满）——
+                        let maxW = Number(localStorage.getItem(CMX_WIDTH_KEY)) || CMX_DEF_W;
+                        const applyW = () => col.style.setProperty('--cmw', `min(100%, ${Math.round(maxW)}px)`);
+                        applyW();
+                        // —— 占位 ——
+                        col.innerHTML = list.map((n, i) => `<div class="cmx-pg" data-i="${i}"><div class="ph">${i + 1}</div></div>`).join('');
+                        const slots = [...col.children];
+                        const pages = list.map(() => ({ url: null, loading: false, ar: 0, bad: false }));
+                        // —— 阅读位置锚点：缩放 / 全屏切换 / 窗口尺寸变化前后保持当前位置 ——
+                        const curIdx = () => {
+                            const y = sc.scrollTop + 1; let lo = 0, hi = slots.length - 1, ans = 0;
+                            while (lo <= hi) { const m = (lo + hi) >> 1; if (slots[m].offsetTop <= y) { ans = m; lo = m + 1; } else hi = m - 1; }
+                            return ans;
+                        };
+                        const anchor = () => { const i = curIdx(), el = slots[i]; return el ? { i, r: (sc.scrollTop - el.offsetTop) / Math.max(1, el.offsetHeight) } : null; };
+                        const reanchor = a => { if (a && slots[a.i]) sc.scrollTop = slots[a.i].offsetTop + a.r * slots[a.i].offsetHeight; };
+                        // 页高变化补偿：整页都在视口上方的，scrollTop 同步加上变化量
+                        const setRatio = (i, ar) => {
+                            if (!isFinite(ar) || ar <= 0) return;
+                            const slot = slots[i], top = slot.offsetTop, before = slot.offsetHeight;
+                            slot.style.setProperty('--ar', ar);
+                            const delta = slot.offsetHeight - before;
+                            if (delta && top + before <= sc.scrollTop + 1) sc.scrollTop += delta;
+                        };
+                        // 第一张读到后，用它的比例作为其余未读页的预估比例（同一本漫画通常尺寸一致，减少跳动）
+                        let guessed = false;
+                        const setGuess = ar => {
+                            if (guessed || !isFinite(ar) || ar <= 0) return;
+                            guessed = true;
+                            const a = anchor();
+                            col.style.setProperty('--g', ar);
+                            reanchor(a);
+                        };
+                        // —— 读取队列 ——
+                        const want = new Set();
+                        let active = 0;
+                        const pump = () => {
+                            while (active < 3 && want.size && !closed) {
+                                const c = curIdx();
+                                let best = -1, bd = Infinity;
+                                want.forEach(i => { const d = Math.abs(i - c) + (i < c ? 0.5 : 0); if (d < bd) { bd = d; best = i; } });
+                                want.delete(best);
+                                loadPage(best);
+                            }
+                        };
+                        const loadPage = i => {
+                            const pgd = pages[i];
+                            if (pgd.url || pgd.loading || pgd.bad) return;
+                            pgd.loading = true; active++;
+                            const name = list[i];
+                            SYSTEM.fs.readFile(folderPath + '/' + name, (e, data) => {
+                                const done = () => { pgd.loading = false; active--; pump(); };
+                                if (closed) { done(); return; }
+                                if (e || !data) { pgd.bad = true; slots[i].classList.add('bad'); slots[i].querySelector('.ph').textContent = `${i + 1} · 无法读取`; done(); return; }
+                                const ext = (name.split('.').pop() || '').toLowerCase();
+                                const url = URL.createObjectURL(new Blob([data], { type: IMG_MIME[ext] || '' }));
+                                const img = new Image();
+                                img.decoding = 'async'; img.alt = name; img.draggable = false;
+                                img.onload = () => {
+                                    if (closed) { URL.revokeObjectURL(url); done(); return; }
+                                    pgd.url = url;
+                                    pgd.ar = img.naturalWidth / img.naturalHeight;
+                                    setGuess(pgd.ar);
+                                    setRatio(i, pgd.ar);
+                                    slots[i].appendChild(img);
+                                    slots[i].classList.add('ok');
+                                    if (i === target && !userMoved) sc.scrollTop = slots[target].offsetTop;
+                                    done();
+                                };
+                                img.onerror = () => { URL.revokeObjectURL(url); pgd.bad = true; slots[i].classList.add('bad'); slots[i].querySelector('.ph').textContent = `${i + 1} · 无法显示`; done(); };
+                                img.src = url;
+                            });
+                        };
+                        // 离视口很远的页释放内存（保留比例，滚回来时重新读取）
+                        const unloadFar = () => {
+                            const H = sc.clientHeight || 800, top = sc.scrollTop, bot = top + H;
+                            slots.forEach((slot, i) => {
+                                const pgd = pages[i];
+                                if (!pgd.url) return;
+                                const st = slot.offsetTop, sb = st + slot.offsetHeight;
+                                if (sb < top - 8 * H || st > bot + 8 * H) {
+                                    const img = slot.querySelector('img'); if (img) img.remove();
+                                    URL.revokeObjectURL(pgd.url); pgd.url = null;
+                                    slot.classList.remove('ok');
+                                }
+                            });
+                        };
+                        const io = new IntersectionObserver(ents => {
+                            ents.forEach(en => {
+                                const i = +en.target.dataset.i;
+                                if (en.isIntersecting) { if (!pages[i].url && !pages[i].loading && !pages[i].bad) want.add(i); }
+                                else want.delete(i);
+                            });
+                            pump();
+                        }, { root: sc, rootMargin: '250% 0px' });
+                        slots.forEach(s => io.observe(s));
+                        // —— 滚动跟踪 ——
+                        let userMoved = false, last = null, tick = 0, unloadT = 0;
+                        const markMoved = () => { userMoved = true; };
+                        sc.addEventListener('scroll', () => {
+                            if (tick) return;
+                            tick = requestAnimationFrame(() => { tick = 0; last = anchor(); });
+                            clearTimeout(unloadT); unloadT = setTimeout(unloadFar, 600);
+                        }, { passive: true });
+                        ['wheel', 'touchstart', 'keydown'].forEach(t => sc.addEventListener(t, markMoved, { passive: true }));
+                        // 窗口 / 屏幕尺寸变化（进出浏览器全屏、旋转手机）：保持阅读位置
+                        const ro = new ResizeObserver(() => { if (last) reanchor(last); });
+                        ro.observe(sc);
+                        // —— 鼠标按住拖动 + 惯性滑行（触屏走浏览器原生滚动）——
+                        const FRICTION = 0.95;
+                        let drag = null, vel = 0, raf = 0;
+                        const glide = () => {
+                            if (raf) return;
+                            const step = () => { if (Math.abs(vel) < 0.3 || closed) { raf = 0; vel = 0; return; } sc.scrollTop += vel; vel *= FRICTION; raf = requestAnimationFrame(step); };
+                            raf = requestAnimationFrame(step);
+                        };
+                        const stopGlide = () => { cancelAnimationFrame(raf); raf = 0; vel = 0; };
+                        sc.addEventListener('pointerdown', e => {
+                            if (e.pointerType !== 'mouse' || e.button !== 0 || e.offsetX > sc.clientWidth) return;   // 点在滚动条上不处理
+                            stopGlide(); userMoved = true;
+                            drag = { y: e.clientY, t: performance.now(), moved: 0 };
+                            sc.setPointerCapture(e.pointerId); sc.classList.add('grabbing');
+                            e.preventDefault(); sc.focus({ preventScroll: true });
+                        });
+                        sc.addEventListener('pointermove', e => {
+                            if (!drag) return;
+                            const now = performance.now(), dy = e.clientY - drag.y, dt = Math.max(1, now - drag.t);
+                            sc.scrollTop -= dy; drag.moved += Math.abs(dy);
+                            vel = 0.75 * (-dy / dt * 16) + 0.25 * vel;
+                            drag.y = e.clientY; drag.t = now;
+                        });
+                        const endDrag = e => {
+                            if (!drag) return;
+                            const idle = performance.now() - drag.t;
+                            drag = null; sc.classList.remove('grabbing');
+                            try { sc.releasePointerCapture(e.pointerId); } catch (_) {}
+                            if (idle > 90) vel = 0;
+                            glide();
+                        };
+                        sc.addEventListener('pointerup', endDrag);
+                        sc.addEventListener('pointercancel', endDrag);
+                        // Ctrl + 滚轮 / 触控板捏合：调整页面宽度
+                        const zoom = f => {
+                            const a = anchor();
+                            const full = sc.clientWidth;
+                            const curW = Math.min(maxW, full);
+                            maxW = Math.max(240, Math.min(4000, curW * f));
+                            applyW(); reanchor(a);
+                            try { localStorage.setItem(CMX_WIDTH_KEY, String(Math.round(maxW))); } catch (_) {}
+                        };
+                        sc.addEventListener('wheel', e => {
+                            if (e.ctrlKey) { e.preventDefault(); zoom(e.deltaY < 0 ? 1.1 : 1 / 1.1); return; }
+                            stopGlide();
+                        }, { passive: false });
+                        const gotoPage = d => {
+                            const c = curIdx();
+                            // 当前页顶部不在视口顶时，「上一页」先回到当前页顶部
+                            const i = d < 0 && sc.scrollTop - slots[c].offsetTop > 4 ? c : Math.max(0, Math.min(slots.length - 1, c + d));
+                            sc.scrollTo({ top: slots[i].offsetTop, behavior: 'smooth' });
+                        };
+                        // —— 关闭 / 全屏 ——
+                        // 全屏时右上角的 × = 退出全屏回到窗口（和原来漫画全屏的 × 一致）；关闭阅读器用窗口标题栏的关闭按钮
+                        const isFs = () => w.classList.contains('truly-fullscreen');
+                        const toggleFs = () => toggleWinFullscreen(winId, 'comic');
+                        w.querySelector('.cmx-x').addEventListener('click', () => { if (isFs()) toggleFs(); });
+                        const onKey = e => {
+                            if (closed || !w.classList.contains('focused') || e.altKey || e.metaKey) return;
+                            const t = e.target; if (t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))) return;
+                            if (document.querySelector('.sys-dialog-overlay')) return;
+                            const H = sc.clientHeight, k = e.key;
+                            if (e.ctrlKey) {
+                                if (k === '=' || k === '+') zoom(1.1); else if (k === '-') zoom(1 / 1.1); else if (k === '0') { maxW = CMX_DEF_W; applyW(); } else return;
+                                e.preventDefault(); return;
+                            }
+                            let hit = true;
+                            userMoved = true;
+                            if (k === 'ArrowDown') sc.scrollBy({ top: 120, behavior: 'smooth' });
+                            else if (k === 'ArrowUp') sc.scrollBy({ top: -120, behavior: 'smooth' });
+                            else if (k === 'PageDown' || (k === ' ' && !e.shiftKey)) sc.scrollBy({ top: H * 0.9, behavior: 'smooth' });
+                            else if (k === 'PageUp' || (k === ' ' && e.shiftKey)) sc.scrollBy({ top: -H * 0.9, behavior: 'smooth' });
+                            else if (k === 'ArrowRight') gotoPage(1);
+                            else if (k === 'ArrowLeft') gotoPage(-1);
+                            else if (k === 'Home') sc.scrollTop = 0;
+                            else if (k === 'End') sc.scrollTop = sc.scrollHeight;
+                            else if (k === '+' || k === '=') zoom(1.1);
+                            else if (k === '-') zoom(1 / 1.1);
+                            else if (k === '0') { const a = anchor(); maxW = CMX_DEF_W; applyW(); reanchor(a); try { localStorage.removeItem(CMX_WIDTH_KEY); } catch (_) {} }
+                            else if (k === 'f' || k === 'F') toggleFs();
+                            else if (k === 'Escape' && isFs()) toggleFs();
+                            else hit = false;
+                            if (hit) e.preventDefault();
+                        };
+                        document.addEventListener('keydown', onKey);
+                        // × 在一段时间不动后变淡（不消失），移动 / 触摸时恢复
+                        let idleT = 0;
+                        const wake = () => { root.classList.remove('idle'); clearTimeout(idleT); idleT = setTimeout(() => root.classList.add('idle'), 2500); };
+                        root.addEventListener('pointermove', wake, { passive: true });
+                        root.addEventListener('pointerdown', wake, { passive: true });
+                        wake();
+                        w.cleanup = () => {
+                            closed = true;
+                            document.removeEventListener('keydown', onKey);
+                            io.disconnect(); ro.disconnect(); stopGlide();
+                            clearTimeout(idleT); clearTimeout(unloadT);
+                            pages.forEach(p => { if (p.url) URL.revokeObjectURL(p.url); p.url = null; });
+                            // 在全屏里被关掉（例如任务栏右键关闭）：退出浏览器全屏，除非还有别的窗口在全屏
+                            if (isFs() && document.fullscreenElement && !document.querySelector('.window.truly-fullscreen:not(#win-' + winId + ')')) { try { document.exitFullscreen(); } catch (_) {} }
+                        };
+                        // 定位到点开的那一张
+                        requestAnimationFrame(() => { sc.scrollTop = slots[target].offsetTop; last = anchor(); sc.focus({ preventScroll: true }); });
+                    }
+                });
+            });
+        }
+
+        // 图片查看器（与「漫画阅读器」是两个独立应用）：
+        //  - 适应窗口、滚轮以光标为中心缩放、拖动平移、双击 适应/100%、← → 切换同目录图片、旋转、全屏；只缓存附近几张
+        //  - 长条连续阅读交给漫画阅读器（工具栏「漫画阅读器」按钮 / 设置里把它设为默认）
+        //  - 所有 Blob URL 在换图 / 关窗时释放
         const IMG_EXT_RE = /\.(jpe?g|png|gif|webp|bmp|svg|avif|ico)$/i;
         const IMG_MIME = { jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', gif: 'image/gif', webp: 'image/webp', bmp: 'image/bmp', svg: 'image/svg+xml', avif: 'image/avif', ico: 'image/x-icon' };
-        const IMV_MODE_KEY = 'JSOS_IMV_MODE';
         function openMangaViewer(targetFullPath, targetFilename) {
             const folderPath = targetFullPath.substring(0, targetFullPath.lastIndexOf('/'));
             SYSTEM.fs.readdir(folderPath, (err, files) => {
@@ -14650,7 +15273,7 @@
                 const collator = new Intl.Collator('zh-CN', { numeric: true, sensitivity: 'base' });
                 const list = files.filter(f => IMG_EXT_RE.test(f)).sort(collator.compare);
                 if (!list.includes(targetFilename)) list.unshift(targetFilename);
-                let mode = localStorage.getItem(IMV_MODE_KEY) === 'strip' ? 'strip' : 'single';
+                const mode = 'single';
                 createWindow({
                     title: '图片查看器 - ' + targetFilename,
                     winType: 'manga',
@@ -14671,10 +15294,7 @@
                                     <button class="npx-btn icon hide-sm" data-act="rot" title="向右旋转 (R)">${icon('uiRotateCw')}</button>
                                     <span class="npx-sep"></span>
                                 </span>
-                                <span class="imv-seg">
-                                    <button class="npx-btn" data-mode="single" title="单张浏览">${icon('uiSquareImg')}<span class="lbl">单张</span></button>
-                                    <button class="npx-btn" data-mode="strip" title="长条阅读（漫画）">${icon('uiRows')}<span class="lbl">长条</span></button>
-                                </span>
+                                <button class="npx-btn" data-act="comic" title="用漫画阅读器从这张开始连续阅读 (M)">${icon('stxBookOpen')}<span class="lbl hide-sm">漫画阅读器</span></button>
                                 <span class="npx-sp"></span>
                                 <span class="imv-info"></span>
                                 <button class="npx-btn icon" data-act="full" title="全屏 (F)">${icon('uiFullscreen')}</button>
@@ -14685,11 +15305,10 @@
                                 <button class="imv-nav next" data-act="next" title="下一张">${icon('uiChevronRight')}</button>
                                 <div class="imv-msg"></div>
                             </div>
-                            <div class="imv-strip" style="display:none"></div>
                         </div>`,
                     onInit: (w, winId) => {
                         const $ = q => w.querySelector(q);
-                        const stage = $('.imv-stage'), img = $('.imv-stage > img'), msg = $('.imv-msg'), strip = $('.imv-strip');
+                        const stage = $('.imv-stage'), img = $('.imv-stage > img'), msg = $('.imv-msg');
                         const posEl = $('.imv-pos'), zoomEl = $('.imv-zoom'), infoEl = $('.imv-info'), titleEl = w.querySelector('.window-title-text');
                         let idx = Math.max(0, list.indexOf(targetFilename));
                         let closed = false;
@@ -14793,49 +15412,8 @@
                             zoomAt(v.s * Math.pow(1.0015, -e.deltaY), e.clientX - r.left, e.clientY - r.top);
                         }, { passive: false });
                         new ResizeObserver(() => { if (mode === 'single') v.fit ? setFit() : apply(); }).observe(stage);
-                        // —— 长条模式 ——
-                        let io = null, stripBuilt = false;
-                        const buildStrip = () => {
-                            if (stripBuilt) return;
-                            stripBuilt = true;
-                            strip.innerHTML = list.map((n, i) => `<div class="pg" data-i="${i}">${escapeHtml(n)}</div>`).join('');
-                            io = new IntersectionObserver(ents => ents.forEach(en => {
-                                if (!en.isIntersecting) return;
-                                const pg = en.target; io.unobserve(pg);
-                                load(list[+pg.dataset.i]).then(r => {
-                                    if (!r || closed) { pg.textContent = '无法读取：' + list[+pg.dataset.i]; return; }
-                                    const im = new Image(); im.alt = list[+pg.dataset.i]; im.draggable = false;
-                                    im.onload = () => { pg.textContent = ''; pg.classList.add('ok'); pg.appendChild(im); };
-                                    im.onerror = () => { pg.textContent = '无法显示：' + list[+pg.dataset.i]; };
-                                    im.src = r.url;
-                                });
-                            }), { root: strip, rootMargin: '1200px 0px' });
-                            strip.querySelectorAll('.pg').forEach(pg => io.observe(pg));
-                        };
-                        let stripTick = 0;
-                        strip.addEventListener('scroll', () => {
-                            if (stripTick) return;
-                            stripTick = requestAnimationFrame(() => {
-                                stripTick = 0;
-                                const mid = strip.scrollTop + strip.clientHeight / 3;
-                                const pgs = strip.children; let i = 0;
-                                for (let k = 0; k < pgs.length; k++) { if (pgs[k].offsetTop <= mid) i = k; else break; }
-                                if (i !== idx) { idx = i; posEl.textContent = `${idx + 1} / ${list.length}`; if (titleEl) titleEl.textContent = '图片查看器 - ' + list[idx]; infoEl.textContent = list[idx]; }
-                            });
-                        }, { passive: true });
-                        const stripGo = i => { idx = (i + list.length) % list.length; const pg = strip.children[idx]; if (pg) pg.scrollIntoView({ block: 'start' }); posEl.textContent = `${idx + 1} / ${list.length}`; };
-                        // —— 模式切换 ——
-                        const setMode = (m, save) => {
-                            mode = m;
-                            if (save) try { localStorage.setItem(IMV_MODE_KEY, m); } catch (_) {}
-                            w.querySelectorAll('[data-mode]').forEach(b => b.classList.toggle('on', b.dataset.mode === m));
-                            $('.imv-single-tools').style.display = m === 'single' ? 'contents' : 'none';
-                            stage.style.display = m === 'single' ? '' : 'none';
-                            strip.style.display = m === 'strip' ? '' : 'none';
-                            if (m === 'strip') { buildStrip(); infoEl.textContent = list[idx]; requestAnimationFrame(() => stripGo(idx)); }
-                            else show(idx);
-                        };
-                        const go = d => mode === 'single' ? show(idx + d) : stripGo(idx + d);
+                        const go = d => show(idx + d);
+                        const openComic = () => openComicReader(folderPath + '/' + list[idx], list[idx], { fullscreen: w.classList.contains('truly-fullscreen') });
                         w.querySelectorAll('[data-act=prev]').forEach(b => b.onclick = () => go(-1));
                         w.querySelectorAll('[data-act=next]').forEach(b => b.onclick = () => go(1));
                         $('[data-act=zin]').onclick = () => step(1);
@@ -14844,7 +15422,7 @@
                         zoomEl.onclick = () => (v.fit && Math.abs(v.s - 1) > 0.01) ? zoomAt(1) : setFit();
                         $('[data-act=rot]').onclick = () => { v.rot = (v.rot + 90) % 360; setFit(); };
                         $('[data-act=full]').onclick = () => toggleWinFullscreen(winId, 'manga');
-                        w.querySelectorAll('[data-mode]').forEach(b => b.onclick = () => setMode(b.dataset.mode, true));
+                        $('[data-act=comic]').onclick = openComic;
                         const onKey = e => {
                             if (!w.classList.contains('focused') || w.classList.contains('minimized') || e.ctrlKey || e.metaKey || e.altKey) return;
                             const t = e.target; if (t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))) return;
@@ -14852,11 +15430,11 @@
                             const k = e.key; let hit = true;
                             if (k === 'ArrowLeft' || k === 'PageUp') go(-1);
                             else if (k === 'ArrowRight' || k === 'PageDown' || (k === ' ' && mode === 'single')) go(1);
-                            else if (k === 'Home') mode === 'single' ? show(0) : stripGo(0);
-                            else if (k === 'End') mode === 'single' ? show(list.length - 1) : stripGo(list.length - 1);
+                            else if (k === 'Home') show(0);
+                            else if (k === 'End') show(list.length - 1);
+                            else if (k === 'm' || k === 'M') openComic();
                             else if (k === 'f' || k === 'F') toggleWinFullscreen(winId, 'manga');
                             else if (k === 'Escape' && w.classList.contains('truly-fullscreen')) toggleWinFullscreen(winId, 'manga');
-                            else if (mode !== 'single') hit = false;
                             else if (k === '+' || k === '=') step(1);
                             else if (k === '-') step(-1);
                             else if (k === '0') setFit();
@@ -14869,11 +15447,11 @@
                         w.cleanup = () => {
                             closed = true;
                             document.removeEventListener('keydown', onKey);
-                            if (io) io.disconnect();
                             cache.forEach(p => p.then(r => r && URL.revokeObjectURL(r.url)));
                             cache.clear();
                         };
-                        setMode(mode, false);
+                        $('.imv-single-tools').style.display = 'contents';
+                        show(idx);
                     }
                 });
             });
@@ -16834,7 +17412,7 @@
             { k: 'storage', n: '存储', d: '空间占用、存储位置与工作区复制', ic: 'stxHardDrive' },
             { k: 'files', n: '文件管理', d: '隐藏文件与已挂载的本地文件夹', ic: 'stxFolderOpen' },
             { k: 'clean', n: '清理与维护', d: '清理临时文件、备份设置、重置数据', ic: 'stxBrushCleaning' },
-            { k: 'apps', n: '应用', d: '控制系统应用快捷方式是否显示', ic: 'stxLayoutGrid' },
+            { k: 'apps', n: '应用', d: '默认打开方式与系统应用快捷方式', ic: 'stxLayoutGrid' },
             { k: 'about', n: '关于', d: '版本信息与浏览器能力', ic: 'stxInfo' }
         ];
         const STX_PAGE_KEY = 'JISHENG_OS_SETTINGS_PAGE';
@@ -17138,6 +17716,7 @@
                 ['clean', 'export', '导出设置备份', '备份 导出 设置 迁移 换电脑'],
                 ['clean', 'import', '从备份恢复设置', '恢复 导入 备份 设置'],
                 ['clean', 'reset', '重置存储数据', '重置 删除 清空 恢复出厂 reset'],
+                ['apps', 'imageopen', '图片默认打开方式', '图片 照片 漫画 阅读器 查看器 默认 打开方式 默认应用 长条'],
                 ['apps', 'apps', '系统应用快捷方式', '应用 隐藏 显示 快捷方式 桌面 开始菜单 任务栏'],
                 ['about', 'version', '系统版本', '版本 关于 github 仓库 更新'],
                 ['about', 'caps', '浏览器能力检测', '兼容 能力 OPFS WebAssembly File System Access 支持'],
@@ -17685,7 +18264,7 @@
         function stxPageFiles(winId) {
             const hidden = SYSTEM.showHiddenFiles;
             const display = `<div class="stx-card">
-                ${stxRow({ id: 'hidden', ic: 'stxEye', title: '显示系统与隐藏文件', desc: '开启后，文件管理器侧栏最下面会出现「根目录 /」，可以查看点文件、/system 和挂载点。仅建议在检查或维护时开启。', cls: 'keep',
+                ${stxRow({ id: 'hidden', ic: 'stxEye', title: '显示系统与隐藏文件', desc: '开启后，文件管理器侧栏最上面会出现「根目录 /」，可以查看点文件、/system 和挂载点。仅建议在检查或维护时开启。', cls: 'keep',
                     ctl: stxSwitch(hidden, `stxToggleHidden(${winId})`, '显示系统与隐藏文件', { id: `show-hidden-files-${winId}` }) })}
                 ${stxRow({ id: 'names', ic: 'stxDatabase', title: '存储位置名称',
                     desc: `现在显示为「${storageBackendLabel('indexeddb')}」和「${storageBackendLabel('opfs')}」。文件管理器侧栏、路径栏、窗口标题和设置里统一使用这个名字。`,
@@ -17841,6 +18420,7 @@
                 version: 2,
                 clickBehavior: SYSTEM.clickBehavior === 'single' ? 'single' : 'double',
                 storageNames: SYSTEM.storageNames === 'zh' ? 'zh' : 'tech',
+                imageOpen: SYSTEM.imageOpen === 'viewer' ? 'viewer' : 'comic',
                 storageBackend: SYSTEM.storageBackend === 'opfs' && SYSTEM.opfs && SYSTEM.opfs.available ? 'opfs' : 'indexeddb',
                 showHiddenFiles: SYSTEM.showHiddenFiles === true,
                 wallpaperSource: SYSTEM.wallpaperSource === 'bing' ? 'bing' : 'custom',
@@ -17966,10 +18546,21 @@
                     ctl: stxSwitch(shown, `stxToggleApp(${winId}, '${app.key}')`, '显示' + app.name, { id: 'hide-app-' + app.key }) });
             }).join('');
             const right = anyHidden ? stxBtn('全部显示', `stxShowAllApps(${winId})`, { cls: 'ghost sm' }) : '';
+            const imgOpen = SYSTEM.imageOpen === 'viewer' ? 'viewer' : 'comic';
+            const defaults = `<div class="stx-card">${stxRow({ id: 'imageopen', ic: 'stxImage', title: '图片默认打开方式',
+                desc: imgOpen === 'comic' ? '漫画阅读器：同一文件夹的图片竖向连续排列；点窗口的「全屏」后只剩右上角一个 ×。' : '图片查看器：一次看一张，可缩放、旋转、左右切换。',
+                ctl: `<div class="stx-seg" role="radiogroup" aria-label="图片默认打开方式">${[['comic', '漫画阅读器'], ['viewer', '图片查看器']].map(([v, l]) =>
+                    `<button type="button" role="radio" aria-checked="${imgOpen === v}" class="${imgOpen === v ? 'on' : ''}" onclick="stxSetImageOpen(${winId}, '${v}')">${l}</button>`).join('')}</div>` })}</div>`;
             return `<div class="stx-page">${stxHead('apps')}
+                ${stxGroup('默认应用', '双击图片时使用', defaults, '', 'data-stx-row="defaults"')}
                 ${stxGroup('系统应用快捷方式', '关闭后从桌面、开始菜单和任务栏隐藏', `<div class="stx-card">${rows}</div>`, right, 'data-stx-row="apps"')}
                 <p class="stx-note">${icon('stxInfo')}隐藏只影响快捷方式，应用本身不会被删除，可随时在这里重新打开。</p>
             </div>`;
+        }
+        function stxSetImageOpen(winId, v) {
+            SYSTEM.imageOpen = v === 'viewer' ? 'viewer' : 'comic';
+            saveSystemSettings();
+            stxRender(winId, { keepScroll: true });
         }
         function stxToggleApp(winId, key) {
             setSystemAppHidden(key, !isSystemAppHidden(key));
