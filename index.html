@@ -1556,7 +1556,7 @@
         .fx-side-scrim { display: none; }
 
         .folder-sidebar {
-            width: 196px; flex: none;   /* 树形导航多了 ▸ 和缩进，比重做前的 180px 宽 16px */
+            width: 180px; flex: none;   /* 与重做前一致 */
             display: flex; flex-direction: column;
             padding: 6px 0 10px;
             background: rgba(var(--gc-13, 0,0,0), var(--ga-13, 0.15));
@@ -1585,16 +1585,16 @@
         .folder-sidebar-item .icon-svg { width: 16px; height: 16px; flex: none; opacity: 0.75; }
         .folder-sidebar-item.active .icon-svg { opacity: 1; }
         .folder-sidebar-item span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
-        /* 树形导航：每层缩进 12px；▸ 只展开/收起，点名字才进入；触屏上 ▸ 的点击区放大到 28px */
-        .fx-tree .folder-sidebar-item { gap: 5px; margin: 1px 4px; padding: 0 6px 0 calc(2px + var(--d, 0) * 12px); }
-        .fx-tw { flex: none; align-self: stretch; width: 18px; display: inline-flex; align-items: center; justify-content: center; color: var(--text-muted); border-radius: var(--ui-radius, 6px); }
+        /* 树形导航（侧栏宽度不变，仍是 180px，间距收紧到放得下「IndexedDB 存储 默认」）：每层缩进 12px；▸ 只展开/收起，点名字才进入；触屏上 ▸ 的点击区放大到 28px */
+        .fx-tree .folder-sidebar-item { gap: 4px; margin: 1px 3px; padding: 0 2px 0 calc(1px + var(--d, 0) * 12px); }
+        .fx-tw { flex: none; align-self: stretch; width: 16px; display: inline-flex; align-items: center; justify-content: center; color: var(--text-muted); border-radius: var(--ui-radius, 6px); }
         .folder-sidebar-item .fx-tw .icon-svg { width: 12px; height: 12px; opacity: .85; transition: transform .15s ease; }
         .fx-tn[aria-expanded="true"] > .fx-tw .icon-svg { transform: rotate(90deg); }
         .fx-tw[data-tw]:hover { color: var(--text-main); background: var(--l32, rgba(255,255,255,0.07)); }
         .fx-tn.is-group { color: var(--text-muted); }
-        .fx-tb { margin-left: auto; flex: none; font-style: normal; font-size: 10px; line-height: 15px; padding: 0 4px; border-radius: 999px; color: var(--text-muted); background: var(--l32, rgba(255,255,255,0.07)); }
+        .fx-tb { margin-left: auto; flex: none; font-style: normal; font-size: 10px; line-height: 15px; padding: 0 3px; border-radius: 999px; color: var(--text-muted); background: var(--l32, rgba(255,255,255,0.07)); }
         .fx-tn.active .fx-tb { color: inherit; }
-        @media (pointer: coarse) { .fx-tw { width: 28px; margin: 0 -5px; } .fx-tree .folder-sidebar-item { height: 34px; } }
+        @media (pointer: coarse) { .fx-tw { width: 28px; margin: 0 -6px; } .fx-tree .folder-sidebar-item { height: 34px; } }
         @media (prefers-reduced-motion: reduce) { .folder-sidebar-item .fx-tw .icon-svg { transition: none; } }
         /* 宽窗口：导航窗格可收起（点地址栏最左侧按钮），状态记在 localStorage，所有文件夹窗口共用 */
         @container fx (width > 640px) {
@@ -1809,7 +1809,7 @@
         /* --- 窄窗口：侧栏变为抽屉，命令栏按钮由脚本逐级收起文字 --- */
         @container fx (max-width: 640px) {
             .folder-sidebar {
-                position: absolute; left: 0; top: 0; bottom: 0; z-index: 30; width: min(196px, 80%);
+                position: absolute; left: 0; top: 0; bottom: 0; z-index: 30; width: min(180px, 80%);
                 background: rgba(var(--gc-16, 27,27,36), var(--ga-16, 1));
                 box-shadow: 8px 0 24px var(--l80, rgba(0,0,0,0.45));
                 transform: translateX(-105%); transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
