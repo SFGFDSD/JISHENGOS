@@ -381,12 +381,13 @@
         }
         .drag-ghost .icon-svg {
             display: block; width: 56px; height: 56px;
-            color: rgba(255,255,255,0.95);
+            color: var(--l7, rgba(255,255,255,0.9));   /* 与桌面图标同色，随浅色主题变深 */
         }
+        html[data-theme="light"] .drag-ghost { filter: drop-shadow(0 10px 16px rgba(0,0,0,0.22)); }
         .drag-ghost .drag-ghost-badge {
             position: absolute; right: -8px; top: -6px;
             min-width: 18px; height: 18px; padding: 0 5px;
-            border-radius: 9px; box-sizing: border-box;
+            border-radius: calc(var(--ui-radius, 6px) * 999); box-sizing: border-box;   /* 胶囊；直角模式下为方角 */
             background: rgb(var(--a-0078d4, 0,120,212)); color: var(--on-acc, #fff);
             font-size: 11px; font-weight: 600; line-height: 18px; text-align: center;
             box-shadow: 0 2px 6px rgba(0,0,0,0.45);
@@ -402,6 +403,9 @@
         /* === 窗口系统 === */
         /* 窗口圆角（设置 → 个性化 → 窗口圆角） */
         /* --ui-radius：任务栏按钮、菜单项、开始菜单图标等“内部条目”；--ctl-radius：按钮、输入框、分段控件、图标底座；--card-radius：设置卡片等大块面板；--dlg-radius：系统对话框；--cal-day-radius：日历日期 */
+        /* 全系统统一的等宽字体栈（记事本、编辑器、设置页、控制台、预览文档共用）：
+           各平台落到系统自带的等宽字体（macOS SF Mono / Menlo，Windows Consolas，Linux Liberation Mono），中文回退到系统黑体 */
+        :root { --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Cascadia Mono", "Liberation Mono", "Microsoft YaHei UI", "PingFang SC", monospace; }
         :root { --win-radius: 10px; --ui-radius: 6px; --ctl-radius: 8px; --card-radius: 12px; --dlg-radius: 12px; --cal-day-radius: 50%; }
         html[data-win-corners="small"] { --win-radius: 6px; --ui-radius: 4px; --ctl-radius: 6px; --card-radius: 8px; --dlg-radius: 8px; --cal-day-radius: 4px; }
         html[data-win-corners="square"] { --win-radius: 0px; --ui-radius: 0px; --ctl-radius: 0px; --card-radius: 0px; --dlg-radius: 0px; --cal-day-radius: 0px; }
@@ -579,7 +583,9 @@
         }
         .address-bar input::placeholder { color: var(--text-muted); }
 
-        .content-area { flex: 1; background: #fff; position: relative; overflow: hidden; display: flex; flex-direction: column; }
+        .content-area { flex: 1; background: rgba(var(--gc-content, 20,20,28), var(--ga-content, 0.85)); position: relative; overflow: hidden; display: flex; flex-direction: column; }
+        /* 浏览器窗口的网页画布保持白色：和真实浏览器一样，没写背景色的网页默认就是白底黑字 */
+        .content-area.web-canvas { background: #fff; }
         /* 不再叠加 backdrop-filter：窗口（.ultra-glass）已经是毛玻璃，子元素的模糊只作用在窗口自己的底色上，看不出差别却要多算一遍 */
         .content-area.dark { background: rgba(var(--gc-content, 20,20,28), var(--ga-content, 0.85)); }
         iframe { width: 100%; height: 100%; border: none; }
@@ -605,7 +611,7 @@
         /* === 记事本特定样式 === */
         .notepad-area {
             flex: 1; background: var(--l24, #1e1e1e); border: none; color: var(--l25, #e0e0e0);
-            padding: 16px; font-family: 'Consolas', monospace; font-size: 14px; resize: none;
+            padding: 16px; font-family: var(--mono); font-size: 14px; resize: none;
             line-height: 1.6;
         }
         /* === 记事本（v10.5.8 重做外观）===
@@ -643,7 +649,7 @@
         .npx-status.dirty .main { color: var(--l34, #f3c77a); }
         .npx-status .sub { overflow: hidden; text-overflow: ellipsis; }
         .npx .notepad-area { background: transparent; color: var(--l35, #e3e4ea); padding: 14px 18px; border: 0; outline: none; resize: none; line-height: 1.7;
-            font-family: Consolas, 'Cascadia Mono', 'JetBrains Mono', 'SF Mono', Menlo, 'Microsoft YaHei UI', 'PingFang SC', monospace;
+            font-family: var(--mono);
             caret-color: rgb(var(--at-00d4ff, 0,212,255)); tab-size: 4; scrollbar-width: thin; scrollbar-color: var(--l36, rgba(255,255,255,.18)) transparent; }
         .npx .notepad-area::placeholder { color: var(--l37, #6b6c7a); }
         .npx .notepad-area::selection { background: rgba(var(--a-0078d4, 0,120,212), 0.45); }
@@ -1165,7 +1171,7 @@
         .stx-pill.ok { background: rgba(25,195,125,.13); color: var(--l73, #5ee0a6); }
         .stx-pill.warn { background: rgba(245,165,36,.13); color: var(--l74, #f5c26b); }
         .stx-pill.bad { background: rgba(255,107,120,.12); color: var(--l75, #ff9aa6); }
-        .stx-mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; }
+        .stx-mono { font-family: var(--mono); font-size: 12px; }
         .stx-muted { color: var(--muted); }
         .stx-cb { appearance: none; -webkit-appearance: none; width: 17px; height: 17px; border-radius: min(5px, var(--ui-radius)); border: 1.5px solid var(--l76, rgba(255,255,255,.3)); display: grid; place-items: center; cursor: pointer; margin: 0; background: transparent; flex: none; }
         .stx-cb:checked, .stx-cb:indeterminate { background: rgb(var(--a-0078d4, 0,120,212)); border-color: rgb(var(--al-0078d4, 0,120,212)); }
@@ -1285,11 +1291,12 @@
         .stx-file .nm small { display: block; color: var(--muted); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .stx-file .sz { font-size: 12.5px; font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
         .stx-tm { position: relative; width: 100%; aspect-ratio: 16 / 7; min-height: 160px; max-height: 380px; border-radius: var(--win-radius); overflow: hidden; background: var(--l21, rgba(0,0,0,.25)); }
-        .stx-tile { position: absolute; display: flex; flex-direction: column; justify-content: flex-start; align-items: stretch; padding: 6px 8px; border: 2px solid rgba(20,20,28,.95); border-radius: var(--ctl-radius); overflow: hidden; font-size: 11.5px; line-height: 1.35; color: rgba(255,255,255,.96); transition: filter .15s; cursor: default; text-align: left; font-family: inherit; }
+        .stx-tile { position: absolute; box-sizing: border-box; min-width: 0; min-height: 0; display: flex; flex-direction: column; justify-content: flex-start; align-items: stretch; padding: 6px 8px; margin: 0; border: 0; border-radius: min(var(--ctl-radius), 25%); overflow: hidden; font-size: 11.5px; line-height: 1.35; color: rgba(255,255,255,.96); text-shadow: 0 1px 2px rgba(0,0,0,.35); transition: filter .15s; cursor: default; text-align: left; font-family: inherit; }
         button.stx-tile { cursor: pointer; }
         .stx-tile:hover { filter: brightness(1.18); }
         .stx-tile b { display: block; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .stx-tile span { display: block; opacity: .82; font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .stx-tile.xs { padding: 0; }
         .stx-tile.xs b, .stx-tile.xs span { display: none; }
         .stx-tm-legend { display: flex; gap: 6px 14px; flex-wrap: wrap; margin-top: 10px; font-size: 11.5px; color: var(--muted); }
         .stx-tm-legend span { display: inline-flex; align-items: center; gap: 6px; }
@@ -1341,7 +1348,7 @@
         .stx-cg.open .stx-cg-items { display: block; }
         .stx-ci { display: grid; grid-template-columns: 20px minmax(0,1fr) auto; gap: 10px; align-items: center; padding: 8px; border-radius: var(--ctl-radius); cursor: pointer; }
         .stx-ci:hover { background: var(--l61, rgba(255,255,255,.04)); }
-        .stx-ci b { display: block; font-weight: 400; font-size: 12px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; overflow-wrap: anywhere; }
+        .stx-ci b { display: block; font-weight: 400; font-size: 12px; font-family: var(--mono); overflow-wrap: anywhere; }
         .stx-ci small { display: block; color: var(--muted); font-size: 11px; overflow-wrap: anywhere; }
         .stx-ci em { font-style: normal; color: var(--muted); font-size: 11.5px; font-variant-numeric: tabular-nums; white-space: nowrap; }
         .stx-actionbar { position: sticky; bottom: 0; display: flex; align-items: center; gap: 8px 10px; flex-wrap: wrap; padding: 12px 16px; border-top: 1px solid var(--line); background: rgba(var(--gc-11, 30,30,40), var(--ga-11, 0.97)); border-radius: 0 0 var(--card-radius) var(--card-radius); z-index: 1; }
@@ -1627,11 +1634,10 @@
         .fx-tw .icon-svg { width: 12px; height: 12px; stroke-width: 2; transition: transform .15s ease; }
         .fx-tn[aria-expanded="true"] > .fx-tw .icon-svg { transform: rotate(90deg); }
         .fx-tw[data-tw]:hover { color: var(--text-main); background: var(--l54, rgba(255,255,255,0.1)); }
-        .fx-tb {
-            flex: none; font-style: normal; font-size: 10px; line-height: 16px; padding: 0 5px;
-            border-radius: 999px; color: var(--text-muted); background: var(--l32, rgba(255,255,255,0.07));
-        }
-        .fx-tn.active .fx-tb { color: inherit; background: var(--l54, rgba(255,255,255,0.12)); }
+        /* 默认存储位置标记：一颗小星（原来是“默认”文字胶囊） */
+        .fx-tb { flex: none; display: flex; align-items: center; justify-content: center; width: 14px; height: 14px; font-style: normal; color: var(--text-muted); }
+        .fx-tb .icon-svg { width: 12px; height: 12px; stroke-width: 2; }
+        .fx-tn.active .fx-tb, .fx-tn:hover .fx-tb { color: inherit; }
         .fx-tx {
             flex: none; width: 22px; height: 22px; margin-right: -3px; padding: 0; border: 0;
             display: none; align-items: center; justify-content: center;
@@ -1812,7 +1818,7 @@
         .fx-prev-media img { max-width: 100%; max-height: 220px; object-fit: contain; border-radius: var(--ui-radius, 6px); box-shadow: 0 6px 20px var(--l96, rgba(0,0,0,0.4)); background: repeating-conic-gradient(var(--l45, #2a2a33) 0 25%, var(--l41, #22222a) 0 50%) 0 0 / 14px 14px; }
         .fx-prev-text {
             width: 100%; max-height: 200px; overflow: hidden; margin: 0; box-sizing: border-box;
-            padding: 10px 12px; font: 11px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+            padding: 10px 12px; font: 11px/1.5 var(--mono);
             color: var(--l97, rgba(230,230,240,0.8)); white-space: pre-wrap; word-break: break-all;
             background: var(--l21, rgba(0,0,0,0.25)); border: 1px solid var(--l87, rgba(255,255,255,0.06)); border-radius: var(--ui-radius, 6px);
             -webkit-mask-image: linear-gradient(#000 70%, transparent);
@@ -2078,12 +2084,18 @@
 
         /* 漫画全屏时的紧急退出按钮 (仅在标题栏隐藏时显示) */
         .manga-exit-btn {
-            position: fixed; top: 10px; right: 10px;
-            width: 30px; height: 30px; background: rgba(0,0,0,0.5);
-            color: white; border-radius: 50%; display: none;
+            position: fixed; top: max(10px, env(safe-area-inset-top)); right: max(10px, env(safe-area-inset-right));
+            width: 30px; height: 30px; padding: 0; border-radius: 50%; display: none;
             align-items: center; justify-content: center; cursor: pointer; z-index: 10001;
+            border: 1px solid rgba(255,255,255,.14); background: rgba(0,0,0,.4); color: rgba(255,255,255,.7);
+            transition: background .15s, color .15s;
+            -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
         }
+        .manga-exit-btn .icon-svg { width: 14px; height: 14px; stroke-width: 2; }
+        .manga-exit-btn:hover, .manga-exit-btn:focus-visible { color: #fff; background: rgba(0,0,0,.75); }
         .window.truly-fullscreen.manga-full .manga-exit-btn { display: flex; }
+        /* 与漫画阅读器的 .cmx-x 同一外观：30px 圆钮 + SVG ×；触屏只放大点击区，不放大外观 */
+        @media (pointer: coarse) { .manga-exit-btn::after { content: ''; position: absolute; inset: -5px; border-radius: 50%; } }
 
         /* === 图片查看器（单张浏览；长条连续阅读见下方「漫画阅读器」） === */
         .imv { flex: 1; min-height: 0; display: flex; flex-direction: column; background: rgba(var(--gc-19, 18,18,22), var(--ga-19, 1)); }
@@ -2141,7 +2153,7 @@
         @keyframes cmx-shimmer { to { background-position: -200% 0; } }
         .cmx-x {
             position: absolute; z-index: 5; top: max(12px, env(safe-area-inset-top)); right: max(18px, env(safe-area-inset-right));
-            width: 34px; height: 34px; padding: 0; border-radius: 50%;
+            width: 30px; height: 30px; padding: 0; border-radius: 50%;
             display: flex; align-items: center; justify-content: center;
             border: 1px solid rgba(255,255,255,.14); background: rgba(0,0,0,.4); color: rgba(255,255,255,.7);
             cursor: pointer; transition: opacity .3s, background .15s, color .15s;
@@ -2150,7 +2162,7 @@
         .cmx-x .icon-svg { width: 14px; height: 14px; stroke-width: 2; }
         .cmx-x:hover, .cmx-x:focus-visible { color: #fff; background: rgba(0,0,0,.75); opacity: 1; }
         .cmx.idle .cmx-x { opacity: .35; }
-        @media (pointer: coarse) { .cmx-x { width: 40px; height: 40px; } }
+        @media (pointer: coarse) { .cmx-x::after { content: ''; position: absolute; inset: -5px; border-radius: 50%; } }
         @media (prefers-reduced-motion: reduce) { .cmx-pg .ph { animation: none; } }
         @container npx (max-width: 470px) { .imv .hide-sm { display: none; } }
 
@@ -2229,7 +2241,7 @@
         .edx-field:focus-within { border-color: rgb(var(--al-0078d4, 0,120,212)); box-shadow: 0 0 0 1px rgb(var(--al-0078d4, 0,120,212)); }
         .edx .edx-field input:focus-visible { outline: none; }
         .edx-field.bad { border-color: var(--danger); }
-        .edx-field input { flex: 1; min-width: 0; height: 100%; border: 0; background: transparent; color: var(--ink); padding: 0 8px; font: 12.5px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; outline: none; }
+        .edx-field input { flex: 1; min-width: 0; height: 100%; border: 0; background: transparent; color: var(--ink); padding: 0 8px; font: 12.5px var(--mono); outline: none; }
         .edx-field input::placeholder { color: var(--muted); font-family: inherit; }
         .edx-field .cnt { color: var(--muted); font-size: 11px; white-space: nowrap; padding: 0 4px; font-variant-numeric: tabular-nums; }
         .edx-field .cnt.none { color: var(--danger); }
@@ -2270,7 +2282,7 @@
         .edx-con-h { display: flex; align-items: center; gap: 6px; height: 30px; padding: 0 6px 0 12px; flex: none; border-bottom: 1px solid var(--line); color: var(--muted); font-size: 12px; }
         .edx-con-h b { color: var(--ink); font-weight: 500; }
         .edx-con-h .edx-ib { height: 24px; min-width: 24px; padding: 0 6px; font-size: 11.5px; }
-        .edx-con-list { flex: 1; overflow: auto; font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+        .edx-con-list { flex: 1; overflow: auto; font: 12px/1.5 var(--mono); }
         .edx-con-item { display: grid; grid-template-columns: 16px minmax(0,1fr) auto; gap: 8px; align-items: start; padding: 4px 10px; border-bottom: 1px solid var(--l38, rgba(255,255,255,.04)); color: var(--l114, #d7d9e0); }
         .edx-con-item .icon-svg { width: 13px; height: 13px; margin-top: 3px; color: var(--muted); }
         .edx-con-item pre { margin: 0; white-space: pre-wrap; word-break: break-word; font: inherit; }
@@ -2338,7 +2350,7 @@
         /* CodeMirror 主题覆盖：语法配色沿用 material-darker；字号跟随编辑器设置 */
         .editor-app .CodeMirror {
             height: 100% !important;
-            font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'SF Mono', 'Consolas', 'Monaco', monospace !important;
+            font-family: var(--mono) !important;
             font-size: var(--edx-font, 14px) !important; line-height: 1.6 !important;
         }
         /* 修复：只允许"代码文本"可选中，不能用 .CodeMirror * 通配。
@@ -2458,7 +2470,7 @@
         .stx-acc-custom input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; border: 0; padding: 0; }
         .stx-acc-foot { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 12.5px; color: var(--muted); }
         .stx-acc-foot b { color: var(--ink); font-weight: 500; }
-        .stx-acc-foot code { font: 11.5px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; padding: 1px 6px; border-radius: var(--ui-radius); background: color-mix(in srgb, var(--ink) 7%, transparent); color: var(--ink); }
+        .stx-acc-foot code { font: 11.5px var(--mono); padding: 1px 6px; border-radius: var(--ui-radius); background: color-mix(in srgb, var(--ink) 7%, transparent); color: var(--ink); }
         .stx-acc-foot .sp { flex: 1; }
         .stx-acc-demo { display: inline-flex; align-items: center; gap: 8px; }
         .stx-acc-demo .d1 { height: 22px; padding: 0 10px; border-radius: var(--ctl-radius); background: var(--acc); color: var(--on-acc, #fff); font-size: 11.5px; display: inline-flex; align-items: center; }
@@ -2823,7 +2835,7 @@
             <button type="button" class="menu-item" data-launch="openPaint" data-keywords="paint draw 画图 绘图 hb" data-icon="appPaint" data-icon-size="lg" data-system-app="paint"><span>画板</span></button>
             <button type="button" class="menu-item" data-launch="openCodeEditor" data-keywords="html code editor 代码 编辑器 bjq" data-icon="appCode" data-icon-size="lg" data-system-app="code"><span>HTML 编辑器</span></button>
             <button type="button" class="menu-item" data-launch="openV86" data-keywords="v86 vm virtual machine linux 虚拟机 xnj" data-icon="appVM" data-icon-size="lg" data-system-app="v86"><span>V86 虚拟机</span></button>
-            <button type="button" class="menu-item" data-launch="openWallpaperPanel" data-keywords="wallpaper background 背景 壁纸 bz" data-icon="uiWallpaper" data-icon-size="lg"><span>壁纸</span></button>
+            <button type="button" class="menu-item" data-launch="openWallpaperPanel" data-keywords="wallpaper background 背景 壁纸 bz" data-icon="stxWallpaper" data-icon-size="lg"><span>壁纸</span></button>
             <button type="button" class="menu-item" data-launch="openSettings" data-keywords="settings 系统设置 设置 sz" data-icon="appSettings" data-icon-size="lg" data-system-app="settings"><span>设置</span></button>
         </div>
         <div class="sm-empty" id="start-empty" hidden></div>
@@ -2833,7 +2845,7 @@
                 <span class="sm-about-text"><b>JISHENG OS</b><small id="start-version">关于本系统</small></span>
             </button>
             <button type="button" class="sm-iconbtn" data-launch="openSettings" data-icon="appSettings" title="设置" aria-label="设置"></button>
-            <button type="button" class="sm-iconbtn danger" data-launch="resetSystem" data-icon="uiBrowserRefresh" title="重置系统…（会先确认）" aria-label="重置系统"></button>
+            <button type="button" class="sm-iconbtn danger" data-launch="resetSystem" data-icon="uiResetSystem" title="重置系统…（会先确认）" aria-label="重置系统"></button>
         </div>
     </div>
 
@@ -7492,7 +7504,6 @@
             appVM:      '<rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/><path d="M6 8h2M6 12h2M10 8h8M10 12h8"/>',
             appCode:    '<polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>',
             appExplorer:'<path d="m6 14 1.5-2.9A2 2 0 0 1 9.24 10H20a2 2 0 0 1 1.94 2.5l-1.54 6a2 2 0 0 1-1.95 1.5H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H18a2 2 0 0 1 2 2v2"/>',
-            appDefault: '<rect x="3" y="3" width="18" height="18" rx="2"/>',
             // appUnknown: 未知/无图标应用的回退图标：Lucide circle-help
             appUnknown: '<circle cx="12" cy="12" r="10"/> <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/> <path d="M12 17h.01"/>',
             // --- UI 操作 ---
@@ -7564,6 +7575,10 @@
             uiRename:     '<path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>',
             uiExtractSimple: '<path d="M1 3h22v5H1z"/><path d="M21 8v13H3V8"/><path d="m9 15 3-3 3 3"/><path d="M12 12v9"/>',
             uiImage:      '<rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>',
+            // uiResetSystem: 开始菜单“重置系统”专用——逆时针回转箭头 + 圆心感叹号（“恢复初始状态，有风险”），和普通“刷新”区分开
+            uiResetSystem: '<path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7.5v5"/><path d="M12 16.5h.01"/>',
+            // stxStar: 资源管理器树里“默认存储位置”的标记（Lucide star）
+            stxStar: '<path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"/>',
             uiWallpaper:  '<rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>',
             uiEject:      '<path d="M18 19a5 5 0 0 1-5-5v8"/><path d="M9 20H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H20a2 2 0 0 1 2 2v5"/><circle cx="13" cy="12" r="2"/><circle cx="20" cy="19" r="2"/>',
             uiBrush:      '<path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/>',
@@ -8852,9 +8867,9 @@
                 if (st && fxIsGlobalSearch(st)) items.push({ icon: 'stxFolderOpen', label: '打开所在位置', act: () => fxRevealPath(windowId, path) });
                 if (isDir) items.push({ icon: 'fxNewWindow', label: '在新窗口中打开', act: () => fxOpenWindow(path, { title: name }) });
                 if (!isDir && canOpenWith(name)) items.push('-',
-                    { icon: 'uiCode', label: '用代码编辑器打开', act: () => openWithEditor(path, name) },
-                    { icon: 'uiBrowserCtx', label: '用浏览器打开', act: () => openWithBrowser(path, name) },
-                    { icon: 'uiNewFile', label: '用记事本打开', act: () => openWithNotepad(path, name) });
+                    { icon: 'appCode', label: '用代码编辑器打开', act: () => openWithEditor(path, name) },
+                    { icon: 'appBrowser', label: '用浏览器打开', act: () => openWithBrowser(path, name) },
+                    { icon: 'appNotepad', label: '用记事本打开', act: () => openWithNotepad(path, name) });
                 if (!isDir && IMG_EXT_RE.test(name)) items.push('-', ...imageOpenWithItems(path, name));
                 if (!isDir && isImageFile(name)) items.push('-', { icon: 'stxWallpaper', label: '设为桌面壁纸', act: () => setWallpaperFromPath(path, name) });
                 if (!isDir && isArchiveFile(name)) items.push({ icon: 'uiExtractSimple', label: '解压', act: () => extractZipFromPath(path) });
@@ -9254,7 +9269,7 @@
             const store = (backend, b, ic, tech, desc) => {
                 const label = storageBackendLabel(backend), isDef = def === backend;
                 const kid = (path, name) => ({ b, path, label: name, tip: `${label} › ${name}\n${path}` });
-                return { b, group: true, label, ic, badge: isDef ? '默认' : '',
+                return { b, group: true, label, ic, isDefault: isDef,
                     tip: `${label}（${tech}）\n${desc}${isDef ? '\n默认存储：桌面上的文件都在这里' : ''}`,
                     kids: [kid(getStorageDesktopPath(backend), '桌面'), kid(getStorageDocumentsPath(backend), '文档')] };
             };
@@ -9305,7 +9320,7 @@
                 + `<span class="fx-tw"${canOpen ? ' data-tw="1"' : ''} aria-hidden="true">${canOpen ? icon('fxChevRight') : ''}</span>`
                 + icon(n.ic || 'fileFolder', 'sm')
                 + `<span class="fx-tt">${escapeHtml(n.label)}</span>`
-                + (n.badge ? `<em class="fx-tb">${n.badge}</em>` : '')
+                + (n.isDefault ? `<em class="fx-tb" title="默认存储位置" aria-label="默认存储位置">${icon('stxStar')}</em>` : '')
                 + (n.mount ? `<button type="button" class="fx-tx" data-eject="${escapeAttr(n.mount)}" tabindex="-1" title="卸载“${escapeAttr(n.label)}”（不会删除电脑上的文件）" aria-label="卸载">${icon('stxUnplug')}</button>` : '')
                 + '</div>';
             if (isOpen) {
@@ -12186,9 +12201,9 @@
         // 可指定打开方式的文件类型统一提供：代码编辑器 / 浏览器 / 记事本 三项。
         function openWithItems(fullPath, filename) {
             return [
-                { icon: 'uiCode', label: '用代码编辑器打开', act: () => openWithEditor(fullPath, filename) },
-                { icon: 'uiBrowserCtx', label: '用浏览器打开', act: () => openWithBrowser(fullPath, filename) },
-                { icon: 'uiNewFile', label: '用记事本打开', act: () => openWithNotepad(fullPath, filename) }
+                { icon: 'appCode', label: '用代码编辑器打开', act: () => openWithEditor(fullPath, filename) },
+                { icon: 'appBrowser', label: '用浏览器打开', act: () => openWithBrowser(fullPath, filename) },
+                { icon: 'appNotepad', label: '用记事本打开', act: () => openWithNotepad(fullPath, filename) }
             ];
         }
 
@@ -13403,6 +13418,7 @@
         // === 窗口系统 (完整适配版) ===
         function createWindow(opts) {
             const id = ++SYSTEM.idCounter;
+            const winIcon = opts.iconHtml || icon('appUnknown', 'sm');   // 没给图标的窗口统一用“未知应用”问号，标题栏与任务栏一致
             const isMobile = window.innerWidth <= 768; // 检测手机
             // 创建即最大化：手机端本来就全屏；桌面端由 opts.maximized 决定
             // （JISHENG-OS-APP 应用窗口传 true —— 应用一律最大化打开，想缩小直接点标题栏最大化按钮或用边缘拖拽）
@@ -13435,7 +13451,7 @@
             w.innerHTML = `
                 <div class="title-bar">
                     <div class="title-bar-left">
-                        <div class="window-icon">${opts.iconHtml || ''}</div>
+                        <div class="window-icon">${winIcon}</div>
                         <div class="window-title-text">${escapeHtml(opts.title || 'Window')}</div>
                     </div>
                     <div class="window-controls">
@@ -13446,7 +13462,7 @@
                         <div class="win-btn close" role="button" title="关闭" aria-label="关闭" onclick="closeWin(${id})">${icon('uiClose')}</div>
                     </div>
                 </div>
-                ${opts.winType === 'manga' ? `<div class="manga-exit-btn" onclick="toggleWinFullscreen(${id}, 'manga')">×</div>` : ''}
+                ${opts.winType === 'manga' ? `<button type="button" class="manga-exit-btn" title="退出全屏" aria-label="退出全屏" onclick="toggleWinFullscreen(${id}, 'manga')">${icon('uiClose')}</button>` : ''}
                 ${opts.content}
                 <div class="resize-handle n"></div><div class="resize-handle s"></div>
                 <div class="resize-handle e"></div><div class="resize-handle w"></div>
@@ -13456,7 +13472,7 @@
             
             document.getElementById('windows-container').appendChild(w);
             
-            const winObj = { id, element: w, title: opts.title, minimized: false, maximized: startMaximized, savedPos, iconHtml: opts.iconHtml };
+            const winObj = { id, element: w, title: opts.title, minimized: false, maximized: startMaximized, savedPos, iconHtml: winIcon };
             SYSTEM.windows.push(winObj);
             
             makeDraggable(w, id);
@@ -14081,7 +14097,7 @@
                         </div>
                         <button class="nav-btn" id="nav-go-${SYSTEM.idCounter+1}">${icon('uiArrowRight')}</button>
                     </div>
-                    <div class="content-area" style="position:relative;">
+                    <div class="content-area web-canvas" style="position:relative;">
                         <div class="loading-overlay active" id="loading-${SYSTEM.idCounter+1}"><div class="spinner"></div></div>
                         <!-- 注意：故意不设 sandbox 限制以保证最佳性能和兼容性，请勿添加 -->
                         <iframe id="browser-frame-${SYSTEM.idCounter+1}" src="${startUrl}"></iframe>
@@ -15898,27 +15914,28 @@
 
         // 把渲染结果包装成带 GitHub 暗色样式的完整 HTML 文档（用于编辑器预览 iframe / 新窗口打开）
         function buildMarkdownPreviewDoc(md) {
-            const body = (md && md.trim()) ? renderMarkdownToHtml(md) : '<p style="color:#8b949e">（空 Markdown 文档）</p>';
+            const body = (md && md.trim()) ? renderMarkdownToHtml(md) : '<p style="color:var(--muted)">（空 Markdown 文档）</p>';
             return '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>'
-                + 'body{margin:0;padding:24px 28px;background:#0d1117;color:#e6edf3;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans","PingFang SC","Microsoft YaHei",Helvetica,Arial,sans-serif;font-size:15px;line-height:1.65;word-wrap:break-word}'
+                + previewThemeVars()
+                + 'body{margin:0;padding:24px 28px;background:var(--bg);color:var(--fg);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans","PingFang SC","Microsoft YaHei",Helvetica,Arial,sans-serif;font-size:15px;line-height:1.65;word-wrap:break-word}'
                 + 'h1,h2,h3,h4,h5,h6{margin:1.2em 0 .5em;font-weight:600;line-height:1.3}'
-                + 'h1{font-size:1.9em;padding-bottom:.3em;border-bottom:1px solid #30363d}'
-                + 'h2{font-size:1.5em;padding-bottom:.3em;border-bottom:1px solid #30363d}'
-                + 'h3{font-size:1.25em}h4{font-size:1.1em}h5{font-size:1em}h6{font-size:.9em;color:#8b949e}'
-                + 'p{margin:.6em 0}a{color:#58a6ff;text-decoration:none}a:hover{text-decoration:underline}'
-                + 'code{background:rgba(110,118,129,.35);padding:.15em .4em;border-radius:5px;font-family:ui-monospace,SFMono-Regular,"SF Mono",Consolas,"Liberation Mono",Menlo,monospace;font-size:.88em}'
-                + 'pre{background:#161b22;border:1px solid #30363d;border-radius:8px;padding:14px 16px;overflow:auto;margin:.8em 0}'
+                + 'h1{font-size:1.9em;padding-bottom:.3em;border-bottom:1px solid var(--line)}'
+                + 'h2{font-size:1.5em;padding-bottom:.3em;border-bottom:1px solid var(--line)}'
+                + 'h3{font-size:1.25em}h4{font-size:1.1em}h5{font-size:1em}h6{font-size:.9em;color:var(--muted)}'
+                + 'p{margin:.6em 0}a{color:var(--link);text-decoration:none}a:hover{text-decoration:underline}'
+                + 'code{background:var(--code);padding:.15em .4em;border-radius:var(--r-sm);font-family:var(--mono);font-size:.88em}'
+                + 'pre{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:14px 16px;overflow:auto;margin:.8em 0}'
                 + 'pre code{background:none;padding:0;font-size:.86em;line-height:1.55;display:block}'
-                + 'blockquote{margin:.8em 0;padding:.2em 1em;border-left:4px solid #30363d;color:#8b949e}'
+                + 'blockquote{margin:.8em 0;padding:.2em 1em;border-left:4px solid var(--line);color:var(--muted)}'
                 + 'blockquote>:first-child{margin-top:0}blockquote>:last-child{margin-bottom:0}'
                 + 'ul,ol{margin:.5em 0;padding-left:2em}li{margin:.25em 0}'
                 + 'li input[type=checkbox]{margin-right:.4em;vertical-align:middle}'
                 + 'table{border-collapse:collapse;margin:.8em 0;display:block;max-width:100%;overflow:auto}'
-                + 'th,td{border:1px solid #30363d;padding:6px 13px}th{font-weight:600;background:#161b22}'
-                + 'tbody tr:nth-child(2n){background:#161b22}'
-                + 'img{max-width:100%;border-radius:6px}'
-                + 'hr{height:1px;border:none;background:#30363d;margin:1.5em 0}'
-                + 'del{color:#8b949e}'
+                + 'th,td{border:1px solid var(--line);padding:6px 13px}th{font-weight:600;background:var(--panel)}'
+                + 'tbody tr:nth-child(2n){background:var(--panel)}'
+                + 'img{max-width:100%;border-radius:var(--r-sm)}'
+                + 'hr{height:1px;border:none;background:var(--line);margin:1.5em 0}'
+                + 'del{color:var(--muted)}'
                 + '</style></head><body class="markdown-body">' + body + '</body></html>';
         }
 
@@ -16412,10 +16429,8 @@
 <footer class="footer">页脚 footer</footer>`;
             // 按语言组装预览文档；offset = 编辑器第 1 行在预览文档中前面多出的行数（用于把报错行号对回编辑器）
             function buildPreview(code) {
-                const built = buildPreviewDoc(code), lang = curLang();
-                // Markdown / JSON / 空白 HTML 的预览底色跟随系统主题；用户自己的 HTML/CSS/JS 页面保持原样
-                if (lang === 'markdown' || lang === 'application/json' || (!code && lang !== 'javascript' && lang !== 'css')) built.html = previewDocTheme(built.html);
-                return built;
+                // Markdown / JSON / 空白 HTML 的预览用 previewThemeVars() 注入的 CSS 变量，跟随系统主题和圆角；用户自己的 HTML/CSS/JS 页面保持原样
+                return buildPreviewDoc(code);
             }
             function buildPreviewDoc(code) {
                 const lang = curLang();
@@ -16434,10 +16449,10 @@
                     let out;
                     try { out = '<pre class="ok">' + escHtml(JSON.stringify(JSON.parse(code || 'null'), null, 2)) + '</pre>'; }
                     catch (e) { out = '<div class="err">JSON 解析失败：' + escHtml(e.message) + '</div>'; }
-                    return { html: '<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{margin:0;background:#0d1117;color:#c9d1d9;font:13px/1.55 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}pre{margin:0;padding:14px 16px;white-space:pre-wrap;word-break:break-word}.err{margin:14px;padding:10px 12px;border-radius:8px;background:rgba(255,107,120,.12);color:#ff9aa5}</style></head><body>' + out + '</body></html>', offset: null };
+                    return { html: '<!DOCTYPE html><html><head><meta charset="utf-8"><style>' + previewThemeVars() + 'body{margin:0;background:var(--bg);color:var(--fg-code);font:13px/1.55 var(--mono)}pre{margin:0;padding:14px 16px;white-space:pre-wrap;word-break:break-word}.err{margin:14px;padding:10px 12px;border-radius:var(--r);background:var(--errbg);color:var(--err)}</style></head><body>' + out + '</body></html>', offset: null };
                 }
                 // HTML 页面不给“定位到行”：Chrome 对 document.write 写入的脚本报告的是“相对 <script> 标签”的行号，Firefox 是绝对行号，无法可靠换算
-                return { html: code || '<html><body style="margin:0;background:#0d1117;"></body></html>', offset: null };
+                return { html: code || '<html><head><style>' + previewThemeVars() + 'body{margin:0;background:var(--bg)}</style></head><body></body></html>', offset: null };
             }
 
             // 独立页面（新标签页 / blob 兜底）：把 JS 模式的脚本拼回 HTML
@@ -17089,9 +17104,15 @@
                     try { ro.disconnect(); } catch (e) {}
                     closeMenu();
                     previewGen++;
-                    try { previewFrame.src = 'about:blank'; } catch (e) {}
-                    if (editor) { try { editor.toTextArea(); } catch (e) {} editor = null; }
                     window.removeEventListener('appearancechange', onAppearance);
+                    // 看得见的拆除（预览清空、CodeMirror 还原成 textarea）推迟到关窗动画结束、窗口已移除之后：
+                    // 立刻做的话，淡出的 200ms 里预览会变成白底，左上角还会露出一块原始 textarea，看起来像白屏闪一下
+                    const cm = editor, frame = previewFrame;
+                    editor = null;
+                    setTimeout(() => {
+                        try { frame.src = 'about:blank'; } catch (e) {}
+                        if (cm) { try { cm.toTextArea(); } catch (e) {} }
+                    }, 320);
                 };
                 winEl.onDestroy = cleanupEditor;
                 // closeWin() 实际调用的是 element.cleanup()：在这里解除全选修复的 document 监听，并执行上面的清理
@@ -17435,7 +17456,7 @@
         const STX_TREE_ROOTS = [
             { p: '/opfs/desktop', n: 'OPFS 桌面', c: '#14b8a6' },
             { p: '/opfs/documents', n: 'OPFS 文档', c: '#22c55e' },
-            { p: '/desktop', n: '桌面', c: '#1688e5' },
+            { p: '/desktop', n: '桌面', c: 'rgb(var(--a-0078d4, 0,120,212))' },   // 桌面 = 默认存储里最大的一块，跟随强调色
             { p: '/documents', n: '文档', c: '#6366f1' },
             { p: '/opfs', n: 'OPFS 其他', c: '#0ea5a0' }
         ];
@@ -18077,12 +18098,18 @@
             document.querySelectorAll('.editor-app .CodeMirror').forEach(el => { const cm = el.CodeMirror; if (cm && cm.getOption('theme') !== t) cm.setOption('theme', t); });
             if (typeof apPaintPreviews === 'function') apPaintPreviews();
         });
-        // 编辑器预览（GitHub 暗色 / 亮色 两套配色）
-        const PREVIEW_LIGHT_MAP = { '#0d1117': '#ffffff', '#e6edf3': '#1f2328', '#30363d': '#d1d9e0', '#8b949e': '#59636e', '#58a6ff': '#0969da',
-            '#161b22': '#f6f8fa', '#c9d1d9': '#1f2328', '#ff9aa5': '#cf222e', 'rgba(110,118,129,.35)': 'rgba(129,139,152,.18)', 'rgba(255,107,120,.12)': 'rgba(207,34,46,.08)' };
-        function previewDocTheme(html) {
-            if (!(window.JSAppearance && JSAppearance.isLight())) return html;
-            return html.replace(/#0d1117|#e6edf3|#30363d|#8b949e|#58a6ff|#161b22|#c9d1d9|#ff9aa5|rgba\(110,118,129,\.35\)|rgba\(255,107,120,\.12\)/g, m => PREVIEW_LIGHT_MAP[m]);
+        // 编辑器预览（Markdown / JSON / 空白 HTML）的配色与圆角：GitHub 暗色 / 亮色两套，以 CSS 变量注入预览文档。
+        // 预览文档里只引用 var(--…)，新增样式时不会再漏掉亮色主题；圆角和等宽字体取自系统当前设置。
+        const PREVIEW_PALETTES = {
+            dark:  { bg: '#0d1117', fg: '#e6edf3', 'fg-code': '#c9d1d9', line: '#30363d', muted: '#8b949e', link: '#58a6ff', panel: '#161b22', code: 'rgba(110,118,129,.35)', err: '#ff9aa5', errbg: 'rgba(255,107,120,.12)' },
+            light: { bg: '#ffffff', fg: '#1f2328', 'fg-code': '#1f2328', line: '#d1d9e0', muted: '#59636e', link: '#0969da', panel: '#f6f8fa', code: 'rgba(129,139,152,.18)', err: '#cf222e', errbg: 'rgba(207,34,46,.08)' }
+        };
+        function previewThemeVars() {
+            const pal = PREVIEW_PALETTES[(window.JSAppearance && JSAppearance.isLight()) ? 'light' : 'dark'];
+            const cs = getComputedStyle(document.documentElement), v = (k, d) => (cs.getPropertyValue(k).trim() || d);
+            const vars = Object.keys(pal).map(k => `--${k}:${pal[k]}`);
+            vars.push(`--r-sm:${v('--ui-radius', '6px')}`, `--r:${v('--ctl-radius', '8px')}`, `--mono:${v('--mono', 'ui-monospace,Consolas,monospace')}`);
+            return ':root{' + vars.join(';') + ';color-scheme:' + (pal === PREVIEW_PALETTES.light ? 'light' : 'dark') + '}';
         }
         function stxSetClick(winId, v) {
             setClickBehavior(v);
@@ -18172,7 +18199,7 @@
             const otherBytes = Number.isFinite(reported) ? Math.max(0, reported - classified) : 0;
             const stackTotal = used || 1;
             const segs = [
-                { n: storageBackendLabel('indexeddb'), c: '#1688e5', b: r.idb.bytes, s: `${r.idb.files} 个文件 · /desktop、/documents` },
+                { n: storageBackendLabel('indexeddb'), c: 'rgb(var(--a-0078d4, 0,120,212))', b: r.idb.bytes, s: `${r.idb.files} 个文件 · /desktop、/documents` },
                 { n: storageBackendLabel('opfs'), c: '#19c37d', b: r.opfs.bytes, s: opfsOk ? `${r.opfs.files} 个文件 · /opfs` : '当前浏览器不可用' },
                 { n: '系统文件与设置', c: '#a78bfa', b: r.system.bytes, s: `${r.system.files} 个文件 · /system` },
                 { n: 'Cache Storage', c: '#f59e0b', b: cacheBytes, s: Number.isFinite(r.caches) ? '浏览器离线缓存' : '浏览器未单独提供' },
@@ -18226,7 +18253,8 @@
                 const label = `${f.name}（${f.rootName}）：${formatStorageBytes(f.bytes)} · ${f.files} 个文件 · ${stxPctText(stxPct(f.bytes, folderTotal))}`;
                 const k = (shadeIdx[f.root] = (shadeIdx[f.root] ?? -1) + 1);
                 const bg = f.key === '__rest' ? f.color : `color-mix(in srgb, ${f.color} ${[100, 78, 90, 68, 84, 60][k % 6]}%, #0b1020)`;
-                const style = `left:${t.x}%;top:${t.y}%;width:${t.w}%;height:${t.h}%;background:${bg}`;
+                                // 方块之间的缝用 1px 内缩做（露出底色），不再用 2px 边框：边框 + 内边距会让极小的方块撑出自己的格子
+                const style = `left:calc(${t.x}% + 1px);top:calc(${t.y}% + 1px);width:max(0px, calc(${t.w}% - 2px));height:max(0px, calc(${t.h}% - 2px));background:${bg}`;
                 const inner = `<b>${stxEsc(f.name)}</b><span>${formatStorageBytes(f.bytes)}</span>`;
                 return f.key === '__rest'
                     ? `<div class="stx-tile ${xs ? 'xs' : ''}" style="${style}" title="${stxAttr(label)}">${inner}</div>`
@@ -19148,7 +19176,7 @@
                     item.setAttribute('role', 'button');
                     item.tabIndex = 0;
                     
-                    const taskbarIcon = w.iconHtml || icon('appDefault');
+                    const taskbarIcon = w.iconHtml || icon('appUnknown', 'sm');
                     item.innerHTML = `
                         <div class="running-icon">${taskbarIcon}</div>
                         <div class="running-title">${escapeHtml(w.title || '窗口')}</div>
