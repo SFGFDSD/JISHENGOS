@@ -16248,8 +16248,6 @@
                             ${ib('findBtn', 'stxSearch', '查找与替换 (Ctrl+F)', 'lbl-wide', '查找')}
                             ${ib('format', 'edxWand', '格式化 (Ctrl+Shift+F)', 'mid-hide lbl-wide', '格式化')}
                             ${ib('copy', 'stxCopy', '复制全部内容', 'mid-hide lbl-wide', '复制全部')}
-                            <span class="edx-sep mid-hide"></span>
-                            ${ib('clear', 'stxTrash2', '清空（Ctrl+Z 可撤销）', 'mid-hide lbl-wide danger', '清空')}
                             <span class="edx-sp"></span>
                             <select class="edx-select" data-r="lang" title="语言" aria-label="语言">
                                 <option value="htmlmixed">HTML</option>
@@ -16259,14 +16257,18 @@
                                 <option value="application/json">JSON</option>
                                 <option value="xml">XML / SVG</option>
                             </select>
-                            ${ib('import', 'uiDownload', '导入文件 (Ctrl+O)', 'edx-io lbl-wide', '导入')}
-                            ${ib('export', 'uiUpload', '导出文件 (Ctrl+Shift+S)', 'edx-io lbl-wide', '导出')}
                             <span class="edx-sep"></span>
                             <div class="edx-seg view" role="radiogroup" aria-label="视图">
                                 <button type="button" data-view="code" role="radio" title="只看代码">${icon('edxCode')}<span class="lbl">代码</span></button>
                                 <button type="button" data-view="split" role="radio" title="代码与预览并排">${icon('edxColumns')}<span class="lbl">分屏</span></button>
                                 <button type="button" data-view="preview" role="radio" title="只看预览">${icon('stxEye')}<span class="lbl">预览</span></button>
                             </div>
+                            <span class="edx-sep mid-hide"></span>
+                            ${ib('clear', 'stxTrash2', '清空（Ctrl+Z 可撤销）', 'mid-hide lbl-wide danger', '清空')}
+                            <span class="edx-sep mid-hide"></span>
+                            ${ib('import', 'uiDownload', '导入文件 (Ctrl+O)', 'edx-io lbl-wide', '导入')}
+                            ${ib('export', 'uiUpload', '导出文件 (Ctrl+Shift+S)', 'edx-io lbl-wide', '导出')}
+                            <span class="edx-sep"></span>
                             ${ib('more', 'edxMore', '更多选项')}
                             <span class="edx-sep"></span>
                             ${ib('openNew', 'stxExternalLink', '在浏览器新标签页打开预览')}
