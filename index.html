@@ -343,6 +343,15 @@
             width: 36px; height: 36px; 
         } 
         
+        /* 图片缩略图（Thumbs）：占位和原来的图标一样高，横图可以略宽；透明图片沿轮廓投影，和图标的阴影一致 */
+        .file-thumb { flex: none; display: flex; align-items: center; justify-content: center; pointer-events: none; }
+        .file-thumb img { display: block; max-width: 100%; max-height: 100%; object-fit: contain; border-radius: min(2px, var(--ui-radius, 2px)); filter: drop-shadow(0 1px 3px rgba(0,0,0,0.45)); }
+        .file-thumb.fresh img { animation: thumbIn .18s ease-out; }
+        @keyframes thumbIn { from { opacity: 0; } to { opacity: 1; } }
+        .desktop-icon .file-thumb, .fx-icon .file-thumb { width: 46px; height: 36px; }
+        .fx-c-name .file-thumb, .fx-mitem .file-thumb { width: 18px; height: 18px; }
+        .fx-c-name .file-thumb img, .fx-mitem .file-thumb img { border-radius: 1px; filter: none; box-shadow: 0 0 0 1px var(--l48, rgba(255,255,255,0.07)); }
+        @media (prefers-reduced-motion: reduce) { .file-thumb.fresh img { animation: none; } }
         .desktop-icon .label, .fx-icon .label { 
             font-size: 11px; 
             font-weight: 500; 
@@ -2845,7 +2854,6 @@
                 <span class="sm-about-text"><b>JISHENG OS</b><small id="start-version">关于本系统</small></span>
             </button>
             <button type="button" class="sm-iconbtn" data-launch="openSettings" data-icon="appSettings" title="设置" aria-label="设置"></button>
-            <button type="button" class="sm-iconbtn danger" data-launch="resetSystem" data-icon="uiResetSystem" title="重置系统…（会先确认）" aria-label="重置系统"></button>
         </div>
     </div>
 
@@ -6112,7 +6120,9 @@
                                         container.appendChild(createIconElement(fileId, displayName, displayIcon, () => openFile(file), pos, 'file', file));
                                     });
                                 } else {
-                                    container.appendChild(createIconElement(fileId, file, iconSvg, () => openFile(file), pos, 'file', file));
+                                    const iconEl = createIconElement(fileId, file, iconSvg, () => openFile(file), pos, 'file', file);
+                                    container.appendChild(iconEl);
+                                    if (!err && Thumbs.isImage(file)) Thumbs.attach(iconEl, SYSTEM.desktopPath + '/' + file, stats.mtime, stats.size);
                                 }
                             });
                         });
@@ -7024,9 +7034,9 @@
                     { icon: 'uiDelete', label: `删除选中 (${count})`, danger: true, act: () => deleteSelected() });
             } else if (isLocalFolder) {
                 const folderId = targetEl.dataset.localFolder;
-                items.push({ icon: 'uiEject', label: '卸载挂载', danger: true, act: () => unmountLocalFolder(folderId) });
+                items.push('-', { icon: 'uiEject', label: '卸载挂载', danger: true, act: () => unmountLocalFolder(folderId) });
             } else if (filename) {
-                items.push(
+                items.push('-',
                     { icon: 'uiDownload', label: '下载', act: () => downloadFile(filename) },
                     { icon: 'uiRename', label: '重命名', act: () => renameDesktopFile(filename) },
                     { icon: 'uiDeleteSimple', label: '删除', danger: true, act: () => deleteFile(filename) });
@@ -7575,8 +7585,6 @@
             uiRename:     '<path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>',
             uiExtractSimple: '<path d="M1 3h22v5H1z"/><path d="M21 8v13H3V8"/><path d="m9 15 3-3 3 3"/><path d="M12 12v9"/>',
             uiImage:      '<rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>',
-            // uiResetSystem: 开始菜单“重置系统”专用——逆时针回转箭头 + 圆心感叹号（“恢复初始状态，有风险”），和普通“刷新”区分开
-            uiResetSystem: '<path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7.5v5"/><path d="M12 16.5h.01"/>',
             // stxStar: 资源管理器树里“默认存储位置”的标记（Lucide star）
             stxStar: '<path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"/>',
             uiWallpaper:  '<rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>',
@@ -7730,6 +7738,212 @@
                 el.insertAdjacentHTML('afterbegin', icon(el.dataset.icon, el.dataset.iconSize || ''));
             });
         }
+        // === 图片缩略图：桌面和资源管理器里的图片文件显示真实画面（代替通用的“图片”图标）===
+        // 性能：资源管理器里只给滚到可视区附近的图标生成（IntersectionObserver）；同一时间最多解码 2 张；
+        // 用 createImageBitmap 解码（浏览器在后台线程完成），缩成最长边 128px 的小图再显示；
+        // 结果按「路径 + 修改时间 + 大小」缓存在内存里（最多 600 张，LRU），刷新桌面、重进文件夹不会重复解码。
+        // 超过 40 MB 或解码失败的图片保持原来的类型图标。
+        const Thumbs = (() => {
+            const EXT_RE = /\.(jpe?g|png|gif|webp|bmp|svg|avif|ico)$/i;
+            const MIME = { jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', gif: 'image/gif', webp: 'image/webp', bmp: 'image/bmp', svg: 'image/svg+xml', avif: 'image/avif', ico: 'image/x-icon' };
+            const MAX_BYTES = 40 * 1024 * 1024, EDGE = 128, KEEP = 600, CONC = 2;
+            const done = new Map();      // key -> blob URL | null（Map 的插入顺序即 LRU 顺序）
+            const pending = new Map();   // key -> { promise, alive: [fn] }
+            const queue = [];
+            let running = 0;
+            const keyOf = (path, mtime, size) => `${path}|${+new Date(mtime || 0) || 0}|${size || 0}`;
+            const remember = (key, url) => {
+                done.delete(key); done.set(key, url);
+                while (done.size > KEEP) {
+                    const [k, u] = done.entries().next().value;
+                    done.delete(k);
+                    if (u) URL.revokeObjectURL(u);
+                }
+            };
+            // 解码 + 缩小 + 编码全部放到后台 Worker 里（OffscreenCanvas），主线程只负责读文件和显示，滚动不会卡。
+            // 浏览器不支持 Worker / OffscreenCanvas，或 Worker 解不了的格式（如 SVG），退回主线程用 <img> 解码。
+            const WORKER_SRC = `
+                // 从文件头读出宽高（JPEG / PNG / GIF / WebP / BMP），这样可以让浏览器直接按缩小后的尺寸解码，省掉整张大图的解码
+                function dims(u8) {
+                    const dv = new DataView(u8.buffer, u8.byteOffset, u8.byteLength), n = u8.length;
+                    if (n > 24 && u8[0] === 0x89 && u8[1] === 0x50) return [dv.getUint32(16), dv.getUint32(20)];
+                    if (n > 10 && u8[0] === 0x47 && u8[1] === 0x49) return [dv.getUint16(6, true), dv.getUint16(8, true)];
+                    if (n > 26 && u8[0] === 0x42 && u8[1] === 0x4D) return [Math.abs(dv.getInt32(18, true)), Math.abs(dv.getInt32(22, true))];
+                    if (n > 4 && u8[0] === 0xFF && u8[1] === 0xD8) {
+                        let i = 2;
+                        while (i + 9 < n) {
+                            if (u8[i] !== 0xFF) { i++; continue; }
+                            const m = u8[i + 1];
+                            if (m === 0xFF) { i++; continue; }
+                            if (m === 0xD8 || m === 0x01 || (m >= 0xD0 && m <= 0xD7)) { i += 2; continue; }
+                            if (m >= 0xC0 && m <= 0xCF && m !== 0xC4 && m !== 0xC8 && m !== 0xCC) return [dv.getUint16(i + 7), dv.getUint16(i + 5)];
+                            i += 2 + dv.getUint16(i + 2);
+                        }
+                        return null;
+                    }
+                    if (n > 30 && u8[0] === 0x52 && u8[1] === 0x49 && u8[8] === 0x57 && u8[9] === 0x45) {
+                        const f = String.fromCharCode(u8[12], u8[13], u8[14], u8[15]);
+                        if (f === 'VP8 ') return [dv.getUint16(26, true) & 0x3fff, dv.getUint16(28, true) & 0x3fff];
+                        if (f === 'VP8L') { const b = dv.getUint32(21, true); return [(b & 0x3fff) + 1, ((b >> 14) & 0x3fff) + 1]; }
+                        if (f === 'VP8X') return [1 + (u8[24] | u8[25] << 8 | u8[26] << 16), 1 + (u8[27] | u8[28] << 8 | u8[29] << 16)];
+                    }
+                    return null;
+                }
+                self.onmessage = async e => {
+                    const { id, buf, type, edge } = e.data;
+                    try {
+                        const blob = new Blob([buf], { type });
+                        const d = dims(new Uint8Array(buf));
+                        let bmp = null;
+                        if (d && d[0] > 0 && d[1] > 0 && Math.max(d[0], d[1]) > edge) {
+                            // 只给长边一个目标尺寸，另一边按比例算（照片带 EXIF 旋转时也不会被拉伸）
+                            const opt = d[0] >= d[1] ? { resizeWidth: edge } : { resizeHeight: edge };
+                            opt.resizeQuality = 'medium';
+                            try { bmp = await createImageBitmap(blob, opt); } catch (_) { bmp = null; }
+                        }
+                        if (!bmp) bmp = await createImageBitmap(blob);
+                        const w = bmp.width, h = bmp.height, k = Math.min(1, edge / Math.max(w, h));
+                        const cw = Math.max(1, Math.round(w * k)), ch = Math.max(1, Math.round(h * k));
+                        const c = new OffscreenCanvas(cw, ch), g = c.getContext('2d');
+                        g.imageSmoothingEnabled = true; g.imageSmoothingQuality = 'high';
+                        g.drawImage(bmp, 0, 0, cw, ch); bmp.close();
+                        self.postMessage({ id, blob: await c.convertToBlob({ type: 'image/webp', quality: 0.86 }) });
+                    } catch (_) { self.postMessage({ id, blob: null }); }
+                };`;
+            let worker = null, workerOk = typeof Worker === 'function' && typeof OffscreenCanvas === 'function' && typeof createImageBitmap === 'function', seq = 0;
+            const waits = new Map();
+            function getWorker() {
+                if (!workerOk) return null;
+                if (worker) return worker;
+                try {
+                    worker = new Worker(URL.createObjectURL(new Blob([WORKER_SRC], { type: 'text/javascript' })));
+                    worker.onmessage = e => { const r = waits.get(e.data.id); if (r) { waits.delete(e.data.id); r(e.data.blob || null); } };
+                    worker.onerror = () => { workerOk = false; worker = null; waits.forEach(r => r(undefined)); waits.clear(); };
+                } catch (_) { workerOk = false; worker = null; }
+                return worker;
+            }
+            const viaWorker = (u8, type) => new Promise(resolve => {
+                const w = getWorker();
+                if (!w) { resolve(undefined); return; }
+                const id = ++seq, buf = u8.slice().buffer;   // 复制一份再转移给 Worker，不动文件系统里的数据
+                waits.set(id, resolve);
+                w.postMessage({ id, buf, type, edge: EDGE }, [buf]);
+            });
+            async function viaMain(blob) {
+                const tmpUrl = URL.createObjectURL(blob);
+                try {
+                    const im = new Image();
+                    im.decoding = 'async'; im.src = tmpUrl;
+                    await im.decode();
+                    const w = im.naturalWidth || EDGE, h = im.naturalHeight || EDGE;
+                    const k = Math.min(1, EDGE / Math.max(w, h));
+                    const cw = Math.max(1, Math.round(w * k)), ch = Math.max(1, Math.round(h * k));
+                    const c = document.createElement('canvas');
+                    c.width = cw; c.height = ch;
+                    const g = c.getContext('2d');
+                    g.imageSmoothingEnabled = true; g.imageSmoothingQuality = 'high';
+                    g.drawImage(im, 0, 0, cw, ch);
+                    return await new Promise(r => { try { c.toBlob(r, 'image/webp', 0.86); } catch (_) { r(null); } });
+                } catch (_) { return null; }
+                finally { URL.revokeObjectURL(tmpUrl); }
+            }
+            async function make(path) {
+                const data = await new Promise(r => SYSTEM.fs.readFile(path, (e, d) => r(e ? null : d)));
+                const n = data ? (data.byteLength != null ? data.byteLength : data.length) : 0;
+                if (!n || n > MAX_BYTES) return null;
+                const ext = ((path.match(/\.([a-z0-9]+)$/i) || [])[1] || '').toLowerCase();
+                const u8 = data instanceof Uint8Array ? data : new Uint8Array(data);
+                let out = ext === 'svg' ? undefined : await viaWorker(u8, MIME[ext] || '');
+                if (!out) out = await viaMain(new Blob([u8], { type: MIME[ext] || '' }));
+                return out ? URL.createObjectURL(out) : null;
+            }
+            function pump() {
+                while (running < CONC && queue.length) {
+                    const job = queue.shift(), ent = pending.get(job.key);
+                    // 等它的图标都已经不在页面上了（文件夹已关闭 / 桌面已重绘）：不解码，下次需要时再排队
+                    if (!ent || !ent.alive.some(f => f())) { pending.delete(job.key); job.resolve(undefined); continue; }
+                    running++;
+                    make(job.path).catch(() => null).then(url => {
+                        remember(job.key, url);
+                        pending.delete(job.key);
+                        job.resolve(url);
+                    }).finally(() => { running--; schedule(); });
+                }
+            }
+            // 新任务只在主线程空闲时开始（滚动、拖动窗口的那几帧不插队）
+            let scheduled = false;
+            function schedule() {
+                if (scheduled) return;
+                scheduled = true;
+                const run = () => { scheduled = false; pump(); };
+                if (typeof requestIdleCallback === 'function') requestIdleCallback(run, { timeout: 400 }); else setTimeout(run, 30);
+            }
+            function request(path, mtime, size, alive) {
+                const key = keyOf(path, mtime, size);
+                if (done.has(key)) return Promise.resolve(done.get(key));
+                let ent = pending.get(key);
+                if (!ent) {
+                    ent = { alive: [] };
+                    ent.promise = new Promise(resolve => queue.push({ key, path, resolve }));
+                    pending.set(key, ent);
+                }
+                ent.alive.push(alive);
+                schedule();
+                return ent.promise;
+            }
+            // 把图标里的 SVG 换成缩略图；图片解码好之后再替换，不会先闪一个空框
+            function paint(el, url, fresh) {
+                if (!url || !el.isConnected) return;
+                const old = el.querySelector('.icon-svg');
+                if (!old) return;
+                const box = document.createElement('span');
+                box.className = 'file-thumb' + (fresh ? ' fresh' : '');
+                const im = new Image();
+                im.alt = ''; im.draggable = false; im.decoding = 'async'; im.src = url;
+                box.appendChild(im);
+                const swap = () => { if (old.isConnected) old.replaceWith(box); };
+                im.decode().then(swap, () => {});
+            }
+            function metaOf(el) {
+                return { path: el.dataset.path, mtime: +el.dataset.mt || 0, size: +el.dataset.sz || 0 };
+            }
+            function attach(el, path, mtime, size, alive) {
+                if (!el || !path || !EXT_RE.test(path)) return Promise.resolve();
+                const key = keyOf(path, mtime, size);
+                if (done.has(key)) { paint(el, done.get(key), false); return Promise.resolve(done.get(key)); }
+                return request(path, mtime, size, alive || (() => el.isConnected)).then(url => { paint(el, url, true); return url; });
+            }
+            // 资源管理器：scope 里所有图片项，进入可视区附近（上下各 300px）才生成
+            function observe(scope) {
+                if (!scope) return;
+                if (scope._thumbIO) { scope._thumbIO.disconnect(); scope._thumbIO = null; }
+                const items = [...scope.querySelectorAll('.folder-item[data-isdir="false"], .folder-grid-item[data-isdir="false"]')]
+                    .filter(el => EXT_RE.test(el.dataset.filename || ''));
+                if (!items.length) return;
+                // 一直观察到缩略图做好为止：快速滑过去的图片轮到它时已经不在可视区附近，就先不解码，滑回来再排队
+                const io = typeof IntersectionObserver === 'function' ? new IntersectionObserver(ents => {
+                    ents.forEach(en => {
+                        const el = en.target;
+                        el._thumbVis = en.isIntersecting;
+                        if (!en.isIntersecting || el._thumbReq) return;
+                        el._thumbReq = true;
+                        const m = metaOf(el);
+                        attach(el, m.path, m.mtime, m.size, () => el.isConnected && el._thumbVis).then(url => {
+                            if (url === undefined) el._thumbReq = false;   // 被跳过：下次进入可视区重新排队
+                            else io.unobserve(el);
+                        });
+                    });
+                }, { rootMargin: '300px 0px' }) : null;
+                scope._thumbIO = io;
+                items.forEach(el => {
+                    const m = metaOf(el), key = keyOf(m.path, m.mtime, m.size);
+                    if (done.has(key) || !io) attach(el, m.path, m.mtime, m.size);
+                    else io.observe(el);
+                });
+            }
+            return { attach, observe, isImage: name => EXT_RE.test(name || '') };
+        })();
+
         // 文件名/类型 → 图标名（单一真相源，桌面/文件夹窗口/标题栏共用）
         function fileIconName(name, isDir){
             if(isDir) return 'fileFolder';
@@ -7741,12 +7955,13 @@
             if(e==='json') return 'fileJson';
             if(e==='js'||e==='mjs'||e==='cjs') return 'fileJs';
             if(e==='css') return 'fileCss';
-            if(e==='csv') return 'fileCsv';
+            if(e==='csv'||e==='tsv') return 'fileCsv';
             if(['zip','7z','rar','tar','gz','bz2','xz','cab','tgz'].includes(e)) return 'fileZip';
             if(e==='html'||e==='htm') return 'fileHtml';
             if(e==='pdf') return 'filePdf';
-            if(['mp4','avi','mov','mkv','webm','flv','wmv'].includes(e)) return 'fileVideo';
-            if(['mp3','wav','flac','m4a','ogg','aac'].includes(e)) return 'fileAudio';
+            if(['mp4','avi','mov','mkv','webm','ogv','flv','wmv'].includes(e)) return 'fileVideo';
+            if(['mp3','wav','flac','m4a','ogg','oga','opus','aac'].includes(e)) return 'fileAudio';
+            if(['xml','yaml','yml','log'].includes(e)) return 'fileText';
             // 镜像类型图标区分：iso → 光盘(CD/DVD)；img → 软盘/磁盘镜像
             if(e==='iso') return 'fileIso';
             if(e==='img') return 'fileDisk';
@@ -8423,7 +8638,11 @@
             return c !== null ? formatFileSize(c) : '…';
         }
         function fxTypeText(en) { return en.isDir ? '文件夹' : getFileExtension(en.name); }
-        function fxAttrs(en) { return `data-filename="${escapeAttr(en.name)}" data-path="${escapeAttr(en.path)}" data-isdir="${en.isDir}"`; }
+        function fxAttrs(en) {
+            // data-mt / data-sz：文件的修改时间和大小，缩略图缓存用它判断图片有没有变过
+            return `data-filename="${escapeAttr(en.name)}" data-path="${escapeAttr(en.path)}" data-isdir="${en.isDir}"`
+                + (en.isDir ? '' : ` data-mt="${+new Date(en.mtime || 0) || 0}" data-sz="${en.size || 0}"`);
+        }
         function fxEmptyHtml(st) {
             if (fxIsGlobalSearch(st)) {
                 const idx = st._gIdx;
@@ -8547,6 +8766,7 @@
                 if (pending && first) first.scrollIntoView({ block: 'nearest', inline: 'nearest' });
                 fxAfterRender(windowId, token);
                 fxUpgradeAppIcons(windowId, sc, token);
+                Thumbs.observe(sc);
 
                 // 文件夹大小异步回填（本地挂载目录不递归，避免大量真实磁盘 I/O）
                 if (st.viewMode === 'list' && !isLocalMountedPath(st.currentPath)) {
@@ -8856,8 +9076,8 @@
                 items = [
                     { icon: 'uiOpen', label: `全部打开 (${n})`, act: () => openSelectedFolderItems(windowId) },
                     '-',
-                    { icon: 'uiCut', label: `剪切 (${n})`, act: () => cutSelectedFolderItems(windowId) },
                     { icon: 'uiCopy', label: `复制 (${n})`, act: () => copySelectedFolderItems(windowId) },
+                    { icon: 'uiCut', label: `剪切 (${n})`, act: () => cutSelectedFolderItems(windowId) },
                     '-',
                     { icon: 'uiDownload', label: `下载选中 (${n})`, act: () => downloadSelectedFolderItems(windowId) },
                     { icon: 'uiDelete', label: `删除选中 (${n})`, danger: true, act: () => deleteFolderItems(windowId) }
@@ -8874,8 +9094,8 @@
                 if (!isDir && isImageFile(name)) items.push('-', { icon: 'stxWallpaper', label: '设为桌面壁纸', act: () => setWallpaperFromPath(path, name) });
                 if (!isDir && isArchiveFile(name)) items.push({ icon: 'uiExtractSimple', label: '解压', act: () => extractZipFromPath(path) });
                 items.push('-',
-                    { icon: 'uiCut', label: '剪切', act: () => cutSelectedFolderItems(windowId) },
                     { icon: 'uiCopy', label: '复制', act: () => copySelectedFolderItems(windowId) },
+                    { icon: 'uiCut', label: '剪切', act: () => cutSelectedFolderItems(windowId) },
                     { icon: 'fxCopyPath', label: '复制路径', act: () => fxCopyText(path) },
                     '-',
                     { icon: 'uiDownload', label: '下载', act: () => downloadFolderItem(windowId, name, path) },
@@ -8897,8 +9117,10 @@
                 { icon: 'uiNewHtml', label: '新建 HTML 文档', act: () => createNewHtmlFile(st.currentPath, wid) },
                 '-',
                 { icon: 'uiUpload', label: '上传文件', act: () => fxUpload(wid, false) },
-                { icon: 'uiUploadFolder', label: '上传文件夹', act: () => fxUpload(wid, true) },
-                '-',
+                { icon: 'uiUploadFolder', label: '上传文件夹', act: () => fxUpload(wid, true) });
+            // 与桌面空白处菜单对齐：上传后面是「挂载本地文件夹」（浏览器不支持 File System Access 时不显示）
+            if ('showDirectoryPicker' in window) items.push({ icon: 'uiEject', label: '挂载本地文件夹…', act: () => fxTreeMount(wid) });
+            items.push('-',
                 { icon: 'fxSelectAll', label: '全选', disabled: !fxScopeItems(wid).length, act: () => fxSelectAll(wid) },
                 { icon: 'fxCopyPath', label: '复制当前路径', act: () => fxCopyText(st.currentPath) });
             openCtxMenu(items, x, y);
@@ -9119,6 +9341,7 @@
                 sc.scrollTop = prevT;
                 fxAfterRender(wid, token);
                 fxUpgradeAppIcons(wid, sc, token);
+                Thumbs.observe(sc);
             });
         }
         function fxLocHtml(en, st) {
@@ -9493,11 +9716,11 @@
                     if (ej) items.push('-', { icon: 'stxUnplug', label: '卸载', act: () => fxTreeEject(wid, ej.dataset.eject) });
                 } else if (row.dataset.tgl) {
                     items.push({ icon: 'fxChevRight', label: row.getAttribute('aria-expanded') === 'true' ? '收起' : '展开', act: () => fxTreeToggle(wid, row.dataset.key) });
-                    if (row.dataset.key === 'grp|mnt' && 'showDirectoryPicker' in window) items.push({ icon: 'stxFolderPlus', label: '挂载本地文件夹…', act: () => fxTreeMount(wid) });
+                    if (row.dataset.key === 'grp|mnt' && 'showDirectoryPicker' in window) items.push({ icon: 'uiEject', label: '挂载本地文件夹…', act: () => fxTreeMount(wid) });
                 } else if (row.dataset.remount) {
                     items.push({ icon: 'stxPlugZap', label: '重新授权', act: () => fxTreeRemount(wid, row.dataset.remount) });
                 } else if (row.dataset.actTree === 'mount') {
-                    items.push({ icon: 'stxFolderPlus', label: '挂载本地文件夹…', act: () => fxTreeMount(wid) });
+                    items.push({ icon: 'uiEject', label: '挂载本地文件夹…', act: () => fxTreeMount(wid) });
                 }
                 if (items.length) openCtxMenu(items, e.clientX, e.clientY);
             };
@@ -9749,6 +9972,7 @@
             if (revealSel && first) first.scrollIntoView({ block: 'nearest' });
             fxAfterRender(wid, token);
             fxUpgradeAppIcons(wid, sc, token);
+            Thumbs.observe(sc);
             fxMillerTail(wid);
             fxMillerReveal(wid);
         }
@@ -9860,6 +10084,7 @@
                     miller.insertAdjacentHTML('beforeend', fxMcolHtml(want.path, list, st, null, false, r.err ? '无法读取此文件夹' : ''));
                     st._shownDirs = [...miller.querySelectorAll('.fx-mwrap')].map(x => x.dataset.dir);
                     fxUpgradeAppIcons(wid, miller.lastElementChild, st._renderToken);
+                    Thumbs.observe(miller.lastElementChild);
                     fxMarkCut(wid);
                     fxMillerReveal(wid);
                     const at = st._afterTail;
@@ -12008,15 +12233,15 @@
                 openImageFile(fullPath, filename);
             }
             // 3. 处理 CSV 文件 (使用表格查看器)
-            else if(filename.match(/\.csv$/i)) {
+            else if(filename.match(/\.(csv|tsv)$/i)) {
                 SYSTEM.fs.readFile(fullPath, 'utf8', (err, data) => {
                     if(err) { Notify.error('打开失败', err.message); return; }
                     // 修复：传入文件所在目录，保存时写回原文件（原来总是写到桌面）
                     openCSVViewer(data, filename, fullPath.substring(0, fullPath.lastIndexOf('/')) || SYSTEM.desktopPath);
                 });
             }
-            // 4. 处理文本文件
-            else if(filename.match(/\.(txt|md)$/i)) {
+            // 4. 处理文本文件（纯文本 / 代码 / 配置 / 日志都直接用记事本打开）
+            else if(filename.match(/\.(txt|md|markdown|css|js|mjs|json|xml|ya?ml|log)$/i)) {
                 SYSTEM.fs.readFile(fullPath, 'utf8', (err, data) => {
                     if(err) { Notify.error('打开失败', err.message); return; }
                     // 修复(Bug B)：传入文件所在目录，使另存为/保存默认写回原目录而非桌面。
@@ -12046,12 +12271,13 @@
                     });
                 });
             }
-            // 6. 处理 MP4 视频文件
-            else if(filename.match(/\.mp4$/i)) {
+            // 6. 处理视频文件（浏览器原生可播放：MP4 / WebM / Ogg 视频）
+            else if(filename.match(/\.(mp4|webm|ogv)$/i)) {
                 SYSTEM.fs.readFile(fullPath, (err, data) => {
                     if(err) { Notify.error('打开失败', err.message); return; }
                     const base64 = SYSTEM.Buffer.from(data).toString('base64');
-                    const dataUrl = `data:video/mp4;base64,${base64}`;
+                    const vext = filename.match(/\.(mp4|webm|ogv)$/i)[1].toLowerCase();
+                    const dataUrl = `data:${{ mp4: 'video/mp4', webm: 'video/webm', ogv: 'video/ogg' }[vext]};base64,${base64}`;
                     
                     createWindow({
                         title: filename,
@@ -12063,13 +12289,13 @@
                     });
                 });
             }
-            // 7. 处理音频文件 (MP3/M4A)
-            else if(filename.match(/\.(mp3|m4a)$/i)) {
+            // 7. 处理音频文件（浏览器原生可播放：MP3 / M4A / WAV / Ogg / Opus / FLAC / AAC）
+            else if(filename.match(/\.(mp3|m4a|wav|ogg|oga|opus|flac|aac)$/i)) {
                 SYSTEM.fs.readFile(fullPath, (err, data) => {
                     if(err) { Notify.error('打开失败', err.message); return; }
                     const base64 = SYSTEM.Buffer.from(data).toString('base64');
-                    const ext = filename.match(/\.(mp3|m4a)$/i)[1].toLowerCase();
-                    const mimeType = ext === 'm4a' ? 'audio/mp4' : 'audio/mpeg';
+                    const ext = filename.match(/\.(mp3|m4a|wav|ogg|oga|opus|flac|aac)$/i)[1].toLowerCase();
+                    const mimeType = { m4a: 'audio/mp4', mp3: 'audio/mpeg', wav: 'audio/wav', ogg: 'audio/ogg', oga: 'audio/ogg', opus: 'audio/ogg', flac: 'audio/flac', aac: 'audio/aac' }[ext];
                     const dataUrl = `data:${mimeType};base64,${base64}`;
                     
                     createWindow({
@@ -14240,7 +14466,7 @@
             const PAGE = 1000;
             const DELIM_NAME = { ',': '逗号', ';': '分号', '\t': 'Tab', '|': '竖线' };
             return createWindow({
-                title: 'CSV 表格 - ' + filename,
+                title: (/\.tsv$/i.test(filename) ? 'TSV' : 'CSV') + ' 表格 - ' + filename,
                 iconHtml: icon('fileCsv','sm'),
                 width: 860, height: 580,
                 content: `
@@ -14280,7 +14506,7 @@
                         return e.replace(new RegExp(qe, 'gi'), m => `<mark>${m}</mark>`);
                     };
                     const reparse = () => {
-                        st.parsed = csvParse(editor.value);
+                        st.parsed = csvParse(editor.value, /\.tsv$/i.test(filename) ? '\t' : undefined);   // .tsv 固定按 Tab 分隔
                         const rows = st.parsed.rows;
                         st.cols = rows.reduce((m, r) => Math.max(m, r.length), 0);
                         const body = st.header ? rows.slice(1) : rows;
@@ -14335,7 +14561,7 @@
                         status.classList.toggle('dirty', dirty); status.classList.toggle('saved', !dirty);
                         btn('save').classList.toggle('pending', dirty);
                         if (titleEl) {
-                            titleEl.textContent = 'CSV 表格 - ' + filename;
+                            titleEl.textContent = (/\.tsv$/i.test(filename) ? 'TSV' : 'CSV') + ' 表格 - ' + filename;
                             setWinDirty(titleEl.closest('.window'), dirty, '有未保存的修改\n按 Ctrl+S 保存');
                         }
                     };
@@ -15407,18 +15633,82 @@
                             tmp.onerror = () => { if (seq === showSeq) { img.style.visibility = 'hidden'; msg.textContent = '不支持的图片格式或文件已损坏'; infoEl.textContent = name; } };
                             tmp.src = r.url;
                         };
-                        // 拖动平移 / 双击
-                        let drag = null;
+                        // 指针交互：鼠标 / 单指拖动平移；双指捏合缩放（以两指中点为中心，并跟随中点移动）；
+                        // 触屏双击在「适应窗口 / 100%」之间切换；适应窗口时单指左右快滑切换上一张 / 下一张。
+                        const pts = new Map();   // pointerId -> {x, y}
+                        let drag = null, pinch = null, lastTap = 0, lastTapX = 0, lastTapY = 0, lastPtrType = 'mouse';
+                        const toLocal = (x, y) => { const r = stage.getBoundingClientRect(); return [x - r.left, y - r.top]; };
+                        const pinchState = () => {
+                            const [a, b] = [...pts.values()];
+                            const [mx, my] = toLocal((a.x + b.x) / 2, (a.y + b.y) / 2);
+                            return { d: Math.hypot(b.x - a.x, b.y - a.y) || 1, mx, my };
+                        };
                         stage.addEventListener('pointerdown', e => {
-                            if (e.target.closest('.imv-nav') || e.button !== 0) return;
-                            drag = { x: e.clientX, y: e.clientY, vx: v.x, vy: v.y };
-                            stage.setPointerCapture(e.pointerId); stage.classList.add('grabbing');
+                            if (e.target.closest('.imv-nav') || (e.pointerType === 'mouse' && e.button !== 0)) return;
+                            lastPtrType = e.pointerType;
+                            pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+                            try { stage.setPointerCapture(e.pointerId); } catch (_) {}
+                            if (pts.size === 2) {   // 第二根手指落下：从拖动切换到捏合
+                                const p = pinchState();
+                                pinch = { d: p.d, s: v.s, mx: p.mx, my: p.my, vx: v.x, vy: v.y };
+                                drag = null;
+                                return;
+                            }
+                            if (pts.size > 2) return;
+                            drag = { x: e.clientX, y: e.clientY, vx: v.x, vy: v.y, t: performance.now(), fit: v.fit, moved: false };
+                            stage.classList.add('grabbing');
                         });
-                        stage.addEventListener('pointermove', e => { if (!drag) return; v.x = drag.vx + e.clientX - drag.x; v.y = drag.vy + e.clientY - drag.y; v.fit = false; apply(); });
-                        const endDrag = () => { drag = null; stage.classList.remove('grabbing'); };
-                        stage.addEventListener('pointerup', endDrag); stage.addEventListener('pointercancel', endDrag);
+                        stage.addEventListener('pointermove', e => {
+                            if (!pts.has(e.pointerId)) return;
+                            pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+                            if (pinch && pts.size >= 2) {
+                                const p = pinchState();
+                                const ns = Math.max(0.05, Math.min(16, pinch.s * p.d / pinch.d));
+                                // 捏合开始时两指中点下的那个图片点，始终保持在当前两指中点下
+                                v.x = p.mx - (pinch.mx - pinch.vx) * ns / pinch.s;
+                                v.y = p.my - (pinch.my - pinch.vy) * ns / pinch.s;
+                                v.s = ns; v.fit = false; apply();
+                                return;
+                            }
+                            if (!drag) return;
+                            const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+                            if (!drag.moved && Math.hypot(dx, dy) < 4) return;
+                            drag.moved = true;
+                            if (!stage.classList.contains('grab')) return;   // 图片完整显示时没有可平移的范围（保持“适应窗口”）
+                            v.x = drag.vx + dx; v.y = drag.vy + dy; v.fit = false; apply();
+                        });
+                        const endPtr = e => {
+                            if (!pts.has(e.pointerId)) return;
+                            pts.delete(e.pointerId);
+                            if (pinch) {
+                                if (pts.size >= 2) return;
+                                pinch = null;
+                                if (v.s <= fitScale() * 1.02) setFit();   // 缩到比“适应窗口”还小：松手回弹到适应窗口
+                                if (pts.size === 1) {   // 还剩一根手指：接着拖动，画面不跳
+                                    const [p0] = [...pts.values()];
+                                    drag = { x: p0.x, y: p0.y, vx: v.x, vy: v.y, t: 0, fit: false, moved: true };
+                                } else { drag = null; stage.classList.remove('grabbing'); }
+                                return;
+                            }
+                            if (drag && e.type === 'pointerup' && e.pointerType !== 'mouse') {
+                                const dx = e.clientX - drag.x, dy = e.clientY - drag.y, dt = performance.now() - drag.t;
+                                if (drag.fit && v.fit && list.length > 1 && Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5 && dt < 700) {
+                                    go(dx < 0 ? 1 : -1);
+                                } else if (!drag.moved && dt < 350) {
+                                    const now = performance.now();
+                                    if (now - lastTap < 320 && Math.hypot(e.clientX - lastTapX, e.clientY - lastTapY) < 32) {
+                                        lastTap = 0;
+                                        const [lx, ly] = toLocal(e.clientX, e.clientY);
+                                        if (v.fit) zoomAt(Math.abs(v.s - 1) > 0.01 ? 1 : 2, lx, ly); else setFit();
+                                    } else { lastTap = now; lastTapX = e.clientX; lastTapY = e.clientY; }
+                                }
+                            }
+                            if (!pts.size) { drag = null; stage.classList.remove('grabbing'); }
+                        };
+                        stage.addEventListener('pointerup', endPtr); stage.addEventListener('pointercancel', endPtr);
+                        stage.addEventListener('lostpointercapture', endPtr);
                         stage.addEventListener('dblclick', e => {
-                            if (e.target.closest('.imv-nav')) return;
+                            if (e.target.closest('.imv-nav') || lastPtrType === 'touch') return;   // 触屏双击已在上面处理
                             const r = stage.getBoundingClientRect();
                             if (v.fit && Math.abs(v.s - 1) > 0.01) zoomAt(1, e.clientX - r.left, e.clientY - r.top); else setFit();
                         });
@@ -17445,7 +17735,7 @@
         // 文件类型分类（按扩展名）。顺序即匹配优先级；未匹配的归入“其他”。
         const STX_TYPES = [
             { k: 'image', n: '图片', ic: 'stxImage', c: '#3b9eff', re: /^(png|jpe?g|gif|webp|bmp|svg|ico|avif|heic|heif|tiff?|psd)$/ },
-            { k: 'video', n: '视频', ic: 'stxFilm', c: '#f472b6', re: /^(mp4|webm|mkv|mov|avi|m4v|flv|wmv|3gp|mpe?g)$/ },
+            { k: 'video', n: '视频', ic: 'stxFilm', c: '#f472b6', re: /^(mp4|webm|ogv|mkv|mov|avi|m4v|flv|wmv|3gp|mpe?g)$/ },
             { k: 'audio', n: '音频', ic: 'stxMusic', c: '#a78bfa', re: /^(mp3|wav|ogg|oga|flac|m4a|aac|opus|wma|mid|midi)$/ },
             { k: 'archive', n: '压缩包与镜像', ic: 'stxArchive', c: '#f59e0b', re: /^(zip|7z|rar|tar|gz|tgz|bz2|xz|zst|cab|cbz|cbr|iso|img|vhd|vhdx|vmdk|qcow2|dmg)$/ },
             { k: 'doc', n: '文档与数据', ic: 'stxFileText', c: '#19c37d', re: /^(pdf|txt|md|markdown|doc|docx|xls|xlsx|ppt|pptx|csv|tsv|rtf|odt|ods|odp|epub|json|xml|ya?ml|toml|ini|log)$/ },
