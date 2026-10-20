@@ -5720,7 +5720,6 @@
                     initGlobalUploadInputs();
                     Notify.success('欢迎回来', 'JISHENG OS 已准备就绪');
                     wpSpotlightInit();
-                    wpUpgradePreset();
                 });
             });
         }
@@ -18995,7 +18994,6 @@
                 SYSTEM.fs.writeFile(SYSTEM.configPath, u, (err) => { if(err) console.error("Save WP failed", err); });
             }
             wpHistoryAdd(u, name);
-            if (wpPresetUrl(u) !== u) wpUpgradePreset();
         }
 
         // ---------- 最近使用的壁纸（预设不计入，它们一直都在） ----------
@@ -19087,21 +19085,6 @@
                 img.src = url;
             });
         }
-        // 已保存的旧版预设先继续显示；高清图片成功解码后再升级，断网/失败不清空背景。
-        function wpUpgradePreset() {
-            const old = SYSTEM.customWallpaper, hd = wpPresetUrl(old);
-            if (!old || hd === old) return Promise.resolve(false);
-            return wpPreload(hd, 15000).then(() => {
-                if (SYSTEM.customWallpaper !== old) return false; // 加载期间用户改选了其它图片
-                const showingOld = wpCurrentUrl() === old;
-                wpSaveCustom(hd);
-                if (showingOld) wpShow(hd);
-                wpRefreshSettings();
-                return true;
-            }).catch(() => false);
-        }
-        window.addEventListener('online', wpUpgradePreset);
-
         function wpFingerprint(u) { return String(u || '').length + ':' + String(u || '').slice(-48); }
         function wpReadMeta() { try { return JSON.parse(localStorage.getItem(WP_META_KEY)) || null; } catch (_) { return null; } }
         function wpWriteMeta(url, name) {
