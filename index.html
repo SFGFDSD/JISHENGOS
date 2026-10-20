@@ -1367,7 +1367,7 @@
 
         /* 个性化 · 壁纸（取代旧的浮动壁纸面板；所有入口统一到 设置 → 个性化） */
         .stx-wpx-hero { display: grid; grid-template-columns: minmax(200px, 320px) minmax(0,1fr); gap: 18px; padding: 16px; align-items: center; }
-        .stx-wpx-prev { position: relative; aspect-ratio: 16 / 10; border-radius: var(--win-radius); border: 1px solid var(--line); background: #0b1222 center / cover no-repeat; overflow: hidden; box-shadow: 0 10px 30px -12px rgba(0,0,0,.7); }
+        .stx-wpx-prev { position: relative; aspect-ratio: 16 / 10; border-radius: var(--win-radius); border: 1px solid var(--line); background: #0b1222 center / cover no-repeat; background-clip: padding-box; overflow: hidden; box-shadow: 0 10px 30px -12px rgba(0,0,0,.7); }
         .stx-wpx-prev::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 9%; background: rgba(10,10,15,.82); border-top: 1px solid rgba(255,255,255,.06); }
         .stx-wpx-drop { position: absolute; inset: 0; z-index: 1; display: none; flex-direction: column; align-items: center; justify-content: center; gap: 8px; font-style: normal; font-size: 12.5px; color: #fff; background: rgba(var(--a-0078d4, 0,120,212), 0.55); border: 2px dashed rgba(255,255,255,.85); border-radius: var(--win-radius); backdrop-filter: var(--gf10, blur(2px)); }
         .stx-wpx-drop .icon-svg { width: 26px; height: 26px; }
@@ -1390,7 +1390,7 @@
         @keyframes stxWpxPulse { 50% { opacity: .3; } }
         .stx-wpx-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(148px, 1fr)); gap: 10px; padding: 14px; }
         .stx-wpx-tile { position: relative; aspect-ratio: 16 / 10; border-radius: var(--ctl-radius); border: 1px solid var(--line); padding: 0; cursor: pointer; overflow: hidden; color: #fff; font: inherit;
-            background: #11131a center / cover no-repeat; transition: transform .14s, box-shadow .14s, border-color .14s; }
+            background: #11131a center / cover no-repeat; background-clip: padding-box; transition: transform .14s, box-shadow .14s, border-color .14s; }
         .stx-wpx-tile:hover { transform: translateY(-2px); box-shadow: 0 10px 24px -10px rgba(0,0,0,.8); border-color: rgba(255,255,255,.22); }
         .stx-wpx-tile.on { border-color: rgb(var(--al-0078d4, 0,120,212)); box-shadow: 0 0 0 2px rgb(var(--al-0078d4, 0,120,212)); }
         .stx-wpx-tile .nm { position: absolute; left: 0; right: 0; bottom: 0; padding: 18px 9px 6px; font-size: 11.5px; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
@@ -2915,8 +2915,8 @@
             windowCorners: 'round',      // round / small / square（旧版字段：按 cornerRadius 就近换算后一并保存，回退旧版本时仍可用）
             cornerRadius: 10,            // 窗口圆角 0–20 px（设置里的滑块），其余圆角按比例推算
             appearance: null,            // 外观：{ theme: dark/light/system, accent: '#rrggbb' 或 ''（默认蓝）, glass: {...} }，由 <head> 里的 JSAppearance 应用
-            wallpaperSource: 'custom',   // custom / bing
-            customWallpaper: '',         // 你的壁纸（wallpaper.cfg），必应模式下也保持不变
+            wallpaperSource: 'custom',   // custom / spotlight
+            customWallpaper: '',         // 你的壁纸（wallpaper.cfg），聚焦模式下也保持不变
             wallpaperHistory: [],
             currentMonth: new Date().getMonth(),
             currentYear: new Date().getFullYear(),
@@ -3016,8 +3016,7 @@
             SYSTEM.storageBackend = requestedBackend === 'opfs' && SYSTEM.opfs && SYSTEM.opfs.available ? 'opfs' : 'indexeddb';
             SYSTEM.desktopPath = getStorageDesktopPath(SYSTEM.storageBackend);
             SYSTEM.documentsPath = getStorageDocumentsPath(SYSTEM.storageBackend);
-            SYSTEM.showHiddenFiles = settings.showHiddenFiles === true;
-            SYSTEM.wallpaperSource = settings.wallpaperSource === 'bing' ? 'bing' : 'custom';
+            SYSTEM.showHiddenFiles = settings.showHiddenFiles === true;           
             SYSTEM.windowCorners = ['round', 'small', 'square'].includes(settings.windowCorners) ? settings.windowCorners : 'round';
             // 新版保存的是具体数值；只有旧版的三档字段时按档位换算
             SYSTEM.cornerRadius = Number.isFinite(Number(settings.cornerRadius)) && settings.cornerRadius !== null && settings.cornerRadius !== ''
@@ -3268,16 +3267,16 @@
             return { x: e.clientX, y: e.clientY };
         }
 
-        // 预设壁纸（均为 Unsplash，w=1920）
+        // 预设壁纸
         const WALLPAPER_PRESETS = [
-            { name: '金色群山', url: 'https://images.unsplash.com/photo-1791534837966-2a7b42afc33e?w=1920' },
-            { name: '山脊小屋', url: 'https://images.unsplash.com/photo-1791534907557-dca09f734860?w=1920' },
-            { name: '湖面晚霞', url: 'https://images.unsplash.com/photo-1518418248320-a4de2fbc87c2?w=1920' },
-            { name: '大气层边缘', url: 'https://images.unsplash.com/photo-1614121181207-4b6c334d353d?w=1920' },
-            { name: '海岸暮色', url: 'https://images.unsplash.com/photo-1506102383123-c8ef1e872756?w=1920' },
-            { name: '沙丘', url: 'https://images.unsplash.com/photo-1510075644440-2c2b60679e1a?w=1920' },
-            { name: '地球夜景', url: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=1920' },
-            { name: '云层之上', url: 'https://images.unsplash.com/photo-1446776811953-b23d57bd21aa?w=1920' }
+            { name: '金色群山', url: 'https://images.unsplash.com/photo-1791534837966-2a7b42afc33e?auto=format&fit=max&w=3840&q=85' },
+            { name: '山脊小屋', url: 'https://images.unsplash.com/photo-1791534907557-dca09f734860?auto=format&fit=max&w=3840&q=85' },
+            { name: '湖面晚霞', url: 'https://images.unsplash.com/photo-1518418248320-a4de2fbc87c2?auto=format&fit=max&w=3840&q=85' },
+            { name: '大气层边缘', url: 'https://images.unsplash.com/photo-1614121181207-4b6c334d353d?auto=format&fit=max&w=3840&q=85' },
+            { name: '海岸暮色', url: 'https://images.unsplash.com/photo-1506102383123-c8ef1e872756?auto=format&fit=max&w=3840&q=85' },
+            { name: '沙丘', url: 'https://images.unsplash.com/photo-1510075644440-2c2b60679e1a?auto=format&fit=max&w=3840&q=85' },
+            { name: '地球夜景', url: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=max&w=3840&q=85' },
+            { name: '云层之上', url: 'https://images.unsplash.com/photo-1446776811953-b23d57bd21aa?auto=format&fit=max&w=3840&q=85' }
         ];
         const wallpapers = WALLPAPER_PRESETS.map(p => p.url);
 
@@ -5699,13 +5698,13 @@
 
         function loadUserConfig() {
             SYSTEM.fs.readFile(SYSTEM.configPath, 'utf8', (err, data) => {
-                const mine = (!err && data && String(data).trim()) ? String(data).trim() : 'https://images.unsplash.com/photo-1614121181207-4b6c334d353d?w=1920';
+                const mine = (!err && data && String(data).trim()) ? String(data).trim() : wallpapers[3];
                 SYSTEM.customWallpaper = mine;
                 let first = mine;
                 try {
                     const st = JSON.parse(localStorage.getItem(SYSTEM_SETTINGS_STORAGE_KEY) || 'null');
-                    const bing = JSON.parse(localStorage.getItem('JISHENG_OS_BING_WALLPAPER') || 'null');
-                    if (st && st.wallpaperSource === 'bing' && bing && bing.today && wpSafeUrl(bing.today.url)) first = bing.today.url;
+                    const spotlight = wpSpotlightCache();
+                    if (st && ['spotlight', 'bing'].includes(st.wallpaperSource) && spotlight.today) first = spotlight.today.url;
                 } catch (_) {}
                 setBg(first, false);
                 wpHistoryLoad().then(() => {
@@ -5720,7 +5719,8 @@
                     Notify.init();
                     initGlobalUploadInputs();
                     Notify.success('欢迎回来', 'JISHENG OS 已准备就绪');
-                    wpBingInit();
+                    wpSpotlightInit();
+                    wpUpgradePreset();
                 });
             });
         }
@@ -12409,7 +12409,7 @@
                     const img = new Image();
                     img.onload = () => {
                         const wasDaily = wpApplyCustom(dataUrl, name);
-                        Notify.success('壁纸已更换', `已将 "${name}" 设为桌面壁纸${wasDaily ? '，必应每日壁纸已关闭' : ''}`);
+                        Notify.success('壁纸已更换', `已将 "${name}" 设为桌面壁纸${wasDaily ? '，Windows 聚焦已关闭' : ''}`);
                     };
                     img.onerror = () => Notify.error('设置失败', `"${name}" 无法作为图片解码`);
                     img.src = dataUrl;
@@ -13591,7 +13591,7 @@
             el.setAttribute('aria-label', el.title);
             if (announce) {
                 if (online) Notify.success('网络已恢复');
-                else Notify.warning('网络已断开', '必应壁纸、浏览器、V86 等联网功能暂时不可用');
+                else Notify.warning('网络已断开', 'Windows 聚焦壁纸、浏览器、V86 等联网功能暂时不可用');
             }
         }
         updateNetworkTray(false);
@@ -18004,9 +18004,9 @@
         function stxSearchIndex() {
             const idx = [
                 ['personal', 'wallpaper', '桌面壁纸', '壁纸 背景 图片 wallpaper 上传 更换 拖拽 本地图片'],
-                ['personal', 'bing', '必应每日壁纸', '必应 bing 每日 每天 自动 更换 壁纸 每日一图'],
+                ['personal', 'spotlight', 'Windows 聚焦', 'Windows 聚焦 spotlight 每日 每天 自动 更换 壁纸 每日一图'],
                 ['personal', 'presets', '预设壁纸', '预设 默认 壁纸 内置 风景'],
-                ['personal', 'bingrecent', '必应近期壁纸', '必应 bing 近期 往期 历史 壁纸'],
+                ['personal', 'spotlightrecent', 'Windows 聚焦近期壁纸', 'Windows 聚焦 spotlight 近期 往期 历史 壁纸'],
                 ['personal', 'history', '最近使用的壁纸', '最近 历史 之前 原来 旧 找回 恢复 壁纸'],
                 ['personal', 'corners', '窗口圆角', '圆角 直角 窗口 边角 外观 开始菜单 日历 右键菜单 图标 滑块 程度 corner radius'],
                 ['personal', 'click', '图标打开方式', '单击 双击 打开 click 鼠标'],
@@ -18086,7 +18086,7 @@
         }
         function stxSyncWallpaperPreviews() {
             const bg = stxCurrentWallpaper();
-            const cur = typeof wpCurrentUrl === 'function' ? wpCurrentUrl() : '';
+            const cur = typeof wpCurrentUrl === 'function' ? wpPresetUrl(wpCurrentUrl()) : '';
             document.querySelectorAll('[data-settings-wallpaper]').forEach(el => { el.style.backgroundImage = bg; });
             document.querySelectorAll('.stx-wpx-tile[data-wp-url]').forEach(el => {
                 const on = !!cur && el.dataset.wpUrl === cur;
@@ -18094,16 +18094,15 @@
                 el.setAttribute('aria-pressed', on ? 'true' : 'false');
             });
         }
-        // 当前壁纸的来源说明：必应 / 预设 / 本地图片 / 网络图片
+        // 当前壁纸的来源说明：Windows 聚焦 / 预设 / 本地图片 / 网络图片
         function wpCurrentInfo() {
             const url = wpCurrentUrl();
-            const daily = SYSTEM.wallpaperSource === 'bing';
-            const bing = wpBingLookup(url);
-            if (bing) {
-                const when = wpIsToday(bing.date) ? '今日图片' : (bing.date ? wpDateLabel(bing.date) + '的必应图片' : '');
-                return { kind: daily ? '必应每日壁纸' : '必应壁纸（固定）', ic: 'stxCalendarSync', title: bing.desc || '必应壁纸', meta: [when, bing.credit].filter(Boolean).join(' · '), link: bing.link };
+            const daily = SYSTEM.wallpaperSource === 'spotlight';
+            const spotlight = wpSpotlightLookup(url);
+            if (spotlight) {
+                return { kind: daily ? 'Windows 聚焦' : 'Windows 聚焦（固定）', ic: 'stxCalendarSync', title: spotlight.desc || 'Windows 聚焦壁纸', link: spotlight.link };
             }
-            const preset = WALLPAPER_PRESETS.find(p => p.url === url);
+            const preset = wpPresetOf(url);
             if (preset) return { kind: '预设壁纸', ic: 'stxImage', title: preset.name, meta: '图片来自 Unsplash' };
             if (/^data:/i.test(url)) {
                 const name = wpNameOf(url) === '本地图片' ? '' : wpNameOf(url);
@@ -18118,21 +18117,21 @@
             if (o.mine && !o.tag) o.tag = '你的壁纸';
             return `<button type="button" class="stx-wpx-tile ${o.on ? 'on' : ''} ${o.mine ? 'mine' : ''}" data-wp-url="${stxAttr(o.url)}" data-wp-name="${stxAttr(o.name)}" title="${stxAttr(o.title || o.name)}" aria-label="设为壁纸：${stxAttr(o.name)}" aria-pressed="${o.on ? 'true' : 'false'}" style="background-image:url('${stxAttr(o.thumb)}')" onclick="wpPickTile(this)">${o.tag ? `<span class="tag">${stxEsc(o.tag)}</span>` : ''}<span class="nm">${stxEsc(o.name)}</span><i class="ck">${icon('stxCheck')}</i></button>`;
         }
-        function wpBingStatus(daily) {
+        function wpSpotlightStatus(daily) {
             if (!daily) return '';
-            const c = wpBingCache();
-            if (WP_BING.loading) return `<span class="stx-wpx-st busy"><i></i><span>正在获取今日图片…</span></span>`;
-            if (WP_BING.error) return `<span class="stx-wpx-st err"><i></i><span>${stxEsc(WP_BING.error)}，联网后会自动重试${c.today ? '；先保留上一张' : ''}</span></span>`;
+            const c = wpSpotlightCache();
+            if (WP_SPOTLIGHT.loading) return `<span class="stx-wpx-st busy"><i></i><span>正在获取今日图片…</span></span>`;
+            if (WP_SPOTLIGHT.error) return `<span class="stx-wpx-st err"><i></i><span>${stxEsc(WP_SPOTLIGHT.error)}，联网后会自动重试${c.today ? '；先保留上一张' : ''}</span></span>`;
             if (c.today) {
                 const t = c.checkedAt ? new Date(c.checkedAt) : null;
                 const hm = t ? `${String(t.getHours()).padStart(2, '0')}:${String(t.getMinutes()).padStart(2, '0')}` : '';
-                return `<span class="stx-wpx-st ok"><i></i><span>${wpIsToday(c.today.date) ? '今日' : wpDateLabel(c.today.date)}：${stxEsc(c.today.desc || '必应图片')}${hm ? ` · ${hm} 已检查` : ''}</span></span>`;
+                return `<span class="stx-wpx-st ok"><i></i><span>${wpIsToday(c.today.date) ? '今日' : wpDateLabel(c.today.date)}：${stxEsc(c.today.desc || 'Windows 聚焦图片')}${hm ? ` · ${hm} 已检查` : ''}</span></span>`;
             }
             return '';
         }
         function stxPagePersonal(winId) {
-            const cur = wpCurrentUrl();
-            const daily = SYSTEM.wallpaperSource === 'bing';
+            const cur = wpPresetUrl(wpCurrentUrl());
+            const daily = SYSTEM.wallpaperSource === 'spotlight';
             const info = wpCurrentInfo();
             const hero = `<div class="stx-card stx-wpx" data-stx-row="wallpaper" ondragenter="wpDragOver(event,this)" ondragover="wpDragOver(event,this)" ondragleave="wpDragLeave(event,this)" ondrop="wpDrop(event,this)">
                 <div class="stx-wpx-hero">
@@ -18143,43 +18142,43 @@
                         ${info.meta ? `<span class="stx-wpx-meta">${stxEsc(info.meta)}</span>` : ''}
                         <div class="stx-btns">
                             ${stxBtn('上传图片…', 'wpChooseFile()', { ic: 'stxUpload', cls: 'primary sm' })}
-                            ${info.link ? stxBtn('了解此图片', `window.open(${stxJs(info.link)}, '_blank', 'noopener')`, { ic: 'stxExternalLink', cls: 'sm' }) : ''}
+                            ${info.link ? stxBtn('了解此壁纸', `window.open(${stxJs(info.link)}, '_blank', 'noopener,noreferrer')`, { ic: 'stxExternalLink', cls: 'sm' }) : ''}
                         </div>
                         <small class="stx-wpx-hint">${daily
-                            ? `关闭「必应每日壁纸」后会恢复为你的壁纸「${stxEsc(wpNameOf(SYSTEM.customWallpaper))}」；选择下面任意一张图片也会改为固定壁纸。`
+                            ? `关闭「Windows 聚焦」后会恢复为你的壁纸「${stxEsc(wpNameOf(SYSTEM.customWallpaper))}」；选择下面任意一张图片也会改为固定壁纸。`
                             : '也可以把图片直接拖到这里，或在文件管理器中右键图片选择「设为桌面壁纸」。'}</small>
                     </div>
                 </div>
                 ${stxRow({
-                    id: 'bing', cls: 'stx-wpx-daily', ic: 'stxCalendarSync', title: '必应每日壁纸',
-                    desc: `每天自动换成必应首页的精选图片，需联网。${wpBingStatus(daily)}`,
-                    ctl: `${daily && WP_BING.error && !WP_BING.loading ? stxBtn('重试', 'wpBingUpdate({ force: true }).catch(() => {})', { ic: 'stxRefreshCw', cls: 'sm' }) : ''}${stxSwitch(daily, `wpSetBingDaily(${!daily})`, '必应每日壁纸')}`
+                    id: 'spotlight', cls: 'stx-wpx-daily', ic: 'stxCalendarSync', title: 'Windows 聚焦',
+                    desc: `自动更新 Windows 聚焦精选图片，需联网。${wpSpotlightStatus(daily)}`,
+                    ctl: `${daily && WP_SPOTLIGHT.error && !WP_SPOTLIGHT.loading ? stxBtn('重试', 'wpSpotlightUpdate({ force: true }).catch(() => {})', { ic: 'stxRefreshCw', cls: 'sm' }) : ''}${stxSwitch(daily, `wpSetSpotlightDaily(${!daily})`, 'Windows 聚焦')}`
                 })}
             </div>`;
 
-            const mine = SYSTEM.customWallpaper;
+            const mine = wpPresetUrl(SYSTEM.customWallpaper);
             const presets = `<div class="stx-card" data-stx-row="presets"><div class="stx-wpx-grid">${WALLPAPER_PRESETS.map(p => wpTile({ url: p.url, thumb: wpThumb(p.url), name: p.name, on: cur === p.url, mine: daily && mine === p.url })).join('')}</div></div>`;
             const hist = SYSTEM.wallpaperHistory || [];
             const history = hist.length ? `<div class="stx-card" data-stx-row="history"><div class="stx-wpx-grid">${hist.map((h, i) => {
                 const nm = h.name || wpNameOf(h.url);
-                const thumb = /^https:\/\/images\.unsplash\.com\//.test(h.url) ? wpThumb(h.url) : ((wpBingLookup(h.url) || {}).thumb || h.url);
+                const thumb = /^https:\/\/images\.unsplash\.com\//.test(h.url) ? wpThumb(h.url) : ((wpSpotlightLookup(h.url) || {}).thumb || h.url);
                 return `<div class="stx-wpx-cell">${wpTile({ url: h.url, thumb, name: nm, on: cur === h.url, mine: daily && mine === h.url, title: nm + (h.at ? '\n' + new Date(h.at).toLocaleString() : '') })}<button type="button" class="stx-wpx-del" title="从最近使用中移除" aria-label="从最近使用中移除：${stxAttr(nm)}" onclick="wpHistoryRemove(${i})">${icon('stxX')}</button></div>`;
             }).join('')}</div></div>` : '';
 
-            const list = wpBingRecentList();
-            if (Date.now() - (WP_BING.recentTried || 0) > 60000) { WP_BING.recentTried = Date.now(); setTimeout(() => wpBingLoadRecent(false), 0); }
+            const list = wpSpotlightRecentList();
+            if (Date.now() - (WP_SPOTLIGHT.recentTried || 0) > 60000) { WP_SPOTLIGHT.recentTried = Date.now(); setTimeout(() => wpSpotlightLoadRecent(false), 0); }
             let recentBody;
             if (list.length) {
                 recentBody = `<div class="stx-wpx-grid">${list.map(x => wpTile({
-                    url: x.url, thumb: x.thumb || x.url, name: x.desc || '必应图片', tag: wpDateLabel(x.date),
-                    title: `${x.desc || '必应图片'}${x.date ? '\n' + x.date : ''}`, on: cur === x.url && !daily, mine: daily && mine === x.url
+                    url: x.url, thumb: x.thumb || x.url, name: x.desc || 'Windows 聚焦图片', tag: wpDateLabel(x.date),
+                    title: `${x.desc || 'Windows 聚焦图片'}${x.date ? '\n' + x.date : ''}`, on: cur === x.url && !daily, mine: daily && mine === x.url
                 })).join('')}</div>`;
-            } else if (WP_BING.recentError) {
-                recentBody = `<div class="stx-empty">${icon('stxTriangleAlert')}${stxEsc(WP_BING.recentError)}<div class="stx-btns" style="justify-content:center;margin-top:10px">${stxBtn('重试', 'WP_BING.recentTried = Date.now(); wpBingLoadRecent(true)', { ic: 'stxRefreshCw', cls: 'sm' })}</div></div>`;
+            } else if (WP_SPOTLIGHT.recentError) {
+                recentBody = `<div class="stx-empty">${icon('stxTriangleAlert')}${stxEsc(WP_SPOTLIGHT.recentError)}<div class="stx-btns" style="justify-content:center;margin-top:10px">${stxBtn('重试', 'WP_SPOTLIGHT.recentTried = Date.now(); wpSpotlightLoadRecent(true)', { ic: 'stxRefreshCw', cls: 'sm' })}</div></div>`;
             } else {
-                recentBody = `<div class="stx-wpx-grid" aria-busy="true" aria-label="正在加载必应近期壁纸">${'<div class="stx-skel stx-wpx-skel"></div>'.repeat(7)}</div>`;
+                recentBody = `<div class="stx-wpx-grid" aria-busy="true" aria-label="正在加载 Windows 聚焦近期壁纸">${'<div class="stx-skel stx-wpx-skel"></div>'.repeat(7)}</div>`;
             }
-            const recent = `<div class="stx-card" data-stx-row="bingrecent">${recentBody}</div>`;
+            const recent = `<div class="stx-card" data-stx-row="spotlightrecent">${recentBody}</div>`;
 
             const click = `<div class="stx-card">${stxRow({
                 id: 'click', ic: 'stxMousePointerClick', title: '图标打开方式',
@@ -18207,7 +18206,7 @@
             })}</div>`;
             const jump = `<nav class="stx-jump" aria-label="跳转到">${[['wall', '壁纸', 'stxImage'], ['color', '颜色', 'stxSwatch'], ['glass', '透明效果', 'stxBlend'], ['win', '窗口', 'stxAppWindow'], ['act', '交互', 'stxMousePointerClick']]
                 .map(([k, n, ic]) => `<button type="button" onclick="apJump(this, '${k}')">${icon(ic)}${n}</button>`).join('')}</nav>`;
-            return `<div class="stx-page">${stxHead('personal')}${jump}${stxGroup('壁纸', '', hero, '', 'data-stx-sec="wall"')}${history ? stxGroup('最近使用', '你换过的壁纸，点击即可换回', history) : ''}${stxGroup('预设壁纸', `${WALLPAPER_PRESETS.length} 张`, presets)}${stxGroup('必应近期壁纸', daily ? '点击可改为固定壁纸' : '点击设为固定壁纸', recent)}${apColorGroup()}${apGlassGroup()}${stxGroup('窗口', '', win, '', 'data-stx-sec="win"')}${stxGroup('交互', '', click, '', 'data-stx-sec="act"')}</div>`;
+            return `<div class="stx-page">${stxHead('personal')}${jump}${stxGroup('壁纸', '', hero, '', 'data-stx-sec="wall"')}${history ? stxGroup('最近使用', '你换过的壁纸，点击即可换回', history) : ''}${stxGroup('预设壁纸', `${WALLPAPER_PRESETS.length} 张`, presets)}${stxGroup('Windows 聚焦近期壁纸', daily ? '点击可改为固定壁纸' : '点击设为固定壁纸', recent)}${apColorGroup()}${apGlassGroup()}${stxGroup('窗口', '', win, '', 'data-stx-sec="win"')}${stxGroup('交互', '', click, '', 'data-stx-sec="act"')}</div>`;
         }
         // 拖动中实时生效（只改 CSS 变量），松手才保存；其他已打开的设置窗口同步滑块位置
         function stxCornerSync(r, except) {
@@ -18743,7 +18742,7 @@
                 imageOpen: SYSTEM.imageOpen === 'viewer' ? 'viewer' : 'comic',
                 storageBackend: SYSTEM.storageBackend === 'opfs' && SYSTEM.opfs && SYSTEM.opfs.available ? 'opfs' : 'indexeddb',
                 showHiddenFiles: SYSTEM.showHiddenFiles === true,
-                wallpaperSource: SYSTEM.wallpaperSource === 'bing' ? 'bing' : 'custom',
+                wallpaperSource: SYSTEM.wallpaperSource === 'spotlight' ? 'spotlight' : 'custom',
                 windowCorners: cornerPresetOf(clampCornerRadius(SYSTEM.cornerRadius)),
                 cornerRadius: clampCornerRadius(SYSTEM.cornerRadius),
                 appearance: window.JSAppearance ? JSAppearance.norm(SYSTEM.appearance) : undefined,
@@ -18804,7 +18803,7 @@
                     `· 显示隐藏文件：${s.showHiddenFiles ? '开' : '关'}`,
                     `· 隐藏的系统应用：${Array.isArray(s.hiddenSystemApps) && s.hiddenSystemApps.length ? s.hiddenSystemApps.map(k => (SYSTEM_APP_DEFS.find(a => a.key === k) || { name: k }).name).join('、') : '无'}`,
                     `· 壁纸：${wp ? '包含' : '不包含'}`,
-                    `· 必应每日壁纸：${s.wallpaperSource === 'bing' ? '开' : '关'}`,
+                    `· Windows 聚焦：${['spotlight', 'bing'].includes(s.wallpaperSource) ? '开' : '关'}`,
                     `· 窗口圆角：${(() => { const r = Number.isFinite(Number(s.cornerRadius)) && s.cornerRadius !== null && s.cornerRadius !== '' ? clampCornerRadius(s.cornerRadius) : CORNER_PRESETS[s.windowCorners] ?? 10; return `${r} px（${cornerLevelLabel(r)}）`; })()}`,
                     `· 外观：${s.appearance && window.JSAppearance ? apSummary(s.appearance) : '不包含（保持当前外观）'}`,
                     `· 桌面图标位置：${pos ? Object.keys(pos).length + ' 个' : '不包含'}`
@@ -18820,8 +18819,8 @@
                     saveSystemSettings();
                     applySystemAppVisibility();
                     syncStorageMigrationControls();
-                    if (wp) { if (SYSTEM.wallpaperSource === 'bing') wpSaveCustom(wp); else setBg(wp); }
-                    if (SYSTEM.wallpaperSource === 'bing') wpBingUpdate({ force: true }).catch(() => {});
+                    if (wp) { if (SYSTEM.wallpaperSource === 'spotlight') wpSaveCustom(wp); else setBg(wp); }
+                    if (SYSTEM.wallpaperSource === 'spotlight') wpSpotlightUpdate({ force: true }).catch(() => {});
                     else if (!wp && SYSTEM.customWallpaper) wpShow(SYSTEM.customWallpaper);
                     if (pos) { SYSTEM.iconPositions = pos; saveIconPositions(); }
                     if (SYSTEM.mounted) refreshDesktop();
@@ -18971,16 +18970,16 @@
 
         // === 壁纸管理 ===
         // 所有入口（开始菜单「壁纸」、桌面右键「更换壁纸」、设置）统一打开 设置 → 个性化。
-        // wallpaper.cfg 始终保存“当前实际显示的图片地址”；SYSTEM.wallpaperSource 只记录是否跟随必应每日更换。
+        // wallpaper.cfg 始终保存“你的壁纸”；SYSTEM.wallpaperSource 只记录是否自动更新 Windows 聚焦。
         function openWallpaperPanel() {
             try { closeCtx(); } catch (_) {}
             return openSettings('personal');
         }
 
         // 两个概念分开：
-        //   “你的壁纸”= SYSTEM.customWallpaper，保存在 wallpaper.cfg，只由你主动选择（预设 / 上传 / 右键 / 固定一张必应图）时改变；
-        //   必应每日壁纸只是“显示层”，用 wpShow 盖在上面，从不写 wallpaper.cfg —— 关掉就恢复你的壁纸。
-        // （上一版把必应图片直接写进 wallpaper.cfg，开启后原来的壁纸就被永久顶掉了。）
+        //   “你的壁纸”= SYSTEM.customWallpaper，保存在 wallpaper.cfg，只由你主动选择（预设 / 上传 / 右键 / 固定一张聚焦图片）时改变；
+        //   Windows 聚焦只是“显示层”，用 wpShow 盖在上面，从不写 wallpaper.cfg —— 关掉就恢复你的壁纸。
+        // 自动更新的聚焦图片不能写进 wallpaper.cfg，避免覆盖用户原来的壁纸。
         function wpShow(u) {
             if (!u) return;
             document.getElementById('dynamic-bg').style.backgroundImage = `url('${u}')`;
@@ -18996,12 +18995,18 @@
                 SYSTEM.fs.writeFile(SYSTEM.configPath, u, (err) => { if(err) console.error("Save WP failed", err); });
             }
             wpHistoryAdd(u, name);
+            if (wpPresetUrl(u) !== u) wpUpgradePreset();
         }
 
         // ---------- 最近使用的壁纸（预设不计入，它们一直都在） ----------
         const WP_HISTORY_MAX = 6;
         const WP_HISTORY_PATH = '/system/config/wallpaper-history.json';
-        function wpIsPreset(u) { return typeof WALLPAPER_PRESETS !== 'undefined' && WALLPAPER_PRESETS.some(p => p.url === u); }
+        // 只兼容这 8 张预设原先的精确 w=1920 地址，不改用户自定义裁剪或其它网络图片。
+        function wpPresetOf(u) {
+            return WALLPAPER_PRESETS.find(p => p.url === u || p.url.split('?')[0] + '?w=1920' === u) || null;
+        }
+        function wpPresetUrl(u) { const p = wpPresetOf(u); return p ? p.url : u; }
+        function wpIsPreset(u) { return !!wpPresetOf(u); }
         function wpValidStored(u) {
             return typeof u === 'string' && /^(data:image\/|https?:\/\/)/i.test(u) && !/['"\\\n\r]/.test(u);
         }
@@ -19042,21 +19047,23 @@
         }
         function wpNameOf(u) {
             if (!u) return '';
-            const preset = typeof WALLPAPER_PRESETS !== 'undefined' && WALLPAPER_PRESETS.find(p => p.url === u);
+            const preset = wpPresetOf(u);
             if (preset) return preset.name;
             const h = (SYSTEM.wallpaperHistory || []).find(x => x.url === u);
             if (h && h.name) return h.name;
-            const bing = typeof wpBingLookup === 'function' ? wpBingLookup(u) : null;
-            if (bing && bing.desc) return bing.desc;
+            const spotlight = typeof wpSpotlightLookup === 'function' ? wpSpotlightLookup(u) : null;
+            if (spotlight && spotlight.desc) return spotlight.desc;
             const meta = typeof wpReadMeta === 'function' ? wpReadMeta() : null;
             if (meta && meta.fp === wpFingerprint(u) && meta.name) return meta.name;
             return /^data:/i.test(u) ? '本地图片' : '网络图片';
         }
 
         const WP_META_KEY = 'JISHENG_OS_WALLPAPER_META';
-        const WP_BING_KEY = 'JISHENG_OS_BING_WALLPAPER';
-        const WP_BING_TTL = 3 * 3600 * 1000;           // 同一天内最多每 3 小时向服务器确认一次
-        const WP_BING = { busy: null, loading: false, error: '', recentBusy: null, recentError: '' };
+        const WP_SPOTLIGHT_KEY = 'JISHENG_OS_SPOTLIGHT_PEAPIX';   // 与上一版双源缓存隔离
+        const WP_SPOTLIGHT_TTL = 3 * 3600 * 1000;           // 同一天内最多每 3 小时向服务器确认一次
+        const WP_SPOTLIGHT = { busy: null, loading: false, error: '', recentBusy: null, recentError: '', feedBusy: null };
+        const WP_SPOTLIGHT_COUNT = 7;
+        const WP_SPOTLIGHT_SCHEMA = 2;                    // 补全上一版无标题缓存，图片和用户选择不清空
 
         function wpSafeUrl(u) {
             return typeof u === 'string' && /^https:\/\/[^\s'"()\\<>]+$/i.test(u) ? u : '';
@@ -19065,20 +19072,42 @@
             const m = /^url\((['"]?)(.*)\1\)$/.exec(stxCurrentWallpaper());
             return m ? m[2] : '';
         }
-        function wpPreload(url) {
+        function wpPreload(url, ms = 0) {
             return new Promise((resolve, reject) => {
                 const img = new Image();
-                img.onload = () => resolve(img);
-                img.onerror = () => reject(new Error('图片无法加载'));
+                let timer = null;
+                const done = err => {
+                    if (timer) clearTimeout(timer);
+                    img.onload = img.onerror = null;
+                    if (err) { if (ms) img.src = ''; reject(err); } else resolve(img);
+                };
+                img.onload = () => done();
+                img.onerror = () => done(new Error('图片无法加载'));
+                if (ms > 0) timer = setTimeout(() => done(new Error('图片加载超时')), ms);
                 img.src = url;
             });
         }
+        // 已保存的旧版预设先继续显示；高清图片成功解码后再升级，断网/失败不清空背景。
+        function wpUpgradePreset() {
+            const old = SYSTEM.customWallpaper, hd = wpPresetUrl(old);
+            if (!old || hd === old) return Promise.resolve(false);
+            return wpPreload(hd, 15000).then(() => {
+                if (SYSTEM.customWallpaper !== old) return false; // 加载期间用户改选了其它图片
+                const showingOld = wpCurrentUrl() === old;
+                wpSaveCustom(hd);
+                if (showingOld) wpShow(hd);
+                wpRefreshSettings();
+                return true;
+            }).catch(() => false);
+        }
+        window.addEventListener('online', wpUpgradePreset);
+
         function wpFingerprint(u) { return String(u || '').length + ':' + String(u || '').slice(-48); }
         function wpReadMeta() { try { return JSON.parse(localStorage.getItem(WP_META_KEY)) || null; } catch (_) { return null; } }
         function wpWriteMeta(url, name) {
             try { localStorage.setItem(WP_META_KEY, JSON.stringify({ fp: wpFingerprint(url), name: String(name || '') })); } catch (_) {}
         }
-        function wpThumb(u) { return u.replace(/([?&])w=\d+/, '$1w=480'); }
+        function wpThumb(u) { return u.replace(/([?&])w=\d+/, '$1w=480').replace(/([?&])q=\d+/, '$1q=75'); }
         function wpToday() {
             const d = new Date(), p = n => String(n).padStart(2, '0');
             return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
@@ -19087,15 +19116,8 @@
             const m = /^(\d{4})-?(\d{2})-?(\d{2})/.exec(String(s || ''));
             return m ? `${m[1]}-${m[2]}-${m[3]}` : '';
         }
-        // 必应中国区按北京时间换图；用“已知最新图片日期”和本机日期中较晚的一天作为“今天”，避免时区不同时出现两个“今天”或日期错位
-        function wpRefDay() {
-            let ref = wpToday();
-            try {
-                const c = JSON.parse(localStorage.getItem(WP_BING_KEY)) || {};
-                [c.today && c.today.date, Array.isArray(c.recent) && c.recent[0] && c.recent[0].date].forEach(d => { if (d && d > ref) ref = d; });
-            } catch (_) {}
-            return ref;
-        }
+        // 聚焦接口不提供发布日期；每日模式记录本机选用日期，近期列表不伪造日期。
+        function wpRefDay() { return wpToday(); }
         function wpIsToday(date) { return !!date && date >= wpRefDay(); }
         function wpDateLabel(date) {
             if (!date) return '';
@@ -19108,9 +19130,9 @@
             return `${Number(mm)}月${Number(dd)}日`;
         }
 
-        // 用户主动选择一张固定壁纸（预设、上传、文件右键、必应往期）：顺带关闭“每日更换”。
+        // 用户主动选择一张固定壁纸（预设、上传、文件右键、聚焦往期）：顺带关闭“每日更换”。
         function wpApplyCustom(url, name) {
-            const wasDaily = SYSTEM.wallpaperSource === 'bing';
+            const wasDaily = SYSTEM.wallpaperSource === 'spotlight';
             if (wasDaily) { SYSTEM.wallpaperSource = 'custom'; saveSystemSettings(); }
             if (name) wpWriteMeta(url, name);
             wpShow(url);
@@ -19122,12 +19144,12 @@
         async function wpPickTile(btn) {
             const url = btn && btn.dataset.wpUrl;
             if (!url || btn.classList.contains('busy')) return;
-            if (url === wpCurrentUrl() && SYSTEM.wallpaperSource !== 'bing') return;
+            if (url === wpCurrentUrl() && SYSTEM.wallpaperSource !== 'spotlight') return;
             btn.classList.add('busy'); btn.setAttribute('aria-busy', 'true');
             try {
                 await wpPreload(url);               // 下载完成再切换，避免桌面闪空白
                 const wasDaily = wpApplyCustom(url, btn.dataset.wpName || '');
-                if (wasDaily) Notify.info('已改为固定壁纸', '必应每日壁纸已关闭，可随时在 设置 → 个性化 重新开启。');
+                if (wasDaily) Notify.info('已改为固定壁纸', 'Windows 聚焦已关闭，可随时在 设置 → 个性化 重新开启。');
             } catch (_) {
                 Notify.error('壁纸加载失败', '图片无法下载，请检查网络后重试。');
             } finally {
@@ -19168,16 +19190,31 @@
             wpUploadFile(e.dataTransfer.files && e.dataTransfer.files[0]);
         }
 
-        // ---------- 必应每日壁纸 ----------
-        // 必应官方接口不允许跨域，这里用两个开放 CORS 的公共镜像：
-        //   今日图片：bing.biturl.top（直接返回 www.bing.com 的 1920×1080 原图地址）
-        //   近 7 天 + 备用：peapix.com（中国区 feed）
-        function wpBingCache() { try { const c = JSON.parse(localStorage.getItem(WP_BING_KEY)); return c && typeof c === 'object' ? c : {}; } catch (_) { return {}; } }
-        function wpBingStore(c) { try { localStorage.setItem(WP_BING_KEY, JSON.stringify(c)); } catch (_) {} }
-        function wpSplitCopyright(s) {
-            const m = /^(.*?)\s*[（(]\s*(©[^)）]*)[)）]\s*$/.exec(String(s || '').trim());
-            return m ? { desc: m[1], credit: m[2] } : { desc: String(s || '').trim(), credit: '' };
+        // ---------- Windows 聚焦 ----------
+        // imageUrl 是原图（本次 7 张均为 3840×2160），fullUrl 通常只有 1920×1080。
+        function wpSpotlightPageUrl(url) {
+            // 详情只能直达对应的聚焦条目。
+            const m = /^https:\/\/(?:www\.)?peapix\.com\/spotlight\/(\d+)\/?(?:[?#].*)?$/i.exec(wpSafeUrl(url));
+            return m ? 'https://peapix.com/spotlight/' + m[1] : '';
         }
+        function wpSpotlightItem(x) {
+            if (!x || typeof x !== 'object' || !wpSafeUrl(x.url)) return null;
+            return {
+                date: wpNormDate(x.date), url: x.url, thumb: wpSafeUrl(x.thumb) || x.url,
+                desc: String(x.originalTitle || x.desc || 'Windows 聚焦壁纸').replace(/[\r\n\t]+/g, ' ').trim().slice(0, 240),
+                link: wpSpotlightPageUrl(x.link || x.pageUrl)
+            };
+        }
+        function wpSpotlightCache() {
+            try {
+                const c = JSON.parse(localStorage.getItem(WP_SPOTLIGHT_KEY));
+                if (!c || typeof c !== 'object' || Array.isArray(c)) return {};
+                c.today = wpSpotlightItem(c.today);
+                c.recent = (Array.isArray(c.recent) ? c.recent : []).map(wpSpotlightItem).filter(Boolean).slice(0, WP_SPOTLIGHT_COUNT);
+                return c;
+            } catch (_) { return {}; }
+        }
+        function wpSpotlightStore(c) { try { localStorage.setItem(WP_SPOTLIGHT_KEY, JSON.stringify(c)); } catch (_) {} }
         async function wpFetchJson(url, ms = 9000) {
             const ctl = typeof AbortController === 'function' ? new AbortController() : null;
             const timer = ctl ? setTimeout(() => ctl.abort(), ms) : null;
@@ -19187,116 +19224,128 @@
                 return await res.json();
             } finally { if (timer) clearTimeout(timer); }
         }
-        async function wpBingFetchRecent() {
-            const d = await wpFetchJson('https://peapix.com/bing/feed?country=cn');
-            const list = (Array.isArray(d) ? d : []).map(x => {
-                const url = wpSafeUrl(x && x.fullUrl);
-                if (!url) return null;
-                return { date: wpNormDate(x.date), url, thumb: wpSafeUrl(x.thumbUrl) || url, desc: String(x.title || ''), credit: '', link: wpSafeUrl(x.pageUrl) };
-            }).filter(Boolean).slice(0, 8);
-            if (!list.length) throw new Error('必应图片列表为空');
-            return list;
-        }
-        async function wpBingFetchToday() {
-            try {
-                const d = await wpFetchJson('https://bing.biturl.top/?resolution=1920&format=json&index=0&mkt=zh-CN');
-                const url = wpSafeUrl(d && d.url);
-                if (url && /^https:\/\/www\.bing\.com\//.test(url)) {
-                    const { desc, credit } = wpSplitCopyright(d.copyright);
-                    return { date: wpNormDate(d.end_date) || wpToday(), url, thumb: url.replace(/_1920x1080\.jpg/, '_640x360.jpg'), desc, credit, link: wpSafeUrl(d.copyright_link) };
+        function wpSpotlightFetchRecent(force = false) {
+            if (WP_SPOTLIGHT.feedBusy) return WP_SPOTLIGHT.feedBusy;
+            const c = wpSpotlightCache();
+            if (!force && c.schema === WP_SPOTLIGHT_SCHEMA && c.recent && c.recent.length && c.recentDay === wpToday() && Date.now() - (c.recentAt || 0) < WP_SPOTLIGHT_TTL) return Promise.resolve(c.recent);
+            WP_SPOTLIGHT.feedBusy = (async () => {
+                const d = await wpFetchJson('https://peapix.com/spotlight/feed?n=7');
+                const seen = new Set();
+                const list = (Array.isArray(d) ? d : []).map(x => {
+                    if (!x || typeof x !== 'object') return null;
+                    const url = wpSafeUrl(x.imageUrl) || wpSafeUrl(x.fullUrl);
+                    if (!url || seen.has(url)) return null;
+                    seen.add(url);
+                    return wpSpotlightItem({ date: x.date, url, thumb: x.thumbUrl, desc: x.title, link: x.pageUrl });
+                }).filter(Boolean).slice(0, WP_SPOTLIGHT_COUNT);
+                if (!list.length) throw new Error('Windows 聚焦图片列表为空');
+                const next = wpSpotlightCache();
+                next.recent = list; next.recentAt = Date.now(); next.recentDay = wpToday(); next.schema = WP_SPOTLIGHT_SCHEMA;
+                if (next.today) {
+                    const details = list.find(x => x.url === next.today.url);
+                    if (details) next.today = { ...details, date: next.today.date };
                 }
-            } catch (_) { /* 落到备用源 */ }
-            const list = await wpBingFetchRecent();
-            const c = wpBingCache(); c.recent = list; c.recentAt = Date.now(); c.recentDay = wpToday(); wpBingStore(c);
-            return list[0];
+                wpSpotlightStore(next);
+                return list;
+            })().finally(() => { WP_SPOTLIGHT.feedBusy = null; });
+            return WP_SPOTLIGHT.feedBusy;
         }
-        // 用今日“官方”条目替换 peapix 列表中的同日条目，保证“今天”那张与每日模式用的是同一个地址
-        function wpBingRecentList() {
-            const c = wpBingCache();
-            const list = Array.isArray(c.recent) ? c.recent.slice() : [];
-            if (c.today && c.today.url) {
-                const i = list.findIndex(x => x.date === c.today.date);
-                if (i >= 0) list[i] = c.today; else if (!list.length || c.today.date > list[0].date) list.unshift(c.today);
+        async function wpSpotlightFetchToday(force = false) {
+            const previous = wpSpotlightCache();
+            const list = await wpSpotlightFetchRecent(force);
+            const day = wpToday();
+            let start = previous.today ? list.findIndex(x => x.url === previous.today.url) : -1;
+            // 同一天保持所选图片；跨日轮到下一张，图源几天没更新也能每天自动换图。
+            start = start < 0 ? 0 : previous.today.date === day ? start : (start + 1) % list.length;
+            for (let n = 0; n < Math.min(3, list.length); n++) {
+                const item = list[(start + n) % list.length];
+                try { await wpPreload(item.url, 15000); return { ...item, date: day }; } catch (_) { /* 仅尝试同一 Peapix 列表中的下一张原图 */ }
             }
-            return list.slice(0, 8);
+            throw new Error('Windows 聚焦原图暂时无法加载');
         }
-        function wpBingLookup(url) {
+        // 近期区始终是同一图源返回的最多 7 张，不再额外插入另一源的“今日图”。
+        function wpSpotlightRecentList() {
+            const c = wpSpotlightCache(), seen = new Set();
+            return (c.recent || []).filter(x => { if (seen.has(x.url)) return false; seen.add(x.url); return true; })
+                .map(x => c.today && c.today.url === x.url ? { ...x, date: c.today.date } : x).slice(0, WP_SPOTLIGHT_COUNT);
+        }
+        function wpSpotlightLookup(url) {
             if (!url) return null;
-            const c = wpBingCache();
+            const c = wpSpotlightCache();
             if (c.today && c.today.url === url) return c.today;
-            return (Array.isArray(c.recent) ? c.recent : []).find(x => x.url === url) || null;
+            return (c.recent || []).find(x => x.url === url) || null;
         }
 
-        // 检查并应用今日必应壁纸。force：忽略缓存；announce：自动换图时提示一次。
-        function wpBingUpdate(opts = {}) {
-            if (WP_BING.busy) return WP_BING.busy;
-            WP_BING.busy = (async () => {
-                const c = wpBingCache();
-                const fresh = c.today && c.checkedDay === wpToday() && Date.now() - (c.checkedAt || 0) < WP_BING_TTL;
+        // 检查并应用 Windows 聚焦壁纸。force：忽略缓存；announce：自动换图时提示一次。
+        function wpSpotlightUpdate(opts = {}) {
+            if (WP_SPOTLIGHT.busy) return WP_SPOTLIGHT.busy;
+            WP_SPOTLIGHT.busy = (async () => {
+                const c = wpSpotlightCache();
+                const fresh = c.schema === WP_SPOTLIGHT_SCHEMA && c.today && c.checkedDay === wpToday() && Date.now() - (c.checkedAt || 0) < WP_SPOTLIGHT_TTL;
                 let item = c.today || null;
                 if (opts.force || !fresh) {
-                    WP_BING.loading = true;
+                    WP_SPOTLIGHT.loading = true;
                     wpRefreshSettings();
                     try {
-                        item = await wpBingFetchToday();
-                        const c2 = wpBingCache();
+                        item = await wpSpotlightFetchToday(!!opts.force);
+                        const c2 = wpSpotlightCache();
                         c2.today = item; c2.checkedAt = Date.now(); c2.checkedDay = wpToday();
-                        wpBingStore(c2);
-                        WP_BING.error = '';
+                        wpSpotlightStore(c2);
+                        WP_SPOTLIGHT.error = '';
                     } catch (err) {
-                        WP_BING.error = navigator.onLine === false ? '当前处于离线状态' : '暂时无法连接必应';
+                        WP_SPOTLIGHT.error = navigator.onLine === false ? '当前处于离线状态' : '暂时无法连接 Windows 聚焦图片源';
                         if (!item) throw err;
-                    } finally { WP_BING.loading = false; }
+                    } finally { WP_SPOTLIGHT.loading = false; }
                 }
-                if (SYSTEM.wallpaperSource === 'bing' && item && item.url && item.url !== wpCurrentUrl()) {
-                    await wpPreload(item.url);
-                    if (SYSTEM.wallpaperSource !== 'bing') return item;   // 加载期间用户已改选其它壁纸
+                if (SYSTEM.wallpaperSource === 'spotlight' && item && item.url && item.url !== wpCurrentUrl()) {
+                    try { await wpPreload(item.url, 15000); } catch (err) { WP_SPOTLIGHT.error = '聚焦原图暂时无法加载'; throw err; }
+                    if (SYSTEM.wallpaperSource !== 'spotlight') return item;   // 加载期间用户已改选其它壁纸
                     wpShow(item.url);
-                    if (opts.announce) Notify.info('今日必应壁纸', stxEsc(item.desc || '桌面壁纸已更新'));
+                    if (opts.announce) Notify.info('今日 Windows 聚焦壁纸', stxEsc(item.desc || '桌面壁纸已更新'));
                 }
                 return item;
-            })().finally(() => { WP_BING.busy = null; wpRefreshSettings(); });
-            return WP_BING.busy;
+            })().finally(() => { WP_SPOTLIGHT.busy = null; wpRefreshSettings(); });
+            return WP_SPOTLIGHT.busy;
         }
-        function wpBingLoadRecent(force) {
-            const c = wpBingCache();
-            if (!force && Array.isArray(c.recent) && c.recent.length && c.recentDay === wpToday() && Date.now() - (c.recentAt || 0) < WP_BING_TTL) return Promise.resolve();
-            if (WP_BING.recentBusy) return WP_BING.recentBusy;
-            WP_BING.recentError = '';
-            WP_BING.recentBusy = wpBingFetchRecent().then(list => {
-                const c2 = wpBingCache(); c2.recent = list; c2.recentAt = Date.now(); c2.recentDay = wpToday(); wpBingStore(c2);
+        function wpSpotlightLoadRecent(force) {
+            const c = wpSpotlightCache();
+            if (!force && c.schema === WP_SPOTLIGHT_SCHEMA && Array.isArray(c.recent) && c.recent.length && c.recentDay === wpToday() && Date.now() - (c.recentAt || 0) < WP_SPOTLIGHT_TTL) return Promise.resolve();
+            if (WP_SPOTLIGHT.recentBusy) return WP_SPOTLIGHT.recentBusy;
+            WP_SPOTLIGHT.recentError = '';
+            WP_SPOTLIGHT.recentBusy = wpSpotlightFetchRecent(!!force).then(list => {
+                const c2 = wpSpotlightCache(); c2.recent = list; c2.recentAt = Date.now(); c2.recentDay = wpToday(); wpSpotlightStore(c2);
             }).catch(() => {
-                WP_BING.recentError = navigator.onLine === false ? '当前处于离线状态，联网后可查看近期壁纸。' : '暂时无法获取必应近期壁纸。';
-            }).finally(() => { WP_BING.recentBusy = null; wpRefreshSettings(); });
-            return WP_BING.recentBusy;
+                WP_SPOTLIGHT.recentError = navigator.onLine === false ? '当前处于离线状态，联网后可查看近期壁纸。' : '暂时无法获取 Windows 聚焦近期壁纸。';
+            }).finally(() => { WP_SPOTLIGHT.recentBusy = null; wpRefreshSettings(); });
+            return WP_SPOTLIGHT.recentBusy;
         }
-        async function wpSetBingDaily(on) {
-            if (on === (SYSTEM.wallpaperSource === 'bing')) return;
-            SYSTEM.wallpaperSource = on ? 'bing' : 'custom';
+        async function wpSetSpotlightDaily(on) {
+            if (on === (SYSTEM.wallpaperSource === 'spotlight')) return;
+            SYSTEM.wallpaperSource = on ? 'spotlight' : 'custom';
             saveSystemSettings();
             wpRefreshSettings();
             if (!on) {
                 const mine = SYSTEM.customWallpaper;
                 if (mine && mine !== wpCurrentUrl()) {
                     try { await wpPreload(mine); } catch (_) {}
-                    if (SYSTEM.wallpaperSource !== 'bing') wpShow(mine);
+                    if (SYSTEM.wallpaperSource !== 'spotlight') wpShow(mine);
                 }
                 wpRefreshSettings();
-                Notify.info('已关闭必应每日壁纸', `已恢复为你的壁纸「${stxEsc(wpNameOf(mine))}」。`);
+                Notify.info('已关闭 Windows 聚焦', `已恢复为你的壁纸「${stxEsc(wpNameOf(mine))}」。`);
                 return;
             }
             try {
-                const item = await wpBingUpdate();
-                if (item && SYSTEM.wallpaperSource === 'bing') Notify.success('已开启必应每日壁纸', stxEsc(item.desc || '每天会自动更换为必应首页图片。'));
+                const item = await wpSpotlightUpdate();
+                if (item && SYSTEM.wallpaperSource === 'spotlight') Notify.success('已开启 Windows 聚焦', stxEsc(item.desc || '将自动更新 Windows 聚焦精选原图。'));
             } catch (_) {
-                Notify.warning('暂时无法获取必应壁纸', '已保持开启，联网后会自动更新；当前壁纸不变。');
+                Notify.warning('暂时无法获取 Windows 聚焦壁纸', '已保持开启，联网后会自动更新；当前壁纸不变。');
             }
         }
-        function wpBingInit() {
-            if (wpBingInit.done) return;
-            wpBingInit.done = true;
+        function wpSpotlightInit() {
+            if (wpSpotlightInit.done) return;
+            wpSpotlightInit.done = true;
             const tick = () => {
-                if (SYSTEM.wallpaperSource === 'bing' && document.visibilityState !== 'hidden') wpBingUpdate({ announce: true }).catch(() => {});
+                if (SYSTEM.wallpaperSource === 'spotlight' && document.visibilityState !== 'hidden') wpSpotlightUpdate({ announce: true }).catch(() => {});
             };
             tick();
             setInterval(tick, 30 * 60 * 1000);
