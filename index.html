@@ -416,8 +416,6 @@
            各平台落到系统自带的等宽字体（macOS SF Mono / Menlo，Windows Consolas，Linux Liberation Mono），中文回退到系统黑体 */
         :root { --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Cascadia Mono", "Liberation Mono", "Microsoft YaHei UI", "PingFang SC", monospace; }
         :root { --win-radius: 10px; --ui-radius: 6px; --ctl-radius: 8px; --card-radius: 12px; --dlg-radius: 12px; --cal-day-radius: 50%; }
-        html[data-win-corners="small"] { --win-radius: 6px; --ui-radius: 4px; --ctl-radius: 6px; --card-radius: 8px; --dlg-radius: 8px; --cal-day-radius: 4px; }
-        html[data-win-corners="square"] { --win-radius: 0px; --ui-radius: 0px; --ctl-radius: 0px; --card-radius: 0px; --dlg-radius: 0px; --cal-day-radius: 0px; }
         /* 修复：窗口下方两个角被内部内容（白色内容区、状态栏、侧栏等）盖成直角。
            以前 .window 是 overflow: visible，圆角只画在窗口自己的背景上，子元素照样铺满到直角。
            缩放手柄都在窗口内部，裁剪不会影响拖拽改大小；box-shadow 画在元素外，也不会被自身裁掉。 */
@@ -1946,8 +1944,6 @@
             text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
             min-height: 16px; line-height: 1.4;
         }
-        /* 兼容旧结构 h4 兜底（若 JS 未更新也能看） */
-        .extract-progress h4 { margin: 0; font-size: 13px; font-weight: 600; color: var(--text-main); text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
         /* === 计算器（v10.6 重做：系统新风格、键盘操作、精确小数） === */
         .calx { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 10px; padding: 12px; background: rgba(var(--gc-17, 20,20,28), var(--ga-17, 0.85)); color: var(--l66, #f2f3f7); outline: none; container-type: size; }
@@ -2912,7 +2908,6 @@
             storageNames: 'tech',      // 存储位置显示名：'tech' = IndexedDB 存储 / OPFS 存储（默认）；'zh' = 浏览器存储 / 高速存储
             imageOpen: 'comic',        // 图片默认打开方式：'comic' = 漫画阅读器（默认）；'viewer' = 图片查看器
             hiddenSystemApps: [],
-            windowCorners: 'round',      // round / small / square（旧版字段：按 cornerRadius 就近换算后一并保存，回退旧版本时仍可用）
             cornerRadius: 10,            // 窗口圆角 0–20 px（设置里的滑块），其余圆角按比例推算
             appearance: null,            // 外观：{ theme: dark/light/system, accent: '#rrggbb' 或 ''（默认蓝）, glass: {...} }，由 <head> 里的 JSAppearance 应用
             wallpaperSource: 'custom',   // custom / spotlight
@@ -2981,11 +2976,8 @@
         }
 
         // 窗口圆角：一个数值（0–20 px）推算出全部圆角变量。
-        // 10 / 6 / 0 分别与旧版「圆角 / 小圆角 / 直角」三档完全一致。
         const CORNER_MAX = 20;
-        const CORNER_PRESETS = { round: 10, small: 6, square: 0 };
         function clampCornerRadius(v) { const n = Math.round(Number(v)); return Number.isFinite(n) ? Math.max(0, Math.min(CORNER_MAX, n)) : 10; }
-        function cornerPresetOf(r) { return r === 0 ? 'square' : r <= 7 ? 'small' : 'round'; }
         function cornerLevelLabel(r) { return r === 0 ? '直角' : r <= 4 ? '微圆角' : r <= 7 ? '小圆角' : r <= 12 ? '圆角' : '大圆角'; }
         function cornerTokens(r) {
             if (r <= 0) return { win: 0, ui: 0, ctl: 0, card: 0, dlg: 0, cal: '0px' };
@@ -2996,7 +2988,6 @@
         function applyWindowCorners() {
             const r = clampCornerRadius(SYSTEM.cornerRadius);
             SYSTEM.cornerRadius = r;
-            SYSTEM.windowCorners = cornerPresetOf(r);
             const t = cornerTokens(r), st = document.documentElement.style;
             st.setProperty('--win-radius', t.win + 'px');
             st.setProperty('--ui-radius', t.ui + 'px');
@@ -3004,7 +2995,6 @@
             st.setProperty('--card-radius', t.card + 'px');
             st.setProperty('--dlg-radius', t.dlg + 'px');
             st.setProperty('--cal-day-radius', t.cal);
-            document.documentElement.dataset.winCorners = SYSTEM.windowCorners;
         }
         function applySystemSettings(rawSettings) {
             const settings = rawSettings && typeof rawSettings === 'object' ? rawSettings : {};
@@ -3016,14 +3006,13 @@
             SYSTEM.storageBackend = requestedBackend === 'opfs' && SYSTEM.opfs && SYSTEM.opfs.available ? 'opfs' : 'indexeddb';
             SYSTEM.desktopPath = getStorageDesktopPath(SYSTEM.storageBackend);
             SYSTEM.documentsPath = getStorageDocumentsPath(SYSTEM.storageBackend);
-            SYSTEM.showHiddenFiles = settings.showHiddenFiles === true;           
-            SYSTEM.windowCorners = ['round', 'small', 'square'].includes(settings.windowCorners) ? settings.windowCorners : 'round';
-            // 新版保存的是具体数值；只有旧版的三档字段时按档位换算
+            SYSTEM.showHiddenFiles = settings.showHiddenFiles === true;
+            SYSTEM.wallpaperSource = settings.wallpaperSource === 'spotlight' ? 'spotlight' : 'custom';
             SYSTEM.cornerRadius = Number.isFinite(Number(settings.cornerRadius)) && settings.cornerRadius !== null && settings.cornerRadius !== ''
-                ? clampCornerRadius(settings.cornerRadius) : CORNER_PRESETS[SYSTEM.windowCorners];
+                ? clampCornerRadius(settings.cornerRadius) : 10;
             applyWindowCorners();
-            // 外观（主题 / 强调色 / 毛玻璃）。旧版备份里没有这一项：恢复时保持当前外观不变
-            if (window.JSAppearance && (settings.appearance || !SYSTEM.appearance)) {
+            // 外观（主题 / 强调色 / 毛玻璃）
+            if (window.JSAppearance) {
                 SYSTEM.appearance = JSAppearance.norm(settings.appearance);
                 JSAppearance.apply(SYSTEM.appearance);
             }
@@ -5704,7 +5693,7 @@
                 try {
                     const st = JSON.parse(localStorage.getItem(SYSTEM_SETTINGS_STORAGE_KEY) || 'null');
                     const spotlight = wpSpotlightCache();
-                    if (st && ['spotlight', 'bing'].includes(st.wallpaperSource) && spotlight.today) first = spotlight.today.url;
+                    if (st && st.wallpaperSource === 'spotlight' && spotlight.today) first = spotlight.today.url;
                 } catch (_) {}
                 setBg(first, false);
                 wpHistoryLoad().then(() => {
@@ -18119,12 +18108,12 @@
         function wpSpotlightStatus(daily) {
             if (!daily) return '';
             const c = wpSpotlightCache();
-            if (WP_SPOTLIGHT.loading) return `<span class="stx-wpx-st busy"><i></i><span>正在获取今日图片…</span></span>`;
+            if (WP_SPOTLIGHT.loading) return `<span class="stx-wpx-st busy"><i></i><span>正在获取 Windows 聚焦图片…</span></span>`;
             if (WP_SPOTLIGHT.error) return `<span class="stx-wpx-st err"><i></i><span>${stxEsc(WP_SPOTLIGHT.error)}，联网后会自动重试${c.today ? '；先保留上一张' : ''}</span></span>`;
             if (c.today) {
                 const t = c.checkedAt ? new Date(c.checkedAt) : null;
                 const hm = t ? `${String(t.getHours()).padStart(2, '0')}:${String(t.getMinutes()).padStart(2, '0')}` : '';
-                return `<span class="stx-wpx-st ok"><i></i><span>${wpIsToday(c.today.date) ? '今日' : wpDateLabel(c.today.date)}：${stxEsc(c.today.desc || 'Windows 聚焦图片')}${hm ? ` · ${hm} 已检查` : ''}</span></span>`;
+                return `<span class="stx-wpx-st ok"><i></i><span>当前：${stxEsc(c.today.desc || 'Windows 聚焦图片')}${hm ? ` · ${hm} 已检查` : ''}</span></span>`;
             }
             return '';
         }
@@ -18169,8 +18158,8 @@
             let recentBody;
             if (list.length) {
                 recentBody = `<div class="stx-wpx-grid">${list.map(x => wpTile({
-                    url: x.url, thumb: x.thumb || x.url, name: x.desc || 'Windows 聚焦图片', tag: wpDateLabel(x.date),
-                    title: `${x.desc || 'Windows 聚焦图片'}${x.date ? '\n' + x.date : ''}`, on: cur === x.url && !daily, mine: daily && mine === x.url
+                    url: x.url, thumb: x.thumb || x.url, name: x.desc || 'Windows 聚焦图片',
+                    title: x.desc || 'Windows 聚焦图片', on: cur === x.url && !daily, mine: daily && mine === x.url
                 })).join('')}</div>`;
             } else if (WP_SPOTLIGHT.recentError) {
                 recentBody = `<div class="stx-empty">${icon('stxTriangleAlert')}${stxEsc(WP_SPOTLIGHT.recentError)}<div class="stx-btns" style="justify-content:center;margin-top:10px">${stxBtn('重试', 'WP_SPOTLIGHT.recentTried = Date.now(); wpSpotlightLoadRecent(true)', { ic: 'stxRefreshCw', cls: 'sm' })}</div></div>`;
@@ -18742,7 +18731,6 @@
                 storageBackend: SYSTEM.storageBackend === 'opfs' && SYSTEM.opfs && SYSTEM.opfs.available ? 'opfs' : 'indexeddb',
                 showHiddenFiles: SYSTEM.showHiddenFiles === true,
                 wallpaperSource: SYSTEM.wallpaperSource === 'spotlight' ? 'spotlight' : 'custom',
-                windowCorners: cornerPresetOf(clampCornerRadius(SYSTEM.cornerRadius)),
                 cornerRadius: clampCornerRadius(SYSTEM.cornerRadius),
                 appearance: window.JSAppearance ? JSAppearance.norm(SYSTEM.appearance) : undefined,
                 hiddenSystemApps: SYSTEM.hiddenSystemApps.filter(key => SYSTEM_APP_DEFS.some(app => app.key === key && app.hideable))
@@ -18802,8 +18790,8 @@
                     `· 显示隐藏文件：${s.showHiddenFiles ? '开' : '关'}`,
                     `· 隐藏的系统应用：${Array.isArray(s.hiddenSystemApps) && s.hiddenSystemApps.length ? s.hiddenSystemApps.map(k => (SYSTEM_APP_DEFS.find(a => a.key === k) || { name: k }).name).join('、') : '无'}`,
                     `· 壁纸：${wp ? '包含' : '不包含'}`,
-                    `· Windows 聚焦：${['spotlight', 'bing'].includes(s.wallpaperSource) ? '开' : '关'}`,
-                    `· 窗口圆角：${(() => { const r = Number.isFinite(Number(s.cornerRadius)) && s.cornerRadius !== null && s.cornerRadius !== '' ? clampCornerRadius(s.cornerRadius) : CORNER_PRESETS[s.windowCorners] ?? 10; return `${r} px（${cornerLevelLabel(r)}）`; })()}`,
+                    `· Windows 聚焦：${s.wallpaperSource === 'spotlight' ? '开' : '关'}`,
+                    `· 窗口圆角：${(() => { const r = Number.isFinite(Number(s.cornerRadius)) && s.cornerRadius !== null && s.cornerRadius !== '' ? clampCornerRadius(s.cornerRadius) : 10; return `${r} px（${cornerLevelLabel(r)}）`; })()}`,
                     `· 外观：${s.appearance && window.JSAppearance ? apSummary(s.appearance) : '不包含（保持当前外观）'}`,
                     `· 桌面图标位置：${pos ? Object.keys(pos).length + ' 个' : '不包含'}`
                 ];
@@ -18999,9 +18987,8 @@
         // ---------- 最近使用的壁纸（预设不计入，它们一直都在） ----------
         const WP_HISTORY_MAX = 6;
         const WP_HISTORY_PATH = '/system/config/wallpaper-history.json';
-        // 只兼容这 8 张预设原先的精确 w=1920 地址，不改用户自定义裁剪或其它网络图片。
         function wpPresetOf(u) {
-            return WALLPAPER_PRESETS.find(p => p.url === u || p.url.split('?')[0] + '?w=1920' === u) || null;
+            return WALLPAPER_PRESETS.find(p => p.url === u) || null;
         }
         function wpPresetUrl(u) { const p = wpPresetOf(u); return p ? p.url : u; }
         function wpIsPreset(u) { return !!wpPresetOf(u); }
@@ -19099,19 +19086,8 @@
             const m = /^(\d{4})-?(\d{2})-?(\d{2})/.exec(String(s || ''));
             return m ? `${m[1]}-${m[2]}-${m[3]}` : '';
         }
-        // 聚焦接口不提供发布日期；每日模式记录本机选用日期，近期列表不伪造日期。
-        function wpRefDay() { return wpToday(); }
-        function wpIsToday(date) { return !!date && date >= wpRefDay(); }
-        function wpDateLabel(date) {
-            if (!date) return '';
-            const ref = wpRefDay();
-            if (date >= ref) return '今天';
-            const y = new Date(ref + 'T12:00:00'); y.setDate(y.getDate() - 1);
-            const p = n => String(n).padStart(2, '0');
-            if (date === `${y.getFullYear()}-${p(y.getMonth() + 1)}-${p(y.getDate())}`) return '昨天';
-            const [, mm, dd] = date.split('-');
-            return `${Number(mm)}月${Number(dd)}日`;
-        }
+        // Windows 聚焦没有固定的发布日期、更新也不规律：界面上不显示任何日期（今天 / 昨天 / 几月几日）。
+        // item.date 只在内部记录“本机哪天选用了这张”，用于跨日自动轮换，不展示。
 
         // 用户主动选择一张固定壁纸（预设、上传、文件右键、聚焦往期）：顺带关闭“每日更换”。
         function wpApplyCustom(url, name) {
@@ -19284,7 +19260,7 @@
                     try { await wpPreload(item.url, 15000); } catch (err) { WP_SPOTLIGHT.error = '聚焦原图暂时无法加载'; throw err; }
                     if (SYSTEM.wallpaperSource !== 'spotlight') return item;   // 加载期间用户已改选其它壁纸
                     wpShow(item.url);
-                    if (opts.announce) Notify.info('今日 Windows 聚焦壁纸', stxEsc(item.desc || '桌面壁纸已更新'));
+                    if (opts.announce) Notify.info('Windows 聚焦壁纸已更新', stxEsc(item.desc || '桌面壁纸已更新'));
                 }
                 return item;
             })().finally(() => { WP_SPOTLIGHT.busy = null; wpRefreshSettings(); });
