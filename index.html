@@ -683,9 +683,17 @@
         .csvx-search .icon-svg { width: 14px; height: 14px; }
         .npx-btn.on { background: rgba(var(--a-0078d4, 0,120,212), 0.24); color: var(--l4, #fff); }
         .csvx-view { flex: 1; min-height: 0; overflow: auto; scrollbar-width: thin; scrollbar-color: var(--l36, rgba(255,255,255,.18)) transparent; }
-        .csvx-table { border-collapse: separate; border-spacing: 0; font-size: 12.5px; min-width: 100%; font-variant-numeric: tabular-nums; }
-        .csvx-table th, .csvx-table td { padding: 6px 12px; border-bottom: 1px solid var(--line); border-right: 1px solid var(--l38, rgba(255,255,255,.04)); white-space: nowrap; max-width: 360px; overflow: hidden; text-overflow: ellipsis; text-align: left; }
-        .csvx-table thead th { position: sticky; top: 0; z-index: 2; background: var(--l39, #262630); color: var(--ink); font-weight: 600; cursor: pointer; user-select: none; }
+        /* 回到旧版的观感——单元格完整显示文字（不再 360px 截断加省略号），宽了就横向滚动 */
+        .csvx-table { border-collapse: separate; border-spacing: 0; font-size: 13px; min-width: 100%; font-variant-numeric: tabular-nums; }
+        .csvx-table th, .csvx-table td { padding: 8px 12px; border-bottom: 1px solid var(--line); border-right: 1px solid var(--l38, rgba(255,255,255,.04)); white-space: nowrap; text-align: left; }
+        .csvx-table td:not(.rn) { cursor: cell; }
+        .csvx-table td.sel { box-shadow: inset 0 0 0 2px rgba(var(--a-0078d4, 0,120,212), .9); background: rgba(var(--a-0078d4, 0,120,212), .14) !important; }
+        /* 上方「单元格内容」栏：点任意单元格，在这里看完整文本（可选中复制；很长时自动换行、可滚动） */
+        .csvx-cell { display: flex; align-items: flex-start; gap: 10px; padding: 6px 12px; border-bottom: 1px solid var(--line); font-size: 12.5px; line-height: 1.55; max-height: 32%; min-height: 32px; overflow: auto; flex: none; background: var(--l21, rgba(0,0,0,.18)); scrollbar-width: thin; }
+        .csvx-cell .ref { flex: none; min-width: 72px; color: var(--muted); font-variant-numeric: tabular-nums; padding-top: 1px; white-space: nowrap; }
+        .csvx-cell .txt { flex: 1; min-width: 0; color: var(--ink); white-space: pre-wrap; overflow-wrap: anywhere; user-select: text; -webkit-user-select: text; }
+        .csvx-cell .txt.hint { color: var(--muted); opacity: .75; }
+        .csvx-table thead th { padding: 10px 12px; position: sticky; top: 0; z-index: 2; background: var(--l39, #262630); color: var(--ink); font-weight: 600; cursor: pointer; user-select: none; }
         .csvx-table thead th:hover { background: var(--l40, #2e2e3a); }
         .csvx-table thead th .icon-svg { width: 12px; height: 12px; vertical-align: -1px; margin-left: 4px; color: rgb(var(--at-00d4ff, 0,212,255)); }
         .csvx-table .rn { width: 1%; position: sticky; left: 0; z-index: 1; background: var(--l41, #22222a); color: var(--l42, #6f7080); text-align: right; min-width: 36px; font-size: 11.5px; cursor: default; }
@@ -1363,7 +1371,7 @@
         .stx-actionbar > span { font-size: 12.5px; }
         @container (max-width: 470px) { .stx-cg-items { padding-left: 14px; } .stx-ci { grid-template-columns: 20px minmax(0,1fr); } .stx-ci em { grid-column: 2; } .stx-cg-h { grid-template-columns: 20px minmax(0,1fr) 16px; } .stx-cg-h small { grid-column: 2; grid-row: 2; } .stx-cg-h > .icon-svg { grid-column: 3; grid-row: 1; } }
 
-        /* 个性化 · 壁纸（取代旧的浮动壁纸面板；所有入口统一到 设置 → 个性化） */
+        /* 设置 · 壁纸（取代旧的浮动壁纸面板；所有入口统一到 设置 → 壁纸） */
         .stx-wpx-hero { display: grid; grid-template-columns: minmax(200px, 320px) minmax(0,1fr); gap: 18px; padding: 16px; align-items: center; }
         .stx-wpx-prev { position: relative; aspect-ratio: 16 / 10; border-radius: var(--win-radius); border: 1px solid var(--line); background: #0b1222 center / cover no-repeat; background-clip: padding-box; overflow: hidden; box-shadow: 0 10px 30px -12px rgba(0,0,0,.7); }
         .stx-wpx-prev::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 9%; background: rgba(10,10,15,.82); border-top: 1px solid rgba(255,255,255,.06); }
@@ -2879,7 +2887,7 @@
     <!-- 右键菜单 -->
     <div class="context-menu" id="context-menu" role="menu" aria-label="菜单"></div>
 
-    <!-- 壁纸上传（界面在 设置 → 个性化） -->
+    <!-- 壁纸上传（界面在 设置 → 壁纸） -->
     <input type="file" id="file-input" hidden accept="image/*">
 
     <!-- 窗口容器 -->
@@ -2908,6 +2916,7 @@
             storageNames: 'tech',      // 存储位置显示名：'tech' = IndexedDB 存储 / OPFS 存储（默认）；'zh' = 浏览器存储 / 高速存储
             imageOpen: 'comic',        // 图片默认打开方式：'comic' = 漫画阅读器（默认）；'viewer' = 图片查看器
             hiddenSystemApps: [],
+            openMaximized: false,        // 设置 → 个性化 → 窗口：所有新窗口都以最大化打开
             cornerRadius: 10,            // 窗口圆角 0–20 px（设置里的滑块），其余圆角按比例推算
             appearance: null,            // 外观：{ theme: dark/light/system, accent: '#rrggbb' 或 ''（默认蓝）, glass: {...} }，由 <head> 里的 JSAppearance 应用
             wallpaperSource: 'custom',   // custom / spotlight
@@ -3007,6 +3016,7 @@
             SYSTEM.desktopPath = getStorageDesktopPath(SYSTEM.storageBackend);
             SYSTEM.documentsPath = getStorageDocumentsPath(SYSTEM.storageBackend);
             SYSTEM.showHiddenFiles = settings.showHiddenFiles === true;
+            SYSTEM.openMaximized = settings.openMaximized === true;
             SYSTEM.wallpaperSource = settings.wallpaperSource === 'spotlight' ? 'spotlight' : 'custom';
             SYSTEM.cornerRadius = Number.isFinite(Number(settings.cornerRadius)) && settings.cornerRadius !== null && settings.cornerRadius !== ''
                 ? clampCornerRadius(settings.cornerRadius) : 10;
@@ -6744,6 +6754,57 @@
         }
 
         // 5. 框选与选择逻辑
+        // === 桌面触摸长按 → 右键菜单 ===
+        // 桌面空白处和桌面图标的菜单原来完全依赖浏览器原生的 contextmenu 事件（文件管理器里早就是自己计时的）。
+        // 桌面框选和图标拖动在 touchmove 里会 preventDefault，Firefox 移动端在这种情况下不再把长按识别成
+        // contextmenu，于是长按桌面什么都不弹。这里自己计时：手指按住 550ms 且移动不超过 10px，就在按下的
+        // 元素上派发一个 contextmenu 事件，直接复用原有的桌面 / 图标菜单逻辑。
+        // 浏览器自己也弹了原生 contextmenu 时只保留一次：原生的先到就取消计时；JS 的先到就吞掉随后的原生事件。
+        // 弹出菜单后会取消这次触摸的 touchend 默认行为，避免手指抬起时生成的 click 立刻把菜单关掉。
+        function installDesktopTouchLongPress(desktop, endMarquee) {
+            if (desktop._jsosLongPress) return;
+            desktop._jsosLongPress = true;
+            const LP_MS = 550, SLOP = 10;
+            let timer = 0, sx = 0, sy = 0, target = null, active = false, fired = false, endAt = 0;
+            const clear = () => { if (timer) { clearTimeout(timer); timer = 0; } };
+            const fire = () => {
+                timer = 0;
+                if (!active || !target || !target.isConnected) return;
+                fired = true;
+                // 收起这次触摸引起的图标拖动 / 桌面框选（没移动过的话什么都不会改变）
+                if (dragState) { try { onIconDragEnd(new MouseEvent('mouseup', { clientX: sx, clientY: sy })); } catch (_) {} }
+                try { endMarquee && endMarquee(); } catch (_) {}
+                const ev = new MouseEvent('contextmenu', { bubbles: true, cancelable: true, view: window, clientX: sx, clientY: sy, screenX: sx, screenY: sy, button: 2 });
+                ev._jsosLongPress = true;
+                target.dispatchEvent(ev);
+            };
+            desktop.addEventListener('touchstart', e => {
+                clear(); fired = false; active = false;
+                if (e.touches.length !== 1) return;
+                const el = e.target;
+                const iconEl = el && el.closest ? el.closest('.desktop-icon') : null;
+                if (!(el === desktop || el.id === 'desktop-icons' || iconEl)) return;
+                const t = e.touches[0];
+                active = true; sx = t.clientX; sy = t.clientY; target = iconEl || el;
+                timer = setTimeout(fire, LP_MS);
+            }, { passive: true, capture: true });   // 捕获阶段：桌面图标的 touchstart 会 stopPropagation
+            desktop.addEventListener('touchmove', e => {
+                if (!timer) return;
+                const t = e.touches[0];
+                if (e.touches.length !== 1 || !t || Math.abs(t.clientX - sx) > SLOP || Math.abs(t.clientY - sy) > SLOP) clear();
+            }, { passive: true, capture: true });
+            desktop.addEventListener('touchend', e => {
+                clear(); active = false; endAt = Date.now();
+                if (fired && e.cancelable) e.preventDefault();   // 不让抬手生成的 mousedown / click 关掉刚弹出的菜单
+            }, { passive: false, capture: true });
+            desktop.addEventListener('touchcancel', () => { clear(); active = false; endAt = Date.now(); }, { passive: true, capture: true });
+            desktop.addEventListener('contextmenu', e => {
+                if (e._jsosLongPress) return;
+                if (fired && (active || Date.now() - endAt < 800)) { e.preventDefault(); e.stopPropagation(); return; }   // JS 已经弹过了
+                clear();   // 浏览器原生长按菜单先到：交给原有逻辑，取消我们的计时
+            }, true);
+        }
+
         function initDesktopEvents() {
             const desktop = document.getElementById('desktop');
             const box = document.getElementById('selection-box');
@@ -6806,6 +6867,8 @@
 
             document.addEventListener('mouseup', handleEnd);
             document.addEventListener('touchend', handleEnd);
+
+            installDesktopTouchLongPress(desktop, handleEnd);
             
             desktop.ondragover = e => {
                 e.preventDefault();
@@ -13636,7 +13699,8 @@
             const isMobile = window.innerWidth <= 768; // 检测手机
             // 创建即最大化：手机端本来就全屏；桌面端由 opts.maximized 决定
             // （JISHENG-OS-APP 应用窗口传 true —— 应用一律最大化打开，想缩小直接点标题栏最大化按钮或用边缘拖拽）
-            const startMaximized = isMobile || opts.maximized === true;
+            // 设置 → 个性化 →「窗口最大化打开」开启时，所有窗口都按最大化创建（调用方显式传 maximized:false 的除外）
+            const startMaximized = isMobile || opts.maximized === true || (SYSTEM.openMaximized === true && opts.maximized !== false);
             
             const w = document.createElement('div');
             w.id = 'win-' + id;
@@ -14113,7 +14177,12 @@
                 titleBar.addEventListener('pointermove', move, { passive: false });
                 titleBar.addEventListener('pointerup', end);
                 titleBar.addEventListener('pointercancel', end);
-                titleBar.addEventListener('pointerleave', end);
+                // Firefox：pointerdown 里插入全屏 #drag-cover 后，指针捕获要到下一个事件才生效，
+                // 这期间 Firefox 会先给标题栏发一次 pointerleave——以前这里直接 end()，拖动刚开始就被结束，
+                // 表现为“Firefox 拖不动窗口”。已经捕获了指针时 pointerleave 不代表松手，忽略；
+                // 捕获意外丢失（lostpointercapture）时再收尾。
+                titleBar.addEventListener('pointerleave', e => { if (dragPointerId === null) end(e); });
+                titleBar.addEventListener('lostpointercapture', end);
             } else {
                 // 备用：鼠标事件
                 titleBar.addEventListener('mousedown', start);
@@ -14440,9 +14509,11 @@
 
         // 「首行表头」全局开关：在任意 CSV 里点一次，之后打开的所有 CSV 都按这个设置；已打开的 CSV 窗口同步切换。
         // localStorage 存 '1' / '0'；从没点过时按文件自动判断（首行全是数字就不当表头）。
-        const CSV_HEADER_KEY = 'JSOS_CSV_HEADER';
+        // 默认恢复旧版效果——第一行也当普通数据显示，表头是「列 1、列 2…」；想要真表头时点「首行表头」开启（全局记住）。
+        // 换了新的存储键：v10.6 的旧键里可能存着自动判断出来的“开”，不沿用。
+        const CSV_HEADER_KEY = 'JSOS_CSV_HEADER_V2';
         function csvHeaderGet() {
-            try { const v = localStorage.getItem(CSV_HEADER_KEY); return v === '1' ? true : v === '0' ? false : undefined; } catch (e) { return undefined; }
+            try { return localStorage.getItem(CSV_HEADER_KEY) === '1'; } catch (e) { return false; }
         }
         function csvHeaderSet(val) {
             try { localStorage.setItem(CSV_HEADER_KEY, val ? '1' : '0'); } catch (e) {}
@@ -14463,12 +14534,13 @@
                             <button class="npx-btn on" data-act="table" title="表格视图">${icon('uiTable')}<span class="lbl">表格</span></button>
                             <button class="npx-btn" data-act="source" title="编辑源码">${icon('uiCode')}<span class="lbl">源码</span></button>
                             <span class="npx-sep"></span>
-                            <button class="npx-btn on" data-act="header" title="把第一行当作表头（对所有 CSV 文件生效）">${icon('uiPanelTop')}<span class="lbl">首行表头</span></button>
+                            <button class="npx-btn" data-act="header" title="把第一行当作表头（对所有 CSV 文件生效）">${icon('uiPanelTop')}<span class="lbl">首行表头</span></button>
                             <label class="csvx-search" title="筛选行 (Ctrl+F)">${icon('uiSearch')}<input type="search" placeholder="筛选…" spellcheck="false"></label>
                             <span class="npx-sp"></span>
                             <span class="npx-status"><i></i><span class="main"></span></span>
                             <button class="npx-btn save" data-act="save" title="保存 (Ctrl+S)">${icon('uiSave')}<span class="lbl">保存</span></button>
                         </div>
+                        <div class="csvx-cell" aria-live="polite"><span class="ref">单元格</span><span class="txt hint">点击任意单元格，在这里查看完整内容</span></div>
                         <div class="csvx-view"></div>
                         <textarea class="notepad-area" spellcheck="false" style="display:none"></textarea>
                     </div>`,
@@ -14482,7 +14554,8 @@
                     const btn = a => w.querySelector(`[data-act="${a}"]`);
                     const titleEl = w.querySelector('.window-title-text');
                     editor.value = content;   // 用 .value 赋值：文件里有 </textarea> 也不会破坏界面
-                    const st = { mode: 'table', header: true, sort: null, filter: '', shown: PAGE, saved: editor.value, parsed: null, numCols: [] };
+                    const cellBar = w.querySelector('.csvx-cell');
+                    const st = { mode: 'table', header: false, sel: null, sort: null, filter: '', shown: PAGE, saved: editor.value, parsed: null, numCols: [] };
                     const crlf = /\r\n/.test(content);   // textarea 会把 CRLF 变成 LF：比较用规范化后的文本，保存时按原文件的换行符写回
                     const collator = new Intl.Collator('zh-CN', { numeric: true, sensitivity: 'base' });
                     const isNum = v => /^\s*[-+]?(\d{1,3}(,\d{3})+|\d+)?(\.\d+)?%?\s*$/.test(v) && /\d/.test(v);
@@ -14532,10 +14605,11 @@
                         const lim = Math.min(total, st.shown);
                         for (let k = 0; k < lim; k++) {
                             const { r, i } = body[k];
-                            html += `<tr><td class="rn">${i + 1}</td>`;
+                            html += `<tr data-i="${i}"><td class="rn">${i + 1}</td>`;
                             for (let c = 0; c < cols; c++) {
                                 const v = r[c] == null ? '' : r[c];
-                                html += `<td${st.numCols[c] ? ' class="num"' : ''}${v.length > 40 ? ` title="${escapeHtml(v).replace(/"/g, '&quot;')}"` : ''}>${hl(v, q)}</td>`;
+                                const cls = (st.numCols[c] ? 'num' : '') + (st.sel && st.sel.i === i && st.sel.c === c ? ' sel' : '');
+                                html += `<td data-c="${c}"${cls.trim() ? ` class="${cls.trim()}"` : ''}>${hl(v, q)}</td>`;
                             }
                             html += '</tr>';
                         }
@@ -14543,6 +14617,26 @@
                         if (total > lim) html += `<button class="npx-btn csvx-more">显示更多（还有 ${total - lim} 行）</button>`;
                         if (q && !total) html += `<div class="csvx-empty">没有包含「${escapeHtml(st.filter)}」的行</div>`;
                         view.innerHTML = html;
+                        showCell();
+                    };
+                    // 上方内容栏：显示选中单元格的完整文本（表头单元格也一样）
+                    const colName = c => (st.header && st.parsed.rows.length ? (st.parsed.rows[0][c] || '') : '') || `列 ${c + 1}`;
+                    const showCell = () => {
+                        const ref = cellBar.querySelector('.ref'), txt = cellBar.querySelector('.txt');
+                        const rows = st.parsed ? st.parsed.rows : [];
+                        const sel = st.sel;
+                        const row = sel ? (sel.i === -1 ? (st.header ? rows[0] : null) : rows[sel.i + (st.header ? 1 : 0)]) : null;
+                        if (!sel || !row || sel.c >= st.cols) {
+                            st.sel = null;
+                            ref.textContent = '单元格';
+                            txt.textContent = '点击任意单元格，在这里查看完整内容'; txt.classList.add('hint');
+                            return;
+                        }
+                        const v = row[sel.c] == null ? '' : row[sel.c];
+                        ref.textContent = sel.i === -1 ? `表头 · 列 ${sel.c + 1}` : `第 ${sel.i + 1} 行 · ${colName(sel.c)}`;
+                        ref.title = ref.textContent;
+                        txt.textContent = v === '' ? '（空）' : v;
+                        txt.classList.toggle('hint', v === '');
                     };
                     const setDirty = () => {
                         const dirty = editor.value !== st.saved;
@@ -14558,7 +14652,7 @@
                         btn('table').classList.toggle('on', m === 'table'); btn('source').classList.toggle('on', m === 'source');
                         view.style.display = m === 'table' ? '' : 'none';
                         editor.style.display = m === 'source' ? '' : 'none';
-                        w.querySelector('.csvx-search').style.display = btn('header').style.display = m === 'table' ? '' : 'none';
+                        w.querySelector('.csvx-search').style.display = btn('header').style.display = cellBar.style.display = m === 'table' ? '' : 'none';
                         if (m === 'table') { reparse(); render(); } else editor.focus();
                     };
                     const save = () => {
@@ -14579,7 +14673,7 @@
                     btn('source').onclick = () => setMode('source');
                     const applyHeader = on => {
                         if (on === st.header) return;
-                        st.header = on; st.sort = null;
+                        st.header = on; st.sort = null; st.sel = null;
                         btn('header').classList.toggle('on', st.header);
                         reparse(); render();
                     };
@@ -14590,6 +14684,13 @@
                     let ft = 0;
                     search.addEventListener('input', () => { clearTimeout(ft); ft = setTimeout(() => { st.filter = search.value; st.shown = PAGE; render(); }, 120); });
                     view.addEventListener('click', e => {
+                        const td = e.target.closest('td[data-c]');
+                        if (td) {
+                            view.querySelectorAll('td.sel').forEach(x => x.classList.remove('sel'));
+                            td.classList.add('sel');
+                            st.sel = { i: +td.parentElement.dataset.i, c: +td.dataset.c };
+                            showCell(); return;
+                        }
                         const th = e.target.closest('th[data-col]');
                         if (th) {
                             const col = +th.dataset.col;
@@ -14608,10 +14709,8 @@
                     document.addEventListener('keydown', onKey);
                     w.cleanup = () => { document.removeEventListener('keydown', onKey); window.removeEventListener('jsos-csv-header', onHeaderPref); };
                     reparse();
-                    // 优先用全局设置；从没设置过时自动判断：首行像数据（整行都是数字）就不当表头
-                    const savedHeader = csvHeaderGet();
-                    const autoHeader = !(st.parsed.rows.length && st.parsed.rows[0].every(v => v.trim() !== '' && isNum(v)));
-                    const wantHeader = savedHeader !== undefined ? savedHeader : autoHeader;
+                    // 全局设置；默认关（旧版效果）
+                    const wantHeader = csvHeaderGet();
                     if (wantHeader !== st.header) { st.header = wantHeader; btn('header').classList.toggle('on', st.header); reparse(); }
                     render(); setDirty();
                 }
@@ -17709,7 +17808,8 @@
         // 但 openSettings() 默认复用已打开的设置窗口。
         const STX_VERSION = '10.6.0';
         const STX_PAGES = [
-            { k: 'personal', n: '个性化', d: '壁纸、颜色、透明效果与桌面交互方式', ic: 'stxPalette' },
+            { k: 'personal', n: '个性化', d: '颜色、透明效果、窗口与桌面交互方式', ic: 'stxPalette' },
+            { k: 'wallpaper', n: '壁纸', d: '桌面壁纸、Windows 聚焦、预设与最近使用的壁纸', ic: 'stxWallpaper' },
             { k: 'storage', n: '存储', d: '空间占用、存储位置与工作区复制', ic: 'stxHardDrive' },
             { k: 'files', n: '文件管理', d: '隐藏文件与已挂载的本地文件夹', ic: 'stxFolderOpen' },
             { k: 'clean', n: '清理与维护', d: '清理临时文件、备份设置、重置数据', ic: 'stxBrushCleaning' },
@@ -17971,7 +18071,7 @@
             let html;
             try {
                 html = st.q ? stxSearchResults(winId) : ({
-                    personal: stxPagePersonal, storage: stxPageStorage, files: stxPageFiles,
+                    personal: stxPagePersonal, wallpaper: stxPageWallpaper, storage: stxPageStorage, files: stxPageFiles,
                     clean: stxPageClean, apps: stxPageApps, about: stxPageAbout
                 }[st.page] || stxPagePersonal)(winId);
             } catch (err) {
@@ -17981,7 +18081,8 @@
             scroller.innerHTML = html;
             scroller.scrollTop = opts.keepScroll ? top : 0;
             if (!st.q && st.page === 'clean') stxSyncCleanCheckboxes(winId);
-            if (!st.q && st.page === 'personal') { stxSyncWallpaperPreviews(); apPaintPreviews(); }
+            if (!st.q && st.page === 'personal') { stxSyncWallpaperPreviews(); apPaintPreviews(); }   // 透明效果预览也用壁纸作底
+            if (!st.q && st.page === 'wallpaper') stxSyncWallpaperPreviews();
             if (!st.q && (st.page === 'storage' || st.page === 'about') && !STX_REPORT) {
                 stxGetReport().then(() => { if (STX_STATE[winId] && STX_STATE[winId].page === st.page && !STX_STATE[winId].q) stxRender(winId, { keepScroll: true }); stxRenderNav(winId); })
                     .catch(err => { const host = scroller.querySelector('[data-storage-dashboard]'); if (host) host.innerHTML = `<div class="stx-empty">${icon('stxTriangleAlert')}无法读取存储信息：${stxEsc(err && err.message || err)}</div>`; });
@@ -17991,11 +18092,12 @@
         // 搜索索引：[页面, 行 id, 标题, 关键词]
         function stxSearchIndex() {
             const idx = [
-                ['personal', 'wallpaper', '桌面壁纸', '壁纸 背景 图片 wallpaper 上传 更换 拖拽 本地图片'],
-                ['personal', 'spotlight', 'Windows 聚焦', 'Windows 聚焦 spotlight 每日 每天 自动 更换 壁纸 每日一图'],
-                ['personal', 'presets', '预设壁纸', '预设 默认 壁纸 内置 风景'],
-                ['personal', 'spotlightrecent', 'Windows 聚焦近期壁纸', 'Windows 聚焦 spotlight 近期 往期 历史 壁纸'],
-                ['personal', 'history', '最近使用的壁纸', '最近 历史 之前 原来 旧 找回 恢复 壁纸'],
+                ['wallpaper', 'wallpaper', '桌面壁纸', '壁纸 背景 图片 wallpaper 上传 更换 拖拽 本地图片'],
+                ['wallpaper', 'spotlight', 'Windows 聚焦', 'Windows 聚焦 spotlight 每日 每天 自动 更换 壁纸 每日一图'],
+                ['wallpaper', 'presets', '预设壁纸', '预设 默认 壁纸 内置 风景'],
+                ['wallpaper', 'spotlightrecent', 'Windows 聚焦近期壁纸', 'Windows 聚焦 spotlight 近期 往期 历史 壁纸'],
+                ['wallpaper', 'history', '最近使用的壁纸', '最近 历史 之前 原来 旧 找回 恢复 壁纸'],
+                ['personal', 'openmax', '窗口最大化打开', '最大化 全屏 铺满 打开 新窗口 所有窗口 默认 大小 maximize'],
                 ['personal', 'corners', '窗口圆角', '圆角 直角 窗口 边角 外观 开始菜单 日历 右键菜单 图标 滑块 程度 corner radius'],
                 ['personal', 'click', '图标打开方式', '单击 双击 打开 click 鼠标'],
                 ['personal', 'theme', '主题模式（深色 / 浅色）', '主题 模式 深色 浅色 暗色 亮色 黑色 白色 夜间 护眼 跟随系统 自动 dark light mode 外观'],
@@ -18117,7 +18219,8 @@
             }
             return '';
         }
-        function stxPagePersonal(winId) {
+        // 壁纸页（从「个性化」拆出来单独成页；里面的功能与原来完全一样）
+        function stxPageWallpaper(winId) {
             const cur = wpPresetUrl(wpCurrentUrl());
             const daily = SYSTEM.wallpaperSource === 'spotlight';
             const info = wpCurrentInfo();
@@ -18167,6 +18270,9 @@
                 recentBody = `<div class="stx-wpx-grid" aria-busy="true" aria-label="正在加载 Windows 聚焦近期壁纸">${'<div class="stx-skel stx-wpx-skel"></div>'.repeat(7)}</div>`;
             }
             const recent = `<div class="stx-card" data-stx-row="spotlightrecent">${recentBody}</div>`;
+            return `<div class="stx-page">${stxHead('wallpaper')}${stxGroup('壁纸', '', hero, '', 'data-stx-sec="wall"')}${history ? stxGroup('最近使用', '你换过的壁纸，点击即可换回', history) : ''}${stxGroup('预设壁纸', `${WALLPAPER_PRESETS.length} 张`, presets)}${stxGroup('Windows 聚焦近期壁纸', daily ? '点击可改为固定壁纸' : '点击设为固定壁纸', recent)}</div>`;
+        }
+        function stxPagePersonal(winId) {
 
             const click = `<div class="stx-card">${stxRow({
                 id: 'click', ic: 'stxMousePointerClick', title: '图标打开方式',
@@ -18178,6 +18284,10 @@
             })}</div>`;
             const cr = clampCornerRadius(SYSTEM.cornerRadius);
             const win = `<div class="stx-card">${stxRow({
+                id: 'openmax', ic: 'stxAppWindow', title: '窗口最大化打开',
+                desc: '开启后，之后打开的所有窗口（应用、文件夹、设置、记事本……）都直接铺满桌面。想缩小随时点标题栏的「还原」按钮，或按住标题栏往下拖。已经打开的窗口不受影响。',
+                ctl: stxSwitch(SYSTEM.openMaximized === true, `stxSetOpenMax(${winId}, ${SYSTEM.openMaximized !== true})`, '窗口最大化打开')
+            })}${stxRow({
                 id: 'corners', ic: 'stxAppWindow', title: '窗口圆角',
                 desc: '拖动即时预览：窗口、开始菜单、日历、右键菜单、对话框，以及桌面和文件夹里的图标高亮都会跟着变。最大化、贴边和手机全屏时始终为直角，胶囊通知保持胶囊形状。',
                 cls: 'stx-row-wide',
@@ -18192,9 +18302,9 @@
                     <button type="button" class="stx-btn sm" title="恢复默认（10 px）" onclick="stxCornerReset(this)" ${cr === 10 ? 'disabled' : ''}>默认</button>
                 </div>`
             })}</div>`;
-            const jump = `<nav class="stx-jump" aria-label="跳转到">${[['wall', '壁纸', 'stxImage'], ['color', '颜色', 'stxSwatch'], ['glass', '透明效果', 'stxBlend'], ['win', '窗口', 'stxAppWindow'], ['act', '交互', 'stxMousePointerClick']]
+            const jump = `<nav class="stx-jump" aria-label="跳转到">${[['color', '颜色', 'stxSwatch'], ['glass', '透明效果', 'stxBlend'], ['win', '窗口', 'stxAppWindow'], ['act', '交互', 'stxMousePointerClick']]
                 .map(([k, n, ic]) => `<button type="button" onclick="apJump(this, '${k}')">${icon(ic)}${n}</button>`).join('')}</nav>`;
-            return `<div class="stx-page">${stxHead('personal')}${jump}${stxGroup('壁纸', '', hero, '', 'data-stx-sec="wall"')}${history ? stxGroup('最近使用', '你换过的壁纸，点击即可换回', history) : ''}${stxGroup('预设壁纸', `${WALLPAPER_PRESETS.length} 张`, presets)}${stxGroup('Windows 聚焦近期壁纸', daily ? '点击可改为固定壁纸' : '点击设为固定壁纸', recent)}${apColorGroup()}${apGlassGroup()}${stxGroup('窗口', '', win, '', 'data-stx-sec="win"')}${stxGroup('交互', '', click, '', 'data-stx-sec="act"')}</div>`;
+            return `<div class="stx-page">${stxHead('personal')}${jump}${apColorGroup()}${apGlassGroup()}${stxGroup('窗口', '', win, '', 'data-stx-sec="win"')}${stxGroup('交互', '', click, '', 'data-stx-sec="act"')}</div>`;
         }
         // 拖动中实时生效（只改 CSS 变量），松手才保存；其他已打开的设置窗口同步滑块位置
         function stxCornerSync(r, except) {
@@ -18389,6 +18499,12 @@
             const vars = Object.keys(pal).map(k => `--${k}:${pal[k]}`);
             vars.push(`--r-sm:${v('--ui-radius', '6px')}`, `--r:${v('--ctl-radius', '8px')}`, `--mono:${v('--mono', 'ui-monospace,Consolas,monospace')}`);
             return ':root{' + vars.join(';') + ';color-scheme:' + (pal === PREVIEW_PALETTES.light ? 'light' : 'dark') + '}';
+        }
+        function stxSetOpenMax(winId, v) {
+            SYSTEM.openMaximized = v === true;
+            saveSystemSettings();
+            stxAllWins().forEach(id => { const st = STX_STATE[id]; if (st && st.page === 'personal' && !st.q) stxRender(id, { keepScroll: true }); });
+            Notify.success('已更新', v ? '之后打开的窗口都会最大化' : '窗口恢复为默认大小打开');
         }
         function stxSetClick(winId, v) {
             setClickBehavior(v);
@@ -18732,6 +18848,7 @@
                 showHiddenFiles: SYSTEM.showHiddenFiles === true,
                 wallpaperSource: SYSTEM.wallpaperSource === 'spotlight' ? 'spotlight' : 'custom',
                 cornerRadius: clampCornerRadius(SYSTEM.cornerRadius),
+                openMaximized: SYSTEM.openMaximized === true,
                 appearance: window.JSAppearance ? JSAppearance.norm(SYSTEM.appearance) : undefined,
                 hiddenSystemApps: SYSTEM.hiddenSystemApps.filter(key => SYSTEM_APP_DEFS.some(app => app.key === key && app.hideable))
             };
@@ -18792,6 +18909,7 @@
                     `· 壁纸：${wp ? '包含' : '不包含'}`,
                     `· Windows 聚焦：${s.wallpaperSource === 'spotlight' ? '开' : '关'}`,
                     `· 窗口圆角：${(() => { const r = Number.isFinite(Number(s.cornerRadius)) && s.cornerRadius !== null && s.cornerRadius !== '' ? clampCornerRadius(s.cornerRadius) : 10; return `${r} px（${cornerLevelLabel(r)}）`; })()}`,
+                    `· 窗口最大化打开：${s.openMaximized === true ? '开' : '关'}`,
                     `· 外观：${s.appearance && window.JSAppearance ? apSummary(s.appearance) : '不包含（保持当前外观）'}`,
                     `· 桌面图标位置：${pos ? Object.keys(pos).length + ' 个' : '不包含'}`
                 ];
@@ -18956,11 +19074,11 @@
         }
 
         // === 壁纸管理 ===
-        // 所有入口（开始菜单「壁纸」、桌面右键「更换壁纸」、设置）统一打开 设置 → 个性化。
+        // 所有入口（开始菜单「壁纸」、桌面右键「更换壁纸」、设置）统一打开 设置 → 壁纸。
         // wallpaper.cfg 始终保存“你的壁纸”；SYSTEM.wallpaperSource 只记录是否自动更新 Windows 聚焦。
         function openWallpaperPanel() {
             try { closeCtx(); } catch (_) {}
-            return openSettings('personal');
+            return openSettings('wallpaper');
         }
 
         // 两个概念分开：
@@ -19045,10 +19163,10 @@
 
         const WP_META_KEY = 'JISHENG_OS_WALLPAPER_META';
         const WP_SPOTLIGHT_KEY = 'JISHENG_OS_SPOTLIGHT_PEAPIX';   // 与上一版双源缓存隔离
-        const WP_SPOTLIGHT_TTL = 3 * 3600 * 1000;           // 同一天内最多每 3 小时向服务器确认一次
+        const WP_SPOTLIGHT_TTL = 30 * 60 * 1000;            // 最多每 30 分钟向图源确认一次有没有上新
         const WP_SPOTLIGHT = { busy: null, loading: false, error: '', recentBusy: null, recentError: '', feedBusy: null };
         const WP_SPOTLIGHT_COUNT = 7;
-        const WP_SPOTLIGHT_SCHEMA = 2;                    // 补全上一版无标题缓存，图片和用户选择不清空
+        const WP_SPOTLIGHT_SCHEMA = 3;                    // 3：去掉按天轮换后的缓存格式（旧缓存只会触发一次重新获取，图片和用户选择不清空）
 
         function wpSafeUrl(u) {
             return typeof u === 'string' && /^https:\/\/[^\s'"()\\<>]+$/i.test(u) ? u : '';
@@ -19078,18 +19196,9 @@
             try { localStorage.setItem(WP_META_KEY, JSON.stringify({ fp: wpFingerprint(url), name: String(name || '') })); } catch (_) {}
         }
         function wpThumb(u) { return u.replace(/([?&])w=\d+/, '$1w=480').replace(/([?&])q=\d+/, '$1q=75'); }
-        function wpToday() {
-            const d = new Date(), p = n => String(n).padStart(2, '0');
-            return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
-        }
-        function wpNormDate(s) {
-            const m = /^(\d{4})-?(\d{2})-?(\d{2})/.exec(String(s || ''));
-            return m ? `${m[1]}-${m[2]}-${m[3]}` : '';
-        }
-        // Windows 聚焦没有固定的发布日期、更新也不规律：界面上不显示任何日期（今天 / 昨天 / 几月几日）。
-        // item.date 只在内部记录“本机哪天选用了这张”，用于跨日自动轮换，不展示。
+        // Windows 聚焦没有固定的发布日期、更新也不规律：界面上不显示任何日期。
 
-        // 用户主动选择一张固定壁纸（预设、上传、文件右键、聚焦往期）：顺带关闭“每日更换”。
+        // 用户主动选择一张固定壁纸（预设、上传、文件右键、聚焦往期）：顺带关闭 Windows 聚焦。
         function wpApplyCustom(url, name) {
             const wasDaily = SYSTEM.wallpaperSource === 'spotlight';
             if (wasDaily) { SYSTEM.wallpaperSource = 'custom'; saveSystemSettings(); }
@@ -19108,7 +19217,7 @@
             try {
                 await wpPreload(url);               // 下载完成再切换，避免桌面闪空白
                 const wasDaily = wpApplyCustom(url, btn.dataset.wpName || '');
-                if (wasDaily) Notify.info('已改为固定壁纸', 'Windows 聚焦已关闭，可随时在 设置 → 个性化 重新开启。');
+                if (wasDaily) Notify.info('已改为固定壁纸', 'Windows 聚焦已关闭，可随时在 设置 → 壁纸 重新开启。');
             } catch (_) {
                 Notify.error('壁纸加载失败', '图片无法下载，请检查网络后重试。');
             } finally {
@@ -19159,7 +19268,7 @@
         function wpSpotlightItem(x) {
             if (!x || typeof x !== 'object' || !wpSafeUrl(x.url)) return null;
             return {
-                date: wpNormDate(x.date), url: x.url, thumb: wpSafeUrl(x.thumb) || x.url,
+                url: x.url, thumb: wpSafeUrl(x.thumb) || x.url,
                 desc: String(x.originalTitle || x.desc || 'Windows 聚焦壁纸').replace(/[\r\n\t]+/g, ' ').trim().slice(0, 240),
                 link: wpSpotlightPageUrl(x.link || x.pageUrl)
             };
@@ -19186,7 +19295,7 @@
         function wpSpotlightFetchRecent(force = false) {
             if (WP_SPOTLIGHT.feedBusy) return WP_SPOTLIGHT.feedBusy;
             const c = wpSpotlightCache();
-            if (!force && c.schema === WP_SPOTLIGHT_SCHEMA && c.recent && c.recent.length && c.recentDay === wpToday() && Date.now() - (c.recentAt || 0) < WP_SPOTLIGHT_TTL) return Promise.resolve(c.recent);
+            if (!force && c.schema === WP_SPOTLIGHT_SCHEMA && c.recent && c.recent.length && Date.now() - (c.recentAt || 0) < WP_SPOTLIGHT_TTL) return Promise.resolve(c.recent);
             WP_SPOTLIGHT.feedBusy = (async () => {
                 const d = await wpFetchJson('https://peapix.com/spotlight/feed?n=7');
                 const seen = new Set();
@@ -19195,38 +19304,30 @@
                     const url = wpSafeUrl(x.imageUrl) || wpSafeUrl(x.fullUrl);
                     if (!url || seen.has(url)) return null;
                     seen.add(url);
-                    return wpSpotlightItem({ date: x.date, url, thumb: x.thumbUrl, desc: x.title, link: x.pageUrl });
+                    return wpSpotlightItem({ url, thumb: x.thumbUrl, desc: x.title, link: x.pageUrl });
                 }).filter(Boolean).slice(0, WP_SPOTLIGHT_COUNT);
                 if (!list.length) throw new Error('Windows 聚焦图片列表为空');
                 const next = wpSpotlightCache();
-                next.recent = list; next.recentAt = Date.now(); next.recentDay = wpToday(); next.schema = WP_SPOTLIGHT_SCHEMA;
+                next.recent = list; next.recentAt = Date.now(); next.schema = WP_SPOTLIGHT_SCHEMA;
                 if (next.today) {
                     const details = list.find(x => x.url === next.today.url);
-                    if (details) next.today = { ...details, date: next.today.date };
+                    if (details) next.today = details;
                 }
                 wpSpotlightStore(next);
                 return list;
             })().finally(() => { WP_SPOTLIGHT.feedBusy = null; });
             return WP_SPOTLIGHT.feedBusy;
         }
-        async function wpSpotlightFetchToday(force = false) {
-            const previous = wpSpotlightCache();
+        // 图源列表永远是“最新在前”：第 1 张就是 Windows 聚焦当前最新的图片。
+        // 只认这一张——图源上新了就换，没上新就保持不变；不再按天自己轮换（以前跨日取“下一张”反而越换越旧）。
+        async function wpSpotlightFetchLatest(force = false) {
             const list = await wpSpotlightFetchRecent(force);
-            const day = wpToday();
-            let start = previous.today ? list.findIndex(x => x.url === previous.today.url) : -1;
-            // 同一天保持所选图片；跨日轮到下一张，图源几天没更新也能每天自动换图。
-            start = start < 0 ? 0 : previous.today.date === day ? start : (start + 1) % list.length;
-            for (let n = 0; n < Math.min(3, list.length); n++) {
-                const item = list[(start + n) % list.length];
-                try { await wpPreload(item.url, 15000); return { ...item, date: day }; } catch (_) { /* 仅尝试同一 Peapix 列表中的下一张原图 */ }
-            }
-            throw new Error('Windows 聚焦原图暂时无法加载');
+            return list[0];
         }
         // 近期区始终是同一图源返回的最多 7 张，不再额外插入另一源的“今日图”。
         function wpSpotlightRecentList() {
             const c = wpSpotlightCache(), seen = new Set();
-            return (c.recent || []).filter(x => { if (seen.has(x.url)) return false; seen.add(x.url); return true; })
-                .map(x => c.today && c.today.url === x.url ? { ...x, date: c.today.date } : x).slice(0, WP_SPOTLIGHT_COUNT);
+            return (c.recent || []).filter(x => { if (seen.has(x.url)) return false; seen.add(x.url); return true; }).slice(0, WP_SPOTLIGHT_COUNT);
         }
         function wpSpotlightLookup(url) {
             if (!url) return null;
@@ -19240,15 +19341,15 @@
             if (WP_SPOTLIGHT.busy) return WP_SPOTLIGHT.busy;
             WP_SPOTLIGHT.busy = (async () => {
                 const c = wpSpotlightCache();
-                const fresh = c.schema === WP_SPOTLIGHT_SCHEMA && c.today && c.checkedDay === wpToday() && Date.now() - (c.checkedAt || 0) < WP_SPOTLIGHT_TTL;
+                const fresh = c.schema === WP_SPOTLIGHT_SCHEMA && c.today && Date.now() - (c.checkedAt || 0) < WP_SPOTLIGHT_TTL;
                 let item = c.today || null;
                 if (opts.force || !fresh) {
                     WP_SPOTLIGHT.loading = true;
                     wpRefreshSettings();
                     try {
-                        item = await wpSpotlightFetchToday(!!opts.force);
+                        item = await wpSpotlightFetchLatest(!!opts.force);
                         const c2 = wpSpotlightCache();
-                        c2.today = item; c2.checkedAt = Date.now(); c2.checkedDay = wpToday();
+                        c2.today = item; c2.checkedAt = Date.now();
                         wpSpotlightStore(c2);
                         WP_SPOTLIGHT.error = '';
                     } catch (err) {
@@ -19268,11 +19369,11 @@
         }
         function wpSpotlightLoadRecent(force) {
             const c = wpSpotlightCache();
-            if (!force && c.schema === WP_SPOTLIGHT_SCHEMA && Array.isArray(c.recent) && c.recent.length && c.recentDay === wpToday() && Date.now() - (c.recentAt || 0) < WP_SPOTLIGHT_TTL) return Promise.resolve();
+            if (!force && c.schema === WP_SPOTLIGHT_SCHEMA && Array.isArray(c.recent) && c.recent.length && Date.now() - (c.recentAt || 0) < WP_SPOTLIGHT_TTL) return Promise.resolve();
             if (WP_SPOTLIGHT.recentBusy) return WP_SPOTLIGHT.recentBusy;
             WP_SPOTLIGHT.recentError = '';
             WP_SPOTLIGHT.recentBusy = wpSpotlightFetchRecent(!!force).then(list => {
-                const c2 = wpSpotlightCache(); c2.recent = list; c2.recentAt = Date.now(); c2.recentDay = wpToday(); wpSpotlightStore(c2);
+                const c2 = wpSpotlightCache(); c2.recent = list; c2.recentAt = Date.now(); wpSpotlightStore(c2);
             }).catch(() => {
                 WP_SPOTLIGHT.recentError = navigator.onLine === false ? '当前处于离线状态，联网后可查看近期壁纸。' : '暂时无法获取 Windows 聚焦近期壁纸。';
             }).finally(() => { WP_SPOTLIGHT.recentBusy = null; wpRefreshSettings(); });
@@ -19294,7 +19395,7 @@
                 return;
             }
             try {
-                const item = await wpSpotlightUpdate();
+                const item = await wpSpotlightUpdate({ force: true });   // 打开开关时立刻问一次图源，刚上新的图马上就能用上
                 if (item && SYSTEM.wallpaperSource === 'spotlight') Notify.success('已开启 Windows 聚焦', stxEsc(item.desc || '将自动更新 Windows 聚焦精选原图。'));
             } catch (_) {
                 Notify.warning('暂时无法获取 Windows 聚焦壁纸', '已保持开启，联网后会自动更新；当前壁纸不变。');
@@ -19317,7 +19418,7 @@
             if (typeof stxAllWins !== 'function') return;
             stxAllWins().forEach(id => {
                 const st = STX_STATE[id];
-                if (st && st.page === 'personal' && !st.q) stxRender(id, { keepScroll: true });
+                if (st && st.page === 'wallpaper' && !st.q) stxRender(id, { keepScroll: true });
             });
         }
 
