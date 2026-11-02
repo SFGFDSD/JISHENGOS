@@ -3653,10 +3653,14 @@
 
         function handleNativeDragStart(e, filename) {
             // 预加载的必须正是正在拖的这个项目，否则宁可不带文件数据，也不能把别的文件拖出去
+            // 预加载没就绪（文件夹要现压 zip）或拖的不是预加载项时，取消原生拖拽并交回自定义拖拽。
+            // 原来只设置 text/plain 就让原生拖拽继续，两条路都不通：dragstart 被取消、mousemove 又被
+            // _folderNativeDrag 挡住 —— 表现为"按住超过 400ms 后再拖，条目完全拖不动"。
             if (!dragFileReady || !currentDragFile || (filename && currentDragFile.originalName !== filename)) {
-                SYSTEM._internalNativeDrag = true;
-                try { e.dataTransfer.setData('application/x-jisheng', '1'); } catch(_) {}
-                e.dataTransfer.setData('text/plain', filename);
+                try { e.preventDefault(); } catch (_) {}
+                dragFileReady = false;
+                SYSTEM._folderNativeDrag = false;
+                SYSTEM._internalNativeDrag = false;
                 return;
             }
             const blob = currentDragFile.blob;
@@ -8287,8 +8291,11 @@
         }
         // 注意：不再关闭同名窗口，允许多开同名文件夹
         function openFolderWindow(folderName, parentPath) {
-            const base = parentPath || SYSTEM.desktopPath;
-            fxOpenWindow(base + '/' + folderName, { title: folderName, parentPath: base });
+            // 注意：'' 表示根目录（例如解压 /x.zip 的父目录），不能用 || 兜成桌面
+            const base = parentPath == null ? SYSTEM.desktopPath : (parentPath === '' ? '/' : parentPath);
+            // 根目录拼接不能变成 '//name'：去掉末尾斜杠再拼
+            const cleanBase = String(base).replace(/\/+$/, '');
+            fxOpenWindow(cleanBase + '/' + folderName, { title: folderName, parentPath: base });
         }
         function openFileExplorer(initialPath = SYSTEM.desktopPath) {
             const path = initialPath || SYSTEM.desktopPath;
@@ -8583,10 +8590,11 @@
                 } else if (e.key === 'Enter' || e.key === 'ArrowDown') {
                     e.preventDefault();
                     clearTimeout(searchT);
-                    if (st.searchQuery !== input.value) folderSearch(wid, input.value);
+                    // 选中第一项必须等异步渲染完成后再做：现在给旧 DOM 加 selected，
+                    // 会被随后重建的列表抹掉（首次搜索时旧列表还是空的，回车等于完全没反应）。
+                    st._selectFirstAfterRender = true;
+                    folderSearch(wid, input.value);
                     sc.focus();
-                    const first = fxScopeItems(wid)[0];
-                    if (first) { clearFolderSelection(wid, true); first.classList.add('selected'); st.anchorPath = first.dataset.path; fxSetFocus(wid, first); sc.classList.add('fx-kbd'); fxSelChanged(wid); }
                 }
             });
             sbox.addEventListener('mousedown', e => { if (e.target === sbox) { e.preventDefault(); input.focus(); } });
@@ -8880,6 +8888,20 @@
             fxUpdateTotal(windowId);
             fxUpdateStatus(windowId);
             fxUpdateToolbar(windowId);
+            // 搜索框回车 / ↓ 的「选中第一项」：渲染完成后再选，否则选中态会被重建的 DOM 抹掉
+            if (st._selectFirstAfterRender) {
+                st._selectFirstAfterRender = false;
+                const sc = fxEl('folder-filelist-', windowId);
+                const firstEl = sc && sc.querySelector('.fx-row[data-path], .folder-grid-item[data-path]');
+                if (firstEl) {
+                    clearFolderSelection(windowId, true);
+                    firstEl.classList.add('selected');
+                    st.anchorPath = firstEl.dataset.path;
+                    fxSetFocus(windowId, firstEl);
+                    sc.classList.add('fx-kbd');
+                    fxSelChanged(windowId);
+                }
+            }
         }
 
         function fxUpdateTotal(wid) {
@@ -10663,6 +10685,19 @@
                 if(!state) return;
                 
                 const targetPath = state.currentPath;
+
+                // 拖入同名文件时自动改名，绝不静默覆盖（与粘贴的「自动编号」策略一致）。
+                // 以前两个导入分支都直接 writeFile，从真实桌面拖入同名文件会把已有文件吃掉。
+                const pickFreeName = (dirPath, name, done, n = 0) => {
+                    const dot = name.lastIndexOf('.');
+                    const base = dot > 0 ? name.slice(0, dot) : name;
+                    const ext = dot > 0 ? name.slice(dot) : '';
+                    const candidate = dirPath + '/' + (n === 0 ? name : base + ' (' + n + ')' + ext);
+                    SYSTEM.fs.stat(candidate, (err, st) => {
+                        if (err || !st) { done(candidate); return; }
+                        pickFreeName(dirPath, name, done, n + 1);
+                    });
+                };
                 
                 // === 定义防抖刷新函数 ===
                 let refreshTimer = null;
@@ -10684,9 +10719,10 @@
                         if (srcPath && filename) {
                             SYSTEM.fs.readFile(srcPath, (err, data) => {
                                 if (!err) {
-                                    const destPath = targetPath + '/' + filename;
-                                    SYSTEM.fs.writeFile(destPath, data, () => {
-                                        debouncedRefresh();
+                                    pickFreeName(targetPath, filename, (destPath) => {
+                                        SYSTEM.fs.writeFile(destPath, data, () => {
+                                            debouncedRefresh();
+                                        });
                                     });
                                 }
                             });
@@ -10720,10 +10756,9 @@
                                 const reader = new FileReader();
                                 reader.onload = (ev) => {
                                     const buffer = SYSTEM.Buffer.from(ev.target.result);
-                                    const fullPath = targetPath + (relativePath ? '/' + relativePath : '') + '/' + file.name;
-                                    const parentDir = fullPath.substring(0, fullPath.lastIndexOf('/'));
-                                    
-                                    ensureDir(parentDir).then(() => {
+                                    const destDir = targetPath + (relativePath ? '/' + relativePath : '');
+                                    ensureDir(destDir).then(() => {
+                                        pickFreeName(destDir, file.name, (fullPath) => {
                                         SYSTEM.fs.writeFile(fullPath, buffer, () => {
                                             // 保留拖入文件原始修改时间
                                             if(file.lastModified && SYSTEM.fs.utimes) {
@@ -10733,6 +10768,7 @@
                                             if (processCount === totalItems) {
                                                 debouncedRefresh();
                                             }
+                                        });
                                         });
                                     });
                                 };
@@ -11264,8 +11300,9 @@
             if (e.type === 'mousedown') {
                 nativeDragTimer = setTimeout(() => {
                     SYSTEM._folderNativeDrag = true;
-                    // 预加载主选中项以备原生拖出
-                    const primary = selectedItems[0];
+                    // 预加载"这次真正按住的那一项"（activationItem），而不是永远拿选中列表第一项：
+                    // 多选后按住第二项以后拖动时，用第一项预加载会导致 dragstart 校验不上、拖出去没有文件。
+                    const primary = (activationItem && activationItem.dataset && activationItem.dataset.path) ? activationItem : selectedItems[0];
                     if (primary && primary.dataset.path && primary.dataset.filename) {
                         preloadFileForDrag(primary.dataset.path, primary.dataset.filename, () => {});
                     }
@@ -11293,9 +11330,12 @@
                     return;
                 }
 
-                // 鼠标长按已启用原生拖出：交由浏览器 dragstart 处理，不启动自定义拖拽
+                // 鼠标长按已启用原生拖出：交由浏览器 dragstart 处理，不启动自定义拖拽。
+                // 但预加载（文件夹要现压 zip，通常来不及）还没就绪时 dragstart 会被取消，
+                // 这里回落到自定义拖拽，避免"按住超过 400ms 后再拖，条目完全拖不动"。
                 if (SYSTEM._folderNativeDrag) {
-                    return;
+                    if (dragFileReady) return;
+                    SYSTEM._folderNativeDrag = false;
                 }
 
                 // 移动超过阈值，取消长按（触摸 + 鼠标）
@@ -12340,7 +12380,7 @@
                     // 是目录，用文件夹窗口打开
                     const pathParts = fullPath.split('/');
                     const folderName = pathParts[pathParts.length - 1];
-                    const parentPath = pathParts.slice(0, -1).join('/') || SYSTEM.desktopPath;
+                    const parentPath = fxParentOf(fullPath);
                     openFolderWindow(folderName, parentPath);
                     return;
                 }
@@ -12380,7 +12420,7 @@
                 SYSTEM.fs.readFile(fullPath, 'utf8', (err, data) => {
                     if(err) { Notify.error('打开失败', err.message); return; }
                     // 修复：传入文件所在目录，保存时写回原文件（原来总是写到桌面）
-                    openCSVViewer(data, filename, fullPath.substring(0, fullPath.lastIndexOf('/')) || SYSTEM.desktopPath);
+                    openCSVViewer(data, filename, fxParentOf(fullPath));
                 });
             }
             // 4. 处理文本文件（纯文本 / 代码 / 配置 / 日志都直接用记事本打开）
@@ -12388,7 +12428,7 @@
                 SYSTEM.fs.readFile(fullPath, 'utf8', (err, data) => {
                     if(err) { Notify.error('打开失败', err.message); return; }
                     // 修复(Bug B)：传入文件所在目录，使另存为/保存默认写回原目录而非桌面。
-                    const dir = fullPath.substring(0, fullPath.lastIndexOf('/')) || SYSTEM.desktopPath;
+                    const dir = fxParentOf(fullPath);
                     openNotepad(data, filename, dir, { exists: true });
                 });
             } 
@@ -12461,7 +12501,7 @@
                     }
                     // 修复(#1)：传入第三个参数 fullPath 所在目录，
                     // 使未知类型文件用记事本打开后保存仍写回原目录而非桌面。
-                    const dir = fullPath.substring(0, fullPath.lastIndexOf('/')) || SYSTEM.desktopPath;
+                    const dir = fxParentOf(fullPath);
                     openNotepad(data, filename, dir, { exists: true });
                     Notify.info('文本模式', '已使用记事本打开该文件');
                 });
@@ -12477,7 +12517,7 @@
         function openWithEditor(fullPath, filename) {
             SYSTEM.fs.readFile(fullPath, 'utf8', (err, data) => {
                 if (err) { Notify.error('打开失败', err.message); return; }
-                const dir = fullPath.substring(0, fullPath.lastIndexOf('/')) || SYSTEM.desktopPath;
+                const dir = fxParentOf(fullPath);
                 openCodeEditor(data, filename, dir);
                 Notify.success('正在打开', `已在代码编辑器中打开 "${filename}"`);
             });
@@ -12487,7 +12527,7 @@
         function openWithNotepad(fullPath, filename) {
             SYSTEM.fs.readFile(fullPath, 'utf8', (err, data) => {
                 if (err) { Notify.error('打开失败', err.message); return; }
-                const dir = fullPath.substring(0, fullPath.lastIndexOf('/')) || SYSTEM.desktopPath;
+                const dir = fxParentOf(fullPath);
                 openNotepad(data, filename, dir, { exists: true });
                 Notify.success('正在打开', `已用记事本打开 "${filename}"`);
             });
@@ -12701,8 +12741,9 @@
         async function extractArchive(filePath) {
             const filename = filePath.split('/').pop();
             const folderName = filename.replace(/\.(zip|7z|rar|tar|gz|bz2|xz|cab|tgz)$/i, '');
-            const parentDir = filePath.substring(0, filePath.lastIndexOf('/'));
-            const targetDir = parentDir + '/' + folderName;
+            // 根目录下的压缩包（/x.zip）父目录是 '/'，不能用 || 兜成桌面
+            const parentDir = fxParentOf(filePath);
+            const targetDir = parentDir === '/' ? '/' + folderName : parentDir + '/' + folderName;
             const archiveType = getArchiveType(filename);
 
             const progressEl = document.createElement('div');
@@ -13869,6 +13910,17 @@
         }
 
         // 这里的函数必须定义在全局，否则 HTML onclick 找不到
+        // 关闭 / 最小化窗口后如果没有"可见且聚焦"的窗口，就把焦点交给最上层的可见窗口。
+        // 否则残留窗口没有描边，依赖 .focused 的快捷键（画板、编辑器、浏览器等）会集体失效。
+        function ensureSomeWindowFocused() {
+            const visibleFocused = SYSTEM.windows.some(w => w.element && !w.minimized && w.element.classList.contains('focused'));
+            if (visibleFocused) return;
+            const candidates = SYSTEM.windows.filter(w => w.element && !w.minimized);
+            if (!candidates.length) return;
+            candidates.sort((a, b) => (+b.element.style.zIndex || 0) - (+a.element.style.zIndex || 0));
+            focusWin(candidates[0].id);
+        }
+
         window.closeWin = function(id) {
             // 修复：Aero Peek 高亮/虚化/透明态使用 !important 会覆盖关闭动画的 opacity，导致卡在 0.9 收缩状态
             // 点掉蓝色框窗口时若仍在 Peek 态，需先彻底清除再开始动画
@@ -13889,6 +13941,12 @@
                 // 确保该窗口本身的 Peek 类已移除，并强制重排使样式生效后再开启动画（不移除 minimized，避免已最小化窗口闪烁）
                 w.classList.remove('aero-peek-dim','aero-peek-highlight','aero-peek-transparent');
                 void w.offsetWidth;
+                // 关闭真正全屏的窗口时同步退出浏览器全屏，否则会留下一个"没有窗口的全屏页面"。
+                // 还有别的全屏窗口时不动（fullscreenchange 会负责同步类名）。
+                if (w.classList.contains('truly-fullscreen')) {
+                    const otherFull = SYSTEM.windows.some(x => x.id !== id && x.element && x.element.classList.contains('truly-fullscreen'));
+                    if (!otherFull && document.fullscreenElement) { try { document.exitFullscreen(); } catch (e) {} }
+                }
                 // 调用清理函数（如果存在）
                 if(w.cleanup) {
                     w.cleanup();
@@ -13906,6 +13964,7 @@
                 setTimeout(() => w.remove(), 200);
             }
             SYSTEM.windows = SYSTEM.windows.filter(win => win.id !== id);
+            ensureSomeWindowFocused();
             setTimeout(updateTaskbarRunningItems, 30);
         };
 
@@ -13919,6 +13978,7 @@
                 if (win.element) win.element.classList.remove('aero-peek-dim','aero-peek-highlight','aero-peek-transparent');
                 win.minimized = true;
                 win.element.classList.add('minimized');
+                ensureSomeWindowFocused();
             }
             setTimeout(updateTaskbarRunningItems, 30);
         };
@@ -14548,12 +14608,15 @@
                     urlInput.onkeydown = e => { if(e.key === 'Enter') navigate(); };
                     goBtn.onclick = navigate;
                     
-                    refreshBtn.onclick = () => { 
-                        loading.classList.add('active'); 
-                        // 强制刷新 iframe
-                        const currentUrl = frame.src;
-                        frame.src = 'about:blank';
-                        setTimeout(() => { frame.src = currentUrl; }, 10);
+                    refreshBtn.onclick = () => {
+                        loading.classList.add('active');
+                        // 优先刷新 iframe 内部当前地址：frame.src 是 content attribute，
+                        // 用户在站内点链接跳转后它不会变，照它刷新会退回打开时的旧页面。
+                        try {
+                            frame.contentWindow.location.reload();
+                            return;
+                        } catch (e) { /* 跨域 iframe 拿不到 location：退回历史栈里的当前地址 */ }
+                        loadFrame(historyStack[currentIndex]);
                     };
                     
                     frame.onload = () => loading.classList.remove('active');
@@ -15267,8 +15330,9 @@
                     };
                     document.addEventListener('keydown', onKey);
                     document.addEventListener('copy', onCopy);
-                    w.cleanup = () => { document.removeEventListener('keydown', onKey); document.removeEventListener('copy', onCopy); };
-                    new ResizeObserver(() => { if (!st.error) fit(); }).observe(resEl);
+                    const roRes = new ResizeObserver(() => { if (!st.error) fit(); });
+                    roRes.observe(resEl);
+                    w.cleanup = () => { document.removeEventListener('keydown', onKey); document.removeEventListener('copy', onCopy); roRes.disconnect(); };
                     root.focus({ preventScroll: true });
                     render();
                 }
@@ -15948,7 +16012,8 @@
                             const r = stage.getBoundingClientRect();
                             zoomAt(v.s * Math.pow(1.0015, -e.deltaY), e.clientX - r.left, e.clientY - r.top);
                         }, { passive: false });
-                        new ResizeObserver(() => { if (mode === 'single') v.fit ? setFit() : apply(); }).observe(stage);
+                        const roStage = new ResizeObserver(() => { if (mode === 'single') v.fit ? setFit() : apply(); });
+                        roStage.observe(stage);
                         const go = d => show(idx + d);
                         const openComic = () => openComicReader(folderPath + '/' + list[idx], list[idx], { fullscreen: w.classList.contains('truly-fullscreen') });
                         w.querySelectorAll('[data-act=prev]').forEach(b => b.onclick = () => go(-1));
@@ -15983,6 +16048,7 @@
                         document.addEventListener('keydown', onKey);
                         w.cleanup = () => {
                             closed = true;
+                            roStage.disconnect();
                             document.removeEventListener('keydown', onKey);
                             cache.forEach(p => p.then(r => r && URL.revokeObjectURL(r.url)));
                             cache.clear();
@@ -16027,6 +16093,7 @@
                 `,
                 onInit: (w, id) => {
                     let emulator = null;
+                    let v86Closed = false;   // 窗口已关闭：异步回调（库加载 / 读镜像 / FileReader）不许再启动虚拟机
                     const screenContainer = document.getElementById(`v86-screen-${id}`);
                     const placeholder = document.getElementById(`v86-placeholder-${id}`);
                     const statusText = document.getElementById(`v86-status-${id}`);
@@ -16086,6 +16153,7 @@
                     // 修复：原来挂在 w.onDestroy（DOM 元素）上，而 closeWin 只调用 element.cleanup，
                     // 导致关掉窗口后虚拟机仍在后台运行、持续占用 CPU 和内存。
                     w.cleanup = () => {
+                        v86Closed = true;
                         unlockMouse();
                         document.removeEventListener('pointerlockchange', onPointerLockChange);
                         // 修复：关闭窗口时销毁虚拟机实例，避免其在后台继续占用 CPU/内存
@@ -16099,9 +16167,10 @@
                     const initV86 = (fileName, buffer) => {
                         if (JSLibs.ready('v86')) return initV86Now(fileName, buffer);
                         updateStatus('正在加载虚拟机组件...');
-                        JSLibs.load('v86').then(() => initV86Now(fileName, buffer), () => updateStatus('V86 库加载失败，请检查网络后重试', true));
+                        JSLibs.load('v86').then(() => { if (!v86Closed) initV86Now(fileName, buffer); }, () => updateStatus('V86 库加载失败，请检查网络后重试', true));
                     };
                     const initV86Now = (fileName, buffer) => {
+                        if (v86Closed) return;   // 库加载期间窗口已被关掉：不要创建无主虚拟机
                         placeholder.style.display = 'none';
 
                         // 修复：不再删除/重建 canvas。V86 要求 screen_container 内
@@ -16179,6 +16248,7 @@
                         updateStatus('正在读取文件...');
                         
                         reader.onload = (ev) => {
+                            if (v86Closed) return;
                             initV86(file.name, ev.target.result);
                         };
                         reader.readAsArrayBuffer(file);
@@ -16189,6 +16259,7 @@
                         const fname = diskPath.split('/').pop();
                         updateStatus('正在从虚拟文件系统读取: ' + fname);
                         SYSTEM.fs.readFile(diskPath, (err, data) => {
+                            if (v86Closed) return;
                             if (err) { updateStatus('读取镜像失败: ' + err.message, true); return; }
                             // 文件系统返回 Uint8Array，转为 ArrayBuffer 供 V86 使用
                             const ab = data.buffer
@@ -19786,12 +19857,17 @@
                 item.classList.toggle('focused', w.element.classList.contains('focused'));
                 item.classList.toggle('minimized-item', !!w.minimized);
                 
-                // 更新标题（可能变化）
+                // 更新标题（可能变化）：以窗口标题栏的实际文字为准。
+                // 记事本 / 编辑器 / 浏览器只改自己的 .window-title-text，不写回 w.title，
+                // 原来任务栏条目永远停在窗口创建时的标题。
+                const domTitleEl = w.element && w.element.querySelector('.window-title-text');
+                const liveTitle = (domTitleEl && domTitleEl.textContent.trim()) || w.title || '窗口';
+                if (w.title !== liveTitle) w.title = liveTitle;
                 const titleEl = item.querySelector('.running-title');
-                if (titleEl && titleEl.textContent !== (w.title || '窗口')) {
-                    titleEl.textContent = w.title || '窗口';
+                if (titleEl && titleEl.textContent !== liveTitle) {
+                    titleEl.textContent = liveTitle;
                 }
-                const tip = (w.title || '窗口') + (w.minimized ? '（已最小化）' : '');
+                const tip = liveTitle + (w.minimized ? '（已最小化）' : '');
                 if (item.title !== tip) { item.title = tip; item.setAttribute('aria-label', tip); }
             });
             
