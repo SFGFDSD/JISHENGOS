@@ -4414,6 +4414,10 @@
                 if (from === to) return;
                 if (from === '/' || to === '/') throw this._error('EINVAL', from);
                 if (to.startsWith(from + '/')) throw this._error('EINVAL', to);
+                // 与 _opRmdir 的 hasMount 守卫保持一致：改名挂载点本身或它的祖先，
+                // 会让 _mounts 的键悬空（挂载文件夹从 UI 消失）。这里一律拒绝。
+                const hitsMount = (p) => Array.from(this._mounts.keys()).some(m => m === p || m.startsWith(p === '/' ? '/' : p + '/'));
+                if (hitsMount(from) || hitsMount(to)) throw this._error('EBUSY', from);
                 const fromParentPath = this._parent(from), toParentPath = this._parent(to);
                 const sourceParent = await t.dirAt(fromParentPath);
                 const targetParent = fromParentPath === toParentPath ? sourceParent : await t.dirAt(toParentPath);
@@ -4479,6 +4483,8 @@
             }
             async _opRmTree(t, path, dirOnly) {
                 if (path === '/') throw this._error('EBUSY', path);
+                // 子树里含挂载点（或路径本身就是挂载根）时不能整树删除
+                if (Array.from(this._mounts.keys()).some(m => m === path || m.startsWith(path + '/'))) throw this._error('EBUSY', path);
                 const found = await t.nodeAt(path);
                 if (!NativeFileSystem._isDir(found.inode)) {
                     if (dirOnly) throw this._error('ENOTDIR', path);
@@ -4971,6 +4977,14 @@
             const isDirStats = st => !!st && (typeof st.isDirectory === 'function' ? st.isDirectory() : !!st.isDirectory);
             const native = path => engine._isNativeTree(path);
             const onRoot = path => !engine._route(path).backend;
+            // 挂载点边界：挂载根（/opfs、/mnt/local/X）的真实内容在浏览器之外（OPFS / 真实磁盘），
+            // 递归删除、剪切移动、改名都不能把它当普通目录处理 —— 否则会把用户真实文件删掉，
+            // 或者让 mount 表指向已不存在的路径（挂载文件夹从 UI 上整体消失）。
+            const mountBoundary = path => {
+                const n = engine._normalize(path);
+                return Array.from(engine._mounts.keys()).some(m => m === n || m.startsWith(n === '/' ? '/' : n + '/'));
+            };
+            const isMountRoot = path => engine._mounts.has(engine._normalize(path));
             const toMs = value => {
                 const ms = value instanceof Date ? value.getTime() : Number(value);
                 return Number.isFinite(ms) && ms > 0 ? ms : 0;
@@ -5000,6 +5014,8 @@
             }
 
             async function remove(path, options = {}) {
+                // 挂载根 / 含挂载点的目录：拒绝递归删除（真实磁盘内容不能被当普通目录删）
+                if (mountBoundary(path)) throw engine._error('EBUSY', path);
                 if (options.recursive && native(path)) {
                     await engine._rmTree(path, false);
                     try { SYSTEM.dropMtimeCache(path); } catch (_) {}
@@ -5031,6 +5047,9 @@
 
             // 移动：同一存储内直接 rename；跨存储（如根目录 ↔ /opfs）自动改为 复制（保留日期）+ 删除源。
             async function move(src, dst) {
+                // 「跨设备 = 复制 + 删源」只对普通目录成立：挂载根当源会把真实磁盘内容删掉，
+                // 当目标会顶掉挂载目录本身。两边都先拒绝。
+                if (mountBoundary(src) || isMountRoot(dst)) throw engine._error('EBUSY', src);
                 try { await call('rename', src, dst); return; }
                 catch (err) { if (!err || err.code !== 'EXDEV') throw err; }
                 const st = await call('stat', src);
@@ -9192,8 +9211,11 @@
             const st = fxState(windowId);
             if (!st || !path) return;
             path = String(path).replace(/\/+$/, '') || '/';
-            if (st.currentPath === path && !opts.force) { fxToggleSidebar(windowId, false); return; }
-            if (opts.history !== false) {
+            const samePath = st.currentPath === path;
+            if (samePath && !opts.force) { fxToggleSidebar(windowId, false); return; }
+            // 同路径（例如全局搜索里「打开所在位置」指向当前文件夹）不要再压一条历史，
+            // 否则 Back/Forward 会指到重复项：按钮可点，但点了没反应。
+            if (opts.history !== false && !samePath) {
                 st.history = st.history.slice(0, st.histIdx + 1);
                 st.history.push(path);
                 if (st.history.length > 60) st.history.shift();
@@ -9408,8 +9430,8 @@
             const st = fxState(windowId);
             if (!st || !['list', 'grid', 'column'].includes(mode)) return;
             if (mode === 'column' && fxIsGlobalSearch(st)) { Notify.info('提示', '全局搜索时以列表显示结果，清除搜索后即可使用分栏视图'); return; }
-            st._viewBeforeG = null;
             if (st.viewMode === mode) return;
+            st._viewBeforeG = null;
             st._selectAfter = fxSelectedPaths(windowId);
             const keepFocus = st.focusPath;
             st.viewMode = mode;
@@ -10271,6 +10293,19 @@
             if (!st || !sc) return;
             if (document.querySelector('#context-menu.open, .sys-dialog-overlay')) return;
             const t = e.target;
+            // 这几个键不是"输入"，搜索框聚焦时也应该作用于当前文件夹，
+            // 不能被放行给浏览器（F5/Ctrl+R = 整页刷新，Alt+← = 离开 OS）。
+            {
+                const ctrlNow = e.ctrlKey || e.metaKey;
+                if (e.key === 'F5' || (ctrlNow && (e.key === 'r' || e.key === 'R'))) { e.preventDefault(); e.stopPropagation(); folderRefresh(wid); return; }
+                if (e.altKey && (e.key === 'ArrowLeft' || e.key === 'ArrowRight' || e.key === 'ArrowUp')) {
+                    e.preventDefault(); e.stopPropagation();
+                    if (e.key === 'ArrowLeft') fxBack(wid);
+                    else if (e.key === 'ArrowRight') fxForward(wid);
+                    else if (fxCanGoUp(st)) folderGoUp(wid);
+                    return;
+                }
+            }
             if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
             if (t && t.closest && t.closest('button') && (e.key === 'Enter' || e.key === ' ')) return;
             const ctrl = e.ctrlKey || e.metaKey, alt = e.altKey, shift = e.shiftKey, k = e.key;
@@ -10896,6 +10931,19 @@
             });
         }
 
+        // 重命名前的冲突检查：底层 rename 是覆盖语义，目标同名文件会被静默吃掉（与「粘贴同名自动编号、绝不覆盖」的约定不符）。
+        // 纯大小写改名在「真实磁盘挂载」上放行：macOS 等大小写不敏感的文件系统会把同一个文件判成冲突；
+        // 但 JISHENG FS 根卷区分大小写（a.txt 与 A.txt 可以并存），那里必须照常检查。
+        function renameConflictCheck(oldName, newName, newPath, onOk) {
+            const caseOnly = String(oldName).toLowerCase() === String(newName).toLowerCase();
+            const backend = (SYSTEM.fs && typeof SYSTEM.fs._route === 'function') ? SYSTEM.fs._route(newPath).backend : null;
+            if (caseOnly && backend) { onOk(); return; }
+            SYSTEM.fs.stat(newPath, (err, st) => {
+                if (!err && st) { Notify.error('重命名失败', `"${newName}" 已存在`); return; }
+                onOk();
+            });
+        }
+
         async function renameFolderItem(windowId, oldName, itemPath) {
             const newName = await SysDialog.prompt({ title: '重命名', icon: 'uiRename', label: '新名称', value: oldName, okText: '重命名', validate: SysDialog.nameValidator('名称') });
             if(!newName || newName === oldName) return;
@@ -10910,15 +10958,17 @@
             const oldPath = itemPath || (dir + '/' + oldName);
             const newPath = dir + '/' + newName;
             
-            SYSTEM.fs.rename(oldPath, newPath, (err) => {
-                if(err) {
-                    Notify.error('重命名失败', err.message);
-                } else {
-                    if (state) { state.fileStats = {}; renderFolderContent(windowId); }
-                    else refreshFolderWindow(folderName);
-                    refreshDesktop();
-                    Notify.success('重命名成功', `已重命名为 "${newName}"`);
-                }
+            renameConflictCheck(oldName, newName, newPath, () => {
+                SYSTEM.fs.rename(oldPath, newPath, (err) => {
+                    if(err) {
+                        Notify.error('重命名失败', err.message);
+                    } else {
+                        if (state) { state.fileStats = {}; renderFolderContent(windowId); }
+                        else refreshFolderWindow(folderName);
+                        refreshDesktop();
+                        Notify.success('重命名成功', `已重命名为 "${newName}"`);
+                    }
+                });
             });
         }
 
@@ -11939,6 +11989,47 @@
          * @param {string} svg
          * @returns {string|null}
          */
+        // 安全净化：JISHENG-OS-APP 的图标来自「不可信的 .html 文件」，而它会被插入 OS 同源页面
+        // （桌面图标 innerHTML、文件夹图标 outerHTML、窗口/任务栏图标）。只保留纯图形元素，
+        // 去掉脚本、事件属性、foreignObject/img/动画和外部 href —— 否则只要「浏览一个文件夹」，
+        // 里面的恶意 SVG 就能在同源上下文执行 JS（读取 IndexedDB 全部文件、本地挂载目录等，存储型 XSS）。
+        const APP_SVG_TAGS = new Set(['svg', 'g', 'path', 'circle', 'rect', 'ellipse', 'line', 'polyline', 'polygon',
+            'defs', 'symbol', 'use', 'title', 'desc', 'text', 'clipPath', 'mask', 'linearGradient', 'radialGradient',
+            'stop', 'pattern', 'filter', 'feGaussianBlur', 'feOffset', 'feMerge', 'feMergeNode', 'feColorMatrix',
+            'feBlend', 'feComposite', 'feFlood', 'feDropShadow', 'feMorphology', 'feTurbulence', 'feDisplacementMap',
+            'feComponentTransfer', 'feFuncA', 'feFuncR', 'feFuncG', 'feFuncB']);
+        function sanitizeAppSvg(svg) {
+            let root = null;
+            try {
+                const doc = new DOMParser().parseFromString(String(svg || ''), 'image/svg+xml');
+                if (doc && doc.documentElement && doc.documentElement.nodeName.toLowerCase() === 'svg' && !doc.querySelector('parsererror')) {
+                    root = doc.documentElement;
+                }
+            } catch (e) { /* 解析失败按不可信处理 */ }
+            // 注意：这里不能用 div.innerHTML 做"HTML 容错解析"兜底——游离节点里的 <img onerror>
+            // 在 Chrome 上仍会发起加载并执行事件属性，等于把 XSS 又放回来了。
+            // 解析失败就整个图标作废，回落到通用图标（宁可少一个图标，也不能执行用户文件里的脚本）。
+            if (!root) return '';
+            const isBadAttr = (name, value) => {
+                const n = String(name).toLowerCase(), v = String(value || '');
+                if (n === 'href' || n === 'xlink:href') return !/^\s*#/.test(v);   // 只允许文档内引用（渐变/剪裁）
+                if (n === 'src') return true;
+                if (n.indexOf('on') === 0) return true;                            // onload / onerror / onbegin …
+                if (n === 'style') return /url\s*\(|expression\s*\(|javascript:/i.test(v);
+                return /javascript:/i.test(v);
+            };
+            const clean = (el) => {
+                [...el.children].forEach(child => {
+                    if (!APP_SVG_TAGS.has(String(child.nodeName).toLowerCase())) { child.remove(); return; }
+                    [...child.attributes].forEach(a => { if (isBadAttr(a.name, a.value)) child.removeAttribute(a.name); });
+                    clean(child);
+                });
+            };
+            [...root.attributes].forEach(a => { if (isBadAttr(a.name, a.value)) root.removeAttribute(a.name); });
+            clean(root);
+            try { return new XMLSerializer().serializeToString(root); } catch (e) { return ''; }
+        }
+
         function polishAppSvg(svg) {
             if (!svg) return null;
             const openEnd = svg.indexOf('>');
@@ -11985,7 +12076,8 @@
                 }
                 if (inject) tag += inject;   // 追加在原有属性后面，输出更好读
             }
-            return tag + (selfClose ? '/>' : '>') + body;
+            // 最后一步必须净化：拼接完成后交给白名单过滤，再交给 DOM 插入
+            return sanitizeAppSvg(tag + (selfClose ? '/>' : '>') + body);
         }
 
         /**
@@ -12297,7 +12389,7 @@
                     if(err) { Notify.error('打开失败', err.message); return; }
                     // 修复(Bug B)：传入文件所在目录，使另存为/保存默认写回原目录而非桌面。
                     const dir = fullPath.substring(0, fullPath.lastIndexOf('/')) || SYSTEM.desktopPath;
-                    openNotepad(data, filename, dir);
+                    openNotepad(data, filename, dir, { exists: true });
                 });
             } 
             // 4. 处理压缩文件 (支持 zip/7z/rar/tar/gz 等格式)
@@ -12370,7 +12462,7 @@
                     // 修复(#1)：传入第三个参数 fullPath 所在目录，
                     // 使未知类型文件用记事本打开后保存仍写回原目录而非桌面。
                     const dir = fullPath.substring(0, fullPath.lastIndexOf('/')) || SYSTEM.desktopPath;
-                    openNotepad(data, filename, dir);
+                    openNotepad(data, filename, dir, { exists: true });
                     Notify.info('文本模式', '已使用记事本打开该文件');
                 });
             }
@@ -12396,7 +12488,7 @@
             SYSTEM.fs.readFile(fullPath, 'utf8', (err, data) => {
                 if (err) { Notify.error('打开失败', err.message); return; }
                 const dir = fullPath.substring(0, fullPath.lastIndexOf('/')) || SYSTEM.desktopPath;
-                openNotepad(data, filename, dir);
+                openNotepad(data, filename, dir, { exists: true });
                 Notify.success('正在打开', `已用记事本打开 "${filename}"`);
             });
         }
@@ -12516,6 +12608,13 @@
         }
 
         function deleteFolderRecursive(path, callback) {
+            // 挂载点边界守卫：挂载根的真实内容不在浏览器里，逐项 walker 会把真实磁盘文件删光，
+            // 最后才在 rmdir(挂载根) 处报错 —— 用户会误以为"没删成"。
+            if (SYSTEM.fs && SYSTEM.fs._mounts instanceof Map) {
+                const n = SYSTEM.fs._normalize(path);
+                const blocked = Array.from(SYSTEM.fs._mounts.keys()).some(m => m === n || m.startsWith(n === '/' ? '/' : n + '/'));
+                if (blocked) { callback(SYSTEM.fs._error('EBUSY', path)); return; }
+            }
             // JISHENG FS：根卷内（且子树里没有挂载点）一个事务删除整棵树，日期记录随后整棵清掉。
             if (SYSTEM.fs && typeof SYSTEM.fs._rmTree === 'function' && SYSTEM.fs._isNativeTree(path)) {
                 const cb = typeof callback === 'function' ? callback : function() {};
@@ -13163,12 +13262,14 @@
             const oldPath = SYSTEM.desktopPath + '/' + oldName;
             const newPath = SYSTEM.desktopPath + '/' + newName;
             
-            SYSTEM.fs.rename(oldPath, newPath, (err) => {
-                if(err) Notify.error('重命名失败', err.message);
-                else { 
-                    refreshDesktop(); 
-                    Notify.success('重命名成功', `已重命名为 "${newName}"`); 
-                }
+            renameConflictCheck(oldName, newName, newPath, () => {
+                SYSTEM.fs.rename(oldPath, newPath, (err) => {
+                    if(err) Notify.error('重命名失败', err.message);
+                    else { 
+                        refreshDesktop(); 
+                        Notify.success('重命名成功', `已重命名为 "${newName}"`); 
+                    }
+                });
             });
         }
 
@@ -13372,6 +13473,11 @@
             if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable) {
                 return;
             }
+            // 只在「桌面」或「文件资源管理器窗口」里接管 Ctrl+C/X/V。
+            // 记事本、HTML 编辑器、浏览器、设置等非文件窗口要交回浏览器原生复制粘贴：
+            // 以前无条件 preventDefault，会把原生复制干掉，还会去操作桌面剪贴板（弹「未选择文件」）。
+            const focusedWin = document.querySelector('.window.focused');
+            if (focusedWin && !focusedWin.querySelector('.fx-root')) return;
             
             const isCtrl = e.ctrlKey || e.metaKey;
             
@@ -13965,11 +14071,13 @@
         }
 
         // 贴边 / 最大化
-        function applySnapToWindow(win, kind) {
+        // savedGeometry：拖拽吸附时传入「按下鼠标那一刻」的几何。拖动过程中 left/top 已经被改写，
+        // 若此时再读 el.style.cssText，记下的就是拖到屏幕边缘的位置，还原后窗口会跑到屏幕外。
+        function applySnapToWindow(win, kind, savedGeometry) {
             if (!win) return;
             const el = win.element;
             // 第一次离开自由状态时记住原来的几何，便于还原
-            if (!isWinSnapped(win)) win.savedPos = el.style.cssText;
+            if (!isWinSnapped(win)) win.savedPos = savedGeometry || el.style.cssText;
 
             el.classList.add('snapping');
             el.classList.remove('maximized', 'snap-left', 'snap-right');
@@ -14027,6 +14135,8 @@
             // 性能：指针事件可能比屏幕刷新更频繁（高回报率鼠标 500–1000Hz），位置写入合并到每帧一次；
             // 窗口尺寸在拖动开始时读一次，避免每次移动都在写入 left/top 后立刻读 offsetWidth 导致强制同步布局。
             let dragRaf = 0, dragPending = null, dragW = 0, dragH = 0;
+            // 拖拽开始时的内联几何（吸附最大化后「还原」要用它，不能用拖动途中的位置）
+            let dragStartStyle = null;
             const flushDrag = () => {
                 dragRaf = 0;
                 if (!dragPending) return;
@@ -14069,6 +14179,7 @@
                 const p = getCoords(e);
                 startX = p.x; startY = p.y;
                 startLeft = el.offsetLeft; startTop = el.offsetTop;
+                dragStartStyle = el.style.cssText;
 
                 focusWin(id);
                 
@@ -14159,7 +14270,7 @@
                 // === Aero Snap：松手时吸附 ===
                 showSnapPreview(null);
                 if (snapZone) {
-                    applySnapToWindow(SYSTEM.windows.find(w => w.id === id), snapZone);
+                    applySnapToWindow(SYSTEM.windows.find(w => w.id === id), snapZone, dragStartStyle);
                     snapZone = null;
                 }
                 hasMoved = false;
@@ -14763,7 +14874,7 @@
             return `${p(d.getHours())}:${p(d.getMinutes())}`;
         }
 
-        function openNotepad(content = '', filename = '未命名.txt', saveDir = null) {
+        function openNotepad(content = '', filename = '未命名.txt', saveDir = null, opts = {}) {
             // 修复：textarea 内容需转义，避免文件内容含 </textarea> 等破坏 DOM。
             const safeContent = escapeHtml(content);
             const nid = SYSTEM.idCounter + 1;
@@ -14909,11 +15020,14 @@
                     applyFont();
 
                     // ---------- 保存 / 另存为 ----------
-                    const writeFile = (cb) => {
+                    let boundToExisting = !!opts.exists;   // 是否绑定到一个已存在的文件（从磁盘打开）
+                    let savedOnce = false;                 // 本窗口是否已经成功写过盘
+                    const doWrite = (cb) => {
                         const path = currentDir + '/' + currentFile;
                         const val = area.value;
                         SYSTEM.fs.writeFile(path, val, 'utf8', err => {
                             if (err) { Notify.error('保存失败', err.message); return; }
+                            savedOnce = true;
                             savedContent = val;
                             npClearDraft(draftKey);
                             setStatus('已保存', npFmtHM(Date.now()), 'saved');
@@ -14923,13 +15037,43 @@
                             if (cb) cb();
                         });
                     };
+                    const writeFile = (cb) => {
+                        // 第一次保存就写到「别人的文件」时必须确认：新建的记事本默认叫「未命名.txt」，
+                        // 直接覆盖桌面上的同名文件是静默数据丢失（另存为路径已单独确认过）。
+                        if (boundToExisting || savedOnce) { doWrite(cb); return; }
+                        const path = currentDir + '/' + currentFile;
+                        SYSTEM.fs.stat(path, (statErr, statObj) => {
+                            if (statErr || !statObj) { doWrite(cb); return; }
+                            SysDialog.confirm({
+                                title: '文件已存在', icon: 'uiWarning', danger: true, okText: '覆盖',
+                                message: `"${currentFile}" 已存在，要覆盖它吗？`
+                            }).then(ok => { if (ok) { boundToExisting = true; doWrite(cb); } });
+                        });
+                    };
                     btnSave.onclick = () => writeFile();
                     btnSaveAs.onclick = async () => {
                         const name = await SysDialog.prompt({ title: '另存为', icon: 'uiSave', label: '文件名', value: currentFile, okText: '保存', validate: SysDialog.nameValidator('文件名') });
                         if (!name) return;
+                        const targetFile = name.match(/\.(txt|md|csv|log|json|js|html|css)$/i) ? name : name + '.txt';
+                        const targetPath = currentDir + '/' + targetFile;
+                        // 另存到已存在的文件时必须先确认：writeFile 是覆盖语义，不确认会静默吃掉别人的文件。
+                        // （与 HTML 编辑器「导出 / 另存为」、画板「保存为 PNG」的处理保持一致）
+                        if (targetPath !== draftKey) {
+                            const exists = await new Promise(resolve => {
+                                SYSTEM.fs.stat(targetPath, (statErr, statObj) => resolve(!statErr && !!statObj));
+                            });
+                            if (exists) {
+                                const overwrite = await SysDialog.confirm({
+                                    title: '文件已存在', icon: 'uiWarning', danger: true, okText: '覆盖',
+                                    message: `"${targetFile}" 已存在，要覆盖它吗？`
+                                });
+                                if (!overwrite) return;
+                            }
+                        }
                         const oldKey = draftKey;
-                        currentFile = name.match(/\.(txt|md|csv|log|json|js|html|css)$/i) ? name : name + '.txt';
-                        draftKey = currentDir + '/' + currentFile;
+                        currentFile = targetFile;
+                        draftKey = targetPath;
+                        boundToExisting = true;   // 上面已确认过覆盖，writeFile 不必再问一次
                         writeFile(() => { if (oldKey !== draftKey) npClearDraft(oldKey); });
                     };
 
@@ -17031,7 +17175,10 @@
                 const c = editor.getCursor();
                 const top = editor.getScrollInfo().top;
                 editor.operation(() => {
-                    editor.replaceRange(fmt, CodeMirror.Pos(0, 0), CodeMirror.Pos(editor.lastLine()), '+format');
+                    // 止点必须落到最后一行的行尾：CodeMirror.Pos(lastLine) 的 ch 缺省为 0，
+                    // 只会替换到最后一行行首，导致原文最后一行残留在格式化结果末尾（文件不以换行结尾时必现）。
+                    const lastLine = editor.lastLine();
+                    editor.replaceRange(fmt, CodeMirror.Pos(0, 0), CodeMirror.Pos(lastLine, editor.getLine(lastLine).length), '+format');
                     editor.setCursor({ line: Math.min(c.line, editor.lastLine()), ch: 0 });
                 });
                 editor.scrollTo(null, top);
