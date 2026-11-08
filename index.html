@@ -19409,8 +19409,10 @@
                 const ua = navigator.userAgent || '';
                 const os = /Android/i.test(ua) ? (/Mobile/i.test(ua) ? '安卓手机' : '安卓平板') : /iPhone/i.test(ua) ? 'iPhone' : /iPad/i.test(ua) ? 'iPad'
                     : /Windows/i.test(ua) ? 'Windows' : /Mac OS X|Macintosh/i.test(ua) ? (navigator.maxTouchPoints > 1 ? 'iPad' : 'Mac') : /CrOS/i.test(ua) ? 'Chromebook' : /Linux/i.test(ua) ? 'Linux' : '设备';
-                const br = /EdgA?\//.test(ua) ? 'Edge' : /Firefox\//.test(ua) ? 'Firefox' : /SamsungBrowser/.test(ua) ? '三星浏览器' : /Quark/i.test(ua) ? '夸克'
-                    : /MicroMessenger/i.test(ua) ? '微信' : /OPR\//.test(ua) ? 'Opera' : /Chrome\//.test(ua) ? 'Chrome' : /Safari\//.test(ua) ? 'Safari' : '浏览器';
+                // Edge 的 UA 可能是 Edg/（桌面）、EdgA/（Android）或 EdgiOS/（iPhone/iPad）；
+                // 必须在 Chrome 前独立判断，因为 Edge / Opera / 三星浏览器都会携带 Chrome token。
+                const br = /Edg(?:e|A|iOS)?\//.test(ua) ? 'Edge' : /(?:Firefox|FxiOS)\//.test(ua) ? 'Firefox' : /SamsungBrowser/.test(ua) ? '三星浏览器' : /Quark/i.test(ua) ? '夸克'
+                    : /MicroMessenger/i.test(ua) ? '微信' : /OPR\//.test(ua) ? 'Opera' : /(?:Chrome|CriOS)\//.test(ua) ? 'Chrome' : /Safari\//.test(ua) ? 'Safari' : '浏览器';
                 return `${os} · ${br}`;
             }
             function makeDeviceId(name) {
@@ -22363,12 +22365,43 @@
             ];
         }
         function stxBrowserName() {
-            const ua = navigator.userAgent;
-            const m = ua.match(/(Edg|OPR|Firefox|Chrome|Version)\/(\d+)/);
-            if (!m) return ua.slice(0, 60);
-            const name = { Edg: 'Edge', OPR: 'Opera', Firefox: 'Firefox', Chrome: 'Chrome', Version: /Safari/.test(ua) ? 'Safari' : 'Browser' }[m[1]];
+            const ua = navigator.userAgent || '';
             const os = /Windows/.test(ua) ? 'Windows' : /Android/.test(ua) ? 'Android' : /iPhone|iPad/.test(ua) ? 'iOS' : /Mac OS X/.test(ua) ? 'macOS' : /Linux/.test(ua) ? 'Linux' : '';
-            return `${name} ${m[2]}${os ? ' · ' + os : ''}`;
+            const suffix = os ? ' · ' + os : '';
+
+            // Chromium 系优先读浏览器提供的品牌名。Edge 的 UA 同时含 Chrome token，
+            // 不能依赖“字符串里谁先出现”来判断产品名称。
+            const brands = navigator.userAgentData && Array.isArray(navigator.userAgentData.brands)
+                ? navigator.userAgentData.brands : [];
+            const brandRules = [
+                [/^Microsoft Edge$/i, 'Edge'],
+                [/^Google Chrome$/i, 'Chrome'],
+                [/^Opera$/i, 'Opera'],
+                [/^Brave$/i, 'Brave'],
+                [/^Vivaldi$/i, 'Vivaldi']
+            ];
+            for (const [re, name] of brandRules) {
+                const brand = brands.find(b => b && re.test(String(b.brand || '')));
+                if (brand) {
+                    const version = String(brand.version || '').split('.')[0];
+                    return `${name}${version ? ' ' + version : ''}${suffix}`;
+                }
+            }
+
+            // Client Hints 不可用时，用产品专属 token 逐项检测；具体产品必须排在 Chrome 前。
+            const tests = [
+                ['Edge', /Edg(?:e|A|iOS)?\/(\d+)/],
+                ['Opera', /OPR\/(\d+)/],
+                ['Samsung Internet', /SamsungBrowser\/(\d+)/],
+                ['Firefox', /(?:Firefox|FxiOS)\/(\d+)/],
+                ['Chrome', /(?:Chrome|CriOS)\/(\d+)/],
+                ['Safari', /Version\/(\d+).*Safari/]
+            ];
+            for (const [name, re] of tests) {
+                const m = ua.match(re);
+                if (m) return `${name} ${m[1]}${suffix}`;
+            }
+            return ua.slice(0, 60) || '浏览器';
         }
         function stxPageAbout(winId) {
             const caps = stxCapabilities().map(c => `<div class="stx-cap" title="${stxAttr(c.n + (c.d ? '：' + c.d : ''))}">
