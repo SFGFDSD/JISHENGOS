@@ -2813,7 +2813,11 @@
         .csb-pop-row span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .csb-pop-all { height: 28px; border: 0; border-radius: 6px; background: transparent; color: rgb(var(--al-4cc2ff, 76,194,255)); font: inherit; font-size: 12px; cursor: pointer; text-align: left; padding: 0 6px; }
         .csb-pop-all:hover { background: rgba(var(--al-0078d4, 0,120,212), .12); }
-        .csb-pop-btns { display: flex; gap: 8px; }
+        .csb-pop-btns { display: flex; gap: 6px; }
+        /* 四个按钮都要留在卡片里：收紧间距；空间仍不够时（超窄屏、放大字体）文字省略，不会顶出卡片 */
+        .csb-pop-btns .stx-btn { min-width: 0; gap: 4px; padding: 0 6px; }
+        .csb-pop-btns .stx-btn > span { overflow: hidden; text-overflow: ellipsis; }
+        .csb-pop-btns .stx-btn.ghost { flex: none; }
         .csb-pop-btns .stx-btn.primary { flex: 1; }
         .csb-pop-btns .stx-btn.busy .icon-svg { animation: spin 1s linear infinite; }
         @media (prefers-reduced-motion: reduce) { .csb-pop { transition: none; } }
@@ -3169,7 +3173,7 @@
             showHiddenFiles: false,
             configPath: '/system/config/wallpaper.cfg',
             settingsPath: '/system/config/settings.json',
-            clickBehavior: 'double',
+            clickBehavior: 'single',
             storageNames: 'tech',      // 存储位置显示名：'tech' = IndexedDB 存储 / OPFS 存储（默认）；'zh' = 浏览器存储 / 高速存储
             imageOpen: 'comic',        // 图片默认打开方式：'comic' = 漫画阅读器（默认）；'viewer' = 图片查看器
             hiddenSystemApps: [],
@@ -3261,7 +3265,7 @@
         }
         function applySystemSettings(rawSettings) {
             const settings = rawSettings && typeof rawSettings === 'object' ? rawSettings : {};
-            SYSTEM.clickBehavior = settings.clickBehavior === 'single' ? 'single' : 'double';
+            SYSTEM.clickBehavior = settings.clickBehavior === 'double' ? 'double' : 'single';
             SYSTEM.storageNames = settings.storageNames === 'zh' ? 'zh' : 'tech';   // 默认技术名（IndexedDB / OPFS）
             SYSTEM.imageOpen = settings.imageOpen === 'viewer' ? 'viewer' : 'comic';
             const requestedBackend = settings.storageBackend === 'opfs' ? 'opfs' : 'indexeddb';
@@ -9395,10 +9399,10 @@
             if (!sc || !item || sc.dataset.isSelecting === 'true') return;
             const now = Date.now();
             item._lastTouchStartAt = now;
-            fxMillerActivateFor(windowId, item);
             if (SYSTEM.clickBehavior === 'double' && _lastTapTarget === item && now - _lastTapTime < 300) {
                 item._suppressNextDoubleOpen = true;
                 setTimeout(() => { item._suppressNextDoubleOpen = false; }, 450);
+                fxMillerActivateFor(windowId, item);
                 activateFolderItem(windowId, item.dataset.filename, item.dataset.path, item.dataset.isdir === 'true');
                 _lastTapTime = 0; _lastTapTarget = null;
                 e.preventDefault(); e.stopPropagation();
@@ -9406,17 +9410,11 @@
             }
             if (SYSTEM.clickBehavior === 'double') { _lastTapTime = now; _lastTapTarget = item; }
             else { _lastTapTime = 0; _lastTapTarget = null; }
-            if (!item.classList.contains('selected')) {
-                clearFolderSelection(windowId, true);
-                item.classList.add('selected');
-                const st = fxState(windowId);
-                if (st) st.anchorPath = item.dataset.path;
-            }
-            fxSetFocus(windowId, item);
-            fxSelChanged(windowId);
+            // 按下时不改选择、不切换分栏（滑动只滚动，不会动到文件）；
+            // 轻点由随后的 mousedown / click 选中并（单击模式下）打开
             e.stopPropagation();
-            // 不调用 preventDefault()，允许浏览器处理触摸滚动
-            setupFolderItemDrag(e, windowId, item);
+            // 不调用 preventDefault()，允许浏览器处理触摸滚动；多指触摸不拖动、不弹长按菜单
+            if (e.touches.length === 1) setupFolderItemDrag(e, windowId, item);
         }
 
         // 激活条目：文件夹在当前窗口进入（分栏视图里是进入下一栏），文件按路径打开
@@ -11529,8 +11527,20 @@
             const contentArea = document.getElementById('folder-content-' + windowId);
             if(!contentArea) return;
 
-            const selectedItems = Array.from(contentArea.querySelectorAll('.folder-item.selected, .folder-grid-item.selected'));
+            const isTouch = e.type === 'touchstart';
+            const selectionBeforeTouch = Array.from(contentArea.querySelectorAll('.folder-item.selected, .folder-grid-item.selected'));
+            // 触摸按下时不改选择：未选中的按住项单独拖；若已选中则连同其它选中项一起拖。
+            const selectedItems = (isTouch && !touchItem.classList.contains('selected')) ? [touchItem] : selectionBeforeTouch;
+            const focusBeforeTouch = isTouch ? Array.from(contentArea.querySelectorAll('.fx-focus')) : [];
+            const stateBeforeTouch = isTouch ? fxState(windowId) : null;
+            const focusPathBeforeTouch = stateBeforeTouch ? stateBeforeTouch.focusPath : null;
+            const anchorPathBeforeTouch = stateBeforeTouch ? stateBeforeTouch.anchorPath : null;
             if(selectedItems.length === 0) return;
+            const filesData = selectedItems.map(item => ({
+                filename: item.dataset.filename,
+                path: item.dataset.path,
+                isdir: item.dataset.isdir === 'true'
+            }));
 
             const getPos = (e) => {
                 if (e.touches && e.touches.length > 0) return { x: e.touches[0].clientX, y: e.touches[0].clientY };
@@ -11545,29 +11555,115 @@
             let isDragging = false;
             let hasMovedForActivation = false;
             let dragPreview = null;
-            let longPressTimer = null;
-            let longPressTriggered = false;
-            let touchMoveRegistered = false;
             // 鼠标长按计时器：长按 400ms 后启用原生拖出（拖到真实桌面）
             let nativeDragTimer = null;
 
-            // 长按检测（仅触摸设备）
-            if (e.type === 'touchstart' && touchItem) {
-                longPressTimer = setTimeout(() => {
-                    longPressTriggered = true;
-                    // 触发上下文菜单
-                    const filename = touchItem.dataset.filename;
-                    const fullPath = touchItem.dataset.path;
-                    if (filename && fullPath) {
-                        handleFolderItemContextMenu({
-                            preventDefault: () => {},
-                            stopPropagation: () => {},
-                            clientX: startX,
-                            clientY: startY,
-                            currentTarget: touchItem
-                        }, windowId, filename, fullPath);
+            // ===== 触摸：保留原有右键菜单时机，避免少见的长按拖动抢走常用操作 =====
+            // 右键菜单仍在按住 500ms 后出现；长按拖动需要按住 800ms 后再移动。
+            // 若菜单已出现，继续按住到 800ms 后开始移动时才关闭菜单并进入拖动。
+            // 800ms 前移动 ≥8px 仍交给浏览器滚动；进入拖动后不再滚动，松手投放。
+            if (isTouch) {
+                const MENU_HOLD_MS = 500;
+                const DRAG_HOLD_MS = 800;
+                let armed = false, moved = false, menuShown = false, nativeCtx = false;
+                // 长按 / 拖动之后浏览器可能补发的 click 不再触发打开
+                const ignoreClicks = (ms) => {
+                    const until = Date.now() + ms;
+                    selectedItems.forEach(it => { it._ignoreActivationUntil = Math.max(it._ignoreActivationUntil || 0, until); });
+                };
+                const clean = () => {
+                    armed = false;
+                    if (dragPreview) { dragPreview.remove(); dragPreview = null; }
+                    selectedItems.forEach(it => it.style.outline = 'none');
+                    endDropHighlight();
+                };
+                const restoreSelectionAfterMenu = () => {
+                    contentArea.querySelectorAll('.folder-item.selected, .folder-grid-item.selected').forEach(it => it.classList.remove('selected'));
+                    selectionBeforeTouch.forEach(it => { if (it.isConnected) it.classList.add('selected'); });
+                    contentArea.querySelectorAll('.fx-focus').forEach(it => it.classList.remove('fx-focus'));
+                    focusBeforeTouch.forEach(it => { if (it.isConnected) it.classList.add('fx-focus'); });
+                    const st = fxState(windowId);
+                    if (st) { st.focusPath = focusPathBeforeTouch; st.anchorPath = anchorPathBeforeTouch; }
+                    fxSelChanged(windowId);
+                };
+                const fin = () => {
+                    clearTimeout(armTimer);
+                    document.removeEventListener('touchmove', dragMove);
+                    document.removeEventListener('touchend', dragEnd);
+                    document.removeEventListener('touchcancel', dragEnd);
+                };
+                const dragMove = (ev) => {
+                    const p = getPos(ev);
+                    if (!armed) {
+                        if (Math.abs(p.x - startX) + Math.abs(p.y - startY) >= 8) fin();
+                        return;
                     }
-                }, 500);
+                    if (!moved) {
+                        moved = true;
+                        if (menuShown) { closeCtx(); restoreSelectionAfterMenu(); }
+                        dragPreview = createDragPreview(filesData, startX, startY);
+                        try { if (navigator.vibrate) navigator.vibrate(10); } catch (_) {}
+                    }
+                    if (ev.cancelable) ev.preventDefault();
+                    moveDragPreview(dragPreview, p.x, p.y);
+                    updateDropHighlight(p.x, p.y, selectedItems);
+                };
+                const dragEnd = (ev) => {
+                    fin();
+                    if (!armed) return;
+                    const p = getPos(ev);
+                    clean();
+                    ignoreClicks(450);
+                    if (ev.cancelable) ev.preventDefault();   // 松手后不再补发 mousedown / click：不改选择、不打开
+                    if (moved) dropAt(p);
+                };
+                const armTimer = setTimeout(() => {
+                    armed = true;
+                    // 800ms 后显示与桌面长按相同的细框，提示已可向外拖动；幽灵仍等到真正移动时才出现。
+                    selectedItems.forEach(it => it.style.outline = '2px solid rgba(var(--al-0078d4, 0,120,212), 0.5)');
+                }, DRAG_HOLD_MS);
+
+                const menuTimer = setTimeout(() => {
+                    if (nativeCtx || !touchItem.isConnected) return;
+                    menuShown = true;
+                    handleFolderItemContextMenu({ preventDefault() {}, stopPropagation() {}, clientX: startX, clientY: startY, currentTarget: touchItem },
+                        windowId, touchItem.dataset.filename, touchItem.dataset.path);
+                }, MENU_HOLD_MS);
+                // 原生长按菜单先到就交给条目现有的 contextmenu 处理；若 JS 菜单已弹出则拦截重复事件。
+                const onNativeCtx = (ev) => {
+                    nativeCtx = true;
+                    clearTimeout(menuTimer);
+                    if (menuShown) {
+                        if (ev.cancelable) ev.preventDefault();
+                        ev.stopImmediatePropagation();
+                        return;
+                    }
+                    menuShown = true;
+                };
+                const onOtherTouch = () => clearTimeout(menuTimer);   // 又有手指按下
+                const menuMove = (ev) => {
+                    const p = getPos(ev);
+                    if (Math.abs(p.x - startX) + Math.abs(p.y - startY) >= 10) clearTimeout(menuTimer);
+                };
+                const menuEnd = () => {
+                    clearTimeout(menuTimer);
+                    if (menuShown) ignoreClicks(400);
+                    document.removeEventListener('contextmenu', onNativeCtx, true);
+                    document.removeEventListener('touchstart', onOtherTouch, true);
+                    document.removeEventListener('touchmove', menuMove);
+                    document.removeEventListener('touchend', menuEnd);
+                    document.removeEventListener('touchcancel', menuEnd);
+                };
+
+                document.addEventListener('touchmove', dragMove, { passive: false });
+                document.addEventListener('touchend', dragEnd);
+                document.addEventListener('touchcancel', dragEnd);
+                document.addEventListener('contextmenu', onNativeCtx, true);
+                document.addEventListener('touchstart', onOtherTouch, true);
+                document.addEventListener('touchmove', menuMove, { passive: true });
+                document.addEventListener('touchend', menuEnd);
+                document.addEventListener('touchcancel', menuEnd);
+                return;
             }
 
             // 鼠标长按检测：长按后启用原生拖出（参照桌面图标的长按机制）
@@ -11597,70 +11693,37 @@
                 const dy = pos.y - startY;
                 if (Math.abs(dx) > 5 || Math.abs(dy) > 5) hasMovedForActivation = true;
 
-                // 长按已触发，取消后续拖拽
-                if (longPressTriggered) {
-                    cleanup();
-                    return;
-                }
-
                 // 鼠标长按已启用原生拖出：交由浏览器 dragstart 处理，不启动自定义拖拽
                 if (SYSTEM._folderNativeDrag) {
                     return;
                 }
 
-                // 移动超过阈值，取消长按（触摸 + 鼠标）
-                if (longPressTimer && (Math.abs(dx) > 5 || Math.abs(dy) > 5)) {
-                    clearTimeout(longPressTimer);
-                    longPressTimer = null;
-                }
+                // 移动超过阈值，取消长按
                 if (nativeDragTimer && (Math.abs(dx) > 5 || Math.abs(dy) > 5)) {
                     clearTimeout(nativeDragTimer);
                     nativeDragTimer = null;
                     SYSTEM._folderNativeDrag = false;
                 }
 
+                // 鼠标没有滚动冲突，任意方向都应立刻起拖（否则往下拖到桌面会拖不动，很顿）
                 if(!isDragging && (Math.abs(dx) > 5 || Math.abs(dy) > 5)) {
-                    // 触摸时才需要区分"横向拖拽 / 纵向滚动"；鼠标没有滚动冲突，
-                    // 任意方向都应立刻起拖（否则往下拖到桌面会拖不动，很顿）。
-                    const isTouch = (moveEvent.type === 'touchmove');
-                    if (!isTouch || Math.abs(dx) > Math.abs(dy) * 1.2) {
-                        isDragging = true;
-                        document.body.style.cursor = 'grabbing';
-
-                        const filesData = selectedItems.map(item => ({
-                            filename: item.dataset.filename,
-                            path: item.dataset.path,
-                            isdir: item.dataset.isdir === 'true'
-                        }));
-
-                        dragPreview = createDragPreview(filesData, pos.x, pos.y);
-
-                        // 确认是拖拽后，注册非passive的touchmove来阻止滚动
-                        if (!touchMoveRegistered && moveEvent.type === 'touchmove') {
-                            touchMoveRegistered = true;
-                            document.removeEventListener('touchmove', onMove);
-                            document.addEventListener('touchmove', onMove, { passive: false });
-                        }
-                    }
-                    // 否则是垂直滚动，不阻止，让浏览器自然滚动
+                    isDragging = true;
+                    document.body.style.cursor = 'grabbing';
+                    dragPreview = createDragPreview(filesData, pos.x, pos.y);
                 }
 
                 if(isDragging && dragPreview) {
-                    if(moveEvent.type === 'touchmove') moveEvent.preventDefault();
                     moveDragPreview(dragPreview, pos.x, pos.y);
                     updateDropHighlight(pos.x, pos.y, selectedItems);
                 }
             };
 
             const cleanup = () => {
-                if(longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
                 if(nativeDragTimer) { clearTimeout(nativeDragTimer); nativeDragTimer = null; }
                 SYSTEM._folderNativeDrag = false;
                 selectedItems.forEach(it => it.style.outline = 'none');
                 document.removeEventListener('mousemove', onMove);
                 document.removeEventListener('mouseup', onUp);
-                document.removeEventListener('touchmove', onMove);
-                document.removeEventListener('touchend', onUp);
                 document.body.style.cursor = '';
                 if(dragPreview) { dragPreview.remove(); dragPreview = null; }
                 endDropHighlight();
@@ -11671,7 +11734,6 @@
             SYSTEM._folderDragTeardown = () => cleanup();
 
             const onUp = (upEvent) => {
-                if(longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
                 if(nativeDragTimer) { clearTimeout(nativeDragTimer); nativeDragTimer = null; }
                 SYSTEM._folderNativeDrag = false;
                 SYSTEM._folderDragTeardown = null;
@@ -11679,8 +11741,6 @@
 
                 document.removeEventListener('mousemove', onMove);
                 document.removeEventListener('mouseup', onUp);
-                document.removeEventListener('touchmove', onMove);
-                document.removeEventListener('touchend', onUp);
                 document.body.style.cursor = '';
 
                 if(dragPreview) {
@@ -11689,16 +11749,19 @@
                 }
                 endDropHighlight();
 
-                // 拖动或触屏滚动结束后可能仍会收到合成 click；单击打开模式下抑制它。
+                // 拖动结束后可能仍会收到 click；单击打开模式下抑制它。
                 if (hasMovedForActivation) {
-                    const ignoreUntil = Date.now() + (upEvent.type === 'touchend' ? 420 : 120);
+                    const ignoreUntil = Date.now() + 120;
                     if (activationItem) activationItem._ignoreActivationUntil = ignoreUntil;
                     selectedItems.forEach(it => { it._ignoreActivationUntil = ignoreUntil; });
                 }
 
                 if(!isDragging) return;
+                dropAt(getPos(upEvent));
+            };
 
-                const pos = getPos(upEvent);
+            // 投放：把拖动的项目移动到 pos 处的目标（鼠标拖动、触摸长按拖动共用）
+            function dropAt(pos) {
                 const target = document.elementFromPoint(pos.x, pos.y);
                 if(!target) return;
                 const desktop = document.getElementById('desktop');
@@ -11766,7 +11829,8 @@
                 }
                 
                 if(targetPath === sourcePath) {
-                    Notify.warning('操作无效', '不能将文件移动到同一文件夹');
+                    // 触摸长按拖动又放回原文件夹什么都不做
+                    if (!isTouch) Notify.warning('操作无效', '不能将文件移动到同一文件夹');
                     return;
                 }
                 
@@ -11948,14 +12012,10 @@
                 // 先找出整批里的同名项目，只问一次；取消 = 什么都不做
                 fxAskConflicts(targetPath, selectedItems.map(it => it.dataset.filename), targetFolderName, operationText)
                     .then(p => { if (!p) return; plan = p; processNext(); });
-            };
+            }
             
             document.addEventListener('mousemove', onMove);
             document.addEventListener('mouseup', onUp);
-            // 触摸事件初始用 passive: true，允许浏览器处理滚动
-            // 确认是水平拖拽后会在 onMove 中切换为 passive: false
-            document.addEventListener('touchmove', onMove, { passive: true });
-            document.addEventListener('touchend', onUp);
         }
 
         // === 拖拽幽灵：跟随指针的文件图标（多选时右上角带数量角标）===
