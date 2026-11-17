@@ -22745,14 +22745,28 @@
             if (!force && c.schema === WP_SPOTLIGHT_SCHEMA && c.recent && c.recent.length && Date.now() - (c.recentAt || 0) < WP_SPOTLIGHT_TTL) return Promise.resolve(c.recent);
             WP_SPOTLIGHT.feedBusy = (async () => {
                 const source = 'https://fd.api.iris.microsoft.com/v4/api/selection?placement=88000820&bcnt=4&fmt=json&locale=zh-CN&country=CN';
+                // 微软接口不提供浏览器跨域响应头。优先并行尝试实测可用的只读中转，图片仍来自微软。
+                const valid = d => {
+                    const rows = d && d.batchrsp && d.batchrsp.items;
+                    if (!Array.isArray(rows) || !rows.some(entry => {
+                        try {
+                            const x = typeof entry.item === 'string' ? JSON.parse(entry.item) : entry.item;
+                            return !!wpSafeUrl(x && x.ad && x.ad.landscapeImage && x.ad.landscapeImage.asset);
+                        } catch (_) { return false; }
+                    })) throw new Error('Windows 聚焦图片列表为空');
+                    return d;
+                };
                 let d;
                 try {
-                    d = await wpFetchJson(source);
+                    d = await Promise.any([
+                        wpFetchJson('https://proxy.cors.dev/' + source, 12000).then(valid),
+                        wpFetchJson('https://proxy.2677929.xyz/' + source, 12000).then(valid)
+                    ]);
                 } catch (_) {
-                    // 微软接口未开放浏览器跨域访问时，通过只读代理获取同一接口的响应。
+                    // 其他网络环境中，保留原代理作为最后备用。
                     const proxy = await wpFetchJson('https://r.jina.ai/' + source, 9000, { 'Accept': 'application/json' });
                     if (!proxy.data || proxy.data.httpStatus !== 200) throw new Error('Windows 聚焦图片源不可用');
-                    d = JSON.parse(proxy.data.content);
+                    d = valid(JSON.parse(proxy.data.content));
                 }
                 const seen = new Set();
                 const items = d && d.batchrsp && Array.isArray(d.batchrsp.items) ? d.batchrsp.items : [];
