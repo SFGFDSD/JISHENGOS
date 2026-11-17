@@ -22607,7 +22607,7 @@
         }
 
         const WP_META_KEY = 'JISHENG_OS_WALLPAPER_META';
-        const WP_SPOTLIGHT_KEY = 'JISHENG_OS_SPOTLIGHT_PEAPIX';   // 与上一版双源缓存隔离
+        const WP_SPOTLIGHT_KEY = 'JISHENG_OS_SPOTLIGHT_IRIS';   // 不沿用旧图源缓存
         const WP_SPOTLIGHT_TTL = 30 * 60 * 1000;            // 最多每 30 分钟向图源确认一次有没有上新
         const WP_SPOTLIGHT = { busy: null, loading: false, error: '', recentBusy: null, recentError: '', feedBusy: null };
         const WP_SPOTLIGHT_COUNT = 7;
@@ -22704,11 +22704,13 @@
         }
 
         // ---------- Windows 聚焦 ----------
-        // imageUrl 是原图（本次 7 张均为 3840×2160），fullUrl 通常只有 1920×1080。
+        // 微软 Windows 聚焦详情链接（接口可能带 microsoft-edge: 前缀）。
         function wpSpotlightPageUrl(url) {
-            // 详情只能直达对应的聚焦条目。
-            const m = /^https:\/\/(?:www\.)?peapix\.com\/spotlight\/(\d+)\/?(?:[?#].*)?$/i.exec(wpSafeUrl(url));
-            return m ? 'https://peapix.com/spotlight/' + m[1] : '';
+            const safe = wpSafeUrl(String(url || '').replace(/^microsoft-edge:/i, ''));
+            try {
+                const u = new URL(safe);
+                return u.protocol === 'https:' && /^(?:cn|www)\.bing\.com$/i.test(u.hostname) && u.pathname === '/spotlight' ? u.href : '';
+            } catch (_) { return ''; }
         }
         function wpSpotlightItem(x) {
             if (!x || typeof x !== 'object' || !wpSafeUrl(x.url)) return null;
@@ -22728,11 +22730,11 @@
             } catch (_) { return {}; }
         }
         function wpSpotlightStore(c) { try { localStorage.setItem(WP_SPOTLIGHT_KEY, JSON.stringify(c)); } catch (_) {} }
-        async function wpFetchJson(url, ms = 9000) {
+        async function wpFetchJson(url, ms = 9000, headers = undefined) {
             const ctl = typeof AbortController === 'function' ? new AbortController() : null;
             const timer = ctl ? setTimeout(() => ctl.abort(), ms) : null;
             try {
-                const res = await fetch(url, { cache: 'no-store', signal: ctl ? ctl.signal : undefined });
+                const res = await fetch(url, { cache: 'no-store', signal: ctl ? ctl.signal : undefined, headers });
                 if (!res.ok) throw new Error('HTTP ' + res.status);
                 return await res.json();
             } finally { if (timer) clearTimeout(timer); }
@@ -22742,14 +22744,27 @@
             const c = wpSpotlightCache();
             if (!force && c.schema === WP_SPOTLIGHT_SCHEMA && c.recent && c.recent.length && Date.now() - (c.recentAt || 0) < WP_SPOTLIGHT_TTL) return Promise.resolve(c.recent);
             WP_SPOTLIGHT.feedBusy = (async () => {
-                const d = await wpFetchJson('https://peapix.com/spotlight/feed?n=7');
+                const source = 'https://fd.api.iris.microsoft.com/v4/api/selection?placement=88000820&bcnt=4&fmt=json&locale=zh-CN&country=CN';
+                let d;
+                try {
+                    d = await wpFetchJson(source);
+                } catch (_) {
+                    // 微软接口未开放浏览器跨域访问时，通过只读代理获取同一接口的响应。
+                    const proxy = await wpFetchJson('https://r.jina.ai/' + source, 9000, { 'Accept': 'application/json' });
+                    if (!proxy.data || proxy.data.httpStatus !== 200) throw new Error('Windows 聚焦图片源不可用');
+                    d = JSON.parse(proxy.data.content);
+                }
                 const seen = new Set();
-                const list = (Array.isArray(d) ? d : []).map(x => {
-                    if (!x || typeof x !== 'object') return null;
-                    const url = wpSafeUrl(x.imageUrl) || wpSafeUrl(x.fullUrl);
-                    if (!url || seen.has(url)) return null;
-                    seen.add(url);
-                    return wpSpotlightItem({ url, thumb: x.thumbUrl, desc: x.title, link: x.pageUrl });
+                const items = d && d.batchrsp && Array.isArray(d.batchrsp.items) ? d.batchrsp.items : [];
+                const list = items.map(entry => {
+                    try {
+                        const x = typeof entry.item === 'string' ? JSON.parse(entry.item) : entry.item;
+                        const ad = x && x.ad;
+                        const url = wpSafeUrl(ad && ad.landscapeImage && ad.landscapeImage.asset);
+                        if (!url || seen.has(url)) return null;
+                        seen.add(url);
+                        return wpSpotlightItem({ url, thumb: url, desc: ad.title || ad.iconHoverText, link: ad.ctaUri });
+                    } catch (_) { return null; }
                 }).filter(Boolean).slice(0, WP_SPOTLIGHT_COUNT);
                 if (!list.length) throw new Error('Windows 聚焦图片列表为空');
                 const next = wpSpotlightCache();
@@ -22763,13 +22778,13 @@
             })().finally(() => { WP_SPOTLIGHT.feedBusy = null; });
             return WP_SPOTLIGHT.feedBusy;
         }
-        // 图源列表永远是“最新在前”：第 1 张就是 Windows 聚焦当前最新的图片。
+        // 使用微软接口返回的第 1 张作为当前 Windows 聚焦图片。
         // 只认这一张——图源上新了就换，没上新就保持不变；不再按天自己轮换（以前跨日取“下一张”反而越换越旧）。
         async function wpSpotlightFetchLatest(force = false) {
             const list = await wpSpotlightFetchRecent(force);
             return list[0];
         }
-        // 近期区始终是同一图源返回的最多 7 张，不再额外插入另一源的“今日图”。
+        // 近期区只显示同一微软接口返回的图片。
         function wpSpotlightRecentList() {
             const c = wpSpotlightCache(), seen = new Set();
             return (c.recent || []).filter(x => { if (seen.has(x.url)) return false; seen.add(x.url); return true; }).slice(0, WP_SPOTLIGHT_COUNT);
